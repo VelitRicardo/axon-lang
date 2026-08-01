@@ -595,7 +595,7 @@ pub const AXONENDPOINT_TRANSPORT_VALUES: &[&str] = &["json", "sse", "ndjson"];
 ///                   verbatim.
 ///
 /// Why kimi + glm as first-class entries (Q3 revision rationale):
-/// Bemarking AI's primary adopter pipelines through Kimi K2.x +
+/// The project's primary adopter pipelines through Kimi K2.x +
 /// Zhipu GLM-4.x. While the wire IS byte-identical to OpenAI's
 /// Chat Completions streaming, declaring `transport: sse(kimi)` /
 /// `transport: sse(glm)` lets the audit trail + observability

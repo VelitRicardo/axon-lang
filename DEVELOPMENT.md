@@ -12,7 +12,7 @@ This project uses **two GitHub repositories**:
 2. **`axon-enterprise`** (PRIVATE, Commercial License)
    - URL: `git@github.com:Bemarking/axon-enterprise.git`
    - Contains: Enterprise features (RBAC, SSO, audit logging, metering)
-   - Visibility: Private, Bemarking AI only
+   - Visibility: Private, maintainers only
 
 ## Remote Configuration
 
@@ -178,13 +178,13 @@ git diff origin/master..HEAD --name-only
 
 1. **Credentials**: Use GitHub secrets for API keys, never commit them
 2. **License**: `axon-lang` is AGPL-3.0-or-later (dual-licensed commercially); enterprise code is under a separate commercial license
-3. **Access Control**: Only Bemarking AI team has access to axon-enterprise
+3. **Access Control**: Only the maintainer team has access to axon-enterprise
 4. **Separation**: Enterprise features must be in separate modules/crates when possible
 
 ## Questions?
 
 - For **public/open source questions**: File issues on [GitHub/axon-lang](https://github.com/Bemarking/axon-lang)
-- For **enterprise questions**: Internal Bemarking AI channel
+- For **enterprise questions**: Internal maintainer channel
 
 ---
 Last updated: July 16, 2026

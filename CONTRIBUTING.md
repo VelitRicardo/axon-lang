@@ -7,8 +7,8 @@ signature) that the project requires before any PR can land.
 ## Before you start
 
 axon-lang is licensed under **GNU Affero General Public License v3.0
-or later (AGPL-3.0+)** — see [`LICENSE`](./LICENSE). It is maintained
-by **Bemarking AI S.A.S.** as part of a dual-license posture
+or later (AGPL-3.0+)** — see [`LICENSE`](./LICENSE). It is authored
+and maintained by **Ricardo Velit** as part of a dual-license posture
 (AGPL-3.0 for the public + commercial relicensing for the
 `axon-enterprise` product). The dual-license architecture is
 documented in
@@ -16,8 +16,8 @@ documented in
 
 This means every contributor must sign the
 [Contributor License Agreement (CLA)](./CLA.md) before their PR can
-be merged. The CLA is the legal instrument that lets Bemarking ship
-your contribution under both the AGPL (to the public) AND a
+be merged. The CLA is the legal instrument that lets the maintainer
+ship your contribution under both the AGPL (to the public) AND a
 commercial license (to axon-enterprise customers). See [`CLA.md`](./CLA.md)
 for the full reasoning + the legal text.
 
@@ -131,12 +131,11 @@ personal attacks are not.
 
 ## Maintainer trust
 
-The maintainer team is led by Bemarking AI S.A.S. Decisions on
+The maintainer team is led by Ricardo Velit. Decisions on
 substantial changes (license, governance, breaking API changes,
-release cadence) rest with Bemarking as the project's primary
-sponsor and copyright steward. Contributors retain copyright on
-their contributions; Bemarking holds the dual-licensing rights via
-the CLA.
+release cadence) rest with him as the project's author and copyright
+steward. Contributors retain copyright on their contributions; the
+maintainer holds the dual-licensing rights via the CLA.
 
 If you contribute substantially over time, you may be invited to
 join the maintainer team with commit / merge rights.
@@ -146,4 +145,4 @@ join the maintainer team with commit / merge rights.
 Thank you again for considering a contribution. The project is
 better for every PR.
 
-— The Bemarking AI S.A.S. team
+— Ricardo Velit, on behalf of the axon-lang maintainers

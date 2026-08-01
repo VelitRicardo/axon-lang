@@ -3,8 +3,9 @@
 **Version 1.0 — effective 2026-05-25.**
 
 Thank you for your interest in contributing to **axon-lang**, the
-open-source language + runtime maintained by **Bemarking AI S.A.S.**
-("Bemarking", "we", "us"). This Contributor License Agreement (the
+open-source language + runtime authored and maintained by **Ricardo
+Velit**, an individual (the "Maintainer", "we", "us"). This
+Contributor License Agreement (the
 "Agreement") clarifies the intellectual-property rights granted with
 contributions to the project from any person or entity.
 
@@ -30,15 +31,15 @@ v3.0-or-later (AGPL-3.0+) — see [`LICENSE`](./LICENSE). The AGPL is a
 strong copyleft license that protects the commons: forks deployed as
 network services must release their modifications.
 
-Bemarking ALSO maintains a commercial product, **axon-enterprise**,
+The Maintainer ALSO maintains a commercial product, **axon-enterprise**,
 that embeds axon-lang and is distributed to commercial customers under
-a proprietary End User License Agreement. For Bemarking to embed
+a proprietary End User License Agreement. For the Maintainer to embed
 axon-lang in axon-enterprise without forcing every axon-enterprise
-customer to comply with AGPL, Bemarking must hold a separate
-commercial license to the axon-lang code. The CLA grants Bemarking
+customer to comply with AGPL, the Maintainer must hold a separate
+commercial license to the axon-lang code. The CLA grants the Maintainer
 that license PROSPECTIVELY for every contribution — your contribution
 stays AGPL-licensed for the public AND becomes commercially
-sublicensable through Bemarking.
+sublicensable through the Maintainer.
 
 This dual-license pattern is used by many infrastructure-grade
 open-source projects (MongoDB pre-2018, Elastic prior to SSPL,
@@ -54,15 +55,15 @@ The full architecture is documented in
 
 You (the "Contributor") accept and agree to the following terms and
 conditions for Your present and future Contributions submitted to
-Bemarking. Except for the license granted herein to Bemarking and
-recipients of software distributed by Bemarking, You reserve all
+the Maintainer. Except for the license granted herein to the Maintainer and
+recipients of software distributed by the Maintainer, You reserve all
 right, title, and interest in and to Your Contributions.
 
 ### 1. Definitions
 
 **"You"** (or **"Your"**) means the copyright owner or legal entity
 authorized by the copyright owner that is signing this Agreement with
-Bemarking. For legal entities, the entity making a Contribution and
+the Maintainer. For legal entities, the entity making a Contribution and
 all other entities that control, are controlled by, or are under
 common control with that entity are considered to be a single
 Contributor. For the purposes of this definition, "control" means
@@ -73,49 +74,49 @@ shares, or (iii) beneficial ownership of such entity.
 
 **"Contribution"** means any original work of authorship, including
 any modifications or additions to an existing work, that is
-intentionally submitted by You to Bemarking for inclusion in, or
-documentation of, any of the products owned or managed by Bemarking
+intentionally submitted by You to the Maintainer for inclusion in, or
+documentation of, any of the products owned or managed by the Maintainer
 (the "Work"). For the purposes of this definition, "submitted" means
 any form of electronic, verbal, or written communication sent to
-Bemarking or its representatives, including but not limited to
-communication on electronic mailing lists, source code control
+the Maintainer or the Maintainer's representatives, including but not
+limited to communication on electronic mailing lists, source code control
 systems, and issue tracking systems that are managed by, or on behalf
-of, Bemarking for the purpose of discussing and improving the Work,
+of, the Maintainer for the purpose of discussing and improving the Work,
 but excluding communication that is conspicuously marked or otherwise
 designated in writing by You as "Not a Contribution."
 
 ### 2. Grant of Copyright License
 
 Subject to the terms and conditions of this Agreement, You hereby
-grant to Bemarking and to recipients of software distributed by
-Bemarking a perpetual, worldwide, non-exclusive, no-charge,
+grant to the Maintainer and to recipients of software distributed by
+the Maintainer a perpetual, worldwide, non-exclusive, no-charge,
 royalty-free, irrevocable copyright license to reproduce, prepare
 derivative works of, publicly display, publicly perform, sublicense,
 and distribute Your Contributions and such derivative works.
 
 **This license is granted under TWO concurrent license families:**
 
-(a) **Public license**: Bemarking will continue to distribute axon-
+(a) **Public license**: The Maintainer will continue to distribute axon-
     lang to the public under the AGPL-3.0-or-later (or a later
-    version of the AGPL that Bemarking designates). Your Contribution
+    version of the AGPL that the Maintainer designates). Your Contribution
     flows to the public under those AGPL terms.
 
-(b) **Commercial license**: You ALSO grant Bemarking the right to
+(b) **Commercial license**: You ALSO grant the Maintainer the right to
     sublicense Your Contribution under proprietary commercial
-    license terms (e.g., the axon-enterprise EULA) of Bemarking's
+    license terms (e.g., the axon-enterprise EULA) of the Maintainer's
     choosing, without further compensation or notice to You. This is
     the "dual-license" right that enables axon-enterprise to embed
     axon-lang without imposing AGPL on enterprise customers.
 
 You retain Your copyright on each Contribution. Nothing in this
-Agreement transfers ownership of Your copyright to Bemarking; it
-merely grants Bemarking the licenses described above.
+Agreement transfers ownership of Your copyright to the Maintainer; it
+merely grants the Maintainer the licenses described above.
 
 ### 3. Grant of Patent License
 
 Subject to the terms and conditions of this Agreement, You hereby
-grant to Bemarking and to recipients of software distributed by
-Bemarking a perpetual, worldwide, non-exclusive, no-charge,
+grant to the Maintainer and to recipients of software distributed by
+the Maintainer a perpetual, worldwide, non-exclusive, no-charge,
 royalty-free, irrevocable (except as stated in this section) patent
 license to make, have made, use, offer to sell, sell, import, and
 otherwise transfer the Work, where such license applies only to those
@@ -139,8 +140,8 @@ You represent that:
     that includes Your Contributions, You represent that You have
     received permission to make Contributions on behalf of that
     employer, that Your employer has waived such rights for Your
-    Contributions to Bemarking, or that Your employer has executed a
-    separate Corporate CLA with Bemarking;
+    Contributions to the Maintainer, or that Your employer has executed a
+    separate Corporate CLA with the Maintainer;
 
 (b) Each of Your Contributions is Your original creation (see Section
     5 for submissions on behalf of others); and
@@ -154,7 +155,7 @@ You represent that:
 ### 5. Third-party submissions
 
 Should You wish to submit work that is not Your original creation,
-You may submit it to Bemarking separately from any Contribution,
+You may submit it to the Maintainer separately from any Contribution,
 identifying the complete details of its source and of any license or
 other restriction (including, but not limited to, related patents,
 trademarks, and license agreements) of which You are personally
@@ -163,7 +164,7 @@ a third-party: [named here]".
 
 ### 6. Notification of changed circumstances
 
-You agree to notify Bemarking of any facts or circumstances of which
+You agree to notify the Maintainer of any facts or circumstances of which
 You become aware that would make these representations inaccurate in
 any respect.
 
@@ -176,9 +177,10 @@ for a particular purpose, non-infringement, and title.
 
 ### 8. No support obligation
 
-Nothing in this Agreement obligates Bemarking to support, maintain,
-or otherwise act on any of Your Contributions. Bemarking may use,
-modify, or discard Your Contributions at its sole discretion.
+Nothing in this Agreement obligates the Maintainer to support, maintain,
+or otherwise act on any of Your Contributions. The Maintainer may use,
+modify, or discard Your Contributions at the Maintainer's sole
+discretion.
 
 ---
 
@@ -190,7 +192,7 @@ must execute a Corporate CLA. The Corporate CLA is a separate
 document — please contact
 [maintainers@bemarking.com.co](mailto:maintainers@bemarking.com.co)
 to request the Corporate CLA template. Until the Corporate CLA is
-signed and acknowledged by Bemarking, the entity's employees may NOT
+signed and acknowledged by the Maintainer, the entity's employees may NOT
 contribute on the entity's behalf.
 
 If You are an individual employee of a corporation who is contributing
@@ -240,6 +242,6 @@ For any questions about this CLA, contact:
 
 ---
 
-© 2026 Bemarking AI S.A.S. The form of this CLA is derived from the
+© 2026 Ricardo Velit. The form of this CLA is derived from the
 Apache Software Foundation Individual CLA (https://www.apache.org/licenses/icla.pdf),
 adapted for axon-lang's dual-license posture.

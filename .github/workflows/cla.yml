@@ -81,7 +81,8 @@ jobs:
             Agreement](https://github.com/Bemarking/axon-lang/blob/master/CLA.md).
 
             This is a one-time signature that covers all your
-            future contributions. The CLA grants Bemarking AI S.A.S.
+            future contributions. The CLA grants the maintainer,
+            Ricardo Velit,
             the right to dual-license axon-lang (AGPL-3.0 for the
             public + commercial license for the axon-enterprise
             product). The full reasoning is in

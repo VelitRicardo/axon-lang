@@ -5,7 +5,7 @@
 //! (Moonshot's K2.x series) and GLM (Zhipu's ChatGLM-4.x) publish
 //! Chat Completions APIs that mirror OpenAI's streaming wire verbatim
 //! — same `data: {"choices": [...]}` chunk shape, same `data: [DONE]`
-//! terminator. Bemarking AI's primary adopter pipelines route through
+//! terminator. The project's primary adopter pipelines route through
 //! these providers, so first-class catalog entries let adopters
 //! declare intent precisely:
 //!

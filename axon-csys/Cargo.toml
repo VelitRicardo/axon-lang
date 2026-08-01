@@ -1,7 +1,7 @@
 [package]
 name = "axon-csys"
 version = "0.2.0"
-authors = ["AXON Project", "Bemarking AI S.A.S."]
+authors = ["AXON Project", "Ricardo Velit"]
 edition = "2021"
 rust-version = "1.95"
 license = "AGPL-3.0-or-later"
