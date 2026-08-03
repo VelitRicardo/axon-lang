@@ -23,9 +23,13 @@ shield NetworkShield {
 // checker enforces that linear and affine resources belong to at most
 // one manifest (Separation Logic disjointness across heaps).
 
+// §Fase 113 — `kind:` is a CLOSED catalog (http | https | mysql | postgres |
+// redis): exactly what the runtime can REACH. `endpoint:` is a CONFIG KEY,
+// never a URL, a DSN or a host:port (`axon-T942` / `axon-T944`).
+
 resource PrimaryDatabase {
   kind: postgres
-  endpoint: "db.primary.internal:5432"
+  endpoint: "db.primary"
   capacity: 200
   lifetime: linear
   certainty_floor: 0.90
@@ -34,14 +38,14 @@ resource PrimaryDatabase {
 
 resource SessionCache {
   kind: redis
-  endpoint: "cache.internal:6379"
+  endpoint: "cache.session"
   capacity: 10000
   lifetime: affine
 }
 
 resource SharedTelemetry {
-  kind: custom
-  endpoint: "telemetry.internal:9090"
+  kind: https
+  endpoint: "telemetry.shared"
   lifetime: persistent
 }
 

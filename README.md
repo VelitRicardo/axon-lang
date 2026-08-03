@@ -156,21 +156,33 @@ Each framework has an operational runbook and an audit-evidence pipeline that em
 ### Try it in 30 seconds
 
 ```bash
-cargo install axon-lang         # or: download the native binary from Releases
+cargo install axon-lang
 echo 'type PatientRecord compliance [HIPAA, GDPR] { ssn: String }
 shield PHIShield { scan: [pii_leak] on_breach: halt severity: critical
                    compliance: [HIPAA, GDPR] }
 axonendpoint Api { method: POST path: "/p" body: PatientRecord
-                   execute: F output: PatientRecord shield: PHIShield
-                   compliance: [HIPAA, GDPR] }
-flow F(r: PatientRecord) -> PatientRecord {
+                   execute: F output: FlowEnvelope<PatientRecord> shield: PHIShield
+                   backend: anthropic compliance: [HIPAA, GDPR] }
+flow F(ssn: String) -> PatientRecord {
   step R { ask: "summarize" output: PatientRecord } }' > app.axon
 axon check   app.axon   # compile-time compliance verification
 axon dossier app.axon   # regulatory posture JSON
 axon audit   app.axon --framework all   # per-framework gap analysis
 ```
 
-Remove the `shield` line and `axon check` fails with *"endpoint 'Api' sends regulated type '{HIPAA, GDPR}' without a covering shield — ESK Fase 6.1 coverage rule"*. That failure is a **type error**, not a lint warning.
+Now delete `shield: PHIShield` from the endpoint and run `axon check` again:
+
+```
+X app.axon  1 error(s)
+  error [line 4]: axon-T957 axonendpoint 'Api' carries regulated data
+  (kappa = {GDPR, HIPAA}) across a trust boundary but declares no `shield:`.
+  Regulated boundaries require a shield whose `compliance:` covers the type's
+  kappa — ESK Fase 6.1 coverage rule. […] Declaring the classes on the
+  endpoint's own `compliance:` does NOT cover them: that list is a label,
+  the shield is the control that acts on a breach.
+```
+
+That failure is a **type error**, not a lint warning — `axon check` exits `1` and nothing downstream will build. The rule is a real set difference over the regulatory classes carried by the boundary's `body:` and `output:` types, so a shield that covers *some* of them fails too, naming exactly the ones it misses.
 
 ### Reference programs
 

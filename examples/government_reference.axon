@@ -26,14 +26,18 @@ type ClassifiedReport compliance [FISMA, NIST_800_53, SOC2] {
 
 // ── Flows ─────────────────────────────────────────────────────────
 
-flow TriageCase(record: CitizenRecord) -> ClassifiedReport {
+// §Fase 37 — the Request Binding Contract: every required flow parameter binds
+// from exactly one declared source, matched BY NAME against a path placeholder,
+// a `query:` field, or a field of the endpoint's `body:` type.
+
+flow TriageCase(case_number: String) -> ClassifiedReport {
   step Classify {
     ask: "Route this citizen submission to the correct department"
     output: ClassifiedReport
   }
 }
 
-flow IssueResponse(report: ClassifiedReport) -> ClassifiedReport {
+flow IssueResponse(report_id: String) -> ClassifiedReport {
   step Compose {
     ask: "Compose an official response letter"
     output: ClassifiedReport
@@ -58,9 +62,14 @@ shield PublicRecordShield {
 
 // ── Infrastructure ────────────────────────────────────────────────
 
+// §Fase 113 — `kind:` is a CLOSED catalog (http | https | mysql | postgres |
+// redis): exactly what the runtime can REACH. `endpoint:` is a CONFIG KEY,
+// never a URL, a DSN or a host:port — the address resolves per deployment
+// (`axon-T942` / `axon-T944`).
+
 resource CaseVault {
   kind:             postgres
-  endpoint:         "cases.govcloud.internal:5432"
+  endpoint:         "cases.govcloud.primary"
   capacity:         200
   lifetime:         linear
   certainty_floor:  0.95
@@ -68,8 +77,8 @@ resource CaseVault {
 }
 
 resource DocumentStore {
-  kind:      s3
-  endpoint:  "s3://gov-case-documents"
+  kind:      https
+  endpoint:  "gov.case.documents"
   lifetime:  persistent
   shield:    PublicRecordShield
 }
@@ -154,7 +163,7 @@ axonendpoint CaseIntakeAPI {
   path:        "/v1/cases"
   body:        CitizenRecord
   execute:     TriageCase
-  output:      ClassifiedReport
+  output:      FlowEnvelope<ClassifiedReport>
   shield:      FederalGate
   compliance:  [FISMA, NIST_800_53]
   retries:     2
@@ -166,7 +175,7 @@ axonendpoint ResponseAPI {
   path:        "/v1/cases/respond"
   body:        ClassifiedReport
   execute:     IssueResponse
-  output:      ClassifiedReport
+  output:      FlowEnvelope<ClassifiedReport>
   shield:      FederalGate
   compliance:  [FISMA, NIST_800_53, SOC2]
   retries:     1

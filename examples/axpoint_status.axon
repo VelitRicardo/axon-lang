@@ -10,7 +10,7 @@ shield StatusEdgeShield {
 }
 
 persona StatusOperator {
-  domain: [ops, telemetry]
+  domain: ["ops", "telemetry"]
   tone: precise
   confidence_threshold: 0.85
 }
@@ -33,7 +33,7 @@ axpoint StatusAPI {
   method: get
   path: "/api/status"
   execute: SystemStatus
-  output: StatusReport
+  output: FlowEnvelope<StatusReport>
   shield: StatusEdgeShield
   retries: 1
   timeout: 5s

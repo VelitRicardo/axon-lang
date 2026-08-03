@@ -9434,6 +9434,106 @@ impl<'a> TypeChecker<'a> {
             }
         }
 
+        // §Fase 117.a (`axon-T957`) — RegulatedBoundaryCoverage: the ESK
+        // Fase 6.1 κ-coverage law, finally scoped to the `axonendpoint`.
+        //
+        // THE GAP THIS CLOSES. §111 F16 diagnosed it and `advertised.rs`
+        // has carried the confession ever since: "the language's flagship
+        // claim, and exactly ONE genuine κ-coverage rule exists (scoped to
+        // `component`). The axon-T890 endpoint rule is a PRESENCE check
+        // (`!compliance.is_empty()`), not a coverage law." The README has
+        // promised the endpoint form of this law since v1.x — remove the
+        // `shield` from a regulated endpoint and `axon check` was supposed
+        // to refuse — and the compiler never had it. The `compliance` field
+        // on `AxonEndpointDefinition` is even documented "§ESK Fase 6.1 —
+        // regulatory coverage on the boundary". The INTENT was always here;
+        // the LAW was not. A promise the compiler cannot break is not a weak
+        // guarantee, it is a VACUOUS one — the same lesson `lease` taught in
+        // §113.
+        //
+        // THE LAW. An `axonendpoint` is where regulated data crosses the
+        // process boundary. If either side of that crossing — `body:` (what
+        // arrives) or `output:` (what leaves) — names a type carrying a
+        // non-empty κ, the endpoint MUST name a `shield:` whose own
+        // `compliance:` covers every class in that κ. A real set difference,
+        // exactly like the `component` rule at the regulated-render gate —
+        // not a presence check.
+        //
+        // WHY THE SHIELD AND NOT THE ENDPOINT'S OWN `compliance:`. The
+        // shield is the CONTROL (`scan:`, `on_breach:`, `severity:`); the
+        // endpoint's `compliance:` list is a LABEL. Accepting the label as
+        // coverage would rebuild the very presence check §111 condemned. A
+        // κ class is covered when something can act on a breach of it.
+        //
+        // Runs BEFORE the E039 wire gate and is NOT suppressed by it: a
+        // regulated boundary left unguarded is a governance defect whether
+        // or not the wire shape also happens to be wrong. Gated on a
+        // non-empty `execute:` for the same reason T890 is — an endpoint
+        // that dispatches nothing crosses no boundary.
+        if !node.execute_flow.is_empty() {
+            let mut boundary_kappa: std::collections::HashSet<&str> =
+                std::collections::HashSet::new();
+            for type_ref in [node.body_type.as_str(), node.output_type.as_str()] {
+                let base = peel_type_constructors(type_ref);
+                if base.is_empty() {
+                    continue;
+                }
+                if let Some(t) = find_type_by_name(self.program, base) {
+                    boundary_kappa.extend(t.compliance.iter().map(|s| s.as_str()));
+                }
+            }
+
+            if !boundary_kappa.is_empty() {
+                let mut kappa_sorted: Vec<&str> = boundary_kappa.iter().copied().collect();
+                kappa_sorted.sort_unstable();
+
+                if node.shield_ref.is_empty() {
+                    self.emit(
+                        format!(
+                            "axon-T957 axonendpoint '{}' carries regulated data \
+                             (kappa = {{{}}}) across a trust boundary but declares no \
+                             `shield:`. Regulated boundaries require a shield whose \
+                             `compliance:` covers the type's kappa — ESK Fase 6.1 \
+                             coverage rule. Declare `shield: <Name>` on the endpoint, \
+                             where that shield lists at least [{}] in its \
+                             `compliance:`. Declaring the classes on the endpoint's own \
+                             `compliance:` does NOT cover them: that list is a label, \
+                             the shield is the control that acts on a breach.",
+                            node.name,
+                            kappa_sorted.join(", "),
+                            kappa_sorted.join(", "),
+                        ),
+                        &node.loc,
+                    );
+                } else if let Some(shield) = find_shield_by_name(self.program, &node.shield_ref) {
+                    // An unknown `shield:` name is already reported by the
+                    // reference-integrity check above — do not double-report.
+                    let shield_kappa: std::collections::HashSet<&str> =
+                        shield.compliance.iter().map(|s| s.as_str()).collect();
+                    let mut missing: Vec<&str> =
+                        boundary_kappa.difference(&shield_kappa).copied().collect();
+                    missing.sort_unstable();
+                    if !missing.is_empty() {
+                        self.emit(
+                            format!(
+                                "axon-T957 axonendpoint '{}' declares `shield: {}`, but that \
+                                 shield does not cover kappa = {{{}}} carried across the \
+                                 boundary — ESK Fase 6.1 coverage rule. Add [{}] to shield \
+                                 '{}'s `compliance:` list, or name a shield that already \
+                                 covers them.",
+                                node.name,
+                                node.shield_ref,
+                                missing.join(", "),
+                                missing.join(", "),
+                                node.shield_ref,
+                            ),
+                            &node.loc,
+                        );
+                    }
+                }
+            }
+        }
+
         // §Fase 39.e (D12 α RATIFIED) — Wire-shape mandate gate
         // (`axon-E039`). On `transport: json` endpoints, every
         // declared `output: T` MUST be `FlowEnvelope<T>` (or `Any` /
@@ -13025,6 +13125,32 @@ fn fmt_type_expr(t: &TypeExpr) -> String {
         s.push('?');
     }
     s
+}
+
+/// §Fase 117.a — peel the wrapping type constructors off a declared type
+/// reference down to the nominal name a `type` declaration can carry.
+///
+/// `FlowEnvelope<List<PatientRecord>>` → `PatientRecord`. Used by the
+/// `axon-T957` boundary-coverage law: an endpoint's κ is a property of the
+/// DATA, and wrapping it in an envelope or a list does not launder its
+/// regulatory classes. Mirrors the constructor set [`declared_cardinality`]
+/// recognises, and is total — an unrecognised or empty reference peels to
+/// itself, so a caller that finds no matching `type` simply contributes no κ.
+fn peel_type_constructors(type_ref: &str) -> &str {
+    let mut t = type_ref.trim();
+    // `?` marks an optional declaration — orthogonal to κ.
+    t = t.strip_suffix('?').unwrap_or(t).trim();
+    loop {
+        let peeled = ["FlowEnvelope<", "List<", "Stream<"].iter().find_map(|ctor| {
+            t.strip_prefix(*ctor)
+                .and_then(|rest| rest.strip_suffix('>'))
+                .map(|inner| inner.trim())
+        });
+        match peeled {
+            Some(inner) => t = inner.strip_suffix('?').unwrap_or(inner).trim(),
+            None => return t,
+        }
+    }
 }
 
 fn find_type_by_name<'a>(program: &'a Program, name: &str) -> Option<&'a TypeDefinition> {

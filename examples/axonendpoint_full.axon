@@ -9,14 +9,14 @@ type ContractReport {
 }
 
 shield EdgeShield {
-  scan: [prompt_injection, pii]
+  scan: [prompt_injection, pii_leak]
   on_breach: halt
   severity: high
   sandbox: true
 }
 
 persona ContractAnalyst {
-  domain: [contracts, legal]
+  domain: ["contracts", "legal"]
   tone: precise
   confidence_threshold: 0.8
   cite_sources: true
@@ -29,9 +29,11 @@ context ContractSession {
   max_tokens: 1200
 }
 
-flow AnalyzeContract(doc: ContractInput) -> ContractReport {
+// §Fase 37 — the Request Binding Contract: `text` binds by name from the
+// `body: ContractInput` declared on the endpoint below.
+flow AnalyzeContract(text: String) -> ContractReport {
   step Analyze {
-    given: doc
+    given: text
     ask: "Analiza el contrato, resume riesgos y entrega un reporte estructurado."
     output: ContractReport
   }
@@ -42,7 +44,7 @@ axonendpoint ContractsAPI {
   path: "/api/contracts/analyze"
   body: ContractInput
   execute: AnalyzeContract
-  output: ContractReport
+  output: FlowEnvelope<ContractReport>
   shield: EdgeShield
   retries: 2
   timeout: 10s

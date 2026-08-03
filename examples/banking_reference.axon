@@ -36,14 +36,18 @@ type RiskScore(0.0..1.0)
 
 // ── Flows ─────────────────────────────────────────────────────────
 
-flow ScorePayment(tx: TransactionRecord) -> FraudScore {
+// §Fase 37 — the Request Binding Contract: every required flow parameter binds
+// from exactly one declared source, matched BY NAME against a path placeholder,
+// a `query:` field, or a field of the endpoint's `body:` type.
+
+flow ScorePayment(merchant_id: String) -> FraudScore {
   step Analyze {
     ask: "Classify this transaction as legitimate vs fraudulent"
     output: FraudScore
   }
 }
 
-flow ProcessPayment(card: CardholderData) -> TransactionRecord {
+flow ProcessPayment(holder_name: String) -> TransactionRecord {
   step Charge {
     ask: "Process payment through the card network"
     output: TransactionRecord
@@ -68,9 +72,14 @@ shield ReportingShield {
 
 // ── Infrastructure resources ──────────────────────────────────────
 
+// §Fase 113 — `kind:` is a CLOSED catalog (http | https | mysql | postgres |
+// redis): exactly what the runtime can REACH. `endpoint:` is a CONFIG KEY,
+// never a URL, a DSN or a host:port — the address resolves per deployment
+// (`axon-T942` / `axon-T944`).
+
 resource PrimaryLedger {
   kind:             postgres
-  endpoint:         "ledger.internal:5432"
+  endpoint:         "ledger.primary"
   capacity:         500
   lifetime:         linear
   certainty_floor:  0.95
@@ -78,15 +87,15 @@ resource PrimaryLedger {
 }
 
 resource AuditArchive {
-  kind:      s3
-  endpoint:  "s3://bank-audit-archive"
+  kind:      https
+  endpoint:  "bank.audit.archive"
   lifetime:  persistent
   shield:    ReportingShield
 }
 
 resource FraudEngine {
-  kind:      compute
-  endpoint:  "fraud-ml.internal:8080"
+  kind:      https
+  endpoint:  "fraud.ml.scoring"
   capacity:  8
   lifetime:  affine
 }
@@ -174,7 +183,7 @@ axonendpoint PaymentsAPI {
   path:        "/v1/payments"
   body:        CardholderData
   execute:     ProcessPayment
-  output:      TransactionRecord
+  output:      FlowEnvelope<TransactionRecord>
   shield:      PaymentShield
   compliance:  [PCI_DSS, SOX]
   retries:     1
@@ -186,7 +195,7 @@ axonendpoint FraudAPI {
   path:        "/v1/fraud/score"
   body:        TransactionRecord
   execute:     ScorePayment
-  output:      FraudScore
+  output:      FlowEnvelope<FraudScore>
   shield:      ReportingShield
   compliance:  [SOX, SOC2]
   retries:     2

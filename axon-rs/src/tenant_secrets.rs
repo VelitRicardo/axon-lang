@@ -226,6 +226,14 @@ mod tests {
         assert_eq!(client.get_cached("acme", "anthropic"), None);
     }
 
+    // §Fase 117.a — `secret_path` is `#[cfg(feature = "aws-secrets")]` (it names
+    // an AWS Secrets Manager path and has no meaning without the SM leg), so
+    // this test must carry the same gate. Without it `cargo test
+    // --no-default-features` fails to COMPILE — which is how §116.c.5 shipped:
+    // its opt-out was verified with `--lib --bins`, and the TEST target was
+    // never built without the feature. §117.c makes this configuration the
+    // DEFAULT, so the gap had to close first.
+    #[cfg(feature = "aws-secrets")]
     #[test]
     fn test_secret_path_format() {
         assert_eq!(

@@ -30,14 +30,19 @@ type DiagnosticReport { summary: String }
 
 // ── Flows ─────────────────────────────────────────────────────────
 
-flow SummarizeRecord(rec: PatientRecord) -> DiagnosticReport {
+// §Fase 37 — the Request Binding Contract: every required flow parameter binds
+// from exactly one declared source, matched BY NAME against a path placeholder,
+// a `query:` field, or a field of the endpoint's `body:` type. `patient_id` and
+// `trial_id` below bind from the body types declared on the endpoints.
+
+flow SummarizeRecord(patient_id: String) -> DiagnosticReport {
   step Review {
     ask: "Produce a clinical summary for the attending physician"
     output: DiagnosticReport
   }
 }
 
-flow AnalyzeTrial(entry: ClinicalTrial) -> DiagnosticReport {
+flow AnalyzeTrial(trial_id: String) -> DiagnosticReport {
   step Analyze {
     ask: "Analyze this trial observation against protocol"
     output: DiagnosticReport
@@ -63,9 +68,15 @@ shield TrialShield {
 
 // ── Infrastructure ────────────────────────────────────────────────
 
+// §Fase 113 — `kind:` is a CLOSED catalog (http | https | mysql | postgres |
+// redis): exactly what the runtime can REACH. `endpoint:` is a CONFIG KEY,
+// never a URL, a DSN or a host:port — the address resolves per deployment
+// (`axon-T942` / `axon-T944`). An object store and an inference service are
+// both reached over HTTPS; that is what the program is allowed to promise.
+
 resource EHRDatabase {
   kind:             postgres
-  endpoint:         "ehr.clinical.internal:5432"
+  endpoint:         "ehr.clinical.primary"
   capacity:         300
   lifetime:         linear
   certainty_floor:  0.95
@@ -73,15 +84,15 @@ resource EHRDatabase {
 }
 
 resource TrialArchive {
-  kind:      s3
-  endpoint:  "s3://clinical-trial-archive"
+  kind:      https
+  endpoint:  "clinical.trial.archive"
   lifetime:  persistent
   shield:    TrialShield
 }
 
 resource InferenceEngine {
-  kind:      compute
-  endpoint:  "dx-ml.internal:9090"
+  kind:      https
+  endpoint:  "dx.ml.inference"
   capacity:  4
   lifetime:  affine
 }
@@ -158,7 +169,7 @@ axonendpoint PatientAPI {
   path:        "/v1/patients/summary"
   body:        PatientRecord
   execute:     SummarizeRecord
-  output:      DiagnosticReport
+  output:      FlowEnvelope<DiagnosticReport>
   shield:      PHIShield
   compliance:  [HIPAA, GDPR]
   retries:     1
@@ -170,7 +181,7 @@ axonendpoint ClinicalTrialAPI {
   path:        "/v1/trials/entry"
   body:        ClinicalTrial
   execute:     AnalyzeTrial
-  output:      DiagnosticReport
+  output:      FlowEnvelope<DiagnosticReport>
   shield:      TrialShield
   compliance:  [HIPAA, GxP]
   retries:     2

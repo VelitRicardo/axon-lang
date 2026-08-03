@@ -55,6 +55,17 @@ jobs:
       # §Fase 39.i — the frontend lib carries the lexer / parser /
       # type-checker / IR generator + the FlowEnvelope type system
       # (39.a) + axon-E039 wire-shape gate (39.e). Test it explicitly.
+      #
+      # §Fase 117.a — this step is ALSO where the shop window is gated. Two
+      # suites here are build inputs, not unit tests:
+      #   - fase117_a_examples_compile.rs  — EVERY examples/**/*.axon compiles.
+      #     Before §117.a the only example CI ever compiled was
+      #     contract_analyzer.axon (see the CLI step below), and 6 of 12 were
+      #     broken against the shipped compiler without anything noticing.
+      #   - fase117_a_readme_snippets.rs   — every ```axon block in README.md is
+      #     compiled, against a checked-in ledger of known-uncompilable blocks
+      #     that may only SHRINK. The README is an input to the build.
+      # Do not narrow this step to a filtered test list.
       - name: Run cargo test (axon-frontend)
         working-directory: axon-frontend
         run: cargo test --verbose
