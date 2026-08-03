@@ -1,181 +1,113 @@
-# AXON Rust Native Runtime (v1.0.0)
+# axon-lang
 
-The compiled Rust implementation of the AXON cognitive language with **282 HTTP routes**, **47/47 cognitive primitives**, and production-grade systems:
+**AXON — the formal cognitive language: a deterministic, proof-carrying AI runtime.**
 
-- **Observability**: Structured JSON logging with request tracing (Phase K)
-- **Resilience**: Circuit breakers, exponential backoff, fallback chains (Phase K)
-- **Persistence**: PostgreSQL backend with 12 domain tables and embedded migrations (Phase K)
+[![crates.io](https://img.shields.io/crates/v/axon-lang.svg)](https://crates.io/crates/axon-lang)
+[![docs.rs](https://docs.rs/axon-lang/badge.svg)](https://docs.rs/axon-lang)
+[![License: AGPL-3.0-or-later](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue.svg)](https://github.com/Bemarking/axon-lang/blob/master/LICENSE)
 
-## Directory Structure
+AXON is a programming language for AI cognition in which the properties you care
+about — *this endpoint may not leak regulated data*, *this agent may not exceed
+this budget*, *this credential may not outlive this session* — are **type errors**,
+checked before anything runs, rather than conventions enforced by code review.
 
-```
-axon-rs/
-├── Cargo.toml              # Rust dependencies & metadata
-├── src/
-│   ├── main.rs             # Server entry point (AxonServer)
-│   ├── lib.rs              # Public module exports (11 Phase K modules)
-│   ├── axon_server.rs      # HTTP server & route handlers (282 routes)
-│   ├── backend.rs          # LLM backend calls (7 providers)
-│   ├── compiler/           # IR compilation to backend prompts
-│   ├── executor/           # Flow execution engine
-│   ├── logging.rs          # Tracing subscriber configuration (K1)
-│   ├── request_tracing.rs  # Tower middleware for request ID correlation (K1)
-│   ├── backend_error.rs    # Error classification & retry logic (K2)
-│   ├── retry_policy.rs     # Exponential backoff with jitter (K2)
-│   ├── circuit_breaker.rs  # Per-provider state machine (K2)
-│   ├── resilient_backend.rs # Composition layer (K2)
-│   ├── storage.rs          # StorageBackend trait & dispatcher (K3)
-│   ├── storage_postgres.rs # PostgreSQL implementation (K4)
-│   ├── db_pool.rs          # Connection pool management (K4)
-│   └── migrations.rs       # Embedded migration runner (K4)
-├── migrations/
-│   ├── 001_initial_schema.sql     # 12 tables (traces, sessions, daemons, etc.)
-│   └── 002_indexes.sql            # 15 performance indexes
-├── tests/
-│   └── integration.rs      # End-to-end tests (753 total)
-└── README.md               # This file
-```
+The crate publishes as `axon-lang`; the library import is `use axon::*`.
 
-## Build
+> **The language reference, the design papers and the full documentation live in
+> the [repository README](https://github.com/Bemarking/axon-lang).** This page is
+> the crate's landing page: what you get, how to install it, and how to watch it
+> refuse something.
 
-### Release Build
+## Install
+
+| Requirement | Why |
+| ----------- | --- |
+| **Rust 1.95+** | the `rust-version` of every crate in the workspace |
+| a **C compiler** (MSVC / clang / gcc) | `axon-csys` is a non-optional dependency and builds C23 kernels via `cc` |
 
 ```bash
-cd axon-rs
-cargo build --release
+cargo install axon-lang
 ```
 
-Binary: `target/release/axon` (or `axon.exe` on Windows)
+This installs the `axon` binary. If the build stops with a `cc`/linker error
+rather than a Rust error, the C toolchain is what is missing.
 
-### Development Build
+## See it work
 
 ```bash
-cargo build
+echo 'type PatientRecord compliance [HIPAA, GDPR] { ssn: String }
+shield PHIShield { scan: [pii_leak] on_breach: halt severity: critical
+                   compliance: [HIPAA, GDPR] }
+axonendpoint Api { method: POST path: "/p" body: PatientRecord
+                   execute: F output: FlowEnvelope<PatientRecord> shield: PHIShield
+                   backend: anthropic compliance: [HIPAA, GDPR] }
+flow F(ssn: String) -> PatientRecord {
+  step R { ask: "summarize" output: PatientRecord } }' > app.axon
+
+axon check   app.axon                  # compile-time compliance verification
+axon dossier app.axon                  # regulatory posture, as JSON
+axon audit   app.axon --framework all  # per-framework gap analysis
 ```
 
-Binary: `target/debug/axon`
+Now delete `shield: PHIShield` from the endpoint and check again:
 
-## Run
-
-### In-Memory Storage (Development)
-
-```bash
-cargo run --release -- --port 3000
+```
+X app.axon  1 error(s)
+  error [line 4]: axon-T957 axonendpoint 'Api' carries regulated data
+  (kappa = {GDPR, HIPAA}) across a trust boundary but declares no `shield:`.
+  Regulated boundaries require a shield whose `compliance:` covers the type's
+  kappa — ESK Fase 6.1 coverage rule. […] Declaring the classes on the
+  endpoint's own `compliance:` does NOT cover them: that list is a label,
+  the shield is the control that acts on a breach.
 ```
 
-Logs to stdout, no persistence.
+`axon check` exits `1`. That is the whole idea: the regulatory property rides on
+the type system, so it holds at compile time or it does not hold at all.
 
-### With PostgreSQL (Production)
+## What's in the box
 
-```bash
-# Create database
-createdb axon
+One binary, 28 subcommands. The ones you are most likely to reach for:
 
-# Run with persistence & structured logging
-DATABASE_URL="postgresql://user:pass@localhost/axon" \
-cargo run --release -- \
-  --port 3000 \
-  --log-format json \
-  --log-file ./logs \
-  --database-url "$DATABASE_URL"
+| Command | Does |
+| ------- | ---- |
+| `axon check` | lex, parse, type-check — the compliance gate |
+| `axon run` | compile and execute (`--tool-mode stub` runs with no API keys) |
+| `axon compile` | lower to IR JSON |
+| `axon serve` | run the HTTP / SSE / NDJSON / WebSocket server |
+| `axon dossier` · `axon audit` · `axon sbom` | regulatory posture, gap analysis, SBOM |
+| `axon prove` · `axon verify` | emit and independently check proof objects |
+| `axon fmt` · `axon fix` · `axon repl` · `axon inspect` | the usual tooling |
+
+`axon --help` lists all of them.
+
+## As a library
+
+```toml
+[dependencies]
+axon-lang = "2"
 ```
 
-Options:
-- `--port` — HTTP server port (default: 3000)
-- `--log-format` — `json` or `pretty` (default: pretty)
-- `--log-file` — Directory for daily-rotated logs
-- `--database-url` — PostgreSQL connection string; if unset, uses in-memory storage
-
-## Quick Test
-
-```bash
-# Health check
-curl http://localhost:3000/v1/health
-
-# Deploy a flow
-curl -X POST http://localhost:3000/v1/deploy \
-  -H "Content-Type: application/json" \
-  -d '{"source": "flow test { step reason { prompt: \"hello\" } }", "backend": "stub"}'
-
-# Execute
-curl -X POST http://localhost:3000/v1/execute/test
+```rust
+use axon::*;
 ```
 
-## Tests
+Building tooling rather than running programs? The compiler frontend — lexer,
+parser, AST, epistemic type system, type checker, IR generator — is a separate
+crate, [`axon-frontend`](https://crates.io/crates/axon-frontend), with **zero
+runtime dependencies**. An LSP, a linter or an analyzer should depend on that and
+skip the server, database and HTTP stack entirely.
 
-```bash
-# Full test suite (1,466 tests)
-cargo test
+## API keys
 
-# Specific test groups
-cargo test test_k5_          # Phase K tests only (15 tests)
-cargo test --lib            # Unit tests (713 tests)
-cargo test --test integration # Integration tests (753 tests)
+Only needed to execute flows against real backends — never for `axon check`,
+`axon compile`, `axon dossier`, `axon audit` or `axon run --tool-mode stub`.
+Seven backends are supported (Anthropic, OpenAI, Gemini, Kimi, GLM, OpenRouter,
+Ollama); see the [repository README](https://github.com/Bemarking/axon-lang) for
+the environment variables each expects.
 
-# With output
-cargo test -- --nocapture
-```
+## License
 
-All tests pass with zero failures. Tests work with in-memory storage (no DB required).
-
-## Phase K Features
-
-### K1: Observability
-- **tracing subscriber**: JSON or pretty formatting to stdout
-- **Request tracing**: UUID `request_id` per request, propagated in `x-request-id` header
-- **Log rotation**: Daily files via `tracing-appender`
-- **Configurable levels**: Via `AXON_LOG` env or `--log-level` CLI
-
-### K2: Resilience
-- **Exponential backoff**: 500ms base, 2.0x multiplier, 30s max, deterministic jitter
-- **Circuit breaker**: Per-provider state machine (5 failures → Open, 30s cooldown, 2 successes → Closed)
-- **Fallback chains**: e.g., `anthropic → openrouter → ollama`
-- **Error classification**: Determines if errors are retryable or terminal
-- **Supports 7 backends**: Anthropic, OpenAI, Gemini, Kimi, GLM, OpenRouter, Ollama
-
-### K3-K4: Persistence
-- **PostgreSQL backend**: Full ACID semantics with embedded migrations
-- **12 domain tables**: traces, sessions, daemons, audit_log, axon_stores, dataspaces, hibernations, event_history, execution_cache, cost_tracking, schedules, backend_registry
-- **15 indexes**: Query optimization
-- **UPSERT semantics**: Idempotent writes
-- **JSONB storage**: Nested structures without extra joins
-- **In-memory fallback**: Graceful degradation when DB unavailable
-
-## Troubleshooting
-
-### Database connection fails
-Without `DATABASE_URL` set, the server automatically falls back to in-memory storage. Check logs for details:
-
-```bash
-RUST_LOG=debug cargo run --release -- --port 3000
-```
-
-### Compilation error: "could not compile"
-Ensure you have Rust 1.70+:
-
-```bash
-rustup update
-cargo clean
-cargo build --release
-```
-
-### Performance: slow requests
-Check database pool status via `/v1/health`. If pool is exhausted, increase `max_connections` in db_pool.rs or reduce concurrent requests.
-
-## Dependencies (Phase K)
-
-- `tokio` — async runtime
-- `axum` — HTTP framework
-- `sqlx` — runtime SQL queries (no compile-time macros needed)
-- `tracing`, `tracing-subscriber`, `tracing-appender` — structured logging
-- `uuid` — request IDs
-- `chrono` — timestamps
-- And 30+ others (see Cargo.toml)
-
-## For Complete Documentation
-
-See the main [`README.md`](../README.md) at the project root for:
-- Language specification
-- Paradigm shifts (epistemic directives, forge, agent, shield, etc.)
-- Design principles and comparison
-- Full roadmap (Phases 0–K)
+AGPL-3.0-or-later — see
+[LICENSE](https://github.com/Bemarking/axon-lang/blob/master/LICENSE).
+Commercial licensing and the enterprise layer are described in the
+[repository](https://github.com/Bemarking/axon-lang).

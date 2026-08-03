@@ -132,7 +132,7 @@ error**, not a post-mortem finding.
 1. **Compile-time compliance.** `shield<HIPAA>` / `type PatientRecord compliance [HIPAA, GDPR]` are *types*. A `.axon` program that sends PHI to an unshielded endpoint fails `axon check` — same exit code as a syntax error.
 2. **Blame Calculus (Findler–Felleisen).** Every error is classified as **CT-1** (axon/runtime bug), **CT-2** (program author: anchor breach, expired lease), or **CT-3** (infrastructure: partition, missing credential, provider quota). No silent downgrades.
 3. **Audit-ready artefacts.** `axon dossier` + `axon sbom` + `axon audit --framework {soc2,iso27001,fips,cc,all}` + `axon evidence-package` produce byte-identical, deterministic JSON/ZIP — the SHA-256 of every output is a *contract* against your release.
-4. **100% Rust + C23 runtime, no interpreter.** The whole stack — lexer, parser, type-checker, IR, the algebraic-effects execution engine, the HTTP server, the seven LLM backends, the streaming wire, the session-typed WebSocket driver — is a single native Rust binary; the FIPS-routable cryptographic + tokeniser kernels live in [`axon-csys`](axon-csys/) as standalone C23 (no `unsafe` glue: `_Generic`-dispatched headers, `[[nodiscard]]` everywhere, sanitizer-clean, valgrind-clean). Download a prebuilt or `cargo build --release`. No GC, no interpreter, no runtime dependency.
+4. **100% Rust + C23 runtime, no interpreter.** The whole stack — lexer, parser, type-checker, IR, the algebraic-effects execution engine, the HTTP server, the seven LLM backends, the streaming wire, the session-typed WebSocket driver — is a single native Rust binary; the FIPS-routable cryptographic + tokeniser kernels live in [`axon-csys`](axon-csys/) as standalone C23 (no `unsafe` glue: `_Generic`-dispatched headers, `[[nodiscard]]` everywhere, sanitizer-clean, valgrind-clean). `cargo install axon-lang`. No GC, no interpreter, no runtime dependency.
 5. **Cognitive immune system.** `immune + reflex + heal` is a first-class language primitive, not a plug-in. Signed HMAC traces per firing, three compliance modes (`audit_only` / `human_in_loop` / `adversarial`), Linear-Logic patch FSM preventing double-application.
 6. **Post-Quantum-ready ESK.** HMAC-SHA256 baseline + Ed25519 + ML-DSA-65 (NIST FIPS 204 Dilithium) + Hybrid signer (NIST SP 800-208 transition posture). Feature-gated; no silent classical fallbacks.
 7. **Persistence is a typed cognitive primitive.** A database in AXON is an `axonstore`, not an ORM bolt-on: retrieved rows are born epistemically `Untrusted` and a `confidence_floor` is enforced at read and write; every mutation appends to an HMAC-Merkle audit chain; `retrieve` is a bounded, back-pressured `Stream<Row>`; and store access is capability-typed and checked at *compile time*. No other language treats stored data this way.
@@ -4754,24 +4754,32 @@ axon-constructor/
 > **The Rust + C23 binary is the canonical channel.** The whole stack — compiler,
 > runtime, HTTP server, seven LLM backends, the SSE / NDJSON / WebSocket
 > streaming wire, the session-typed dialogue driver — ships as a single native
-> binary, no interpreter required. Download a prebuilt (Option 1) or
-> `cargo build` from source (Option 2). The Python interpreter was retired in
+> binary, no interpreter required. The Python interpreter was retired in
 > Fase 40 (*Pure Silicon*, v2.0.0); the PyPI package is now a tombstone that
 > redirects to `cargo install axon-lang`.
 
-### Option 1 — Download the binary (recommended)
+### Prerequisites
 
-Pre-built executables for Linux, macOS, and Windows are available on the
-[releases page](https://github.com/Bemarking/axon-lang/releases).
+| Requirement | Why |
+| ----------- | --- |
+| [Rust](https://rustup.rs) **1.95+** | `rust-version` in every manifest. Older toolchains fail with an MSRV error, not a compile error. |
+| A working **C compiler** (MSVC / clang / gcc) | `axon-csys` is a non-optional dependency and builds C23 kernels via `cc`. On Windows the MSVC Build Tools suffice; on Debian/Ubuntu, `build-essential`. |
+
+> These are checked at build time, not install time — if `cargo install` stops
+> with a `cc`/linker error rather than a Rust error, the C toolchain is what is
+> missing.
+
+### Option 1 — `cargo install` (recommended)
 
 ```bash
-# Add to PATH, then:
+cargo install axon-lang
 axon run program.axon
 ```
 
-### Option 2 — Build from source
+This is the canonical distribution channel, and the one the PyPI tombstone
+redirects to. It installs the `axon` binary — all 28 subcommands, one artefact.
 
-Requires [Rust](https://rustup.rs) 1.75+.
+### Option 2 — Build from source
 
 ```bash
 # Install Rust (if you don't have it)
@@ -4785,6 +4793,13 @@ cargo build --release
 # Run a program
 ./target/release/axon run program.axon
 ```
+
+> **On prebuilt binaries.** There are none today. `rust_release.yml` exists to
+> build and attach them, but it triggers on `rust-v*` tags while releases are
+> cut as `v*`, and its last runs failed — so every release page carries zero
+> assets. Rather than keep pointing readers at an empty page, this section
+> documents only channels that work. The workflow's own header records the same
+> thing, so the next person to touch it knows what they are picking up.
 
 ### Option 3 — Serve mode (HTTP API)
 

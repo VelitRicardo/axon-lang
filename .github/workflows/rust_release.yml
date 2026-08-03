@@ -1,5 +1,29 @@
 name: Rust Release Binaries
 
+# ⚠️ DORMANT as of §Fase 117.b (2026-08-03). READ THIS BEFORE TRUSTING IT.
+#
+# This workflow has never successfully published a binary. Two independent
+# reasons, both verified:
+#
+#   1. TRIGGER MISMATCH. It fires on `rust-v*` tags (below). The project stopped
+#      cutting those after `rust-v2.51.0` (2026-07-09) and now tags releases
+#      `v*` — so the workflow has not been TRIGGERED in a month. There is no
+#      GitHub Release for v2.80.0 at all; the newest is v2.75.0, while crates.io
+#      serves 2.80.0.
+#   2. IT FAILED WHEN IT DID RUN. Its 8 most recent runs all ended `failure` in
+#      10–21 seconds. Every release page carries `assets: 0`.
+#
+# The README used to call downloading these binaries the RECOMMENDED install
+# path. §117.b removed that claim rather than keep pointing adopters at an empty
+# page; `cargo install axon-lang` is now Option 1 and is the only documented
+# channel. A promise without backing is worse than an absent feature.
+#
+# TO REVIVE IT you must, at minimum: retarget the trigger to `v*`, fix whatever
+# makes the matrix fail in seconds (GitHub Actions billing is the standing
+# suspicion — the runs die too fast to be real build failures), and DELETE the
+# `Attach binaries to Python release` job, which is dead PyPI-era plumbing that
+# §116.c.5 already buried. Then put Option 1 back in the README, in the same PR.
+#
 # §Fase 8.8 — Binary distribution for the native Rust `axon` runtime.
 #
 # Builds statically-linkable binaries for the three major platforms on
@@ -9,6 +33,7 @@ name: Rust Release Binaries
 #
 # Tagging convention: `rust-v1.0.0` (the Rust crate version, NOT the
 # Python `axon-lang` version) — keeps the two release trains independent.
+# ⚠️ This convention is the reason the workflow no longer fires; see above.
 
 on:
   push:

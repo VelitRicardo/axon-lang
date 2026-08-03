@@ -71,3 +71,8 @@ sdk/
 # Files stay on disk locally; gitignore just prevents accidental re-tracking.
 docs/fase/
 docs/vision/
+
+# §Fase 117.b — the founder's working file, kept at the repo root. It is not
+# part of the public surface and must never be committed; ignoring it also
+# stops it from sitting in `git status` as a standing invitation to `git add -A`.
+pagesapi.html

@@ -6,7 +6,13 @@ edition = "2021"
 rust-version = "1.95"
 license = "AGPL-3.0-or-later"
 repository = "https://github.com/Bemarking/axon-lang"
-readme = "../README.md"
+# §Fase 117.b — package-LOCAL readme. This used to point at `../README.md`, and
+# cargo overrode it on every publish ("there is already a file named README.md in
+# the root of the package. The archived crate will contain the copy in the root")
+# — a warning ignored across at least six releases. The consequence: crates.io
+# served a README describing v1.0.0 ("282 HTTP routes") for the 2.80.0 crate.
+# The root README is 241 KB of language reference; crates.io gets a landing page.
+readme = "README.md"
 keywords = ["axon", "compiler", "runtime", "ai", "language"]
 categories = ["compilers", "development-tools::ffi", "asynchronous"]
 description = "AXON — the formal cognitive language: a deterministic, proof-carrying AI runtime. Native Rust lexer/parser/type-checker/IR generator (re-exported from axon-frontend) plus the runtime: typed channels (π-calculus mobility, capability extrusion), algebraic effects via Free Monad CPS handlers, lease kernel + reconcile loop, the Epistemic Security Kernel, Trust Types, Proof-Carrying Code (independently verifiable proof objects), and the closed-catalog extension mechanism. Crate publishes as `axon-lang`; library import is `use axon::*` so existing call sites keep working unchanged."
