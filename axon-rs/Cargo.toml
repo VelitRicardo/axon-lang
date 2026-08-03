@@ -15,6 +15,33 @@ repository = "https://github.com/Bemarking/axon-lang"
 readme = "README.md"
 keywords = ["axon", "compiler", "runtime", "ai", "language"]
 categories = ["compilers", "development-tools::ffi", "asynchronous"]
+# §Fase 117.c — the `Dockerfile` is a monorepo build recipe whose paths
+# (`axon-rs/Dockerfile`, `../axon-frontend`) do not exist inside the extracted
+# crate: dead weight, and actively misleading to anyone who unpacks it.
+#
+# `tests/**` is DELIBERATELY NOT EXCLUDED, and the measurement is why. §117 set
+# out to drop it — 262 files, 4,017,705 bytes, 34.9% of the package, never built
+# by `cargo install`. Excluding it does work: 523 -> 260 files, 11.0 -> 7.1 MiB
+# raw, 2.4 -> 1.6 MiB compressed. But cargo then emits ~190 warnings on every
+# publish, one per auto-discovered `[[test]]` target it can no longer find
+# ("ignoring test `X` as `tests\X.rs` is not included in the published package").
+# The only supported way to silence those is `autotests = false`, which turns off
+# auto-discovery everywhere — so either local `cargo test` stops running the 204
+# integration suites, or the manifest carries 204 hand-written `[[test]]` entries
+# that a new test would silently miss. A test that is not discovered is a test
+# that protects nothing.
+#
+# Weighed against what it buys: 0.8 MiB compressed out of a 44 MiB `cargo
+# install` (1.8%), where the DEPENDENCY TREE dominates by roughly 50x — and that
+# is what `default = []` below actually attacks. Paying 190 permanent publish
+# warnings for under 2% is a bad trade, and this fase has direct evidence of the
+# cost: the crates.io README stayed wrong for six releases behind exactly ONE
+# ignored `cargo package` warning. Drowning that signal is the last thing this
+# package needs.
+#
+# `migrations/` stays regardless — `sqlx::migrate!("./migrations")` is a
+# compile-time input, not documentation.
+exclude = ["Dockerfile"]
 description = "AXON — the formal cognitive language: a deterministic, proof-carrying AI runtime. Native Rust lexer/parser/type-checker/IR generator (re-exported from axon-frontend) plus the runtime: typed channels (π-calculus mobility, capability extrusion), algebraic effects via Free Monad CPS handlers, lease kernel + reconcile loop, the Epistemic Security Kernel, Trust Types, Proof-Carrying Code (independently verifiable proof objects), and the closed-catalog extension mechanism. Crate publishes as `axon-lang`; library import is `use axon::*` so existing call sites keep working unchanged."
 
 [lib]
@@ -50,12 +77,20 @@ tokio = { version = "1", features = ["full"] }
 # live in `src/session_runtime/` over the typed channel, transport-agnostic.
 axum = { version = "0.8", features = ["ws"] }
 # §Fase 80.d — the CLIENT half of RFC 6455: `upstream` dials OUT to a
-# third-party vendor (STT/TTS/realtime speech). Same library axum's `ws`
-# feature already pulls in server-side, promoted to a direct dependency so
-# `src/upstream_runtime.rs` can `connect_async`; `rustls-tls-webpki-roots`
-# unlocks `wss://` (vendor endpoints are TLS-only) with the same rustls
-# stack reqwest/sqlx already use — no OpenSSL surface added.
-tokio-tungstenite = { version = "0.24", features = ["rustls-tls-webpki-roots"] }
+# third-party vendor (STT/TTS/realtime speech), so `src/upstream_runtime.rs`
+# can `connect_async`; `rustls-tls-webpki-roots` unlocks `wss://` (vendor
+# endpoints are TLS-only) with the same rustls stack reqwest/sqlx already use —
+# no OpenSSL surface added.
+#
+# §Fase 117.c — pinned to 0.29 to MATCH what `axum 0.8`'s `ws` feature pulls.
+# The comment here used to claim this was the "same library axum's `ws` feature
+# already pulls in server-side". `cargo tree -i` said otherwise: 0.24 had
+# exactly one parent (axon-lang), axum used 0.29, and the binary linked TWO
+# complete RFC 6455 implementations — one driving `upstream` (client) and one
+# driving `socket` (server). Two implementations of one protocol, in one
+# process, is the asymmetry §111.i already cost a fase to discover. The comment
+# was worse than no comment: it documented an invariant that did not hold.
+tokio-tungstenite = { version = "0.29", features = ["rustls-tls-webpki-roots"] }
 tower = "0.5"
 tower-http = { version = "0.6", features = ["cors"] }
 http-body-util = "0.1"
@@ -130,10 +165,35 @@ axon-csys = { path = "../axon-csys", version = "=0.2.0" }
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "bmp", "tiff"], optional = true }
 
 [features]
-# §Fase 116.c.5 — default-on so existing consumers see zero change; opt out with
-# `--no-default-features` to skip the AWS SDK tree entirely (tenant secrets then
-# resolve via env-vars only, the same graceful fallback as a creds-less box).
-default = ["aws-secrets"]
+# §Fase 117.c (D117.1, RATIFIED 2026-08-03) — `aws-secrets` is OPT-IN.
+#
+# §116.c.5 made the AWS SDK opt-OUT and left the default ON "so 2.x semver
+# behavior is unchanged". Measured on the published 2.80.0 artifact, that
+# default cost every adopter:
+#   +57 crates and +15.90 MiB of the 44.02 MiB download (36%);
+#   `aws-lc-sys` — 9.29 MiB of C and assembly, the single heaviest crate in the
+#   whole tree, requiring a C toolchain to build;
+#   a SECOND complete HTTP stack compiled alongside the modern one
+#   (hyper 0.14 + http 0.2 + http-body 0.4 + h2 0.3 + rustls 0.21 +
+#   rustls-webpki 0.101 + tokio-rustls 0.24 + hyper-rustls 0.24 + sct 0.7),
+#   so the binary linked TWO TLS implementations with two crypto backends and
+#   two CVE timelines.
+#
+# All of that to reach AWS Secrets Manager — a path most adopters never take,
+# and one `axon-enterprise` does not take either (it declares its OWN
+# `aws-config` + `aws-sdk-secretsmanager` in `serverd` for the KMS/SM boot path
+# and never calls `axon::tenant_secrets`).
+#
+# Turning it off is behavior-preserving: the resolution chain becomes
+# cache -> env-var, byte-identical to what a box without AWS credentials
+# already did. Opt back in with `--features aws-secrets`.
+#
+# SEMVER NOTE, stated plainly: the Cargo Book classifies removing a feature
+# from `default` as a MAJOR change, because a downstream crate relying on the
+# implicit default loses it silently. Ratified as a MINOR bump (2.81.0) with a
+# loud release note, on the grounds that the behavior is preserved and the only
+# known downstream consumer does not use the path.
+default = []
 aws-secrets = ["dep:aws-config", "dep:aws-sdk-secretsmanager"]
 # Enables the isolated image-decode sidecar binary. Off by default: adopters who
 # only ingest OOXML (§100) or feed pre-decoded rasters never pull `image`.

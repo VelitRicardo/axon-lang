@@ -150,7 +150,8 @@ async fn spawn_vendor(drop_after: Option<usize>) -> (SocketAddr, Arc<Mutex<Vec<S
                                 r#"{{"type":"Results","channel":{{"alternatives":[{{"transcript":"len={}"}}]}}}}"#,
                                 b.len()
                             );
-                            let _ = ws.send(Message::Text(reply)).await;
+                            // §Fase 117.c — tungstenite 0.26+ text payloads are `Utf8Bytes`.
+                            let _ = ws.send(Message::Text(reply.into())).await;
                             if drop_after.is_some_and(|n| served >= n) {
                                 return; // hard drop — no Close frame (vendor "crash")
                             }

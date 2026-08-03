@@ -125,7 +125,8 @@ async fn send_frame<S>(ws: &mut S, f: Frame)
 where
     S: SinkExt<TgMessage, Error = tokio_tungstenite::tungstenite::Error> + Unpin,
 {
-    ws.send(TgMessage::Text(f.to_wire())).await.expect("send");
+    // §Fase 117.c — tungstenite 0.26+ carries text payloads as `Utf8Bytes`.
+    ws.send(TgMessage::Text(f.to_wire().into())).await.expect("send");
 }
 
 // ─── 1. Happy path — well-formed dialogue runs to completion ──────────────

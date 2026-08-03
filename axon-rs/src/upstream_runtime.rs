@@ -254,8 +254,12 @@ pub enum UpstreamEvent {
 pub fn project_outbound(rule: &IRUpstreamMapRule, payload: &OutboundPayload) -> Message {
     match rule.framing.as_str() {
         "binary" => match payload {
-            OutboundPayload::Bytes(b) => Message::Binary(b.clone()),
-            OutboundPayload::Json(v) => Message::Binary(v.to_string().into_bytes()),
+            // §Fase 117.c — tungstenite 0.26+ carries frame payloads as
+            // `bytes::Bytes` / `Utf8Bytes` rather than `Vec<u8>` / `String`,
+            // so the wire types convert at this boundary. Purely
+            // representational: the same bytes go out.
+            OutboundPayload::Bytes(b) => Message::Binary(b.clone().into()),
+            OutboundPayload::Json(v) => Message::Binary(v.to_string().into_bytes().into()),
         },
         _ => {
             let body = match payload {
@@ -272,7 +276,7 @@ pub fn project_outbound(rule: &IRUpstreamMapRule, payload: &OutboundPayload) -> 
                     other => serde_json::json!({ "type": tag, "payload": other }),
                 },
             };
-            Message::Text(out.to_string())
+            Message::Text(out.to_string().into())
         }
     }
 }
@@ -298,7 +302,7 @@ pub fn classify_inbound(rules: &[IRUpstreamMapRule], frame: &Message) -> Option<
         Message::Binary(b) => rules
             .iter()
             .find(|r| r.direction == "receive" && r.framing == "binary")
-            .map(|r| (r.message.clone(), InboundPayload::Bytes(b.clone()))),
+            .map(|r| (r.message.clone(), InboundPayload::Bytes(b.to_vec()))),
         Message::Text(t) => {
             let body: serde_json::Value = serde_json::from_str(t).ok()?;
             let json_rules = || rules.iter().filter(|r| r.direction == "receive" && r.framing == "json");
@@ -849,7 +853,7 @@ mod tests {
     fn outbound_binary_is_raw_passthrough() {
         let r = rule("send", "AudioChunk", "binary");
         let m = project_outbound(&r, &OutboundPayload::Bytes(vec![1, 2, 3]));
-        assert_eq!(m, Message::Binary(vec![1, 2, 3]));
+        assert_eq!(m, Message::Binary(vec![1, 2, 3].into()));
     }
 
     #[test]
@@ -920,10 +924,10 @@ mod tests {
     #[test]
     fn inbound_binary_needs_the_binary_rule() {
         let rules = vec![rule("receive", "AudioOut", "binary")];
-        let (msg, payload) = classify_inbound(&rules, &Message::Binary(vec![9])).unwrap();
+        let (msg, payload) = classify_inbound(&rules, &Message::Binary(vec![9].into())).unwrap();
         assert_eq!(msg, "AudioOut");
         assert_eq!(payload, InboundPayload::Bytes(vec![9]));
-        assert!(classify_inbound(&[], &Message::Binary(vec![9])).is_none());
+        assert!(classify_inbound(&[], &Message::Binary(vec![9].into())).is_none());
     }
 
     #[test]
