@@ -66,39 +66,11 @@ impl Default for IngestBounds {
 
 // ── Provenance class (D100.1) — the keystone type ─────────────────────────────
 
-/// §Fase 100.d — the provenance class of an ingested value, carried into the
-/// type system. **Parsed**: derived deterministically from the bytes; faithful;
-/// born `Untrusted` but elevatable by a shield. **Inferred**: produced by a
-/// model from pixels (OCR / vision); a belief about an image, with a hard
-/// ceiling of `believe` — never `know`. §100 constructs ONLY `Parsed`; the
-/// `Inferred` variant exists so §101's producers land into a lattice that
-/// already refuses to over-trust them (D100.14).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum IngestProvenance {
-    /// A fact about the file (re-derivable). Elevatable by a shield.
-    Parsed,
-    /// A belief about pixels (OCR/vision). Ceiling of `believe`. NO producer in
-    /// §100 — inhabited only from §101.
-    Inferred,
-}
-
-impl IngestProvenance {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            IngestProvenance::Parsed => "parsed",
-            IngestProvenance::Inferred => "inferred",
-        }
-    }
-    /// The hard epistemic ceiling of this class. `Parsed` may reach `know` (via
-    /// a shield); `Inferred` is capped at `believe` — no shield, no `know` block
-    /// may raise it (D100.1).
-    pub fn epistemic_ceiling(self) -> &'static str {
-        match self {
-            IngestProvenance::Parsed => "know",
-            IngestProvenance::Inferred => "believe",
-        }
-    }
-}
+// §Fase 118.b — `IngestProvenance` MOVED to `crate::ingest_provenance`, a
+// leaf module. It is an epistemic concept, not an OOXML one, and living here
+// made the §101 extraction contract depend on the OOXML reader (and `zip`)
+// just to name it. Re-exported so existing call sites keep resolving.
+pub use crate::ingest_provenance::IngestProvenance;
 
 // ── Output ────────────────────────────────────────────────────────────────────
 

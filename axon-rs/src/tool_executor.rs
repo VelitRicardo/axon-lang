@@ -109,6 +109,21 @@ pub fn dispatch_or_reject(tool_name: &str, argument: &str) -> Result<Option<Tool
 /// `{ "document": <IRDocument>, "values": { "<ref>": "<resolved text>" } }`.
 /// Returns a typed artifact descriptor (sha256 + content type + base64 bytes)
 /// as JSON — the HOST decides where the bytes land (D99.14).
+// §Fase 118.b — the OOXML surface lives behind the `documents` feature. The
+// tool STAYS REGISTERED and refuses in writing: a capability that silently
+// vanishes from a build is the §111 defect (an advertised primitive that is not
+// there), and a runtime that answers "unknown tool" teaches the adopter nothing.
+#[cfg(not(feature = "documents"))]
+fn document_render_execute(_argument: &str) -> ToolResult {
+    ToolResult {
+        success: false,
+        output: "DocumentRenderer: this build was compiled without the `documents` feature, so the OOXML engine is absent. Reinstall with: cargo install axon-lang --features documents"
+            .to_string(),
+        tool_name: "DocumentRenderer".to_string(),
+    }
+}
+
+#[cfg(feature = "documents")]
 fn document_render_execute(argument: &str) -> ToolResult {
     use base64::Engine;
     let name = "DocumentRenderer";
@@ -228,6 +243,21 @@ fn err(tool: &str, msg: String) -> ToolResult {
 /// `{ "bytes_base64": "…" }` (the host has already read + sandboxed the file),
 /// OR `{ "path": "…", "roots": ["…"] }` (read through the §100.b path sandbox).
 /// Returns the born-Untrusted, Parsed text tree + per-part hashes.
+// §Fase 118.b — the OOXML surface lives behind the `documents` feature. The
+// tool STAYS REGISTERED and refuses in writing: a capability that silently
+// vanishes from a build is the §111 defect (an advertised primitive that is not
+// there), and a runtime that answers "unknown tool" teaches the adopter nothing.
+#[cfg(not(feature = "documents"))]
+fn document_read_execute(_argument: &str) -> ToolResult {
+    ToolResult {
+        success: false,
+        output: "DocumentReader: this build was compiled without the `documents` feature, so the OOXML engine is absent. Reinstall with: cargo install axon-lang --features documents"
+            .to_string(),
+        tool_name: "DocumentReader".to_string(),
+    }
+}
+
+#[cfg(feature = "documents")]
 fn document_read_execute(argument: &str) -> ToolResult {
     use base64::Engine;
     let name = "DocumentReader";
@@ -286,6 +316,21 @@ fn document_read_execute(argument: &str) -> ToolResult {
 /// `{ "bytes_base64": "…", "edits": [{ "kind": "replace_text", "part": "…",
 /// "find": "…", "replace": "…" }] }`. Returns the new bytes + the per-part hash
 /// manifest (the proven blast radius) + the inherited taint.
+// §Fase 118.b — the OOXML surface lives behind the `documents` feature. The
+// tool STAYS REGISTERED and refuses in writing: a capability that silently
+// vanishes from a build is the §111 defect (an advertised primitive that is not
+// there), and a runtime that answers "unknown tool" teaches the adopter nothing.
+#[cfg(not(feature = "documents"))]
+fn document_edit_execute(_argument: &str) -> ToolResult {
+    ToolResult {
+        success: false,
+        output: "DocumentEditor: this build was compiled without the `documents` feature, so the OOXML engine is absent. Reinstall with: cargo install axon-lang --features documents"
+            .to_string(),
+        tool_name: "DocumentEditor".to_string(),
+    }
+}
+
+#[cfg(feature = "documents")]
 fn document_edit_execute(argument: &str) -> ToolResult {
     use base64::Engine;
     let name = "DocumentEditor";

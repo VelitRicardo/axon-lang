@@ -6,6 +6,7 @@
 //! step that can precede an accredited lab or CPA engagement.
 
 pub mod control_statements;
+#[cfg(feature = "documents")]
 pub mod evidence_packager;
 pub mod frameworks;
 pub mod gap_analyzer;
@@ -15,6 +16,7 @@ pub mod runtime_wiring;
 pub use control_statements::{
     ControlImplementationStatement, generate_control_statements, statements_to_value,
 };
+#[cfg(feature = "documents")]
 pub use evidence_packager::{EvidencePackage, build_evidence_package};
 pub use frameworks::{Control, EvidenceKind, FrameworkId, all_frameworks, control_count, controls_for};
 pub use gap_analyzer::{ControlAssessment, GapAnalysis, analyze_all, analyze_gaps};

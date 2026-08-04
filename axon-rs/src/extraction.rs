@@ -1,6 +1,6 @@
 //! §Fase 101.a — the `Inferred`-extraction contract.
 //!
-//! §100 shipped the [`IngestProvenance::Inferred`](crate::ooxml_read::IngestProvenance)
+//! §100 shipped the [`IngestProvenance::Inferred`](crate::ingest_provenance::IngestProvenance)
 //! class with **no producer** (D100.14): a type inhabited nowhere, so the
 //! checker's `Inferred`-ceiling rules were vacuously satisfied. §101 introduces
 //! the first producers — an OCR/geometric read, a PDF text path, a vision tier —
@@ -26,7 +26,7 @@
 //! implement [`ExtractionEngine`]; nothing here does pixel work.
 
 use crate::emcp::EpistemicTaint;
-use crate::ooxml_read::IngestProvenance;
+use crate::ingest_provenance::IngestProvenance;
 
 // ── Bounds (D101.12) ──────────────────────────────────────────────────────────
 

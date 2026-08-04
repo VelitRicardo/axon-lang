@@ -211,12 +211,15 @@ pub mod hooks;
 pub mod http_tool;
 /// §Fase 99.e/f — the deterministic OOXML writer (DOCX/PPTX/XLSX) behind the
 /// `DocumentRenderer` native tool. Byte-deterministic + provenance-embedding.
+#[cfg(feature = "documents")]
 pub mod ooxml;
 /// §Fase 100.b — the read-only filesystem capability + path sandbox.
 pub mod fs_sandbox;
 /// §Fase 100.c/d — the OOXML reader: bounded, born-Untrusted, Parsed text tree.
+#[cfg(feature = "documents")]
 pub mod ooxml_read;
 /// §Fase 100.e — the surgical edit engine + per-part hash manifest.
+#[cfg(feature = "documents")]
 pub mod ooxml_edit;
 /// §Fase 101.a — the `Inferred`-extraction contract: the `ExtractionEngine`
 /// trait, the born-`Inferred` span with measured confidence, and the
@@ -315,6 +318,9 @@ pub mod runner;
 // tokio, axum, axon-csys) into the reachable set of every compiler-side
 // subcommand that wanted a string literal. See `version.rs`.
 pub mod version;
+// §Fase 118.b — the ingest provenance lattice, dependency-free. See the module
+// docs: it lived in `ooxml_read` and dragged the OOXML surface behind it.
+pub mod ingest_provenance;
 // §Fase 40.b — public shield-scanner registration hook. OSS ships no
 // scanners (identity); enterprise vertical crates register HIPAA/legal/AML
 // scanners here at boot. The `shield apply` handler consults it.

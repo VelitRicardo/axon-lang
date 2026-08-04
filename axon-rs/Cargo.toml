@@ -125,7 +125,14 @@ sha2 = "0.10"
 hmac = "0.12"
 rand = "0.9"
 # §ESK Fase 6.6 — deterministic ZIP bundle for the audit evidence packager.
-zip = { version = "2", default-features = false, features = ["deflate"] }
+#
+# §Fase 118.b — OPTIONAL behind `documents`. The §118.a closure measurement found
+# this is the ONE heavy dependency the compiler + governance CLI actually reaches
+# (via `esk::audit_engine`'s re-export of `evidence_packager`), so it is what
+# separates `axon evidence-package` and the OOXML surface (§99/§100/§106) from a
+# pure type-checking install. Pure Rust — `flate2 -> miniz_oxide`, no `*-sys` —
+# so having it on costs compile time, never a C toolchain.
+zip = { version = "2", default-features = false, features = ["deflate"], optional = true }
 # §Fase 86 — the `forge` novelty engine's compressor: NCD (Normalized
 # Compression Distance) needs a real compressor C(·); deflate is the standard
 # NCD choice (CompLearn/zlib precedent). Already in the tree via `zip`.
@@ -200,7 +207,31 @@ image = { version = "0.25", default-features = false, features = ["png", "jpeg",
 # implicit default loses it silently. Ratified as a MINOR bump (2.81.0) with a
 # loud release note, on the grounds that the behavior is preserved and the only
 # known downstream consumer does not use the path.
-default = []
+#
+# §Fase 118.b — `default` now names the ADDITIVE features below. It still turns
+# on everything that was unconditional at 2.81.0, so this sub-fase is
+# behaviour-preserving by construction: a consumer who says nothing gets exactly
+# what they got before. Moving the default to `["cli"]` — D118.1's two-binary
+# shape — is §118.c, deliberately a separate commit with its own release note,
+# because THAT is the change an adopter feels.
+default = ["cli", "documents"]
+
+# ── The additive core (§Fase 118) ─────────────────────────────────────────────
+#
+# `cli` is the compiler + governance surface: check, compile, parse, fmt, fix,
+# desugar, inspect, trace, stats, graph, estimate, diff, ld, repl, dossier, sbom,
+# audit, prove, verify. It adds NO dependencies — that is the point. The §118.a
+# closure measurement put this surface at 36 modules reaching exactly one heavy
+# dependency (`zip`, and only for `evidence-package`), which is why `cli` is an
+# empty feature list rather than a bundle: the work was making the code reach
+# nothing, not making the manifest list less.
+cli = []
+
+# `documents` — the OOXML surface (§99 synthesis / §100 ingestion+edit / §106
+# governed egress) and the ESK evidence packager, which writes a deterministic
+# `.evidence.zip`. `axon evidence-package` requires it.
+documents = ["dep:zip"]
+
 aws-secrets = ["dep:aws-config", "dep:aws-sdk-secretsmanager"]
 # Enables the isolated image-decode sidecar binary. Off by default: adopters who
 # only ingest OOXML (§100) or feed pre-decoded rasters never pull `image`.

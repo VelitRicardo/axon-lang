@@ -12,9 +12,11 @@ use serde_json::Value;
 
 use crate::ast::Program;
 use crate::esk::attestation::{generate_dossier, generate_sbom};
-use crate::esk::audit_engine::{
-    FrameworkId, analyze_all, analyze_gaps, build_evidence_package,
-};
+use crate::esk::audit_engine::{FrameworkId, analyze_all, analyze_gaps};
+// §Fase 118.b — the evidence packager writes a deterministic `.evidence.zip`,
+// so it is the one part of the governance CLI that needs `zip`.
+#[cfg(feature = "documents")]
+use crate::esk::audit_engine::build_evidence_package;
 use crate::ir_generator::IRGenerator;
 use crate::ir_nodes::IRProgram;
 use crate::lexer::Lexer;
@@ -240,6 +242,22 @@ pub fn run_audit(file: &str, framework: &str, output: Option<&str>) -> i32 {
 //  axon evidence-package
 // ═══════════════════════════════════════════════════════════════════
 
+// §Fase 118.b — `axon evidence-package` stays in `--help` under every profile
+// and refuses in writing when the feature is absent. The §111 doctrine applied
+// to packaging: the advertised surface stays advertised, and the refusal names
+// the exact command that fixes it. A subcommand that quietly disappears from a
+// build is the same defect §111 spent a fase removing.
+#[cfg(not(feature = "documents"))]
+pub fn run_evidence_package(_file: &str, _output: Option<&str>, _note: &str) -> i32 {
+    eprintln!(
+        "X `axon evidence-package` requires the `documents` feature — this build was compiled without it, so the deterministic .evidence.zip packager is absent.
+  Reinstall with: cargo install axon-lang --features documents
+  (`axon dossier`, `axon sbom` and `axon audit` work in this build — only the ZIP bundle needs the feature.)"
+    );
+    2
+}
+
+#[cfg(feature = "documents")]
 pub fn run_evidence_package(file: &str, output: Option<&str>, note: &str) -> i32 {
     let ir = match compile_file(file) {
         Ok(ir) => ir,

@@ -1,3 +1,8 @@
+//! §Fase 118.b — this suite exercises the OOXML surface (reader, editor,
+//! path sandbox), which lives behind the `documents` feature. Gated at the
+//! file level: the 105 core suites keep running in a `cli`-only build.
+#![cfg(feature = "documents")]
+
 //! §Fase 100.a/c/e — the ingestion tool dispatch path: DocumentReader (bounded,
 //! born-Untrusted, Parsed), DocumentEditor (surgical + manifest), and the 100.a
 //! hallucination-refusal (a declared-but-unimplemented tool typed-refuses).

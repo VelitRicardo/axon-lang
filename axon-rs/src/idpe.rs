@@ -873,7 +873,7 @@ mod tests {
             .extract(&bytes, &ExtractionHint::default(), &ExtractionBounds::default())
             .unwrap();
         assert_eq!(out.engine, "idp-e");
-        assert_eq!(out.provenance(), crate::ooxml_read::IngestProvenance::Inferred);
+        assert_eq!(out.provenance(), crate::ingest_provenance::IngestProvenance::Inferred);
         assert_eq!(out.taint(), crate::emcp::EpistemicTaint::Untrusted);
         assert_eq!(out.spans[0].epistemic_ceiling(), "believe");
     }
