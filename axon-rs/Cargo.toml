@@ -5,7 +5,7 @@ authors = ["AXON Project", "Ricardo Velit"]
 edition = "2021"
 rust-version = "1.95"
 license = "AGPL-3.0-or-later"
-repository = "https://github.com/Bemarking/axon-lang"
+repository = "https://github.com/VelitRicardo/axon-lang"
 # §Fase 117.b — package-LOCAL readme. This used to point at `../README.md`, and
 # cargo overrode it on every publish ("there is already a file named README.md in
 # the root of the package. The archived crate will contain the copy in the root")

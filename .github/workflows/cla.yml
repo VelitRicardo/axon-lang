@@ -7,8 +7,8 @@
 # carry the signature forward.
 #
 # Setup (one-time, by Bemarking maintainers):
-#   1. Install the cla-assistant.io GitHub App on Bemarking/axon-lang.
-#   2. Create an empty repo `Bemarking/cla-signatures` (private) for
+#   1. Install the cla-assistant.io GitHub App on VelitRicardo/axon-lang.
+#   2. Create an empty repo `VelitRicardo/cla-signatures` (private) for
 #      the bot to commit signature records into.
 #   3. Add a repo-level secret `PERSONAL_ACCESS_TOKEN` with `repo`
 #      scope so the bot can write to the signatures repo.
@@ -57,16 +57,16 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # PERSONAL_ACCESS_TOKEN must be set as a repo secret with
           # `repo` scope so the action can push signatures to the
-          # `Bemarking/cla-signatures` repo.
+          # `VelitRicardo/cla-signatures` repo.
           PERSONAL_ACCESS_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         with:
           path-to-signatures: 'signatures/v1/cla.json'
-          path-to-document: 'https://github.com/Bemarking/axon-lang/blob/master/CLA.md'
+          path-to-document: 'https://github.com/VelitRicardo/axon-lang/blob/master/CLA.md'
           branch: 'main'
           # The remote repo storing signatures. Must be created out-
           # of-band by maintainers + the PERSONAL_ACCESS_TOKEN must
           # have write access.
-          remote-organization-name: 'Bemarking'
+          remote-organization-name: 'VelitRicardo'
           remote-repository-name: 'cla-signatures'
           # Exempt the maintainer team's bots + Bemarking employees
           # (who have signed the Corporate CLA separately).
@@ -78,7 +78,7 @@ jobs:
 
             Before we can merge this PR, you (and every commit
             author in the PR) must sign the [Contributor License
-            Agreement](https://github.com/Bemarking/axon-lang/blob/master/CLA.md).
+            Agreement](https://github.com/VelitRicardo/axon-lang/blob/master/CLA.md).
 
             This is a one-time signature that covers all your
             future contributions. The CLA grants the maintainer,
@@ -86,9 +86,9 @@ jobs:
             the right to dual-license axon-lang (AGPL-3.0 for the
             public + commercial license for the axon-enterprise
             product). The full reasoning is in
-            [`CLA.md`](https://github.com/Bemarking/axon-lang/blob/master/CLA.md)
+            [`CLA.md`](https://github.com/VelitRicardo/axon-lang/blob/master/CLA.md)
             and the dual-license architecture is documented in
-            [`LICENSING.md`](https://github.com/Bemarking/axon-enterprise/blob/master/LICENSING.md).
+            [`LICENSING.md`](https://github.com/VelitRicardo/axon-enterprise/blob/master/LICENSING.md).
 
             **To sign**, comment on this PR with the exact phrase:
 

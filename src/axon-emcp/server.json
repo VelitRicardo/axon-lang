@@ -5,7 +5,7 @@
   "description": "Official ℰMCP server for AXON — exposes 45 primitives, 33 templates, 17 examples to AI agents.",
   "version": "0.4.0",
   "repository": {
-    "url": "https://github.com/Bemarking/axon-lang",
+    "url": "https://github.com/VelitRicardo/axon-lang",
     "source": "github",
     "subfolder": "src/axon-emcp"
   },

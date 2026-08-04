@@ -5,12 +5,12 @@
 This project uses **two GitHub repositories**:
 
 1. **`axon-lang`** (PUBLIC, AGPL-3.0-or-later + commercial dual-license)
-   - URL: `git@github.com:Bemarking/axon-lang.git`
+   - URL: `git@github.com:VelitRicardo/axon-lang.git`
    - Contains: Core language, compiler, runtime, 7 LLM backends
    - Visibility: Open Source, GitHub public
 
 2. **`axon-enterprise`** (PRIVATE, Commercial License)
-   - URL: `git@github.com:Bemarking/axon-enterprise.git`
+   - URL: `git@github.com:VelitRicardo/axon-enterprise.git`
    - Contains: Enterprise features (RBAC, SSO, audit logging, metering)
    - Visibility: Private, maintainers only
 
@@ -20,16 +20,16 @@ Your local repository has **two remotes**:
 
 ```bash
 $ git remote -v
-origin      git@github.com:Bemarking/axon-lang.git (fetch/push)
-enterprise  git@github.com:Bemarking/axon-enterprise.git (fetch/push)
+origin      git@github.com:VelitRicardo/axon-lang.git (fetch/push)
+enterprise  git@github.com:VelitRicardo/axon-enterprise.git (fetch/push)
 ```
 
 ### Setup (one-time)
 
 ```bash
 # This is already done, but if you need to reconfigure:
-git remote set-url origin git@github.com:Bemarking/axon-lang.git
-git remote add enterprise git@github.com:Bemarking/axon-enterprise.git
+git remote set-url origin git@github.com:VelitRicardo/axon-lang.git
+git remote add enterprise git@github.com:VelitRicardo/axon-enterprise.git
 ```
 
 ## Commit Workflow
@@ -114,7 +114,7 @@ In `axon-enterprise`, maintain a sync script:
 #!/bin/bash
 # sync-from-upstream.sh
 cd axon-core
-git remote add upstream git@github.com:Bemarking/axon-lang.git
+git remote add upstream git@github.com:VelitRicardo/axon-lang.git
 git fetch upstream
 git merge upstream/master
 cd ..
@@ -183,7 +183,7 @@ git diff origin/master..HEAD --name-only
 
 ## Questions?
 
-- For **public/open source questions**: File issues on [GitHub/axon-lang](https://github.com/Bemarking/axon-lang)
+- For **public/open source questions**: File issues on [GitHub/axon-lang](https://github.com/VelitRicardo/axon-lang)
 - For **enterprise questions**: Internal maintainer channel
 
 ---

@@ -1,0 +1,54 @@
+# PyPI tombstone for `axon-lang`.
+#
+# This is NOT the project's build system. AXON is a Rust + C23 toolchain; the
+# Python interpreter was retired in §Fase 40 (*Pure Silicon*, v2.0.0) and the
+# PyPI launcher shim was deleted in §Fase 116.c.5. What remains on PyPI is a
+# deliberate REDIRECT: anyone who types `pip install axon-lang` — because a
+# stale blog post, a cached search result or an old README told them to — gets
+# a package whose entire content is "this moved, here is where."
+#
+# It lives in the repository (rather than being hand-assembled at publish time,
+# as 3.0.1 was) for one reason: 3.0.1 shipped with
+# `Source = https://github.com/Bemarking/axon-lang`, and when the GitHub account
+# moved to `VelitRicardo` nobody could see that the metadata was now wrong,
+# because the metadata was not in the repository to be seen. Versioned artefacts
+# get reviewed; ad-hoc ones drift.
+#
+# Publish:  cd packaging/pypi-tombstone && python -m build && twine upload dist/*
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "axon-lang"
+version = "3.0.2"
+description = "DISCONTINUED — AXON is now a Rust toolchain: cargo install axon-lang"
+readme = "README.md"
+license = "AGPL-3.0-or-later"
+requires-python = ">=3.9"
+authors = [{ name = "Ricardo Velit" }]
+keywords = ["axon", "deprecated", "moved", "rust"]
+
+# Deliberately minimal and honest. The 2.17.1 shim carried
+# `License :: OSI Approved :: MIT License` alongside `license = "AGPL-3.0-or-later"`
+# — two contradictory licence declarations in one file. A tombstone should not
+# repeat that; the SPDX expression above is the single statement.
+classifiers = [
+    "Development Status :: 7 - Inactive",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Compilers",
+]
+
+[project.urls]
+"Rust crate (the real AXON)" = "https://crates.io/crates/axon-lang"
+"Source" = "https://github.com/VelitRicardo/axon-lang"
+"Documentation" = "https://docs.rs/axon-lang"
+
+# Metadata-only distribution: there is no Python package to select, and that is
+# the point. `bypass-selection` tells hatchling not to look for one.
+[tool.hatch.build.targets.wheel]
+bypass-selection = true
+
+[tool.hatch.build.targets.sdist]
+include = ["README.md", "pyproject.toml"]
