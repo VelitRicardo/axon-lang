@@ -1,3 +1,9 @@
+//! §Fase 118.b.2 — this suite exercises the HTTP server surface (the `axum`
+//! router, the tenant extractor, the session carriers, the SSE dialect
+//! adapters), which lives behind the `server` feature. Gated at the file level:
+//! the core suites keep running in a `cli`-only build.
+#![cfg(feature = "server")]
+
 //! §Fase 33.z.k.1 (v1.27.1) — Algebraic-effect override on dynamic
 //! routes. Integration tests for the Kivi-shape adopter case.
 //!

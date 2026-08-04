@@ -72,7 +72,7 @@ pub mod anthropic_dialect;
 pub mod axon_dialect;
 pub mod openai_dialect;
 
-use crate::axon_server::EnforcementSummaryWire;
+use crate::execution_result::EnforcementSummaryWire;
 use crate::axonendpoint_replay::StepAuditRecord;
 use crate::flow_execution_event::FlowExecutionEvent;
 use crate::runtime_warnings::RuntimeWarning;

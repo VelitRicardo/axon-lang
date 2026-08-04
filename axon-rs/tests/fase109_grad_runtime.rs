@@ -1,3 +1,9 @@
+//! §Fase 118.b.2 — this suite exercises the HTTP server surface (the `axum`
+//! router, the tenant extractor, the session carriers, the SSE dialect
+//! adapters), which lives behind the `server` feature. Gated at the file level:
+//! the core suites keep running in a `cli`-only build.
+#![cfg(feature = "server")]
+
 //! §Fase 109.b — the proof-carrying derivative, END TO END: deploy a
 //! program whose flow binds an expression, `grad`s it, and returns the
 //! evaluated gradient — through the REAL `/v1/deploy` + `/v1/execute`

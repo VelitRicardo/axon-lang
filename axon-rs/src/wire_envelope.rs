@@ -19,7 +19,7 @@
 //!
 //! The canonical builder is
 //! [`FlowEnvelope::from_execution_result`] — converts the v1.x
-//! [`crate::axon_server::ServerExecutionResult`] into a v2.0.0
+//! [`crate::execution_result::ServerExecutionResult`] into a v2.0.0
 //! envelope. The conversion is total: every field of the legacy
 //! struct maps to a pillar-organized slot of the envelope, with no
 //! information loss. Epistemic fields (`certainty`,
@@ -185,7 +185,7 @@ pub struct StepAuditTrail {
     /// contract.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub enforcement_summaries:
-        Vec<(String, crate::axon_server::EnforcementSummaryWire)>,
+        Vec<(String, crate::execution_result::EnforcementSummaryWire)>,
     /// §Fase 33.e carry-over — per-step `<stream:<policy>>` slugs
     /// declared in source. Empty when no step declares one.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -263,7 +263,7 @@ pub enum BlameKind {
 // ════════════════════════════════════════════════════════════════════
 
 impl FlowEnvelope {
-    /// §Fase 39.b — convert a v1.x [`crate::axon_server::ServerExecutionResult`]
+    /// §Fase 39.b — convert a v1.x [`crate::execution_result::ServerExecutionResult`]
     /// into a v2.0.0 envelope. Total: every legacy field maps to a
     /// pillar-organized slot; no information loss.
     ///
@@ -287,7 +287,7 @@ impl FlowEnvelope {
     /// hex string. When the legacy id is 0 (pre-record), a fresh
     /// Uuid is minted.
     pub fn from_execution_result(
-        exec_result: crate::axon_server::ServerExecutionResult,
+        exec_result: crate::execution_result::ServerExecutionResult,
         ontological_type: String,
     ) -> Self {
         // ── Pillar II — provenance chain ──
@@ -525,7 +525,7 @@ pub fn extract_inner_ontological_type(declared: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::axon_server::ServerExecutionResult;
+    use crate::execution_result::ServerExecutionResult;
 
     fn fixture_exec_result() -> ServerExecutionResult {
         ServerExecutionResult {

@@ -418,7 +418,7 @@ fn fase39b_s8_from_execution_result_e2e() {
     // an enterprise integration consumes `FlowEnvelope::from_execution_result`
     // directly (e.g. to mock a wire shape in tests), the result MUST
     // be the canonical sealed envelope.
-    let exec = axon::axon_server::ServerExecutionResult {
+    let exec = axon::execution_result::ServerExecutionResult {
         success: true,
         flow_name: "FetchTenants".to_string(),
         source_file: "tenants.axon".to_string(),

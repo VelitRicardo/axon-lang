@@ -458,7 +458,7 @@ async fn run_step_streaming_tool(
     // parity gap: the same `EnforcementSummaryWire` shape is keyed
     // under the step name from the `ToolStreamSummary` metrics.
     if let Some(p) = policy {
-        let wire = crate::axon_server::EnforcementSummaryWire {
+        let wire = crate::execution_result::EnforcementSummaryWire {
             policy_slug: p.slug().to_string(),
             chunks_pushed: summary.chunks_pushed,
             chunks_delivered: summary.chunks_delivered,
@@ -1339,7 +1339,7 @@ async fn drain_through_enforcer(
     // for delivered count). The drain summary keeps `failed` +
     // policy slug as authoritative.
     let snap = enforcer.metrics_snapshot();
-    let wire = crate::axon_server::EnforcementSummaryWire {
+    let wire = crate::execution_result::EnforcementSummaryWire {
         policy_slug: policy.slug().to_string(),
         chunks_pushed: snap.items_pushed,
         chunks_delivered: snap.items_delivered,

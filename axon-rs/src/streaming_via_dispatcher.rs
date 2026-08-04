@@ -138,7 +138,7 @@ pub async fn run_streaming_via_dispatcher(
         tokio::sync::Mutex<
             std::collections::HashMap<
                 String,
-                crate::axon_server::EnforcementSummaryWire,
+                crate::execution_result::EnforcementSummaryWire,
             >,
         >,
     >,

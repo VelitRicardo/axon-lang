@@ -30,7 +30,7 @@
 
 use std::fs;
 
-use axon::axon_server::ServerExecutionResult;
+use axon::execution_result::ServerExecutionResult;
 use axon::wire_envelope::{BlameContext, BlameKind, FlowEnvelope};
 use axon::wire_envelope_producers::{
     blame_for_anchor_breach, blame_for_backend_soft_fail, blame_for_shield_rejection,
@@ -120,10 +120,25 @@ fn fase39c_s2_seal_delegates_to_c23_kernel() {
 
 // ── §3 — ServerExecutionResult carries 39.c.y + 39.c.z fields ─────
 
+// §Fase 118.b.2 — these two gates follow their SUBJECT, not its old address.
+// `ServerExecutionResult` moved from `axon_server.rs` to `execution_result.rs`
+// (a leaf module with no dependencies) because the flow dispatcher and the wire
+// envelope — the core execution path — could not name their own output type
+// without dragging in 29,734 lines of `axum` router. The §39.c contract is
+// unchanged; only the file that must contain the fields moved.
+//
+// Worth noting what this catch cost and what it proves: a source-text gate is
+// exactly the kind of test that goes quietly wrong after a refactor, because it
+// asserts about a FILE rather than about a TYPE. It did its job — it failed loudly
+// the moment the field left the file it was watching — but the reason it can be
+// updated safely here is that the field genuinely still exists, and the
+// `fase39b`/`fase39c` compile-time uses of `ServerExecutionResult` (repointed to
+// `axon::execution_result::…`) are what actually prove it.
+
 #[test]
 fn fase39c_s3_server_execution_result_carries_provenance_events() {
-    let src = fs::read_to_string("src/axon_server.rs")
-        .expect("read axon_server.rs");
+    let src = fs::read_to_string("src/execution_result.rs")
+        .expect("read execution_result.rs");
     assert!(
         src.contains("pub provenance_events: Vec<String>"),
         "§39.c §3 — `ServerExecutionResult.provenance_events: Vec<String>` \
@@ -133,8 +148,8 @@ fn fase39c_s3_server_execution_result_carries_provenance_events() {
 
 #[test]
 fn fase39c_s3_server_execution_result_carries_blame_attribution() {
-    let src = fs::read_to_string("src/axon_server.rs")
-        .expect("read axon_server.rs");
+    let src = fs::read_to_string("src/execution_result.rs")
+        .expect("read execution_result.rs");
     assert!(
         src.contains(
             "pub blame_attribution: Option<crate::wire_envelope::BlameContext>"

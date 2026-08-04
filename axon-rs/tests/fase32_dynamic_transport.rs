@@ -1,3 +1,9 @@
+//! §Fase 118.b.2 — this suite exercises the HTTP server surface (the `axum`
+//! router, the tenant extractor, the session carriers, the SSE dialect
+//! adapters), which lives behind the `server` feature. Gated at the file level:
+//! the core suites keep running in a `cli`-only build.
+#![cfg(feature = "server")]
+
 //! §Fase 32.e — Per-endpoint transport on dynamic routes.
 //!
 //! D6 ratificada 2026-05-11. Locks the contract that the **same**

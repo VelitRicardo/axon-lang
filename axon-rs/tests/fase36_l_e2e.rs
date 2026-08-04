@@ -1,3 +1,9 @@
+//! §Fase 118.b.2 — this suite exercises the HTTP server surface (the `axum`
+//! router, the tenant extractor, the session carriers, the SSE dialect
+//! adapters), which lives behind the `server` feature. Gated at the file level:
+//! the core suites keep running in a `cli`-only build.
+#![cfg(feature = "server")]
+
 //! §Fase 36.l (D12) — real-backend end-to-end capstone.
 //!
 //! The gap report's exact shape: deploy an `axonendpoint`, hit it

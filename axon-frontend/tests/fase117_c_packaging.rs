@@ -37,18 +37,58 @@ fn locked_versions(name: &str) -> usize {
         .count()
 }
 
+/// The exact `default` feature set of `axon-lang`, pinned so it cannot drift
+/// silently.
+///
+/// §Fase 118.b.2 — this gate used to assert `default = []`, which was the whole
+/// truth when §117.c wrote it: `aws-secrets` was the only feature, so "no AWS by
+/// default" and "no features by default" were the same sentence. §118 made
+/// `default` non-empty BY DESIGN — `cli`, `documents` and `server` are additive
+/// features that together reproduce 2.81.0's behaviour exactly — and the literal
+/// assertion went red.
+///
+/// **It went red in `6110c714` (§118.b.1) and was not noticed, because that
+/// sub-fase verified `axon-rs` and this gate lives in `axon-frontend`.** That is
+/// the §117 anti-drift machinery working exactly as designed and being missed by
+/// a suite that was never run. The lesson is not about this assertion; it is that
+/// a cross-crate gate is only a gate if the cross-crate suite runs.
+///
+/// So the check is rewritten to say what D117.1 actually MEANT — `aws-secrets` is
+/// not on by default — and to pin the whole set, so the next change to `default`
+/// has to be deliberate and has to come here.
+const EXPECTED_DEFAULT: &str = r#"default = ["cli", "documents", "server"]"#;
+
 #[test]
 fn fase117c_aws_sdk_is_opt_in() {
     let manifest = axon_rs_manifest();
+
+    let default_line = manifest
+        .lines()
+        .find(|l| l.starts_with("default = "))
+        .expect("axon-rs/Cargo.toml must declare a `default` feature set");
+
+    // ── The D117.1 invariant itself, stated directly ──
     assert!(
-        manifest.contains("\ndefault = []"),
-        "`default` must be EMPTY (D117.1). Putting `aws-secrets` back in the default profile \
-         costs every adopter +57 crates and +15.90 MiB of a 44 MiB download (36%), drags in \
-         `aws-lc-sys` — 9.29 MiB of C and assembly needing a C toolchain — and compiles a SECOND \
-         complete HTTP stack (hyper 0.14 + http 0.2 + h2 0.3 + rustls 0.21) alongside the modern \
-         one, so the binary links two TLS implementations with two CVE timelines. All to reach a \
-         service most adopters never touch."
+        !default_line.contains("aws-secrets"),
+        "`aws-secrets` must NOT be in `default` (D117.1). Putting it back costs every adopter \
+         +57 crates and +15.90 MiB of a 44 MiB download (36%), drags in `aws-lc-sys` — 9.29 MiB \
+         of C and assembly needing a C toolchain — and compiles a SECOND complete HTTP stack \
+         (hyper 0.14 + http 0.2 + h2 0.3 + rustls 0.21) alongside the modern one, so the binary \
+         links two TLS implementations with two CVE timelines. All to reach a service most \
+         adopters never touch.\nFound: {default_line}"
     );
+
+    // ── And the set is pinned, so a change is a decision ──
+    assert_eq!(
+        default_line, EXPECTED_DEFAULT,
+        "the `default` feature set changed. That is allowed — §118.c is expected to move it to \
+         `[\"cli\"]` so a bare `cargo install axon-lang` builds the compiler alone — but it must \
+         be DELIBERATE, and this constant is where the decision is recorded. Update \
+         EXPECTED_DEFAULT in the same commit that changes the manifest, and say why in the \
+         release note (§117's precedent: the SemVer consequence goes in the first line, not a \
+         footnote)."
+    );
+
     assert!(
         manifest.contains("aws-secrets = [\"dep:aws-config\", \"dep:aws-sdk-secretsmanager\"]"),
         "the `aws-secrets` feature must still EXIST — opt-in, not deleted. Removing it would \

@@ -253,7 +253,7 @@ impl RateLimiter {
 
 // ── Per-tenant rate limiter (M4) ─────────────────────────────────────────
 
-use crate::tenant::TenantPlan;
+use crate::tenant_context::TenantPlan;
 
 /// Per-plan default quotas for tenant rate limiting.
 /// All values are conservative; enterprise is effectively unlimited.

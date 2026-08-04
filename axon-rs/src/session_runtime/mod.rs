@@ -40,12 +40,33 @@
 /// a **different one** enforced at runtime. This module closes that gap.
 pub mod compile;
 pub mod error;
-pub mod sse;
 pub mod state;
 pub mod wire;
+
+// §Fase 118.b.2 — the two CARRIERS live behind the `server` feature; the
+// protocol itself does not. `compile` (IRSession → SessionType, the §111.i gap
+// this module exists to close), `state` (the runtime, credit window, sealed
+// resume) and `wire` (the frame encoding) are transport-agnostic and stay in
+// every build — so `axon check` still proves a socket's protocol dual, and a
+// `cli` install still type-checks every `socket` declaration it is handed. Only
+// SERVING one needs `axum`: `ws` is the RFC 6455 upgrade handler, `sse` builds
+// `axum::response::sse::Event`.
+//
+// NOTE for whoever comes next: `ws.rs` also owns `PeerRole`, `apply_outgoing`
+// and `next_outgoing_frame` — the transport-agnostic core of the protocol loop,
+// which `sse.rs` imports FROM the WebSocket carrier. That is the same smell this
+// sub-fase moved three times (`AXON_VERSION`, `IngestProvenance`,
+// `ServerExecutionResult`), and it is recorded here rather than fixed because it
+// does not bite: both carriers are gated together, so nothing outside `server`
+// names them. It WOULD bite the moment a third carrier arrives, or an SSE-only
+// build is wanted.
+#[cfg(feature = "server")]
+pub mod sse;
+#[cfg(feature = "server")]
 pub mod ws;
 
 pub use error::ProtocolError;
+#[cfg(feature = "server")]
 pub use sse::drive_sse_producer;
 pub use state::{
     CreditWindow, ParkedContinuation, ResumeError, SealedRuntime, SessionRuntime,
@@ -53,4 +74,5 @@ pub use state::{
 };
 pub use compile::{credit_for_socket, schema_for_socket, server_schema, session_type_of_role};
 pub use wire::{Frame, AXON_WIRE_VERSION};
+#[cfg(feature = "server")]
 pub use ws::{drive, PeerRole};

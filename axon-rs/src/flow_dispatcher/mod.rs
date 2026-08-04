@@ -403,7 +403,7 @@ pub struct DispatchCtx {
     pub cancel: CancellationFlag,
     pub tx: mpsc::UnboundedSender<FlowExecutionEvent>,
     pub enforcement_summaries: Arc<
-        Mutex<HashMap<String, crate::axon_server::EnforcementSummaryWire>>,
+        Mutex<HashMap<String, crate::execution_result::EnforcementSummaryWire>>,
     >,
     pub step_audit_records: Arc<
         Mutex<Vec<crate::axonendpoint_replay::StepAuditRecord>>,
@@ -1016,7 +1016,7 @@ impl DispatchCtx {
         mut self,
         enforcement_summaries: std::sync::Arc<
             tokio::sync::Mutex<
-                std::collections::HashMap<String, crate::axon_server::EnforcementSummaryWire>,
+                std::collections::HashMap<String, crate::execution_result::EnforcementSummaryWire>,
             >,
         >,
         step_audit_records: std::sync::Arc<

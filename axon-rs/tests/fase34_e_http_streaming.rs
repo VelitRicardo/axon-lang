@@ -1,3 +1,9 @@
+//! §Fase 118.b.2 — this suite exercises the HTTP server surface (the `axum`
+//! router, the tenant extractor, the session carriers, the SSE dialect
+//! adapters), which lives behind the `server` feature. Gated at the file level:
+//! the core suites keep running in a `cli`-only build.
+#![cfg(feature = "server")]
+
 //! §Fase 34.e (v1.29.0) — End-to-end HTTP tool streaming tests.
 //!
 //! [`axon::http_tool::HttpStreamingTool`] is the first non-stub

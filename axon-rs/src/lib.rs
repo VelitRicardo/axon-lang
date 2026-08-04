@@ -69,6 +69,12 @@ pub mod anchor_checker;
 pub mod api_keys;
 pub mod audit_trail;
 pub mod auth_middleware;
+// §Fase 118.b.2 — the HTTP server, behind the `server` feature. 29,734 lines of
+// `axum` router, and — until this sub-fase — the reason every adopter who only
+// wanted `axon check` compiled a web framework. `axon serve` STAYS IN `--help`
+// under every profile and refuses in writing, naming `axon-server`; see
+// `main.rs`. The §111 doctrine: the advertised surface stays advertised.
+#[cfg(feature = "server")]
 pub mod axon_server;
 pub mod backend;
 pub mod backend_error;
@@ -282,6 +288,10 @@ pub mod request_log;
 pub mod request_middleware;
 pub mod repl;
 pub mod replay;
+// §Fase 118.b.2 — an `axum::middleware::from_fn` handler end to end (request
+// span, trace-id header, latency record). Nothing in it survives without the
+// framework, so it is gated whole rather than split.
+#[cfg(feature = "server")]
 pub mod request_tracing;
 // §Fase 32.c — Body schema validation for first-class axonendpoint
 // routes. `route_schema` hosts the pure `validate_body` primitive +
@@ -321,6 +331,16 @@ pub mod version;
 // §Fase 118.b — the ingest provenance lattice, dependency-free. See the module
 // docs: it lived in `ooxml_read` and dragged the OOXML surface behind it.
 pub mod ingest_provenance;
+// §Fase 118.b.2 — THE THIRD INSTANCE OF THE SMELL, and the largest. The flow
+// execution RESULT (`ServerExecutionResult`, `EnforcementSummaryWire`) lived in
+// `axon_server`, so `flow_dispatcher`, `streaming_via_dispatcher` and
+// `wire_envelope` — the core execution path — could not name their own output
+// without the HTTP server. Both are pure data; `axon_server` re-exports them.
+pub mod execution_result;
+// §Fase 118.b.2 — `parse_truthy_env`, the cross-stack truthy contract shared
+// with the Python CLI. It reads an env var; it lived in `axon_server`, and
+// `main.rs` called it there while building `ServerConfig`.
+pub mod env_flags;
 // §Fase 40.b — public shield-scanner registration hook. OSS ships no
 // scanners (identity); enterprise vertical crates register HIPAA/legal/AML
 // scanners here at boot. The `shield apply` handler consults it.
@@ -347,7 +367,17 @@ pub mod resource_lease;
 pub mod resource_resolver;
 pub mod store;
 pub mod stdlib;
+// §Fase 118.b.2 — tenant EXTRACTION (JWKS verification + the axum middleware
+// that resolves a tenant from an inbound request) is server code and is gated as
+// such. Tenant IDENTITY — the task-local, `TenantPlan`, `TenantContext`,
+// `current_tenant_id`, `scope_tenant` — moved to `tenant_context` below, because
+// `storage_postgres` reads it in 31 places to build the RLS `SET LOCAL` of every
+// query and should never have needed a web framework to do it. `tenant`
+// re-exports all of it, so `axon::tenant::current_tenant_id` still resolves.
+#[cfg(feature = "server")]
 pub mod tenant;
+/// §Fase 118.b.2 — tenant identity, dependency-free. See the module docs.
+pub mod tenant_context;
 pub mod tenant_secrets;
 // §Fase 10.e — JWT signature verification + JWKS client. Used by
 // tenant::tenant_extractor_middleware when AXON_JWT_JWKS_URL is set.
@@ -381,6 +411,14 @@ pub mod channel_semaphore;
 // `axon_server::execute_sse_handler` uses `select_adapter(dialect)`
 // to translate internal FlowExecutionEvents into the dialect-
 // specific wire shape adopters' SDKs expect.
+//
+// §Fase 118.b.2 — behind the `server` feature. Every adapter builds
+// `axum::response::sse::Event`, and its only consumer is the SSE producer in
+// `axon_server`. D: GATE, do not define our own event type — an SSE `Event` is
+// four fields, but inventing a parallel one with a single consumer would add an
+// abstraction to avoid a dependency that the only caller already has. If a
+// non-HTTP dialect consumer ever appears, that is the moment to own the type.
+#[cfg(feature = "server")]
 pub mod wire_format;
 // §Fase 39.b — Pure Silicon Cognition wire envelope. The canonical
 // `FlowEnvelope` payload for `transport: json` axonendpoint responses

@@ -1,3 +1,9 @@
+//! §Fase 118.b.2 — this suite exercises the HTTP server surface (the `axum`
+//! router, the tenant extractor, the session carriers, the SSE dialect
+//! adapters), which lives behind the `server` feature. Gated at the file level:
+//! the core suites keep running in a `cli`-only build.
+#![cfg(feature = "server")]
+
 //! §Fase 32.i — D12 robustness fuzz for the Fase 32 REST surface (Rust side).
 //!
 //! Mirror of `tests/test_fase32_fuzz.py`. D12 budget extended to Fase 32:

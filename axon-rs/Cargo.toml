@@ -75,7 +75,13 @@ tokio = { version = "1", features = ["full"] }
 # loop) over `tokio-tungstenite`. This is the carrier for the session-typed
 # dialogue runtime — its operational rules (send/recv/select/branch/credit)
 # live in `src/session_runtime/` over the typed channel, transport-agnostic.
-axum = { version = "0.8", features = ["ws"] }
+#
+# §Fase 118.b.2 — OPTIONAL behind `server`. This is the dependency the fase
+# exists for: `axum` + its `hyper`/`tower` service stack is what every adopter
+# compiled to run `axon check`. `upstream_runtime` keeps its own RFC 6455 CLIENT
+# (tokio-tungstenite, below) and is NOT gated — so a lean build still dials OUT
+# to a vendor, it just does not accept inbound connections.
+axum = { version = "0.8", features = ["ws"], optional = true }
 # §Fase 80.d — the CLIENT half of RFC 6455: `upstream` dials OUT to a
 # third-party vendor (STT/TTS/realtime speech), so `src/upstream_runtime.rs`
 # can `connect_async`; `rustls-tls-webpki-roots` unlocks `wss://` (vendor
@@ -91,16 +97,28 @@ axum = { version = "0.8", features = ["ws"] }
 # process, is the asymmetry §111.i already cost a fase to discover. The comment
 # was worse than no comment: it documented an invariant that did not hold.
 tokio-tungstenite = { version = "0.29", features = ["rustls-tls-webpki-roots"] }
-tower = "0.5"
-tower-http = { version = "0.6", features = ["cors"] }
+# §Fase 118.b.2 — both are `server`-only. `tower` is used by the router's test
+# harness (`ServiceExt::oneshot`); `tower-http` provides the `CorsLayer` that
+# `cors::build_cors_layer` materialises. The §83 CORS *declaration* still
+# type-checks without either — only serving it needs the layer.
+tower = { version = "0.5", optional = true }
+tower-http = { version = "0.6", features = ["cors"], optional = true }
 # §Fase 118.a — the HTTP primitives (`HeaderMap`, `HeaderValue`, `StatusCode`)
 # as a direct dependency rather than through `axum::http::…`. They ARE the `http`
 # crate — axum only re-exports them — and modules like `auth_scope` need header
 # types, not a web framework. Naming the real source lets those modules stay out
 # of the `server` feature. Zero cost: `http` 1.x is already resolved in the tree
 # via axum / reqwest / hyper.
+#
+# §Fase 118.b.2 — `http` earns its keep here. It is what `auth_middleware`,
+# `cors` and `request_middleware` actually needed all along; naming it directly
+# keeps all three OUT of the `server` feature (and `auth_middleware` out of it
+# ENTIRELY — it turned out to need no framework at all). Zero cost: `http` 1.x is
+# already resolved via reqwest/hyper regardless of the profile.
 http = "1"
-http-body-util = "0.1"
+# §Fase 118.b.2 — `server`-only: used solely to collect a response body in
+# `axon_server`'s router tests.
+http-body-util = { version = "0.1", optional = true }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["json", "fmt", "env-filter"] }
 tracing-appender = "0.2"
@@ -214,7 +232,7 @@ image = { version = "0.25", default-features = false, features = ["png", "jpeg",
 # what they got before. Moving the default to `["cli"]` — D118.1's two-binary
 # shape — is §118.c, deliberately a separate commit with its own release note,
 # because THAT is the change an adopter feels.
-default = ["cli", "documents"]
+default = ["cli", "documents", "server"]
 
 # ── The additive core (§Fase 118) ─────────────────────────────────────────────
 #
@@ -232,10 +250,61 @@ cli = []
 # `.evidence.zip`. `axon evidence-package` requires it.
 documents = ["dep:zip"]
 
+# `server` — the HTTP runtime: the `axum` router (`axon_server`), the tenant
+# extractor, the request/tracing middleware, the CORS layer builder, and the two
+# session carriers (`session_runtime::{ws, sse}`) plus the SSE dialect adapters
+# (`wire_format`). Produces the `axon-server` binary declared below.
+#
+# WHAT IS DELIBERATELY *NOT* IN HERE, because it turned out not to need axum:
+#   - `auth_middleware` — validates API keys against an `AccessLevel`; it wanted
+#     `http::{HeaderMap, StatusCode}`, which axum merely re-exports.
+#   - `session_runtime::{compile, state, wire}` — the protocol, its runtime and
+#     its frame encoding are transport-agnostic, so `axon check` still proves a
+#     socket's session type dual in a `cli` build.
+#   - `cors::{CorsConfig, CorsUpdate, apply_update}` — §83's endpoint property is
+#     data; only `build_cors_layer` is a tower service.
+#   - `request_middleware`'s config/stats surface, and `graceful_shutdown`'s
+#     coordinator — a lean binary can still install a signal handler and drain.
+#
+# `axon serve` STAYS IN `--help` under every profile and refuses in writing,
+# naming the exact reinstall command and the `axon-server` binary. §111 doctrine:
+# the advertised surface stays advertised.
+#
+# MEASURED, so nobody re-derives it: turning this off removes SIX crates from the
+# real tree (235 -> 229) — `axum`, `axum-core`, `httpdate`, `matchit`, `mime`,
+# `serde_path_to_error`. NOT the 22 the §118 census predicted.
+#
+# `tower`, `tower-http` and `http-body-util` are correctly listed here and
+# correctly `optional`, and they DO NOT LEAVE THE TREE: `reqwest` — the
+# irreducible core, since the seven LLM backends are the product — already
+# depends on all three, plus `hyper` and `http`. `cargo tree -i tower-http
+# --no-default-features --features cli` shows `reqwest` as its only parent. So
+# `axum` adds routing and extractors on top of a stack this crate cannot drop.
+# The gate is not broken; the estimate was.
+server = ["dep:axum", "dep:tower", "dep:tower-http", "dep:http-body-util"]
+
 aws-secrets = ["dep:aws-config", "dep:aws-sdk-secretsmanager"]
 # Enables the isolated image-decode sidecar binary. Off by default: adopters who
 # only ingest OOXML (§100) or feed pre-decoded rasters never pull `image`.
 idpe-sidecar = ["dep:image"]
+
+# §Fase 118.b.2 — D118.1 (RATIFIED 2026-08-04, option (c)): the second binary.
+#
+# `axon` is the compiler and governance CLI; `axon-server` is the runtime that
+# executes governed flows. This is a ROLE boundary, not the open-core boundary —
+# both are AGPL, both are in this crate, and the commercial line lives where it
+# already lives (the `axon-enterprise` repository). The precedent is
+# `docker`/`dockerd`, `psql`/`postgres`, `redis-cli`/`redis-server`: splitting
+# the client from the daemon is what infrastructure looks like.
+#
+# `required-features` means `cargo install axon-lang --no-default-features
+# --features cli` builds `axon` alone and cargo simply does not produce this
+# target — no linker error, no half-built binary. Moving `default` to `["cli"]`
+# so that is what a bare `cargo install` does is §118.c.
+[[bin]]
+name = "axon-server"
+path = "src/bin/axon_server_bin.rs"
+required-features = ["server"]
 
 [[bin]]
 name = "idpe-sidecar"

@@ -4,6 +4,10 @@
 //!   Active:  version, check, compile, run, trace, repl, inspect, ld, serve, deploy, diff, replay, stats, graph
 
 use axon::audit_cli;
+// §Fase 118.b.2 — the HTTP server is behind the `server` feature. The `Serve`
+// subcommand below is NOT gated: it stays in `--help` under every profile and
+// refuses in writing when the feature is absent. See `run_serve_dispatch`.
+#[cfg(feature = "server")]
 use axon::axon_server;
 use axon::checker;
 use axon::cost_estimator;
@@ -478,7 +482,7 @@ fn main() {
             strict_type_driven_transport,
             backend,
             schemas_dir,
-        } => axon_server::run_serve(axon_server::ServerConfig {
+        } => run_serve_dispatch(
             host,
             port,
             channel,
@@ -486,60 +490,11 @@ fn main() {
             log_level,
             log_format,
             log_file,
-            database_url: database_url.or_else(|| std::env::var("DATABASE_URL").ok()),
-            config_path: None,
-            // §Fase 31.f (D6 + D7) — Resolution order for the strict
-            // flag (highest precedence first):
-            //   1. CLI flag `--strict-type-driven-transport` (when
-            //      present, always wins — explicit at run-time).
-            //   2. Env var `AXON_STRICT_TYPE_DRIVEN_TRANSPORT` (12-
-            //      factor app pattern; common in k8s/docker deploys).
-            //   3. D6 default `false` (v1.22.x — backwards-compat).
-            // D9 ratified — the default flips to `true` in v2.0.0.
-            //
-            // D7 cross-stack consistency — Python `axon serve`
-            // reads the same env var name verbatim. Truthy values
-            // are accepted case-insensitively: "1", "true", "yes",
-            // "on". Any other value (including unset) is false.
-            strict_type_driven_transport: strict_type_driven_transport
-                || axon::axon_server::parse_truthy_env(
-                    "AXON_STRICT_TYPE_DRIVEN_TRANSPORT",
-                ),
-            // §Fase 36.g (D7) — server default backend (rung 3 of the
-            // Backend Resolution Contract). Resolution order, highest
-            // precedence first:
-            //   1. CLI flag `--backend <name>` (explicit at run-time).
-            //   2. Env var `AXON_DEFAULT_BACKEND` (12-factor; common
-            //      in k8s/docker deploys).
-            //   3. `None` — no server default; the ladder falls
-            //      through to the environment-available `auto` rungs.
-            // An empty string from either surface collapses to `None`.
-            // The value is validated against the closed catalog at
-            // `run_serve` startup — an unknown name fails fast.
-            default_backend: backend
-                .or_else(|| std::env::var("AXON_DEFAULT_BACKEND").ok())
-                .map(|s| s.trim().to_string())
-                .filter(|s| !s.is_empty()),
-            // §Fase 38.j (D3 + D7 + D8) — Resolution order for the
-            // declared store-schema manifest directory (highest
-            // precedence first):
-            //   1. CLI flag `--schemas-dir <path>` (explicit at run-
-            //      time; common in dev + `docker run` overrides).
-            //   2. Env var `AXON_SCHEMAS_DIR` (12-factor app pattern;
-            //      common in k8s/docker `Deployment` manifests).
-            //   3. `None` — no manifest loading; v1.37.0 deploy-time
-            //      verify is preserved verbatim (D5 absolute).
-            // An empty string from either surface collapses to `None`.
-            // The directory's existence is NOT verified at startup —
-            // a missing dir resolves to "no manifest files" the same
-            // way an empty dir does (`load_and_merge_manifests` is
-            // total). Failures, if any, surface at deploy time as
-            // structured T805/T807/duplicate-store errors.
-            schemas_dir: schemas_dir
-                .or_else(|| std::env::var("AXON_SCHEMAS_DIR").ok())
-                .map(|s| s.trim().to_string())
-                .filter(|s| !s.is_empty()),
-        }),
+            database_url,
+            strict_type_driven_transport,
+            backend,
+            schemas_dir,
+        ),
         Commands::Diff {
             file_a,
             file_b,
@@ -1167,4 +1122,136 @@ mod fix_tests {
         assert_eq!(fixed, vec!["A".to_string(), "C".to_string()], "A and C fixed, B (covered) skipped");
         assert!(!fires_t890(&out), "all boundaries covered after fix. Got: {out}");
     }
+}
+
+// ── `axon serve` — the refusal contract (§Fase 118.b.2) ───────────────────────
+//
+// The subcommand is declared UNCONDITIONALLY above: it is in `axon --help`, with
+// all eleven flags, under every build profile. What changes with the `server`
+// feature is what happens when you run it.
+//
+// This is the §111 doctrine applied to packaging. §111 spent a fase proving that
+// every advertised primitive is REAL; the packaging corollary is that the
+// advertised surface must stay advertised even when the implementation is
+// absent. A subcommand that silently disappears from a build teaches the adopter
+// nothing and reads as a broken install; a linker error teaches them less.
+
+/// The `server` build: hand the parsed flags to the HTTP runtime, unchanged.
+#[cfg(feature = "server")]
+#[allow(clippy::too_many_arguments)]
+fn run_serve_dispatch(
+    host: String,
+    port: u16,
+    channel: String,
+    auth_token: String,
+    log_level: String,
+    log_format: String,
+    log_file: Option<String>,
+    database_url: Option<String>,
+    strict_type_driven_transport: bool,
+    backend: Option<String>,
+    schemas_dir: Option<String>,
+) -> i32 {
+    axon_server::run_serve(axon_server::ServerConfig {
+        host,
+        port,
+        channel,
+        auth_token,
+        log_level,
+        log_format,
+        log_file,
+        database_url: database_url.or_else(|| std::env::var("DATABASE_URL").ok()),
+        config_path: None,
+        // §Fase 31.f (D6 + D7) — Resolution order for the strict
+        // flag (highest precedence first):
+        //   1. CLI flag `--strict-type-driven-transport` (when
+        //      present, always wins — explicit at run-time).
+        //   2. Env var `AXON_STRICT_TYPE_DRIVEN_TRANSPORT` (12-
+        //      factor app pattern; common in k8s/docker deploys).
+        //   3. D6 default `false` (v1.22.x — backwards-compat).
+        // D9 ratified — the default flips to `true` in v2.0.0.
+        //
+        // D7 cross-stack consistency — Python `axon serve`
+        // reads the same env var name verbatim. Truthy values
+        // are accepted case-insensitively: "1", "true", "yes",
+        // "on". Any other value (including unset) is false.
+        strict_type_driven_transport: strict_type_driven_transport
+            || axon::env_flags::parse_truthy_env(
+                "AXON_STRICT_TYPE_DRIVEN_TRANSPORT",
+            ),
+        // §Fase 36.g (D7) — server default backend (rung 3 of the
+        // Backend Resolution Contract). Resolution order, highest
+        // precedence first:
+        //   1. CLI flag `--backend <name>` (explicit at run-time).
+        //   2. Env var `AXON_DEFAULT_BACKEND` (12-factor; common
+        //      in k8s/docker deploys).
+        //   3. `None` — no server default; the ladder falls
+        //      through to the environment-available `auto` rungs.
+        // An empty string from either surface collapses to `None`.
+        // The value is validated against the closed catalog at
+        // `run_serve` startup — an unknown name fails fast.
+        default_backend: backend
+            .or_else(|| std::env::var("AXON_DEFAULT_BACKEND").ok())
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty()),
+        // §Fase 38.j (D3 + D7 + D8) — Resolution order for the
+        // declared store-schema manifest directory (highest
+        // precedence first):
+        //   1. CLI flag `--schemas-dir <path>` (explicit at run-
+        //      time; common in dev + `docker run` overrides).
+        //   2. Env var `AXON_SCHEMAS_DIR` (12-factor app pattern;
+        //      common in k8s/docker `Deployment` manifests).
+        //   3. `None` — no manifest loading; v1.37.0 deploy-time
+        //      verify is preserved verbatim (D5 absolute).
+        // An empty string from either surface collapses to `None`.
+        // The directory's existence is NOT verified at startup —
+        // a missing dir resolves to "no manifest files" the same
+        // way an empty dir does (`load_and_merge_manifests` is
+        // total). Failures, if any, surface at deploy time as
+        // structured T805/T807/duplicate-store errors.
+        schemas_dir: schemas_dir
+            .or_else(|| std::env::var("AXON_SCHEMAS_DIR").ok())
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty()),
+    })
+}
+
+/// The lean build: refuse in writing, and say exactly how to fix it.
+///
+/// Three things this message must do, each a lesson from an earlier fase:
+///   1. NAME THE REINSTALL COMMAND. §117's `aws-secrets` opt-out was worth
+///      nothing to an adopter who could not find the way back in.
+///   2. NAME THE OTHER BINARY. Under D118.1 the server is `axon-server`, not a
+///      flag on `axon` — telling someone only to add a feature would leave them
+///      running `axon serve` in a build where it will never be the answer.
+///   3. SAY WHAT STILL WORKS. A refusal that reads as "this install is broken"
+///      is worse than the linker error it replaced; this one says the compiler
+///      and governance surface is intact, which is the whole point of the split.
+///
+/// Exit code 2 — the same code `axon evidence-package` returns for an absent
+/// `documents` feature (§118.b.1). Distinct from 1 (a real failure) so CI can
+/// tell "wrong build profile" from "the flow was rejected".
+#[cfg(not(feature = "server"))]
+#[allow(clippy::too_many_arguments)]
+fn run_serve_dispatch(
+    _host: String,
+    _port: u16,
+    _channel: String,
+    _auth_token: String,
+    _log_level: String,
+    _log_format: String,
+    _log_file: Option<String>,
+    _database_url: Option<String>,
+    _strict_type_driven_transport: bool,
+    _backend: Option<String>,
+    _schemas_dir: Option<String>,
+) -> i32 {
+    eprintln!(
+        "X `axon serve` requires the `server` feature - this build was compiled without it, so the HTTP runtime is absent.
+  The server is a separate binary: install it with
+      cargo install axon-lang --features server
+  and run `axon-server` (the `axon` you have keeps working for everything else).
+  Still available in this build: check, compile, parse, fmt, fix, desugar, inspect, trace, stats, graph, estimate, diff, ld, repl, run, deploy, replay, dossier, sbom, audit, prove, verify."
+    );
+    2
 }

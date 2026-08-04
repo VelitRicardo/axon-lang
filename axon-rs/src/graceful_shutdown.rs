@@ -149,6 +149,15 @@ pub async fn listen_signals(coordinator: Arc<ShutdownCoordinator>) {
 /// - Emit shutdown event on bus.
 ///
 /// This is called from the server launcher after axum::serve returns.
+///
+/// §Fase 118.b.2 — the ONLY item in this module that needs the `server` feature,
+/// and honestly so: it takes `&mut ServerState`, so it is server code by its own
+/// signature rather than by association. The coordinator itself
+/// ([`ShutdownCoordinator`], [`ShutdownReason`],
+/// [`ShutdownStatus`], [`listen_signals`]) is a `Notify` and two atomics — it
+/// links nothing and stays in every build, so a lean binary can still install a
+/// signal handler and drain.
+#[cfg(feature = "server")]
 pub fn run_pre_shutdown_hooks(
     state: &mut crate::axon_server::ServerState,
     reason: ShutdownReason,

@@ -15,8 +15,16 @@
 //!   - `PUT /v1/cors` — update CORS configuration (requires server restart to take effect)
 
 use serde::{Deserialize, Serialize};
+// §Fase 118.b.2 — the CONFIG half of this module (`CorsConfig`, `CorsUpdate`,
+// `apply_update` — §83's "CORS as an endpoint property") is pure data and stays
+// in every build; only `build_cors_layer`, which materialises a `tower-http`
+// `CorsLayer`, needs the `server` feature. `HeaderName`/`Method` come from the
+// `http` crate directly rather than through `axum::http::…` — same types, one
+// fewer coupling.
+#[cfg(feature = "server")]
+use http::{HeaderName, Method};
+#[cfg(feature = "server")]
 use tower_http::cors::{CorsLayer, Any};
-use axum::http::{HeaderName, Method};
 
 // ── Configuration ───────────────────────────────────────────────────────
 
@@ -82,6 +90,13 @@ impl CorsConfig {
 ///
 /// If CORS is disabled, returns a permissive no-op layer (allows everything).
 /// This ensures the middleware is always present in the stack for consistency.
+///
+/// §Fase 118.b.2 — the one function in this module that needs the `server`
+/// feature: a `CorsLayer` is a `tower-http` service, and there is no router to
+/// mount it on without one. The §83 declaration (`cors <Name>` on an
+/// `axonendpoint`) still type-checks in a `cli` build — `axon check` validates
+/// the policy; only serving it needs the layer.
+#[cfg(feature = "server")]
 pub fn build_cors_layer(config: &CorsConfig) -> CorsLayer {
     if !config.enabled {
         // Disabled: allow everything (no restrictions)
@@ -94,7 +109,7 @@ pub fn build_cors_layer(config: &CorsConfig) -> CorsLayer {
     if config.is_permissive() {
         layer = layer.allow_origin(Any);
     } else {
-        let origins: Vec<axum::http::HeaderValue> = config.allowed_origins.iter()
+        let origins: Vec<http::HeaderValue> = config.allowed_origins.iter()
             .filter_map(|o| o.parse().ok())
             .collect();
         layer = layer.allow_origin(origins);
@@ -231,6 +246,12 @@ mod tests {
         assert_eq!(config.max_age_secs, 600);
     }
 
+    // §Fase 118.b.2 — the three layer-builder tests follow their subject behind
+    // the `server` feature. §117.a's lesson, paid for once already: an inline
+    // test that calls a gated function is exactly what makes
+    // `--no-default-features` fail to compile while `--lib --bins` says it is
+    // fine. Verified here with `--all-targets`.
+    #[cfg(feature = "server")]
     #[test]
     fn build_layer_permissive() {
         let config = CorsConfig::default();
@@ -238,12 +259,14 @@ mod tests {
         // Just verify it builds without panic
     }
 
+    #[cfg(feature = "server")]
     #[test]
     fn build_layer_restricted() {
         let config = CorsConfig::restricted(vec!["https://app.example.com".into()]);
         let _layer = build_cors_layer(&config);
     }
 
+    #[cfg(feature = "server")]
     #[test]
     fn build_layer_disabled() {
         let mut config = CorsConfig::default();

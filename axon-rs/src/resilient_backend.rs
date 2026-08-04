@@ -108,7 +108,7 @@ impl ResilientBackend {
         user_prompt: &str,
         max_tokens: Option<u32>,
     ) -> Result<ModelResponse, BackendError> {
-        let tenant_id = crate::tenant::current_tenant_id();
+        let tenant_id = crate::tenant_context::current_tenant_id();
         match self.call_single_provider(&tenant_id, provider, api_key, system_prompt, user_prompt, max_tokens) {
             Ok(resp) => Ok(resp),
             Err(primary_err) => {

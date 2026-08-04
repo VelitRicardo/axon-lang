@@ -16,13 +16,27 @@
 
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
+#[cfg(feature = "server")]
 use std::time::Instant;
 
+// §Fase 118.b.2 — the framework types are needed by exactly one item in this
+// module: `request_middleware_fn`, which is an `axum::middleware::from_fn`
+// handler and could not be anything else. Everything above it —
+// `RequestIdGenerator`, `MiddlewareConfig`, `MiddlewareUpdate`, `apply_update`,
+// `RequestMeta`, `MiddlewareStats` — is configuration and counters, and stays in
+// every build with its tests.
+#[cfg(feature = "server")]
 use axum::body::Body;
+#[cfg(feature = "server")]
 use axum::extract::Request;
-use axum::http::HeaderValue;
+#[cfg(feature = "server")]
 use axum::middleware::Next;
+#[cfg(feature = "server")]
 use axum::response::Response;
+// `HeaderValue` / `HeaderMap` are `http` crate types that axum re-exports —
+// used only by the middleware fn and its test, hence the same gate.
+#[cfg(feature = "server")]
+use http::HeaderValue;
 use serde::{Deserialize, Serialize};
 
 // ── Request ID generator ────────────────────────────────────────────────
@@ -187,7 +201,8 @@ pub struct MiddlewareState<S> {
 
 // ── Helper: extract client key from headers ─────────────────────────────
 
-fn client_key_from_headers(headers: &axum::http::HeaderMap) -> String {
+#[cfg(feature = "server")]
+fn client_key_from_headers(headers: &http::HeaderMap) -> String {
     headers
         .get("authorization")
         .and_then(|v| v.to_str().ok())
@@ -205,6 +220,7 @@ fn client_key_from_headers(headers: &axum::http::HeaderMap) -> String {
 /// This is designed to be used with `axum::middleware::from_fn` in the
 /// router setup. The ServerState access is done via the shared state
 /// that axum provides.
+#[cfg(feature = "server")]
 pub async fn request_middleware_fn(
     state: axum::extract::State<Arc<Mutex<crate::axon_server::ServerState>>>,
     request: Request<Body>,
@@ -438,9 +454,14 @@ mod tests {
         assert_eq!(json["config"]["enabled"], true);
     }
 
+    // §Fase 118.b.2 — follows `client_key_from_headers` behind the `server`
+    // feature. THIS is the §117.a trap, caught exactly where the plan said it
+    // would be: an inline test calling a gated function. `--lib --bins` is
+    // perfectly happy with it; `--all-targets` is what fails.
+    #[cfg(feature = "server")]
     #[test]
     fn client_key_extraction() {
-        let mut headers = axum::http::HeaderMap::new();
+        let mut headers = http::HeaderMap::new();
         assert_eq!(client_key_from_headers(&headers), "anonymous");
 
         headers.insert("authorization", HeaderValue::from_static("Bearer token123"));

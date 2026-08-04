@@ -213,7 +213,7 @@ pub fn execute_listener_body(
                 // request/default tenant scope (self-hosted is single-tenant;
                 // the ENT multi-tenant path is the supervisor). Bridge the
                 // task-local to the executor's explicit tenant.
-                &crate::tenant::current_tenant_id(),
+                &crate::tenant_context::current_tenant_id(),
                 source_file,
                 None,
                 None,
@@ -279,7 +279,7 @@ pub fn deliver_typed_event(
                     &run.flow_name,
                     backend,
                     // §Fase 95.f — bridge the daemon's tenant scope explicitly.
-                    &crate::tenant::current_tenant_id(),
+                    &crate::tenant_context::current_tenant_id(),
                     source_file,
                     None,
                     // §74.a — the event payload binds to the consumer flow's
@@ -440,7 +440,7 @@ pub fn deliver_typed_event_reliable(
                         &run.flow_name,
                         backend,
                         // §Fase 95.f — bridge the daemon's tenant scope.
-                        &crate::tenant::current_tenant_id(),
+                        &crate::tenant_context::current_tenant_id(),
                         source_file,
                         None,
                         Some(payload),

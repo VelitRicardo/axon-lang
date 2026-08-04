@@ -1,3 +1,9 @@
+//! §Fase 118.b.2 — this suite exercises the HTTP server surface (the `axum`
+//! router, the tenant extractor, the session carriers, the SSE dialect
+//! adapters), which lives behind the `server` feature. Gated at the file level:
+//! the core suites keep running in a `cli`-only build.
+#![cfg(feature = "server")]
+
 //! §Fase 32.l — End-to-end "last cable" test for adopter `MIGRATION_TO_AXON.md`.
 //!
 //! The adopter trail (2026-05-12) reported that even at v1.23.0 a flow

@@ -13,7 +13,13 @@
 //! When enabled, Bearer token is validated against the key registry and role checked.
 
 use crate::api_keys::{ApiKeyManager, KeyRole, ValidationResult};
-use axum::http::{HeaderMap, StatusCode};
+// §Fase 118.b.2 — `http::{HeaderMap, StatusCode}`, not `axum::http::{…}`. Same
+// types: axum only re-exports the `http` crate. This module validates API keys
+// and maps them to an `AccessLevel` — it needs header types, not a web
+// framework, and naming the real source keeps it OUT of the `server` feature
+// entirely. The §118.a treatment of `auth_scope.rs`, applied again: a module
+// that turns out not to need axum is worth more than a module that is gated.
+use http::{HeaderMap, StatusCode};
 use serde::{Deserialize, Serialize};
 
 // ── Access levels ───────────────────────────────────────────────────────

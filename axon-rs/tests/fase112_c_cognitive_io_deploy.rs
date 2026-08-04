@@ -1,3 +1,9 @@
+//! §Fase 118.b.2 — this suite exercises the HTTP server surface (the `axum`
+//! router, the tenant extractor, the session carriers, the SSE dialect
+//! adapters), which lives behind the `server` feature. Gated at the file level:
+//! the core suites keep running in a `cli`-only build.
+#![cfg(feature = "server")]
+
 //! §Fase 112.c — the Cognitive-I/O graph, live through the REAL deploy path.
 //!
 //! Every test here goes through `POST /v1/deploy` — the §95.f discipline §111 spent

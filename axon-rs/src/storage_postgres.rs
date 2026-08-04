@@ -1,7 +1,7 @@
 //! PostgreSQL Storage Backend — full persistent storage for AxonServer.
 //!
 //! Every data method:
-//!   1. Reads the active tenant from `crate::tenant::current_tenant_id()` (task-local)
+//!   1. Reads the active tenant from `crate::tenant_context::current_tenant_id()` (task-local)
 //!   2. Opens a transaction
 //!   3. Executes `SET LOCAL axon.current_tenant = '<tenant>'` so Postgres RLS
 //!      policies activate for the duration of that transaction
@@ -59,7 +59,7 @@ impl StorageBackend for PostgresBackend {
     // ── Traces ────────────────────────────────────────────────────────────────
 
     async fn save_trace(&self, trace: &TraceRow) -> Result<(), StorageError> {
-        let tid = crate::tenant::current_tenant_id();
+        let tid = crate::tenant_context::current_tenant_id();
         let mut tx = begin_tenant_tx!(&self.pool, &tid, "save_trace");
         sqlx::query(
             "INSERT INTO traces \
@@ -100,7 +100,7 @@ impl StorageBackend for PostgresBackend {
     }
 
     async fn load_traces(&self, limit: usize, offset: usize) -> Result<Vec<TraceRow>, StorageError> {
-        let tid = crate::tenant::current_tenant_id();
+        let tid = crate::tenant_context::current_tenant_id();
         let mut tx = begin_tenant_tx!(&self.pool, &tid, "load_traces");
         let rows = sqlx::query(
             "SELECT tenant_id, trace_id, flow_name, status, steps_executed, latency_ms, \
@@ -138,7 +138,7 @@ impl StorageBackend for PostgresBackend {
     }
 
     async fn get_trace(&self, trace_id: u64) -> Result<Option<TraceRow>, StorageError> {
-        let tid = crate::tenant::current_tenant_id();
+        let tid = crate::tenant_context::current_tenant_id();
         let mut tx = begin_tenant_tx!(&self.pool, &tid, "get_trace");
         let row = sqlx::query(
             "SELECT tenant_id, trace_id, flow_name, status, steps_executed, latency_ms, \
@@ -175,7 +175,7 @@ impl StorageBackend for PostgresBackend {
     }
 
     async fn delete_traces(&self, ids: &[u64]) -> Result<u64, StorageError> {
-        let tid = crate::tenant::current_tenant_id();
+        let tid = crate::tenant_context::current_tenant_id();
         let ids_i64: Vec<i64> = ids.iter().map(|&id| id as i64).collect();
         let mut tx = begin_tenant_tx!(&self.pool, &tid, "delete_traces");
         let result = sqlx::query("DELETE FROM traces WHERE trace_id = ANY($1)")
@@ -190,7 +190,7 @@ impl StorageBackend for PostgresBackend {
     // ── Sessions ──────────────────────────────────────────────────────────────
 
     async fn save_session(&self, entry: &SessionRow) -> Result<(), StorageError> {
-        let tid = crate::tenant::current_tenant_id();
+        let tid = crate::tenant_context::current_tenant_id();
         let mut tx = begin_tenant_tx!(&self.pool, &tid, "save_session");
         sqlx::query(
             "INSERT INTO sessions (tenant_id, scope, key, value, source_step) \
@@ -211,7 +211,7 @@ impl StorageBackend for PostgresBackend {
     }
 
     async fn load_sessions(&self, scope: &str) -> Result<Vec<SessionRow>, StorageError> {
-        let tid = crate::tenant::current_tenant_id();
+        let tid = crate::tenant_context::current_tenant_id();
         let mut tx = begin_tenant_tx!(&self.pool, &tid, "load_sessions");
         let rows = sqlx::query(
             "SELECT tenant_id, scope, key, value, source_step FROM sessions WHERE scope = $1"
@@ -231,7 +231,7 @@ impl StorageBackend for PostgresBackend {
     }
 
     async fn delete_session(&self, scope: &str, key: &str) -> Result<bool, StorageError> {
-        let tid = crate::tenant::current_tenant_id();
+        let tid = crate::tenant_context::current_tenant_id();
         let mut tx = begin_tenant_tx!(&self.pool, &tid, "delete_session");
         let result = sqlx::query("DELETE FROM sessions WHERE scope = $1 AND key = $2")
             .bind(scope)
@@ -246,7 +246,7 @@ impl StorageBackend for PostgresBackend {
     // ── Daemons ───────────────────────────────────────────────────────────────
 
     async fn save_daemon(&self, daemon: &DaemonRow) -> Result<(), StorageError> {
-        let tid = crate::tenant::current_tenant_id();
+        let tid = crate::tenant_context::current_tenant_id();
         let mut tx = begin_tenant_tx!(&self.pool, &tid, "save_daemon");
         sqlx::query(
             "INSERT INTO daemons \
@@ -275,7 +275,7 @@ impl StorageBackend for PostgresBackend {
     }
 
     async fn load_daemons(&self) -> Result<Vec<DaemonRow>, StorageError> {
-        let tid = crate::tenant::current_tenant_id();
+        let tid = crate::tenant_context::current_tenant_id();
         let mut tx = begin_tenant_tx!(&self.pool, &tid, "load_daemons");
         let rows = sqlx::query(
             "SELECT tenant_id, name, state, source_file, flow_name, event_count, \
@@ -300,7 +300,7 @@ impl StorageBackend for PostgresBackend {
     }
 
     async fn delete_daemon(&self, name: &str) -> Result<bool, StorageError> {
-        let tid = crate::tenant::current_tenant_id();
+        let tid = crate::tenant_context::current_tenant_id();
         let mut tx = begin_tenant_tx!(&self.pool, &tid, "delete_daemon");
         let result = sqlx::query("DELETE FROM daemons WHERE name = $1")
             .bind(name)
@@ -314,7 +314,7 @@ impl StorageBackend for PostgresBackend {
     // ── Audit ─────────────────────────────────────────────────────────────────
 
     async fn append_audit(&self, entry: &AuditRow) -> Result<(), StorageError> {
-        let tid = crate::tenant::current_tenant_id();
+        let tid = crate::tenant_context::current_tenant_id();
         let mut tx = begin_tenant_tx!(&self.pool, &tid, "append_audit");
         sqlx::query(
             "INSERT INTO audit_log (tenant_id, action, actor, target, detail) \
@@ -333,7 +333,7 @@ impl StorageBackend for PostgresBackend {
     }
 
     async fn query_audit(&self, limit: usize) -> Result<Vec<AuditRow>, StorageError> {
-        let tid = crate::tenant::current_tenant_id();
+        let tid = crate::tenant_context::current_tenant_id();
         let mut tx = begin_tenant_tx!(&self.pool, &tid, "query_audit");
         let rows = sqlx::query(
             "SELECT tenant_id, action, actor, target, detail \
@@ -356,7 +356,7 @@ impl StorageBackend for PostgresBackend {
     // ── AxonStores ────────────────────────────────────────────────────────────
 
     async fn save_axon_store(&self, store: &AxonStoreRow) -> Result<(), StorageError> {
-        let tid = crate::tenant::current_tenant_id();
+        let tid = crate::tenant_context::current_tenant_id();
         let mut tx = begin_tenant_tx!(&self.pool, &tid, "save_axon_store");
         sqlx::query(
             "INSERT INTO axon_stores (tenant_id, name, ontology, entries, created_at, total_ops) \
@@ -378,7 +378,7 @@ impl StorageBackend for PostgresBackend {
     }
 
     async fn load_axon_stores(&self) -> Result<Vec<AxonStoreRow>, StorageError> {
-        let tid = crate::tenant::current_tenant_id();
+        let tid = crate::tenant_context::current_tenant_id();
         let mut tx = begin_tenant_tx!(&self.pool, &tid, "load_axon_stores");
         let rows = sqlx::query(
             "SELECT tenant_id, name, ontology, entries, created_at, total_ops FROM axon_stores"
@@ -398,7 +398,7 @@ impl StorageBackend for PostgresBackend {
     }
 
     async fn delete_axon_store(&self, name: &str) -> Result<bool, StorageError> {
-        let tid = crate::tenant::current_tenant_id();
+        let tid = crate::tenant_context::current_tenant_id();
         let mut tx = begin_tenant_tx!(&self.pool, &tid, "delete_axon_store");
         let result = sqlx::query("DELETE FROM axon_stores WHERE name = $1")
             .bind(name)
@@ -412,7 +412,7 @@ impl StorageBackend for PostgresBackend {
     // ── Dataspaces ────────────────────────────────────────────────────────────
 
     async fn save_dataspace(&self, ds: &DataspaceRow) -> Result<(), StorageError> {
-        let tid = crate::tenant::current_tenant_id();
+        let tid = crate::tenant_context::current_tenant_id();
         let mut tx = begin_tenant_tx!(&self.pool, &tid, "save_dataspace");
         sqlx::query(
             "INSERT INTO dataspaces \
@@ -438,7 +438,7 @@ impl StorageBackend for PostgresBackend {
     }
 
     async fn load_dataspaces(&self) -> Result<Vec<DataspaceRow>, StorageError> {
-        let tid = crate::tenant::current_tenant_id();
+        let tid = crate::tenant_context::current_tenant_id();
         let mut tx = begin_tenant_tx!(&self.pool, &tid, "load_dataspaces");
         let rows = sqlx::query(
             "SELECT tenant_id, name, ontology, entries, associations, \
@@ -461,7 +461,7 @@ impl StorageBackend for PostgresBackend {
     }
 
     async fn delete_dataspace(&self, name: &str) -> Result<bool, StorageError> {
-        let tid = crate::tenant::current_tenant_id();
+        let tid = crate::tenant_context::current_tenant_id();
         let mut tx = begin_tenant_tx!(&self.pool, &tid, "delete_dataspace");
         let result = sqlx::query("DELETE FROM dataspaces WHERE name = $1")
             .bind(name)
@@ -475,7 +475,7 @@ impl StorageBackend for PostgresBackend {
     // ── Hibernations ──────────────────────────────────────────────────────────
 
     async fn save_hibernation(&self, session: &HibernationRow) -> Result<(), StorageError> {
-        let tid = crate::tenant::current_tenant_id();
+        let tid = crate::tenant_context::current_tenant_id();
         let mut tx = begin_tenant_tx!(&self.pool, &tid, "save_hibernation");
         sqlx::query(
             "INSERT INTO hibernations \
@@ -506,7 +506,7 @@ impl StorageBackend for PostgresBackend {
     }
 
     async fn load_hibernations(&self) -> Result<Vec<HibernationRow>, StorageError> {
-        let tid = crate::tenant::current_tenant_id();
+        let tid = crate::tenant_context::current_tenant_id();
         let mut tx = begin_tenant_tx!(&self.pool, &tid, "load_hibernations");
         let rows = sqlx::query(
             "SELECT tenant_id, id, name, operation, status, checkpoints, resumed_from, \
@@ -533,7 +533,7 @@ impl StorageBackend for PostgresBackend {
     // ── Events ────────────────────────────────────────────────────────────────
 
     async fn append_event(&self, event: &EventRow) -> Result<(), StorageError> {
-        let tid = crate::tenant::current_tenant_id();
+        let tid = crate::tenant_context::current_tenant_id();
         let mut tx = begin_tenant_tx!(&self.pool, &tid, "append_event");
         sqlx::query(
             "INSERT INTO event_history (tenant_id, topic, source, payload) VALUES ($1,$2,$3,$4)"
@@ -550,7 +550,7 @@ impl StorageBackend for PostgresBackend {
     }
 
     async fn query_events(&self, topic: Option<&str>, limit: usize) -> Result<Vec<EventRow>, StorageError> {
-        let tid = crate::tenant::current_tenant_id();
+        let tid = crate::tenant_context::current_tenant_id();
         let mut tx = begin_tenant_tx!(&self.pool, &tid, "query_events");
         let rows = match topic {
             Some(t) => {
@@ -585,7 +585,7 @@ impl StorageBackend for PostgresBackend {
     // ── Cache ─────────────────────────────────────────────────────────────────
 
     async fn save_cache_entry(&self, entry: &CacheRow) -> Result<(), StorageError> {
-        let tid = crate::tenant::current_tenant_id();
+        let tid = crate::tenant_context::current_tenant_id();
         let mut tx = begin_tenant_tx!(&self.pool, &tid, "save_cache_entry");
         sqlx::query(
             "INSERT INTO execution_cache \
@@ -609,7 +609,7 @@ impl StorageBackend for PostgresBackend {
     }
 
     async fn load_cache_entries(&self) -> Result<Vec<CacheRow>, StorageError> {
-        let tid = crate::tenant::current_tenant_id();
+        let tid = crate::tenant_context::current_tenant_id();
         let mut tx = begin_tenant_tx!(&self.pool, &tid, "load_cache_entries");
         let rows = sqlx::query(
             "SELECT tenant_id, flow_name, cache_key, result, ttl_secs, hit_count \
@@ -630,7 +630,7 @@ impl StorageBackend for PostgresBackend {
     }
 
     async fn evict_expired_cache(&self) -> Result<u64, StorageError> {
-        let tid = crate::tenant::current_tenant_id();
+        let tid = crate::tenant_context::current_tenant_id();
         let mut tx = begin_tenant_tx!(&self.pool, &tid, "evict_expired_cache");
         let result = sqlx::query(
             "DELETE FROM execution_cache WHERE ttl_secs IS NOT NULL AND \
@@ -646,7 +646,7 @@ impl StorageBackend for PostgresBackend {
     // ── Cost tracking ─────────────────────────────────────────────────────────
 
     async fn record_cost(&self, cost: &CostRow) -> Result<(), StorageError> {
-        let tid = crate::tenant::current_tenant_id();
+        let tid = crate::tenant_context::current_tenant_id();
         let mut tx = begin_tenant_tx!(&self.pool, &tid, "record_cost");
         sqlx::query(
             "INSERT INTO cost_tracking \
@@ -667,7 +667,7 @@ impl StorageBackend for PostgresBackend {
     }
 
     async fn query_costs(&self, flow: Option<&str>, limit: usize) -> Result<Vec<CostRow>, StorageError> {
-        let tid = crate::tenant::current_tenant_id();
+        let tid = crate::tenant_context::current_tenant_id();
         let mut tx = begin_tenant_tx!(&self.pool, &tid, "query_costs");
         let rows = match flow {
             Some(f) => {
@@ -705,7 +705,7 @@ impl StorageBackend for PostgresBackend {
     // ── Schedules ─────────────────────────────────────────────────────────────
 
     async fn save_schedule(&self, schedule: &ScheduleRow) -> Result<(), StorageError> {
-        let tid = crate::tenant::current_tenant_id();
+        let tid = crate::tenant_context::current_tenant_id();
         let mut tx = begin_tenant_tx!(&self.pool, &tid, "save_schedule");
         sqlx::query(
             "INSERT INTO schedules \
@@ -735,7 +735,7 @@ impl StorageBackend for PostgresBackend {
     }
 
     async fn load_schedules(&self) -> Result<Vec<ScheduleRow>, StorageError> {
-        let tid = crate::tenant::current_tenant_id();
+        let tid = crate::tenant_context::current_tenant_id();
         let mut tx = begin_tenant_tx!(&self.pool, &tid, "load_schedules");
         let rows = sqlx::query(
             "SELECT tenant_id, name, flow_name, interval_secs, enabled, backend, \
@@ -760,7 +760,7 @@ impl StorageBackend for PostgresBackend {
     }
 
     async fn delete_schedule(&self, name: &str) -> Result<bool, StorageError> {
-        let tid = crate::tenant::current_tenant_id();
+        let tid = crate::tenant_context::current_tenant_id();
         let mut tx = begin_tenant_tx!(&self.pool, &tid, "delete_schedule");
         let result = sqlx::query("DELETE FROM schedules WHERE name = $1")
             .bind(name)
