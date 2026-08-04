@@ -3,7 +3,7 @@
   "name": "io.github.VelitRicardo/axon-emcp",
   "title": "AXON Epistemic MCP",
   "description": "Official ℰMCP server for AXON — exposes 45 primitives, 33 templates, 17 examples to AI agents.",
-  "version": "0.4.0",
+  "version": "0.52.0",
   "repository": {
     "url": "https://github.com/VelitRicardo/axon-lang",
     "source": "github",
