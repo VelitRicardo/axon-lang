@@ -4,7 +4,7 @@
 
 [![crates.io](https://img.shields.io/crates/v/axon-lang.svg)](https://crates.io/crates/axon-lang)
 [![docs.rs](https://docs.rs/axon-lang/badge.svg)](https://docs.rs/axon-lang)
-[![License: AGPL-3.0-or-later](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue.svg)](https://github.com/Bemarking/axon-lang/blob/master/LICENSE)
+[![License: AGPL-3.0-or-later](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue.svg)](https://github.com/VelitRicardo/axon-lang/blob/master/LICENSE)
 
 AXON is a programming language for AI cognition in which the properties you care
 about — *this endpoint may not leak regulated data*, *this agent may not exceed
@@ -14,7 +14,7 @@ checked before anything runs, rather than conventions enforced by code review.
 The crate publishes as `axon-lang`; the library import is `use axon::*`.
 
 > **The language reference, the design papers and the full documentation live in
-> the [repository README](https://github.com/Bemarking/axon-lang).** This page is
+> the [repository README](https://github.com/VelitRicardo/axon-lang).** This page is
 > the crate's landing page: what you get, how to install it, and how to watch it
 > refuse something.
 
@@ -102,12 +102,12 @@ skip the server, database and HTTP stack entirely.
 Only needed to execute flows against real backends — never for `axon check`,
 `axon compile`, `axon dossier`, `axon audit` or `axon run --tool-mode stub`.
 Seven backends are supported (Anthropic, OpenAI, Gemini, Kimi, GLM, OpenRouter,
-Ollama); see the [repository README](https://github.com/Bemarking/axon-lang) for
+Ollama); see the [repository README](https://github.com/VelitRicardo/axon-lang) for
 the environment variables each expects.
 
 ## License
 
 AGPL-3.0-or-later — see
-[LICENSE](https://github.com/Bemarking/axon-lang/blob/master/LICENSE).
+[LICENSE](https://github.com/VelitRicardo/axon-lang/blob/master/LICENSE).
 Commercial licensing and the enterprise layer are described in the
-[repository](https://github.com/Bemarking/axon-lang).
+[repository](https://github.com/VelitRicardo/axon-lang).

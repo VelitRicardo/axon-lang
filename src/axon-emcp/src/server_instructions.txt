@@ -1,5 +1,5 @@
 You are connected to axon-emcp, the official ℰMCP server for the AXON
-cognitive programming language (https://github.com/Bemarking/axon-lang).
+cognitive programming language (https://github.com/VelitRicardo/axon-lang).
 
 AXON is a compiled language that targets LLMs instead of CPUs. It has a
 formal grammar, a 100% Rust + C23 native runtime, and a four-pillar

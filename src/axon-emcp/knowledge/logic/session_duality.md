@@ -13,10 +13,10 @@ the two roles of the bound session are **algebraic duals** under
 the Caires-Pfenning session-types calculus.
 
 This page is the reference for the rules. The implementation lives
-in [`axon-frontend/src/session.rs`](https://github.com/Bemarking/axon-lang/blob/master/axon-frontend/src/session.rs)
-and [`axon-frontend/src/multiparty.rs`](https://github.com/Bemarking/axon-lang/blob/master/axon-frontend/src/multiparty.rs);
+in [`axon-frontend/src/session.rs`](https://github.com/VelitRicardo/axon-lang/blob/master/axon-frontend/src/session.rs)
+and [`axon-frontend/src/multiparty.rs`](https://github.com/VelitRicardo/axon-lang/blob/master/axon-frontend/src/multiparty.rs);
 the math is in
-[`docs/papers/paper_websocket_cognitive_primitive.md`](https://github.com/Bemarking/axon-lang/blob/master/docs/papers/paper_websocket_cognitive_primitive.md).
+[`docs/papers/paper_websocket_cognitive_primitive.md`](https://github.com/VelitRicardo/axon-lang/blob/master/docs/papers/paper_websocket_cognitive_primitive.md).
 
 ## The four-pillar §41 algebra
 

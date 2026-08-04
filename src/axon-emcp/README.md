@@ -1,7 +1,7 @@
 # `axon-emcp`
 
 > The official ℰMCP (Epistemic Model Context Protocol) server for
-> [AXON](https://github.com/Bemarking/axon-lang) — a stdio JSON-RPC 2.0
+> [AXON](https://github.com/VelitRicardo/axon-lang) — a stdio JSON-RPC 2.0
 > Model Context Protocol server that exposes the AXON language to AI
 > coding agents (Claude Code, Codex, Cursor, Continue, Cline, …).
 
@@ -218,6 +218,6 @@ direct gRPC push both consume the same in-process snapshot.
 
 ## License
 
-MIT. See [the repository](https://github.com/Bemarking/axon-lang) for
+MIT. See [the repository](https://github.com/VelitRicardo/axon-lang) for
 the full sources, the knowledge corpus under `src/knowledge/`, and the
 contributor guide.

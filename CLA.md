@@ -18,7 +18,7 @@ contributions, which does not affect past contributions).
 
 We use the [cla-assistant.io](https://cla-assistant.io/) GitHub App to
 collect signatures: the first time you open a pull request against
-`Bemarking/axon-lang`, the bot will ask you to comment a signature
+`VelitRicardo/axon-lang`, the bot will ask you to comment a signature
 phrase on the PR. Your signature is recorded against your GitHub
 account + the email associated with your commits.
 
@@ -47,7 +47,7 @@ Grafana Loki, CockroachDB, MariaDB, Qt, etc.). The CLA is the
 standard legal instrument that makes the pattern work.
 
 The full architecture is documented in
-[the axon-enterprise `LICENSING.md`](https://github.com/Bemarking/axon-enterprise/blob/master/LICENSING.md).
+[the axon-enterprise `LICENSING.md`](https://github.com/VelitRicardo/axon-enterprise/blob/master/LICENSING.md).
 
 ---
 
@@ -204,7 +204,7 @@ employer's permission BEFORE signing this Individual CLA (Section A).
 
 ## C. How to sign
 
-The first time You open a pull request against `Bemarking/axon-lang`,
+The first time You open a pull request against `VelitRicardo/axon-lang`,
 the [cla-assistant.io](https://cla-assistant.io/) GitHub App will
 post a comment on Your PR with a signing link. Click the link,
 authenticate with GitHub, and confirm that You have read and agree to

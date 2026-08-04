@@ -1,6 +1,6 @@
 # axon-csys
 
-C23 metal-bound kernels for [axon-lang](https://github.com/Bemarking/axon-lang).
+C23 metal-bound kernels for [axon-lang](https://github.com/VelitRicardo/axon-lang).
 
 Fase 25 — *Silicon + Cognition (sesión 1)*. This crate is the Rust shim
 around a small set of carefully chosen C23 kernels. The C side handles

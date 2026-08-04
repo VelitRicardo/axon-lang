@@ -12,7 +12,7 @@ and maintained by **Ricardo Velit** as part of a dual-license posture
 (AGPL-3.0 for the public + commercial relicensing for the
 `axon-enterprise` product). The dual-license architecture is
 documented in
-[the axon-enterprise `LICENSING.md`](https://github.com/Bemarking/axon-enterprise/blob/master/LICENSING.md).
+[the axon-enterprise `LICENSING.md`](https://github.com/VelitRicardo/axon-enterprise/blob/master/LICENSING.md).
 
 This means every contributor must sign the
 [Contributor License Agreement (CLA)](./CLA.md) before their PR can
@@ -23,7 +23,7 @@ for the full reasoning + the legal text.
 
 ## Quick-start contribution flow
 
-1. **Fork** `Bemarking/axon-lang` to your own GitHub account.
+1. **Fork** `VelitRicardo/axon-lang` to your own GitHub account.
 2. **Clone** your fork locally + create a topic branch:
    ```bash
    git clone git@github.com:<YOU>/axon-lang.git
@@ -47,7 +47,7 @@ for the full reasoning + the legal text.
    ```
    The `-s` flag adds a `Signed-off-by:` line (good practice, even
    though we use the CLA-assistant bot for the formal signature).
-6. **Open a pull request** against `Bemarking/axon-lang:master`.
+6. **Open a pull request** against `VelitRicardo/axon-lang:master`.
 7. **Sign the CLA** when the [cla-assistant.io](https://cla-assistant.io/)
    bot prompts you on your first PR. One-click for individuals; see
    [`CLA.md`](./CLA.md#b-corporate-contributor-license-agreement) for
@@ -116,8 +116,8 @@ Areas where we'd particularly welcome help:
 
 | Question | Channel |
 |---|---|
-| General discussion | [GitHub Discussions](https://github.com/Bemarking/axon-lang/discussions) |
-| Bug reports | [GitHub Issues](https://github.com/Bemarking/axon-lang/issues) |
+| General discussion | [GitHub Discussions](https://github.com/VelitRicardo/axon-lang/discussions) |
+| Bug reports | [GitHub Issues](https://github.com/VelitRicardo/axon-lang/issues) |
 | Security vulnerabilities | [security@bemarking.com.co](mailto:security@bemarking.com.co) — see [SECURITY.md](./SECURITY.md) |
 | Commercial license inquiries | [licensing@bemarking.com.co](mailto:licensing@bemarking.com.co) |
 | CLA / legal | [legal@bemarking.com.co](mailto:legal@bemarking.com.co) |

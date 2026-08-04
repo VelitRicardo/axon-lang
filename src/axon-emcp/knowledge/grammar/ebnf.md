@@ -11,9 +11,9 @@ needs**: program structure, declarations, the flow body, type
 expressions, and the session-types fragment.
 
 The **full canonical EBNF** lives in the language paper
-[`docs/papers/paper_axon_language.md`](https://github.com/Bemarking/axon-lang/blob/master/docs/papers/paper_axon_language.md);
+[`docs/papers/paper_axon_language.md`](https://github.com/VelitRicardo/axon-lang/blob/master/docs/papers/paper_axon_language.md);
 the parser implementation lives in
-[`axon-frontend/src/parser.rs`](https://github.com/Bemarking/axon-lang/blob/master/axon-frontend/src/parser.rs).
+[`axon-frontend/src/parser.rs`](https://github.com/VelitRicardo/axon-lang/blob/master/axon-frontend/src/parser.rs).
 This abridged version is curated for agent consumption: tokens that
 matter, productions that compile, omissions clearly marked.
 

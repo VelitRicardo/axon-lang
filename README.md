@@ -4786,7 +4786,7 @@ redirects to. It installs the `axon` binary — all 28 subcommands, one artefact
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 # Clone and build
-git clone https://github.com/Bemarking/axon-lang.git
+git clone https://github.com/VelitRicardo/axon-lang.git
 cd axon-lang/axon-rs
 cargo build --release
 
@@ -5250,7 +5250,7 @@ author and copyright holder, Ricardo Velit — write to
 [licensing@bemarking.com.co](mailto:licensing@bemarking.com.co) for
 terms. The dual-license architecture (AGPL public + commercial
 relicensing) is documented in
-[the axon-enterprise `LICENSING.md`](https://github.com/Bemarking/axon-enterprise/blob/master/LICENSING.md).
+[the axon-enterprise `LICENSING.md`](https://github.com/VelitRicardo/axon-enterprise/blob/master/LICENSING.md).
 
 ## Authors
 

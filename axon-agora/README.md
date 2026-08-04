@@ -1,6 +1,6 @@
 # axon-agora
 
-**The first official library of [axon-lang](https://github.com/Bemarking/axon-lang).** Governed
+**The first official library of [axon-lang](https://github.com/VelitRicardo/axon-lang).** Governed
 native connectors for **LinkedIn**, **Facebook Pages**, **Instagram**, and **TikTok**, so a
 cognitive agent can act directly inside those networks — read comments and metrics, moderate and
 reply, edit and publish — with zero human input at execution time, as one step inside a larger
