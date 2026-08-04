@@ -39,7 +39,7 @@ is kept in sync with the crate version.
 
 The publish flow needs a one-time GitHub OAuth handshake with the
 `mcp-publisher` CLI — that authenticates the publisher under the
-`io.github.Bemarking/*` namespace.
+`io.github.VelitRicardo/*` namespace.
 
 ```bash
 # (a) Install the publisher CLI:
@@ -52,7 +52,7 @@ brew install mcp-publisher    # macOS / Linuxbrew
 mcp-publisher validate src/axon-emcp/server.json
 
 # (c) One-time interactive GitHub OAuth login (opens a browser to
-# grant the `io.github.Bemarking/*` namespace; the token is cached at
+# grant the `io.github.VelitRicardo/*` namespace; the token is cached at
 # `~/.config/mcp-publisher/token.json` for subsequent publishes):
 mcp-publisher login github
 
