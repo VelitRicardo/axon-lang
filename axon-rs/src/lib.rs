@@ -310,6 +310,11 @@ pub mod flow_execution_event;
 pub mod resilient_backend;
 pub mod retry_policy;
 pub mod runner;
+// §Fase 118.a — the version string in a leaf module with no dependencies. It
+// used to live in `runner`, which put the whole flow executor (sqlx, reqwest,
+// tokio, axum, axon-csys) into the reachable set of every compiler-side
+// subcommand that wanted a string literal. See `version.rs`.
+pub mod version;
 // §Fase 40.b — public shield-scanner registration hook. OSS ships no
 // scanners (identity); enterprise vertical crates register HIPAA/legal/AML
 // scanners here at boot. The `shield apply` handler consults it.

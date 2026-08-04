@@ -49,12 +49,15 @@ use crate::tool_validator::{self, EffectTracker};
 use crate::type_checker::TypeChecker;
 
 /// Single source of truth for the AXON version string.
-/// Resolved at compile time from `[package].version` in `Cargo.toml`,
-/// so a single bump there propagates to every caller. Eliminates the
-/// drift that previously had `AXON_VERSION` redeclared as a string
-/// literal in five files (audit_cli.rs, compiler.rs, main.rs, repl.rs,
-/// runner.rs) — each carrying a different stale value.
-pub const AXON_VERSION: &str = env!("CARGO_PKG_VERSION");
+///
+/// §Fase 118.a — **the definition moved to [`crate::version`]**, a leaf module
+/// with no dependencies. It lived here because centralising it killed a real
+/// drift bug (five files each declaring their own stale literal), but `runner`
+/// is the flow executor: importing a constant from it dragged `sqlx`,
+/// `reqwest`, `tokio`, `axum` and `axon-csys` into the reachable set of every
+/// compiler-side subcommand. This re-export keeps `axon::runner::AXON_VERSION`
+/// resolving for existing call sites; new code should name `crate::version`.
+pub use crate::version::AXON_VERSION;
 
 // ── ANSI helpers ─────────────────────────────────────────────────────────────
 

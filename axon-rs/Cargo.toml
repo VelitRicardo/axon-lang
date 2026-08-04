@@ -93,6 +93,13 @@ axum = { version = "0.8", features = ["ws"] }
 tokio-tungstenite = { version = "0.29", features = ["rustls-tls-webpki-roots"] }
 tower = "0.5"
 tower-http = { version = "0.6", features = ["cors"] }
+# §Fase 118.a — the HTTP primitives (`HeaderMap`, `HeaderValue`, `StatusCode`)
+# as a direct dependency rather than through `axum::http::…`. They ARE the `http`
+# crate — axum only re-exports them — and modules like `auth_scope` need header
+# types, not a web framework. Naming the real source lets those modules stay out
+# of the `server` feature. Zero cost: `http` 1.x is already resolved in the tree
+# via axum / reqwest / hyper.
+http = "1"
 http-body-util = "0.1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["json", "fmt", "env-filter"] }

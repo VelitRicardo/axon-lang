@@ -28,7 +28,7 @@ use crate::ir_nodes::IRProgram;
 use crate::lexer::Lexer;
 use crate::parser::Parser;
 use crate::pcc::{check_bundle, generate_all_proofs, CheckOutcome, ProofBundle};
-use crate::runner::AXON_VERSION;
+use crate::version::AXON_VERSION;
 
 /// Compile a `.axon` file to its IR, or return a process exit code on
 /// failure. Mirrors `audit_cli::compile_file` (lex → parse →

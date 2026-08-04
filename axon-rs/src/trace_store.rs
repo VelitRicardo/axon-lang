@@ -742,7 +742,7 @@ pub fn entry_to_span(entry: &TraceEntry) -> TraceSpan {
         status: entry.status.as_str().to_string(),
         resource: TraceSpanResource {
             service_name: "axon-server".to_string(),
-            service_version: crate::runner::AXON_VERSION.to_string(),
+            service_version: crate::version::AXON_VERSION.to_string(),
             source_file: entry.source_file.clone(),
             backend: entry.backend.clone(),
             client_key: entry.client_key.clone(),

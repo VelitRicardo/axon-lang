@@ -47,7 +47,11 @@
 
 use std::collections::BTreeSet;
 
-use axum::http::HeaderMap;
+// §Fase 118.a — `http::HeaderMap`, not `axum::http::HeaderMap`. Same type: axum
+// re-exports it. This module is about capability slugs, and its only tie to the
+// web framework was a header type, so naming the real crate lets it stay outside
+// the `server` feature.
+use http::HeaderMap;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
 use serde_json::Value;
@@ -430,7 +434,7 @@ pub fn check_grantable(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::http::HeaderValue;
+    use http::HeaderValue;
 
     fn jwt_with_caps(caps: &[&str]) -> String {
         let header = URL_SAFE_NO_PAD.encode(b"{\"alg\":\"none\",\"typ\":\"JWT\"}");

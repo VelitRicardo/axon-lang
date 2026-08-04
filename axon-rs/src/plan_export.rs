@@ -39,7 +39,7 @@ impl SchemaHeader {
         SchemaHeader {
             doc_type: doc_type.to_string(),
             version: "1.0.0".to_string(),
-            axon_version: crate::runner::AXON_VERSION.to_string(),
+            axon_version: crate::version::AXON_VERSION.to_string(),
         }
     }
 }

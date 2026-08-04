@@ -152,7 +152,7 @@ impl ReportBuilder {
     pub fn build(self, success: bool, hooks: &HookManager) -> ExecutionReport {
         ExecutionReport {
             _schema: SchemaHeader::new("axon.report"),
-            axon_version: crate::runner::AXON_VERSION.to_string(),
+            axon_version: crate::version::AXON_VERSION.to_string(),
             source_file: self.source_file,
             backend: self.backend,
             mode: self.mode,
