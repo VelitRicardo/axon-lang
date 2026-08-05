@@ -87,9 +87,53 @@ async fn seed(backend: &PostgresStoreBackend) {
     exec(
         backend,
         &format!(
+            // §Fase 118.a — the summaries carry DISTINCT topics on purpose.
+            //
+            // `navigate` ranks the frontier by `LexicalGain`, whose marginal
+            // gain is "query tokens this candidate's title has that the already-
+            // selected docs do NOT cover". With the old fixture — both summaries
+            // `"<CLIENT> client memory"` and the query `"recall"` — no title
+            // shared a token with the query, so the gain was 0, fell below
+            // `epsilon`, and the walk stopped dead at its seed. Identical titles
+            // would have failed the same way: BRAVO's marginal gain over ALPHA
+            // would be 0 because every token was already covered.
+            //
+            // Distinct topics + a query spanning both is the only fixture in
+            // which the walk CAN cross from one client to the other — which is
+            // precisely the crossing §1 must prove the `where:` filter prevents.
             "INSERT INTO {DOC_STORE} (id, tenant_id, summary) VALUES \
-             ('a1','{TENANT_A}','ALPHA client memory'), \
-             ('b1','{TENANT_B}','BRAVO client memory')"
+             ('a1','{TENANT_A}','ALPHA client onboarding notes'), \
+             ('b1','{TENANT_B}','BRAVO client billing dispute')"
+        ),
+    )
+    .await;
+    // §Fase 118.a — THE EDGE THIS FIXTURE WAS MISSING, and without which the
+    // whole suite proved nothing.
+    //
+    // `navigate` is a GRAPH WALK, not a `SELECT`: `run_navigate` seeds at the
+    // lowest-id document and traverses `edge_store`. This fixture created the
+    // edge table and never inserted a row — so the walk could only ever return
+    // its own seed (`a1`, ALPHA), and `b1` was unreachable **whether or not the
+    // `where:` filter was applied**. That made §2's negative control impossible
+    // to pass and, worse, made §1's isolation assertion VACUOUS: `!contains
+    // ("BRAVO")` held for a reason that had nothing to do with the filter.
+    //
+    // The edge belongs to sub-tenant A and points at B's document — which is
+    // precisely the kivi brief #27 §C leak vector: A's own graph reaching into
+    // another client's memory. With it seeded:
+    //   * unfiltered ⇒ docs {a1,b1} + edge ⇒ the walk reaches BRAVO (§2 control),
+    //   * filtered to A ⇒ docs {a1} only ⇒ the edge dangles and BRAVO cannot
+    //     surface (§1 isolation) — and now §1 passes BECAUSE of the filter.
+    exec(
+        backend,
+        &format!(
+            // `etype` MUST come from the §64 closed catalog
+            // (cite/elaborate/corroborate/depend/implement/exemplify/contradict/
+            // supersede) — `Corpus::from_rows` SILENTLY SKIPS an off-catalog
+            // edge, so a typo here reads as "no such edge" and this test would
+            // go back to proving nothing.
+            "INSERT INTO {EDGE_STORE} (from_id, to_id, tenant_id, etype, weight) VALUES \
+             ('a1','b1','{TENANT_A}','elaborate', 1.0)"
         ),
     )
     .await;
@@ -141,7 +185,10 @@ fn navigate_node(where_expr: &str) -> IRNavigateStep {
         source_column: 0,
         pix_ref: CORPUS.to_string(),
         corpus_ref: CORPUS.to_string(),
-        query: "recall".to_string(),
+        // §Fase 118.a — spans BOTH clients' topics. A query matching nothing (the
+        // old `"recall"`) gives every candidate a marginal gain of 0, so the walk
+        // never leaves its seed and the negative control below cannot fire.
+        query: "onboarding billing".to_string(),
         trail_enabled: false,
         output_name: "hits".to_string(),
         seed: String::new(),
