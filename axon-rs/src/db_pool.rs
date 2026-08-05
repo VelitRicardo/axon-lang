@@ -11,7 +11,7 @@
 
 use crate::storage::StorageError;
 use sqlx::postgres::PgPoolOptions;
-use sqlx::PgPool;
+pub use sqlx::PgPool;
 
 /// Create a PostgreSQL connection pool with production defaults.
 pub async fn create_pool(database_url: &str) -> Result<PgPool, StorageError> {

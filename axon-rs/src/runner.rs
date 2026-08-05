@@ -1169,7 +1169,7 @@ async fn execute_sql_store_step_async(
     // unique &mut borrower of the map for its execution and the map
     // itself is owned by the outer scope (`execute_server_flow`'s
     // single block_on_store, or a test scope's single async wrapper).
-    pinned_conns: &mut std::collections::HashMap<String, sqlx::pool::PoolConnection<sqlx::Postgres>>,
+    pinned_conns: &mut std::collections::HashMap<String, crate::pinned_conn::PinnedConn>,
     step_type: &str,
     store_name: &str,
     memory_expr: &str,
@@ -1248,7 +1248,7 @@ async fn execute_sql_store_step_async(
     // §Fase 37.x.j.10 — no longer wrapped in block_on_store. The
     // async fn runs on the caller's runtime, so the pin's reactor
     // handles stay valid for every `.await` below.
-    let mut pin: Option<sqlx::pool::PoolConnection<sqlx::Postgres>> =
+    let mut pin: Option<crate::pinned_conn::PinnedConn> =
         pinned_conns.remove(&store_name);
 
     // §Fase 37.x.j (D1) — resolve the SHARED backend from the registry
@@ -1301,7 +1301,7 @@ async fn execute_sql_store_step_async(
                 // physical Postgres backend connection acquired at
                 // flow start — Supavisor/PgBouncer cannot swap.
                 let mut store_conn = match &mut pin {
-                    Some(p) => crate::store::store_conn::StoreConn::Pinned(p),
+                    Some(p) => p.as_store_conn(),
                     None => crate::store::store_conn::StoreConn::Pool(backend.pool()),
                 };
                 let stream_outcome = row_stream::stream_retrieve(
@@ -1338,7 +1338,7 @@ async fn execute_sql_store_step_async(
             "purge" => {
                 // §Fase 37.x.j (D1) — pinned/pool dispatch (see retrieve).
                 let mut store_conn = match &mut pin {
-                    Some(p) => crate::store::store_conn::StoreConn::Pinned(p),
+                    Some(p) => p.as_store_conn(),
                     None => crate::store::store_conn::StoreConn::Pool(backend.pool()),
                 };
                 let n = backend
@@ -1356,7 +1356,7 @@ async fn execute_sql_store_step_async(
                 )?;
                 // §Fase 37.x.j (D1) — pinned/pool dispatch.
                 let mut store_conn = match &mut pin {
-                    Some(p) => crate::store::store_conn::StoreConn::Pinned(p),
+                    Some(p) => p.as_store_conn(),
                     None => crate::store::store_conn::StoreConn::Pool(backend.pool()),
                 };
                 let n = backend.insert(&mut store_conn, &store_name, &data).await?;
@@ -1365,7 +1365,7 @@ async fn execute_sql_store_step_async(
             "mutate" => {
                 // §Fase 37.x.j (D1) — pinned/pool dispatch.
                 let mut store_conn = match &mut pin {
-                    Some(p) => crate::store::store_conn::StoreConn::Pinned(p),
+                    Some(p) => p.as_store_conn(),
                     None => crate::store::store_conn::StoreConn::Pool(backend.pool()),
                 };
                 let n = backend
@@ -1412,7 +1412,7 @@ async fn execute_sql_store_step_async(
 #[allow(dead_code)]
 fn execute_sql_store_step(
     store_registry: &StoreRegistry,
-    pinned_conns: &mut std::collections::HashMap<String, sqlx::pool::PoolConnection<sqlx::Postgres>>,
+    pinned_conns: &mut std::collections::HashMap<String, crate::pinned_conn::PinnedConn>,
     step_type: &str,
     store_name: &str,
     memory_expr: &str,
@@ -1580,7 +1580,7 @@ async fn dispatch_structural(
     system_prompt: &str,
     pinned_conns: &mut std::collections::HashMap<
         String,
-        sqlx::pool::PoolConnection<sqlx::Postgres>,
+        crate::pinned_conn::PinnedConn,
     >,
     nd: &NavDispatch,
     histories: &std::sync::Arc<
@@ -1678,7 +1678,7 @@ async fn execute_real_async(
     // §Fase 37.x.j (D1) — flow-scoped pinned connection map, populated
     // by `execute_server_flow` (server-driven flows) and empty for
     // CLI / pre-37.x.j callers.
-    pinned_conns: &mut std::collections::HashMap<String, sqlx::pool::PoolConnection<sqlx::Postgres>>,
+    pinned_conns: &mut std::collections::HashMap<String, crate::pinned_conn::PinnedConn>,
     api_key_override: Option<&str>,
     // §Fase 65.A — the dispatcher-shared corpus state for structural `navigate`.
     // `Some` on the server path (built from the IR); `None` on the CLI path.
@@ -2830,7 +2830,7 @@ fn execute_real(
     report: &mut ReportBuilder,
     registry: &ToolRegistry,
     store_registry: &StoreRegistry,
-    pinned_conns: &mut std::collections::HashMap<String, sqlx::pool::PoolConnection<sqlx::Postgres>>,
+    pinned_conns: &mut std::collections::HashMap<String, crate::pinned_conn::PinnedConn>,
     api_key_override: Option<&str>,
 ) -> Result<(bool, Vec<TraceEvent>), backend::BackendError> {
     block_on_store(execute_real_async(
@@ -3498,7 +3498,7 @@ async fn collect_via_dispatcher(
     // coherence (§37.x.j) — the same discipline the streaming path applies.
     pinned: std::sync::Arc<
         std::sync::Mutex<
-            std::collections::HashMap<String, sqlx::pool::PoolConnection<sqlx::Postgres>>,
+            std::collections::HashMap<String, crate::pinned_conn::PinnedConn>,
         >,
     >,
     // §Fase 72.c — the active `budget { … }` gate when a budgeted daemon runs
@@ -4186,7 +4186,7 @@ pub fn execute_server_flow(
                     std::sync::Mutex<
                         std::collections::HashMap<
                             String,
-                            sqlx::pool::PoolConnection<sqlx::Postgres>,
+                            crate::pinned_conn::PinnedConn,
                         >,
                     >,
                 > = std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new()));
@@ -4361,7 +4361,7 @@ pub fn execute_server_flow(
         block_on_store(async {
             let mut pinned_conns: std::collections::HashMap<
                 String,
-                sqlx::pool::PoolConnection<sqlx::Postgres>,
+                crate::pinned_conn::PinnedConn,
             > = std::collections::HashMap::new();
 
             // — 1. Eager pin acquisition on THIS runtime.
@@ -4766,7 +4766,7 @@ pub fn run_run(
     // keeps CLI smoke tests byte-identical to pre-37.x.j).
     let mut cli_pinned_conns: std::collections::HashMap<
         String,
-        sqlx::pool::PoolConnection<sqlx::Postgres>,
+        crate::pinned_conn::PinnedConn,
     > = std::collections::HashMap::new();
     let (success, events) = if tool_mode == "real" {
         match execute_real(&units, backend, file, use_color, trace, stream, output_fmt, &mut report, &registry, &store_registry, &mut cli_pinned_conns, None) {

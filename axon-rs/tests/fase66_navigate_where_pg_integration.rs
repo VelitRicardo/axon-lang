@@ -151,7 +151,8 @@ fn navigate_node(where_expr: &str) -> IRNavigateStep {
 }
 
 async fn navigate(registry: &Arc<StoreRegistry>, where_expr: &str, tenant_id: &str) -> String {
-    let pins: Arc<Mutex<HashMap<String, sqlx::pool::PoolConnection<sqlx::Postgres>>>> =
+    // §Fase 118.a / D118.2 — keyed on the PORT, not the driver type.
+    let pins: Arc<Mutex<HashMap<String, axon::pinned_conn::PinnedConn>>> =
         Arc::new(Mutex::new(HashMap::new()));
     for store in [DOC_STORE, EDGE_STORE] {
         if let StoreHandle::Postgres(b) = registry.resolve(store).expect("resolve") {

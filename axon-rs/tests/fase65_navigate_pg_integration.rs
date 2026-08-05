@@ -242,7 +242,8 @@ async fn ctx_for_tenant(
     DispatchCtx,
     tokio::sync::mpsc::UnboundedReceiver<axon::flow_execution_event::FlowExecutionEvent>,
 ) {
-    let pins: Arc<Mutex<HashMap<String, sqlx::pool::PoolConnection<sqlx::Postgres>>>> =
+    // §Fase 118.a / D118.2 — keyed on the PORT, not the driver type.
+    let pins: Arc<Mutex<HashMap<String, axon::pinned_conn::PinnedConn>>> =
         Arc::new(Mutex::new(HashMap::new()));
     for store in [DOC_STORE, EDGE_STORE] {
         let backend = match registry.resolve(store).expect("resolve store") {
@@ -254,15 +255,26 @@ async fn ctx_for_tenant(
         let mut pin = backend.acquire_pin().await.expect("acquire pin");
         // Set the §40 tenant GUC (as the privileged owner), THEN drop to the
         // unprivileged RLS-bound role so the policy actually filters the reads.
-        sqlx::query("SELECT set_config('axon.current_tenant', $1, false)")
-            .bind(tenant)
-            .execute(&mut *pin)
+        //
+        // §Fase 118.a / D118.2 — both statements go through the port's
+        // `as_store_conn()` rather than `&mut *pin`. This is the case that
+        // proves the port did not lose anything that mattered: these are
+        // SESSION-level statements, and they are only correct because the pin is
+        // a stable session — run them on the pool and the GUC lands on a
+        // connection the later reads may never see again. `StoreConn` re-borrows
+        // per query, so both run on the same physical backend and the pin is
+        // still owned afterwards.
+        {
+            let mut conn = pin.as_store_conn();
+            conn.execute(
+                sqlx::query("SELECT set_config('axon.current_tenant', $1, false)").bind(tenant),
+            )
             .await
             .expect("set tenant GUC");
-        sqlx::query("SET ROLE fase65_app")
-            .execute(&mut *pin)
-            .await
-            .expect("set rls role");
+            conn.execute(sqlx::query("SET ROLE fase65_app"))
+                .await
+                .expect("set rls role");
+        }
         pins.lock().unwrap().insert(store.to_string(), pin);
     }
 

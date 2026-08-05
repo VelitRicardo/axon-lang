@@ -341,6 +341,13 @@ pub mod execution_result;
 // with the Python CLI. It reads an env var; it lived in `axon_server`, and
 // `main.rs` called it there while building `ServerConfig`.
 pub mod env_flags;
+// §Fase 118.a / D118.2 — the pinned-connection PORT. The executor used to name
+// `sqlx::pool::PoolConnection<sqlx::Postgres>` in its own signatures, threading a
+// concrete database type through `runner` -> `flow_dispatcher` ->
+// `streaming_via_dispatcher`, i.e. the cognition path. It now names `PinnedConn`
+// and cannot reach the driver at all. See the module docs for why a newtype beat
+// a trait (the executor never calls a method on a pin — it only holds one).
+pub mod pinned_conn;
 // §Fase 40.b — public shield-scanner registration hook. OSS ships no
 // scanners (identity); enterprise vertical crates register HIPAA/legal/AML
 // scanners here at boot. The `shield apply` handler consults it.

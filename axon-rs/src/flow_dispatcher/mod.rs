@@ -552,7 +552,7 @@ pub struct DispatchCtx {
         std::sync::Mutex<
             std::collections::HashMap<
                 String,
-                sqlx::pool::PoolConnection<sqlx::Postgres>,
+                crate::pinned_conn::PinnedConn,
             >,
         >,
     >,
@@ -853,7 +853,7 @@ impl DispatchCtx {
             std::sync::Mutex<
                 std::collections::HashMap<
                     String,
-                    sqlx::pool::PoolConnection<sqlx::Postgres>,
+                    crate::pinned_conn::PinnedConn,
                 >,
             >,
         >,

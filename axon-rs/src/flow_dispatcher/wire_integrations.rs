@@ -693,7 +693,7 @@ pub async fn run_persist(
             // it. The shared `Arc<Mutex<HashMap>>` lock is held only
             // across the take + insert (microseconds); the SQL dispatch
             // itself runs without the mutex.
-            let mut pin: Option<sqlx::pool::PoolConnection<sqlx::Postgres>> = {
+            let mut pin: Option<crate::pinned_conn::PinnedConn> = {
                 ctx.pinned_conns.lock().unwrap().remove(&node.store_name)
             };
             if pin.is_none() {
@@ -704,7 +704,7 @@ pub async fn run_persist(
             }
             let n = {
                 let mut store_conn = match &mut pin {
-                    Some(p) => crate::store::store_conn::StoreConn::Pinned(p),
+                    Some(p) => p.as_store_conn(),
                     None => crate::store::store_conn::StoreConn::Pool(backend.pool()),
                 };
                 backend
@@ -827,7 +827,7 @@ pub async fn run_retrieve(
             // also fails (pool exhausted, etc.) the dispatch falls
             // through to `StoreConn::Pool` (legacy degraded path,
             // still functional; only the race protection is lost).
-            let mut pin: Option<sqlx::pool::PoolConnection<sqlx::Postgres>> = {
+            let mut pin: Option<crate::pinned_conn::PinnedConn> = {
                 ctx.pinned_conns.lock().unwrap().remove(&node.store_name)
             };
             if pin.is_none() {
@@ -854,7 +854,7 @@ pub async fn run_retrieve(
             }
             let stream_outcome_result = {
                 let mut store_conn = match &mut pin {
-                    Some(p) => crate::store::store_conn::StoreConn::Pinned(p),
+                    Some(p) => p.as_store_conn(),
                     None => crate::store::store_conn::StoreConn::Pool(backend.pool()),
                 };
                 row_stream::stream_retrieve(
@@ -957,7 +957,7 @@ pub async fn read_all_store_rows(
             // §37.x.j (D2/D6.a) — take the pin out of the shared map; lazily
             // acquire on a miss so this read shares the flow's single physical
             // tenant-scoped connection, then restore it.
-            let mut pin: Option<sqlx::pool::PoolConnection<sqlx::Postgres>> =
+            let mut pin: Option<crate::pinned_conn::PinnedConn> =
                 { ctx.pinned_conns.lock().unwrap().remove(store_name) };
             if pin.is_none() {
                 if let Ok(p) = backend.acquire_pin().await {
@@ -966,7 +966,7 @@ pub async fn read_all_store_rows(
             }
             let outcome = {
                 let mut store_conn = match &mut pin {
-                    Some(p) => crate::store::store_conn::StoreConn::Pinned(p),
+                    Some(p) => p.as_store_conn(),
                     None => crate::store::store_conn::StoreConn::Pool(backend.pool()),
                 };
                 row_stream::stream_retrieve(
@@ -1108,7 +1108,7 @@ pub async fn persist_reinforcements(
     let Ok(Some((backend, _floor))) = resolve_pg_backend(ctx, edge_store) else {
         return Ok(());
     };
-    let mut pin: Option<sqlx::pool::PoolConnection<sqlx::Postgres>> =
+    let mut pin: Option<crate::pinned_conn::PinnedConn> =
         { ctx.pinned_conns.lock().unwrap().remove(edge_store) };
     if pin.is_none() {
         if let Ok(p) = backend.acquire_pin().await {
@@ -1117,7 +1117,7 @@ pub async fn persist_reinforcements(
     }
     {
         let mut store_conn = match &mut pin {
-            Some(p) => crate::store::store_conn::StoreConn::Pinned(p),
+            Some(p) => p.as_store_conn(),
             None => crate::store::store_conn::StoreConn::Pool(backend.pool()),
         };
         for (from_id, to_id, etype, delta) in plan {
@@ -1184,7 +1184,7 @@ pub async fn run_mutate(
             // §Fase 37.x.j (D2, D6.a) — take-pin / lazy-acquire-on-miss
             // / dispatch / return-pin; see `run_persist` and
             // `run_retrieve` sites for the full rationale.
-            let mut pin: Option<sqlx::pool::PoolConnection<sqlx::Postgres>> = {
+            let mut pin: Option<crate::pinned_conn::PinnedConn> = {
                 ctx.pinned_conns.lock().unwrap().remove(&node.store_name)
             };
             if pin.is_none() {
@@ -1211,7 +1211,7 @@ pub async fn run_mutate(
             }
             let n = {
                 let mut store_conn = match &mut pin {
-                    Some(p) => crate::store::store_conn::StoreConn::Pinned(p),
+                    Some(p) => p.as_store_conn(),
                     None => crate::store::store_conn::StoreConn::Pool(backend.pool()),
                 };
                 backend
@@ -1281,7 +1281,7 @@ pub async fn run_purge(
         Ok(Some((backend, _floor))) => {
             // §Fase 37.x.j (D2, D6.a) — take-pin / lazy-acquire-on-miss
             // / dispatch / return-pin; see other sites for full rationale.
-            let mut pin: Option<sqlx::pool::PoolConnection<sqlx::Postgres>> = {
+            let mut pin: Option<crate::pinned_conn::PinnedConn> = {
                 ctx.pinned_conns.lock().unwrap().remove(&node.store_name)
             };
             if pin.is_none() {
@@ -1308,7 +1308,7 @@ pub async fn run_purge(
             }
             let n = {
                 let mut store_conn = match &mut pin {
-                    Some(p) => crate::store::store_conn::StoreConn::Pinned(p),
+                    Some(p) => p.as_store_conn(),
                     None => crate::store::store_conn::StoreConn::Pool(backend.pool()),
                 };
                 backend

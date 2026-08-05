@@ -299,7 +299,7 @@ pub async fn run_streaming_via_dispatcher(
         std::sync::Mutex<
             std::collections::HashMap<
                 String,
-                sqlx::pool::PoolConnection<sqlx::Postgres>,
+                crate::pinned_conn::PinnedConn,
             >,
         >,
     > = std::sync::Arc::new(std::sync::Mutex::new(

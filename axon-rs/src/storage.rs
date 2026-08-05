@@ -321,7 +321,13 @@ impl StorageDispatcher {
         StorageDispatcher::InMemory(InMemoryBackend::new())
     }
 
-    pub fn postgres(pool: sqlx::PgPool) -> Self {
+    /// §Fase 118.a / D118.2 — the pool type is named through [`crate::db_pool`],
+    /// the module that owns pool construction, rather than reached for directly
+    /// in `sqlx`. Same type, one fewer module that has to know which driver the
+    /// project uses. This is the `auth_scope` / `auth_middleware` treatment of
+    /// §118.b.2 applied to the storage seam: a module that turns out not to need
+    /// a dependency is worth more than a module that is gated.
+    pub fn postgres(pool: crate::db_pool::PgPool) -> Self {
         StorageDispatcher::Postgres(crate::storage_postgres::PostgresBackend::new(pool))
     }
 }

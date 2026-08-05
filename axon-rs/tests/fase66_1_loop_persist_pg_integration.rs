@@ -107,7 +107,11 @@ async fn loop_over_step_output_persists_resolved_field_values() {
     .await;
 
     let registry = Arc::new(StoreRegistry::build(&store_spec()).expect("registry"));
-    let pins: Arc<Mutex<HashMap<String, sqlx::pool::PoolConnection<sqlx::Postgres>>>> =
+    // §Fase 118.a / D118.2 — the pin map is keyed on the PORT
+    // (`axon::pinned_conn::PinnedConn`), not on `sqlx::pool::PoolConnection`.
+    // That this test had to change is the point: it was reaching for the driver
+    // type to describe something the executor only ever carries.
+    let pins: Arc<Mutex<HashMap<String, axon::pinned_conn::PinnedConn>>> =
         Arc::new(Mutex::new(HashMap::new()));
     if let StoreHandle::Postgres(b) = registry.resolve(EDGE_STORE).expect("resolve") {
         pins.lock()

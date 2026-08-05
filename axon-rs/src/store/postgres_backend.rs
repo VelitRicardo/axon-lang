@@ -1508,9 +1508,14 @@ impl PostgresStoreBackend {
     ///     Postgres unreachable).
     ///   - `StoreError::Connect` if the pool is in a permanently-bad
     ///     state (TLS handshake failure, DNS resolution failure, etc.).
+    /// §Fase 118.a / D118.2 — returns the PORT
+    /// ([`crate::pinned_conn::PinnedConn`]), not a raw
+    /// `PoolConnection<Postgres>`. This module is where the sqlx types
+    /// legitimately live; the executor that holds the result for the rest of the
+    /// flow is not, and used to name the driver type in its own signatures.
     pub async fn acquire_pin(
         &self,
-    ) -> Result<sqlx::pool::PoolConnection<sqlx::Postgres>, StoreError> {
+    ) -> Result<crate::pinned_conn::PinnedConn, StoreError> {
         // §Fase 96.a — under a SESSION pooler or a DIRECT connection, every pool
         // connection is already a coherent, stable session, so the §37.x.j pin
         // (one connection held for the WHOLE flow so ops route through the same
@@ -1534,6 +1539,7 @@ impl PostgresStoreBackend {
         self.pool
             .acquire()
             .await
+            .map(crate::pinned_conn::PinnedConn::new)
             .map_err(|e| StoreError::Connect { source: e.to_string() })
     }
 
