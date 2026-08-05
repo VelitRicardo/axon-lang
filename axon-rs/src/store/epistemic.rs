@@ -54,7 +54,7 @@ use std::fmt;
 
 use crate::emcp::EpistemicTaint;
 use crate::store::filter::SqlValue;
-use crate::store::postgres_backend::StoreRow;
+use crate::store::row::StoreRow;
 
 /// The reserved column an `axonstore` row's epistemic confidence is
 /// read from (at `retrieve`) and written to (at `persist`). A single

@@ -460,7 +460,7 @@ impl StoreRegistry {
 
             // §Fase 113 — derive from the resource, or keep the legacy shape.
             let (dsn_source, capacity) = if spec.resource_ref.is_empty() {
-                (spec.connection.clone(), super::postgres_backend::MAX_POOL_CONNECTIONS)
+                (spec.connection.clone(), super::row::MAX_POOL_CONNECTIONS)
             } else {
                 let res = resources
                     .iter()
@@ -490,7 +490,7 @@ impl StoreRegistry {
                     .capacity
                     .filter(|c| *c > 0)
                     .map(|c| c as u32)
-                    .unwrap_or(super::postgres_backend::MAX_POOL_CONNECTIONS);
+                    .unwrap_or(super::row::MAX_POOL_CONNECTIONS);
                 (addr, cap)
             };
 

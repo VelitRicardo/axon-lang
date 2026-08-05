@@ -42,7 +42,7 @@ use crate::step_deps;
 use crate::store::epistemic;
 use crate::store::filter::SqlValue;
 use crate::store::row_stream;
-use crate::store::postgres_backend::StoreError;
+use crate::store::error::StoreError;
 use crate::store::registry::{StoreBackendKind, StoreRegistry};
 use crate::tool_registry::ToolRegistry;
 use crate::tool_validator::{self, EffectTracker};
@@ -4194,7 +4194,7 @@ pub fn execute_server_flow(
                 // pooler (store ops then acquire per-op, releasing across
                 // cognition). `acquire_pin` also refuses in that mode, but
                 // skipping here avoids the loop's work + a misleading warn.
-                if crate::store::postgres_backend::connection_pinning_enabled() {
+                if crate::store::pooler_mode::connection_pinning_enabled() {
                     for store_name in &needed_pg_stores {
                         if let Ok(crate::store::registry::StoreHandle::Postgres(backend_pool)) =
                             store_registry.resolve(store_name)
@@ -4377,7 +4377,7 @@ pub fn execute_server_flow(
             // misleading warn); store ops then release across cognition.
             for store_name in needed_pg_stores
                 .iter()
-                .filter(|_| crate::store::postgres_backend::connection_pinning_enabled())
+                .filter(|_| crate::store::pooler_mode::connection_pinning_enabled())
             {
                 match store_registry.resolve(store_name) {
                     Ok(crate::store::registry::StoreHandle::Postgres(backend_pool)) => {

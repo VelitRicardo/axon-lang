@@ -22,6 +22,13 @@
 pub mod audit_chain;
 pub mod capability;
 pub mod epistemic;
+/// §Fase 118.b.3 — the axonstore error catalog, dependency-free. See the module
+/// docs: it lived in `postgres_backend` and the driver gate took it hostage.
+pub mod error;
+/// §Fase 118.b.3 — the row shape + pool sizing, dependency-free. See the docs.
+pub mod row;
+/// §Fase 118.b.3 — the §96 pooler-mode decision, dependency-free.
+pub mod pooler_mode;
 pub mod filter;
 pub mod introspect_cli;
 pub mod postgres_backend;
