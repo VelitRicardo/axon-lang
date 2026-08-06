@@ -29,6 +29,10 @@
 
 pub mod backend;
 pub mod continuity_token;
+/// §Fase 119.b — the `mandate` PID controller. `paper_mandate.md` names this
+/// component `density_matrix` and places it in the PEM engine; the name is part
+/// of the specification.
+pub mod density_matrix;
 /// §Fase 119.b — `e(t)` for `mandate`. The paper places the semantic validator
 /// inside the PEM engine (`docs/papers/paper_mandate.md`), so it lives here.
 pub mod semantic_validator;
@@ -45,4 +49,7 @@ pub use self::state::{
 };
 pub use self::semantic_validator::{
     Clause, Constraint, ConstraintSet, Predicate, ValidatorError, Verdict, Violation,
+};
+pub use self::density_matrix::{
+    Control, Controller, GainError, Gains, MandateSpec, Outcome, StabilityBand,
 };
