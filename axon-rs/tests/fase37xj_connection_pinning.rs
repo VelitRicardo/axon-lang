@@ -1,3 +1,9 @@
+//! §Fase 118.b.3 — this suite exercises the SQL data plane (the Postgres
+//! backend, the pinned-connection contract, live introspection), which lives
+//! behind the `postgres` feature. Gated at the file level: the core suites keep
+//! running in a build with no driver.
+#![cfg(feature = "postgres")]
+
 //! §Fase 37.x.j — Connection-Pinned Flow Execution.
 //!
 //! This anchor pins the v1.39.0 substrate that closes the

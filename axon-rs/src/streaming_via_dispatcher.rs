@@ -334,9 +334,10 @@ pub async fn run_streaming_via_dispatcher(
         // cognition; no misleading warn). Doctrine `connections_release_across_cognition`.
         for store_name in needed
             .iter()
-            .filter(|_| crate::store::postgres_backend::connection_pinning_enabled())
+            .filter(|_| crate::store::pooler_mode::connection_pinning_enabled())
         {
             match store_registry.resolve(store_name) {
+                #[cfg(feature = "postgres")]
                 Ok(crate::store::registry::StoreHandle::Postgres(backend)) => {
                     match backend.acquire_pin().await {
                         Ok(conn) => {

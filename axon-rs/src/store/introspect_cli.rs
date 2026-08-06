@@ -30,7 +30,7 @@
 //!     CLI / one-shot operation, not adopter traffic.
 //!
 //!   - Errors propagate as
-//!     [`crate::store::postgres_backend::StoreError`] so the CLI
+//!     [`crate::store::error::StoreError`] so the CLI
 //!     shell renders them with the same v1.37.0 diagnostic shape
 //!     adopters already know.
 

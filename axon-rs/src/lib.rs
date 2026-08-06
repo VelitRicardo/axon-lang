@@ -91,6 +91,8 @@ pub mod dataspace_engine;
 /// §Fase 110.b — Governed Human Notification: the canonical contract
 /// (evidence labels, recipient custody, fail-closed provider port).
 pub mod notification;
+// §Fase 118.b.3 — the sqlx pool builder, behind `postgres`.
+#[cfg(feature = "postgres")]
 pub mod db_pool;
 pub mod deployer;
 pub mod emcp;
@@ -272,6 +274,8 @@ pub mod delivery;
 pub mod lambda_data;
 pub mod lambda_runtime;
 pub mod logging;
+// §Fase 118.b.3 — `sqlx::migrate!` is a compile-time macro over `./migrations`.
+#[cfg(feature = "postgres")]
 pub mod migrations;
 pub mod output;
 pub mod mdn;
@@ -367,6 +371,9 @@ pub mod session_scope;
 pub mod session_store;
 pub mod step_deps;
 pub mod storage;
+// §Fase 118.b.3 — the tenant-scoped RLS storage layer. `storage.rs` (the port +
+// the in-memory backend) stays in every build; only this implementation goes.
+#[cfg(feature = "postgres")]
 pub mod storage_postgres;
 // §Fase 35 — the `axonstore` cognitive data plane runtime. 35.b ships
 // `store::filter` (the parameterized where-expression compiler).

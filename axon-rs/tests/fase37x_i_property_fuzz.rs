@@ -1,3 +1,7 @@
+//! §Fase 118.b.3 — exercises the Postgres schema-resolution helpers, behind the
+//! `postgres` feature.
+#![cfg(feature = "postgres")]
+
 //! §Fase 37.x.i — Property / fuzz pack for the Pooler-Coherent Store
 //! Contract.
 //!
@@ -40,9 +44,8 @@
 use std::collections::HashMap;
 
 use axon::store::filter::{build_pg_where, SqlValue};
-use axon::store::postgres_backend::{
-    is_schema_drift_sqlstate, resolve_from_rows, StoreError,
-};
+use axon::store::error::StoreError;
+use axon::store::postgres_backend::{is_schema_drift_sqlstate, resolve_from_rows};
 
 // ── §0 — Deterministic PRNG (linear congruential, 35.k's pattern) ────
 

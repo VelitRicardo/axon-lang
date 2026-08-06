@@ -1,3 +1,9 @@
+//! §Fase 118.b.3 — this suite exercises the SQL data plane (the Postgres
+//! backend, the pinned-connection contract, live introspection), which lives
+//! behind the `postgres` feature. Gated at the file level: the core suites keep
+//! running in a build with no driver.
+#![cfg(feature = "postgres")]
+
 //! §Fase 35.l — Real-Postgres integration tests (D14, the robustness
 //! floor).
 //!

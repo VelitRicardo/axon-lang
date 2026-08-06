@@ -123,7 +123,15 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["json", "fmt", "env-filter"] }
 tracing-appender = "0.2"
 uuid = { version = "1", features = ["v4"] }
-sqlx = { version = "0.8", features = ["runtime-tokio", "tls-rustls", "postgres", "json", "chrono", "migrate", "uuid", "bigdecimal"] }
+#
+# §Fase 118.b.3 — OPTIONAL behind `postgres`. THIS is the dependency the fase is
+# actually about. Measured against the real tree (§1.1.c) it is **36 crates**,
+# four times `server` and `documents` combined — and it held up when their
+# estimates collapsed, because `sqlx` is the one candidate `reqwest` does not
+# subsidise: it brings its own Postgres wire protocol, its own SCRAM hashing
+# (`md-5`, `hkdf`), `stringprep` unicode normalisation for SASL, and its own pool
+# primitives.
+sqlx = { version = "0.8", features = ["runtime-tokio", "tls-rustls", "postgres", "json", "chrono", "migrate", "uuid", "bigdecimal"], optional = true }
 chrono = { version = "0.4", features = ["serde"] }
 # §Fase 71.b — IANA timezone database for the `window` temporal guard. The
 # frontend format-checks a tz name (zero-dependency); the runtime does the
@@ -232,7 +240,7 @@ image = { version = "0.25", default-features = false, features = ["png", "jpeg",
 # what they got before. Moving the default to `["cli"]` — D118.1's two-binary
 # shape — is §118.c, deliberately a separate commit with its own release note,
 # because THAT is the change an adopter feels.
-default = ["cli", "documents", "server"]
+default = ["cli", "documents", "server", "postgres"]
 
 # ── The additive core (§Fase 118) ─────────────────────────────────────────────
 #
@@ -282,6 +290,27 @@ documents = ["dep:zip"]
 # `axum` adds routing and extractors on top of a stack this crate cannot drop.
 # The gate is not broken; the estimate was.
 server = ["dep:axum", "dep:tower", "dep:tower-http", "dep:http-body-util"]
+
+# `postgres` — the SQL data plane: the driver-facing half of `axonstore`
+# (`store/{postgres_backend, store_conn, row_stream, introspect_cli}`), the
+# tenant-scoped `storage_postgres` RLS layer, the pool (`db_pool`) and the
+# migrations. 36 crates — the single largest lever in this fase.
+#
+# WHAT IS DELIBERATELY *NOT* IN HERE. Half of `store/` needs no driver, and
+# gating it wholesale would have cost real coverage for zero crates — the same
+# correction §118.b.2 had to make for `server`:
+#   - `store::registry` — resolution, caching, the `StoreHandle` catalog.
+#   - `store::{filter, epistemic, capability, audit_chain, pin_observability}` —
+#     the WHERE algebra, the born-Untrusted lattice, the §94 capability view, the
+#     §35 audit hash-chain, the §37.x.j pin telemetry. Governance, not SQL.
+#   - `store::{error, row, pooler_mode}` — extracted in `b2d50c5b`; the error
+#     catalog, the row shape, the pool size and §96's pooler-mode decision were
+#     all trapped in the driver module until then.
+#   - `storage.rs` — the `StorageBackend` port and its in-memory implementation.
+#
+# So `axon check` still type-checks a flow declaring `backend: postgresql` (the
+# compiler needs no driver), and a lean build refuses at RESOLVE time in writing.
+postgres = ["dep:sqlx"]
 
 aws-secrets = ["dep:aws-config", "dep:aws-sdk-secretsmanager"]
 # Enables the isolated image-decode sidecar binary. Off by default: adopters who

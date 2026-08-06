@@ -394,6 +394,7 @@ fn document_edit_execute(argument: &str) -> ToolResult {
     }
 }
 
+#[cfg_attr(not(feature = "postgres"), allow(dead_code))]
 fn err_named(tool: &str, msg: String) -> ToolResult {
     ToolResult { success: false, output: format!("{tool}: {msg}"), tool_name: tool.to_string() }
 }

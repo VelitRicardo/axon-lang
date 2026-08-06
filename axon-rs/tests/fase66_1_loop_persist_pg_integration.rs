@@ -1,3 +1,9 @@
+//! §Fase 118.b.3 — this suite exercises the SQL data plane (the Postgres
+//! backend, the pinned-connection contract, live introspection), which lives
+//! behind the `postgres` feature. Gated at the file level: the core suites keep
+//! running in a build with no driver.
+#![cfg(feature = "postgres")]
+
 //! §Fase 66.1 — Real-Postgres integration: the kivi brief #28 repro END-TO-END.
 //! `for e in ClassifyEdges.output { persist into <edges> { to_id: "${e.to_id}" } }`
 //! writes the RESOLVED field value (the real uuid), not the literal `${e.to_id}`.

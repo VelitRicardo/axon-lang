@@ -1,3 +1,7 @@
+//! §Fase 118.b.3 — exercises the Postgres data plane, behind the `postgres`
+//! feature.
+#![cfg(feature = "postgres")]
+
 //! §Fase 35.k — D13 robustness fuzz pack for the `axonstore` cognitive
 //! data plane.
 //!

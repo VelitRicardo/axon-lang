@@ -49,9 +49,8 @@ use std::fmt;
 use std::sync::Mutex;
 
 use crate::ir_nodes::{IRAxonStore, IRStoreColumnSchema};
-use crate::store::postgres_backend::{
-    resolve_dsn, PostgresStoreBackend, StoreError,
-};
+use crate::store::error::StoreError;
+use crate::store::postgres_backend::{resolve_dsn, PostgresStoreBackend};
 use crate::store_schema::StoreColumnType;
 use crate::store_schema_manifest::{Manifest, ManifestStore};
 
@@ -676,10 +675,19 @@ impl StoreRegistry {
                 // Resolve the DSN first — it is the cache key, and the point at
                 // which a missing `env:` var surfaces as a typed error rather
                 // than a silent KV fallback.
-                let dsn = resolve_dsn(&registered.dsn_source)?;
+                let _dsn = resolve_dsn(&registered.dsn_source)?;
 
+                // §Fase 118.b.3 — without the driver `resolve_dsn` above has already
+                // returned the written refusal, so everything below is unreachable.
+                // Gated rather than stubbed: a build with no driver must not carry a
+                // pool cache, and the refusal belongs at RESOLVE time — the earliest
+                // point at which "this store cannot be opened" is knowable.
+                #[cfg(not(feature = "postgres"))]
+                unreachable!("resolve_dsn refuses when the `postgres` feature is absent");
+                #[cfg(feature = "postgres")]
+                {
                 let mut cache = self.lock_cache();
-                if let Some(backend) = cache.get(&dsn) {
+                if let Some(backend) = cache.get(&_dsn) {
                     return Ok(StoreHandle::Postgres(backend.clone()));
                 }
                 // §Fase 113 — the pool is sized by `resource.capacity`. This one
@@ -692,8 +700,9 @@ impl StoreRegistry {
                     None,
                     registered.capacity,
                 )?;
-                cache.insert(dsn, backend.clone());
+                cache.insert(_dsn, backend.clone());
                 Ok(StoreHandle::Postgres(backend))
+                }
             }
         }
     }
@@ -755,6 +764,7 @@ impl StoreRegistry {
     /// The runtime catches NOT-NULL drift via SQLSTATE 23502 at the
     /// first failing `persist`, so defense-in-depth remains. A 38.f.2
     /// follow-on can extend `introspect_conn` to include nullability.
+    #[cfg_attr(not(feature = "postgres"), allow(unused_variables, unreachable_code))]
     pub async fn verify_postgres_schemas_with_manifest(
         &self,
         manifest: Option<&Manifest>,
@@ -809,6 +819,7 @@ impl StoreRegistry {
             }
 
             match self.resolve(name) {
+                #[cfg(feature = "postgres")]
                 Ok(StoreHandle::Postgres(backend)) => {
                     let masked = backend.masked_dsn();
                     match backend.warm_schema(name).await {
@@ -877,6 +888,7 @@ impl StoreRegistry {
     /// DSN, it is REPLACED. Future `resolve(<store>)` calls hand out
     /// the new namespace-stamped pool from the cache. The old pool's
     /// connections are dropped on the next acquire.
+    #[cfg_attr(not(feature = "postgres"), allow(unused_variables, unreachable_code))]
     fn restamp_backend_with_namespace(
         &self,
         store_name: &str,
@@ -888,14 +900,21 @@ impl StoreRegistry {
                 source: format!("axonstore `{store_name}` is not declared"),
             }
         })?;
-        let dsn = resolve_dsn(&registered.spec.connection)?;
+        let _dsn = resolve_dsn(&registered.spec.connection)?;
+        // §Fase 118.b.3 — as above: `resolve_dsn` has already refused.
+        #[cfg(not(feature = "postgres"))]
+        unreachable!("resolve_dsn refuses when the `postgres` feature is absent");
+        #[cfg(feature = "postgres")]
         let backend = PostgresStoreBackend::connect_named_with_namespace(
             &registered.spec.connection,
             store_name,
             Some(namespace),
         )?;
-        let mut cache = self.lock_cache();
-        cache.insert(dsn, backend);
+        #[cfg(feature = "postgres")]
+        {
+            let mut cache = self.lock_cache();
+            cache.insert(_dsn, backend);
+        }
         Ok(())
     }
 
@@ -952,6 +971,7 @@ impl StoreRegistry {
 ///     couldn't find a matching entry (form b/c without manifest in
 ///     scope today). The 37.x existence-only verification suffices.
 ///   - `Err(_)` — propagated up as a fatal `missing` row.
+#[cfg_attr(not(feature = "postgres"), allow(dead_code))]
 fn declared_columns_for(
     store_name: &str,
     column_schema: Option<&IRStoreColumnSchema>,
@@ -1026,6 +1046,7 @@ fn declared_columns_for(
     }
 }
 
+#[cfg_attr(not(feature = "postgres"), allow(dead_code))]
 fn manifest_store_to_btreemap(
     s: &ManifestStore,
 ) -> std::collections::BTreeMap<String, StoreColumnType> {
@@ -1049,6 +1070,10 @@ fn manifest_store_to_btreemap(
 /// Honest scope: NOT-NULL parity is NOT yet checked — the 37.x
 /// introspection query doesn't capture `attnotnull`. Documented as
 /// 38.f.1 deferral.
+// §Fase 118.b.3 — takes a `&PostgresStoreBackend` and reads its live schema
+// cache: driver work end to end, and unreachable without one (its only caller is
+// the gated eager-verify arm above).
+#[cfg(feature = "postgres")]
 fn verify_declared_columns(
     store_name: &str,
     backend: &PostgresStoreBackend,
@@ -1119,6 +1144,7 @@ fn verify_declared_columns(
 /// accepts `text`/`varchar`/`bpchar`/`name`; `Int` accepts `int4`;
 /// `BigInt` accepts `int8`; etc. Case-insensitive (Postgres lower-
 /// cases udt names by convention).
+#[cfg_attr(not(feature = "postgres"), allow(dead_code))]
 fn pg_udt_matches_catalog_type(udt: &str, declared: StoreColumnType) -> bool {
     let u = udt.to_ascii_lowercase();
     use StoreColumnType as C;
@@ -1291,6 +1317,7 @@ mod tests {
 
     // ── resolve — D2: never a silent KV fallback ─────────────────────
 
+    #[cfg(feature = "postgres")]
     #[test]
     fn resolve_postgres_with_missing_env_var_errors_not_kv_fallback() {
         // A declared postgresql store whose `env:` var is unset MUST
@@ -1309,6 +1336,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "postgres")]
     #[test]
     fn resolve_postgres_with_empty_connection_errors() {
         let registry =
@@ -1321,6 +1349,7 @@ mod tests {
 
     // ── resolve — postgres path + per-DSN pool cache ─────────────────
 
+    #[cfg(feature = "postgres")]
     #[tokio::test]
     async fn resolve_postgres_store_yields_a_postgres_handle() {
         let registry = StoreRegistry::build(&[spec(
@@ -1332,6 +1361,7 @@ mod tests {
         assert!(registry.resolve("tenants").unwrap().is_postgres());
     }
 
+    #[cfg(feature = "postgres")]
     #[tokio::test]
     async fn resolving_one_store_twice_reuses_one_pool() {
         let registry = StoreRegistry::build(&[spec(
@@ -1350,6 +1380,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "postgres")]
     #[tokio::test]
     async fn two_stores_sharing_a_dsn_share_one_pool() {
         let dsn = "postgresql://u:p@localhost:5432/shared";
@@ -1367,6 +1398,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "postgres")]
     #[tokio::test]
     async fn two_stores_with_distinct_dsns_get_distinct_pools() {
         let registry = StoreRegistry::build(&[
@@ -1379,6 +1411,7 @@ mod tests {
         assert_eq!(registry.cached_pool_count(), 2);
     }
 
+    #[cfg(feature = "postgres")]
     #[tokio::test]
     async fn malformed_dsn_errors_and_is_not_cached() {
         let registry = StoreRegistry::build(&[spec(
@@ -1644,6 +1677,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "postgres")]
     fn application_name_stamping_includes_resolved_namespace() {
         use crate::store::postgres_backend::application_name_for_with_namespace;
         assert_eq!(
@@ -1667,6 +1701,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "postgres")]
     fn application_name_stamping_truncates_at_namedatalen_with_char_boundary() {
         use crate::store::postgres_backend::application_name_for_with_namespace;
         // A long store name + long namespace MUST not exceed 63

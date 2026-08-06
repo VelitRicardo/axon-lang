@@ -157,18 +157,43 @@ mod tests {
     use super::*;
     use tracing::Instrument;
 
+    /// §Fase 118.b.3 — install a subscriber for the assertion's duration.
+    ///
+    /// `Span::metadata()` returns `None` for a DISABLED span, and a span is
+    /// disabled when no subscriber is interested. These two tests asserted
+    /// `Some(...)` while installing nothing — so they were reading AMBIENT
+    /// state, and passed only because `sqlx` (unconditional until §118.b.3)
+    /// pulled `tracing` machinery that left spans enabled. Making `postgres`
+    /// optional removed `sqlx` from the lean build and the assertions went red,
+    /// having never actually tested what they claimed.
+    ///
+    /// The fix is not to gate them behind `postgres` — the span names are not a
+    /// database property. It is to stop depending on what some other crate
+    /// happens to switch on. Output goes to `io::sink` so the suite stays quiet.
+    fn with_spans_enabled<T>(f: impl FnOnce() -> T) -> T {
+        let subscriber = tracing_subscriber::fmt()
+            .with_max_level(tracing::Level::TRACE)
+            .with_writer(std::io::sink)
+            .finish();
+        tracing::subscriber::with_default(subscriber, f)
+    }
+
     #[test]
     fn call_span_constructs_with_canonical_fields() {
-        let span = call_span("anthropic", "claude-x", "trace-1");
-        let _enter = span.enter();
-        // The metadata target is the module path; the span name is fixed.
-        assert_eq!(span.metadata().map(|m| m.name()), Some("backend.complete"));
+        with_spans_enabled(|| {
+            let span = call_span("anthropic", "claude-x", "trace-1");
+            let _enter = span.enter();
+            // The metadata target is the module path; the span name is fixed.
+            assert_eq!(span.metadata().map(|m| m.name()), Some("backend.complete"));
+        });
     }
 
     #[test]
     fn stream_span_distinct_from_call_span() {
-        let s = stream_span("openai", "gpt-x", "trace-2");
-        assert_eq!(s.metadata().map(|m| m.name()), Some("backend.stream"));
+        with_spans_enabled(|| {
+            let s = stream_span("openai", "gpt-x", "trace-2");
+            assert_eq!(s.metadata().map(|m| m.name()), Some("backend.stream"));
+        });
     }
 
     #[tokio::test]

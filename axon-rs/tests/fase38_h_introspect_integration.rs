@@ -1,3 +1,9 @@
+//! §Fase 118.b.3 — this suite exercises the SQL data plane (the Postgres
+//! backend, the pinned-connection contract, live introspection), which lives
+//! behind the `postgres` feature. Gated at the file level: the core suites keep
+//! running in a build with no driver.
+#![cfg(feature = "postgres")]
+
 //! §Fase 38.h (D10) — Integration tests for `axon store introspect`
 //! against a REAL `postgres:16` service container.
 //!

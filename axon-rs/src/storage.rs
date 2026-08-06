@@ -313,6 +313,11 @@ impl StorageBackend for InMemoryBackend {
 /// with async return types.
 pub enum StorageDispatcher {
     InMemory(InMemoryBackend),
+    // §Fase 118.b.3 — the SQL variant, behind `postgres`. The PORT
+    // (`StorageBackend`) and the in-memory implementation stay in every build, so
+    // a lean binary still has a working storage plane — it just cannot be pointed
+    // at Postgres.
+    #[cfg(feature = "postgres")]
     Postgres(crate::storage_postgres::PostgresBackend),
 }
 
@@ -327,6 +332,7 @@ impl StorageDispatcher {
     /// project uses. This is the `auth_scope` / `auth_middleware` treatment of
     /// §118.b.2 applied to the storage seam: a module that turns out not to need
     /// a dependency is worth more than a module that is gated.
+    #[cfg(feature = "postgres")]
     pub fn postgres(pool: crate::db_pool::PgPool) -> Self {
         StorageDispatcher::Postgres(crate::storage_postgres::PostgresBackend::new(pool))
     }
@@ -337,6 +343,7 @@ macro_rules! dispatch {
     ($self:expr, $method:ident $(, $arg:expr)*) => {
         match $self {
             StorageDispatcher::InMemory(b) => b.$method($($arg),*).await,
+            #[cfg(feature = "postgres")]
             StorageDispatcher::Postgres(b) => b.$method($($arg),*).await,
         }
     };
@@ -387,6 +394,7 @@ impl StorageBackend for StorageDispatcher {
     async fn is_healthy(&self) -> bool {
         match self {
             StorageDispatcher::InMemory(b) => b.is_healthy().await,
+            #[cfg(feature = "postgres")]
             StorageDispatcher::Postgres(b) => b.is_healthy().await,
         }
     }

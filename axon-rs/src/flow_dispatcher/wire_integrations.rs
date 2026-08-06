@@ -49,10 +49,13 @@ use crate::ir_nodes::{
 };
 use crate::store::audit_chain::StoreMutationKind;
 use crate::store::capability;
+#[cfg(feature = "postgres")]
 use crate::store::epistemic;
+#[cfg(feature = "postgres")]
 use crate::store::row_stream;
 use crate::store::filter::SqlValue;
-use crate::store::postgres_backend::{PostgresStoreBackend, StoreError};
+use crate::store::error::StoreError;
+use crate::store::postgres_backend::PostgresStoreBackend;
 use crate::store::registry::StoreHandle;
 
 // ────────────────────────────────────────────────────────────────────
@@ -211,10 +214,12 @@ fn resolve_pg_backend(
         // future caller forgets the pre-check: treat as KV-none and
         // let the write guard / retrieve pre-check own the refusal.
         StoreHandle::Secrets { .. } => Ok(None),
+        #[cfg(feature = "postgres")]
         StoreHandle::Postgres(backend) => {
             let floor =
                 registry.spec(store_name).and_then(|s| s.confidence_floor);
-            Ok(Some((backend, floor)))
+            #[cfg(feature = "postgres")]
+        Ok(Some((backend, floor)))
         }
     }
 }
@@ -257,6 +262,7 @@ fn refuse_secrets_store_write(
 /// let-binding (the `__`-prefixed namespace keys are runtime
 /// bookkeeping) as a text column, sorted by name for deterministic
 /// SQL. Mirrors `persist_to_store`'s snapshot discipline.
+#[cfg_attr(not(feature = "postgres"), allow(dead_code))]
 fn sql_row_from_bindings(ctx: &DispatchCtx) -> Vec<(String, SqlValue)> {
     let mut row: Vec<(String, SqlValue)> = ctx
         .let_bindings
@@ -279,6 +285,7 @@ fn sql_row_from_bindings(ctx: &DispatchCtx) -> Vec<(String, SqlValue)> {
 /// (`fields` empty), it falls back to `sql_row_from_bindings` — the
 /// v1.31.0 user-bindings form — so a `persist`/`mutate` with no block
 /// is byte-for-byte unchanged.
+#[cfg_attr(not(feature = "postgres"), allow(dead_code))]
 fn store_row(fields: &[(String, String)], ctx: &DispatchCtx) -> Vec<(String, SqlValue)> {
     if fields.is_empty() {
         return sql_row_from_bindings(ctx);
@@ -306,6 +313,7 @@ fn store_row(fields: &[(String, String)], ctx: &DispatchCtx) -> Vec<(String, Sql
 /// uuid`). The runtime fails honestly instead (the §59 doctrine). Only
 /// identifier-shaped references are flagged, so a literal like `${100}` or a `$`
 /// in free text is never a false positive.
+#[cfg_attr(not(feature = "postgres"), allow(dead_code))]
 fn unresolved_reference(value: &str) -> Option<String> {
     let bytes = value.as_bytes();
     let mut i = 0;
@@ -331,6 +339,7 @@ fn unresolved_reference(value: &str) -> Option<String> {
 
 /// §Fase 66.1 (Q1.c) — fail a `persist`/`mutate` whose row carries an unresolved
 /// `${reference}` rather than writing the literal to the database.
+#[cfg_attr(not(feature = "postgres"), allow(dead_code))]
 fn reject_unresolved_row(
     store_name: &str,
     op: &str,
@@ -672,6 +681,7 @@ pub async fn run_persist(
     emit_step_start(ctx, &step_name, step_index, "persist")?;
 
     let output = match resolve_pg_backend(ctx, &node.store_name) {
+        #[cfg(feature = "postgres")]
         Ok(Some((backend, floor))) => {
             // §35.o — scope the row to the declared `{ col: value }`
             // block when present; else the v1.31.0 user-bindings form.
@@ -811,6 +821,7 @@ pub async fn run_retrieve(
     }
 
     let value = match resolve_pg_backend(ctx, &node.store_name) {
+        #[cfg(feature = "postgres")]
         Ok(Some((backend, floor))) => {
             // §35.i Pillar III — retrieve drains off a lazy cursor,
             // bounded + cancel-aware (never materializes a huge result
@@ -939,6 +950,7 @@ pub async fn run_retrieve(
 /// flagged). Returns `Ok(None)` when the store is not Postgres-backed: the
 /// dynamic MDN corpus needs a real tabular backend (the KV path holds single
 /// values, not typed rows).
+#[cfg_attr(not(feature = "postgres"), allow(unused_variables, unreachable_code))]
 pub async fn read_all_store_rows(
     ctx: &mut DispatchCtx,
     store_name: &str,
@@ -951,8 +963,9 @@ pub async fn read_all_store_rows(
     // sub-tenants in one axon-tenant via a column scopes the MDN graph to a
     // single sub-tenant (`where: "tenant_id == '${tenant_id}'"`).
     where_expr: &str,
-) -> Result<Option<Vec<crate::store::postgres_backend::StoreRow>>, DispatchError> {
+) -> Result<Option<Vec<crate::store::row::StoreRow>>, DispatchError> {
     match resolve_pg_backend(ctx, store_name) {
+        #[cfg(feature = "postgres")]
         Ok(Some((backend, _floor))) => {
             // §37.x.j (D2/D6.a) — take the pin out of the shared map; lazily
             // acquire on a miss so this read shares the flow's single physical
@@ -1011,11 +1024,11 @@ pub async fn read_all_store_rows(
 /// fetched rows (so it is unit-testable without a database). A row missing a
 /// mapped column is dropped (resilient to live, evolving schemas).
 pub fn extract_corpus_rows(
-    doc_rows: &[crate::store::postgres_backend::StoreRow],
-    edge_rows: &[crate::store::postgres_backend::StoreRow],
+    doc_rows: &[crate::store::row::StoreRow],
+    edge_rows: &[crate::store::row::StoreRow],
     src: &crate::ir_nodes::IRCorpusStoreSource,
 ) -> (Vec<(String, String)>, Vec<(String, String, String, f64)>) {
-    let col = |row: &crate::store::postgres_backend::StoreRow, name: &str| {
+    let col = |row: &crate::store::row::StoreRow, name: &str| {
         row.columns
             .iter()
             .find(|(c, _)| c == name)
@@ -1092,6 +1105,7 @@ pub fn plan_edge_reinforcements(
 /// fresh one). Best-effort: a single edge's failure (or a since-deleted edge)
 /// must not abort the rest or fail the navigation — learning is advisory. A
 /// non-Postgres backing is a no-op.
+#[cfg_attr(not(feature = "postgres"), allow(unused_variables))]
 pub async fn persist_reinforcements(
     ctx: &mut DispatchCtx,
     edge_store: &str,
@@ -1102,49 +1116,61 @@ pub async fn persist_reinforcements(
     plan: &[(String, String, String, f64)],
     epsilon: f64,
 ) -> Result<(), DispatchError> {
-    if plan.is_empty() {
-        return Ok(());
-    }
-    let Ok(Some((backend, _floor))) = resolve_pg_backend(ctx, edge_store) else {
-        return Ok(());
-    };
-    let mut pin: Option<crate::pinned_conn::PinnedConn> =
-        { ctx.pinned_conns.lock().unwrap().remove(edge_store) };
-    if pin.is_none() {
-        if let Ok(p) = backend.acquire_pin().await {
-            pin = Some(p);
-        }
-    }
+    // §Fase 118.b.3 — §64.C edge reinforcement is a Postgres UPDATE. Without the
+    // driver there is no edge store to reinforce, so this is a no-op rather than
+    // an error: reinforcement is an OPTIONAL enrichment of an adaptive corpus
+    // (the caller already ignores its Result), and refusing loudly here would
+    // turn a missing nicety into a failed flow.
+    #[cfg(not(feature = "postgres"))]
     {
-        let mut store_conn = match &mut pin {
-            Some(p) => p.as_store_conn(),
-            None => crate::store::store_conn::StoreConn::Pool(backend.pool()),
-        };
-        for (from_id, to_id, etype, delta) in plan {
-            let _ = backend
-                .reinforce(
-                    &mut store_conn,
-                    edge_store,
-                    weight_col,
-                    from_col,
-                    to_col,
-                    etype_col,
-                    &crate::store::filter::SqlValue::Text(from_id.clone()),
-                    &crate::store::filter::SqlValue::Text(to_id.clone()),
-                    &crate::store::filter::SqlValue::Text(etype.clone()),
-                    *delta,
-                    epsilon,
-                )
-                .await;
+        return Ok(());
+    }
+    #[cfg(feature = "postgres")]
+    {
+        if plan.is_empty() {
+            return Ok(());
         }
+        let Ok(Some((backend, _floor))) = resolve_pg_backend(ctx, edge_store) else {
+            return Ok(());
+        };
+        let mut pin: Option<crate::pinned_conn::PinnedConn> =
+            { ctx.pinned_conns.lock().unwrap().remove(edge_store) };
+        if pin.is_none() {
+            if let Ok(p) = backend.acquire_pin().await {
+                pin = Some(p);
+            }
+        }
+        {
+            let mut store_conn = match &mut pin {
+                Some(p) => p.as_store_conn(),
+                None => crate::store::store_conn::StoreConn::Pool(backend.pool()),
+            };
+            for (from_id, to_id, etype, delta) in plan {
+                let _ = backend
+                    .reinforce(
+                        &mut store_conn,
+                        edge_store,
+                        weight_col,
+                        from_col,
+                        to_col,
+                        etype_col,
+                        &crate::store::filter::SqlValue::Text(from_id.clone()),
+                        &crate::store::filter::SqlValue::Text(to_id.clone()),
+                        &crate::store::filter::SqlValue::Text(etype.clone()),
+                        *delta,
+                        epsilon,
+                    )
+                    .await;
+            }
+        }
+        if let Some(p) = pin {
+            ctx.pinned_conns
+                .lock()
+                .unwrap()
+                .insert(edge_store.to_string(), p);
+        }
+        Ok(())
     }
-    if let Some(p) = pin {
-        ctx.pinned_conns
-            .lock()
-            .unwrap()
-            .insert(edge_store.to_string(), p);
-    }
-    Ok(())
 }
 
 // ────────────────────────────────────────────────────────────────────
@@ -1174,6 +1200,7 @@ pub async fn run_mutate(
     emit_step_start(ctx, &step_name, step_index, "mutate")?;
 
     let output = match resolve_pg_backend(ctx, &node.store_name) {
+        #[cfg(feature = "postgres")]
         Ok(Some((backend, _floor))) => {
             // §35.p — scope the UPDATE SET to the declared
             // `{ col: value }` block when present; else the v1.31.0
@@ -1278,6 +1305,7 @@ pub async fn run_purge(
     emit_step_start(ctx, &step_name, step_index, "purge")?;
 
     let output = match resolve_pg_backend(ctx, &node.store_name) {
+        #[cfg(feature = "postgres")]
         Ok(Some((backend, _floor))) => {
             // §Fase 37.x.j (D2, D6.a) — take-pin / lazy-acquire-on-miss
             // / dispatch / return-pin; see other sites for full rationale.
@@ -2296,8 +2324,8 @@ mod tests {
 
     // ── §Fase 64.B — extract_corpus_rows (store rows → from_rows tuples) ────
 
-    fn mk_store_row(pairs: &[(&str, serde_json::Value)]) -> crate::store::postgres_backend::StoreRow {
-        crate::store::postgres_backend::StoreRow {
+    fn mk_store_row(pairs: &[(&str, serde_json::Value)]) -> crate::store::row::StoreRow {
+        crate::store::row::StoreRow {
             columns: pairs.iter().map(|(k, v)| (k.to_string(), v.clone())).collect(),
         }
     }
@@ -3189,6 +3217,7 @@ mod tests {
         assert!(resolve_pg_backend(&ctx, "undeclared").unwrap().is_none());
     }
 
+    #[cfg(feature = "postgres")]
     #[test]
     fn resolve_pg_backend_missing_env_var_errors_not_kv_fallback() {
         // D2 — a declared postgresql store whose env var is unset MUST

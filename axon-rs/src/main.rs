@@ -975,73 +975,92 @@ fn run_store_command(action: StoreCommands) -> i32 {
 }
 
 /// The actual introspection + emission. Returns the process exit code.
+#[cfg_attr(not(feature = "postgres"), allow(unused_variables))]
 async fn run_store_introspect(
     store_names: &[String],
     connection: &str,
     output: Option<&str>,
     diff_path: Option<&str>,
 ) -> i32 {
-    use axon::store::introspect_cli::{
-        introspect_stores, render_introspection_output,
-    };
-    use axon::store_introspect::{format_manifest_diff, manifest_diff};
-    use axon::store_schema_manifest::Manifest;
+    // §Fase 118.b.3 — the REFUSAL. `axon store introspect` reads a LIVE database's
+    // catalog, so it is the Postgres analogue of `axon serve`: the subcommand stays
+    // in `axon store --help` under every profile and refuses in writing, naming the
+    // exact reinstall command. §111 doctrine — a capability that silently vanishes
+    // from a build is indistinguishable, to the adopter, from one that never
+    // existed. Exit code 2, matching `axon serve` and `axon evidence-package`.
+    #[cfg(not(feature = "postgres"))]
+    {
+        eprintln!(
+            "X `axon store introspect` requires the `postgres` feature - this build was compiled without it, so no PostgreSQL driver is linked and there is no database catalog to read.
+  Reinstall with: cargo install axon-lang --features postgres
+  (`axon check` still type-checks every `axonstore` declaration in this build, including `backend: postgresql` - only reading a LIVE schema needs the driver.)"
+        );
+        return 2;
+    }
+    #[cfg(feature = "postgres")]
+    {
+        use axon::store::introspect_cli::{
+            introspect_stores, render_introspection_output,
+        };
+        use axon::store_introspect::{format_manifest_diff, manifest_diff};
+        use axon::store_schema_manifest::Manifest;
 
-    let (manifest, omissions) = match introspect_stores(connection, store_names).await {
-        Ok(pair) => pair,
-        Err(e) => {
-            eprintln!("axon-lang: introspection failed — {e}");
-            return 1;
-        }
-    };
-
-    // — Diff mode: compare against an existing manifest. —
-    if let Some(existing_path) = diff_path {
-        let existing_src = match std::fs::read_to_string(existing_path) {
-            Ok(s) => s,
+        let (manifest, omissions) = match introspect_stores(connection, store_names).await {
+            Ok(pair) => pair,
             Err(e) => {
-                eprintln!(
-                    "axon-lang: failed to read existing manifest at \
-                     `{existing_path}`: {e}"
-                );
+                eprintln!("axon-lang: introspection failed — {e}");
                 return 1;
             }
         };
-        let existing = match Manifest::parse_json(&existing_src) {
-            Ok(m) => m,
-            Err(e) => {
-                eprintln!(
-                    "axon-lang: failed to parse existing manifest at \
-                     `{existing_path}` — {e}"
-                );
-                return 1;
+
+        // — Diff mode: compare against an existing manifest. —
+        if let Some(existing_path) = diff_path {
+            let existing_src = match std::fs::read_to_string(existing_path) {
+                Ok(s) => s,
+                Err(e) => {
+                    eprintln!(
+                        "axon-lang: failed to read existing manifest at \
+                         `{existing_path}`: {e}"
+                    );
+                    return 1;
+                }
+            };
+            let existing = match Manifest::parse_json(&existing_src) {
+                Ok(m) => m,
+                Err(e) => {
+                    eprintln!(
+                        "axon-lang: failed to parse existing manifest at \
+                         `{existing_path}` — {e}"
+                    );
+                    return 1;
+                }
+            };
+            let diff = manifest_diff(&existing, &manifest);
+            if diff.is_empty() {
+                println!("manifest is up to date — no drift between live database and `{existing_path}`.");
+                return 0;
             }
-        };
-        let diff = manifest_diff(&existing, &manifest);
-        if diff.is_empty() {
-            println!("manifest is up to date — no drift between live database and `{existing_path}`.");
+            print!("{}", format_manifest_diff(&diff));
+            for omission in &omissions {
+                println!("{}", omission.as_comment_line());
+            }
             return 0;
         }
-        print!("{}", format_manifest_diff(&diff));
-        for omission in &omissions {
-            println!("{}", omission.as_comment_line());
-        }
-        return 0;
-    }
 
-    // — Default mode: emit the manifest. —
-    let rendered = render_introspection_output(&manifest, &omissions);
-    match output {
-        Some(path) => match std::fs::write(path, &rendered) {
-            Ok(()) => 0,
-            Err(e) => {
-                eprintln!("axon-lang: failed to write manifest to `{path}`: {e}");
-                1
+        // — Default mode: emit the manifest. —
+        let rendered = render_introspection_output(&manifest, &omissions);
+        match output {
+            Some(path) => match std::fs::write(path, &rendered) {
+                Ok(()) => 0,
+                Err(e) => {
+                    eprintln!("axon-lang: failed to write manifest to `{path}`: {e}");
+                    1
+                }
+            },
+            None => {
+                println!("{rendered}");
+                0
             }
-        },
-        None => {
-            println!("{rendered}");
-            0
         }
     }
 }

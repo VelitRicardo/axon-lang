@@ -39,8 +39,11 @@ use crate::plan_export::{self, PlanBuilder, PlanUnit, PlanStep, PlanTools, PlanT
 use crate::parser::{ParseError, Parser};
 use crate::session_store::SessionStore;
 use crate::step_deps;
+#[cfg(feature = "postgres")]
 use crate::store::epistemic;
+#[cfg(feature = "postgres")]
 use crate::store::filter::SqlValue;
+#[cfg(feature = "postgres")]
 use crate::store::row_stream;
 use crate::store::error::StoreError;
 use crate::store::registry::{StoreBackendKind, StoreRegistry};
@@ -1154,6 +1157,7 @@ where
 /// wrapper for CLI tests + pre-async callers; it spins up a single
 /// `block_on_store` and calls this async variant. New callers should
 /// invoke the async variant directly from an async context.
+#[cfg_attr(not(feature = "postgres"), allow(unused_variables))]
 async fn execute_sql_store_step_async(
     store_registry: &StoreRegistry,
     // §Fase 37.x.j (D1) — pinned-connection map shared across the flow
@@ -1186,212 +1190,232 @@ async fn execute_sql_store_step_async(
     group_by: &str,
     ctx: &ExecContext,
 ) -> Result<String, StoreError> {
-    // The connection + confidence_floor live on the `IRAxonStore` the
-    // registry validated.
-    let spec = store_registry.spec(store_name);
-    let _connection = spec.map(|s| s.connection.clone()).unwrap_or_default();
-    let confidence_floor = spec.and_then(|s| s.confidence_floor);
-
-    // §Fase 37.x.j (D1) — the SHARED backend is resolved from the
-    // registry cache INSIDE the `block_on_store` async block below
-    // (the registry's `resolve` may need a tokio context when it
-    // lazily builds the PgPool on first reference). Pre-37.x.j the
-    // runner created a fresh `PgPool` per `connect_named` call — a
-    // pre-existing inefficiency that 37.x.j fixes en passant by
-    // routing through the cached pool.
-
-    // `memory_expression` is `"store:where"` for retrieve/mutate/purge
-    // and the bare store name for persist — the where-expr is whatever
-    // follows the first colon (empty when absent).
-    let where_expr = memory_expr
-        .splitn(2, ':')
-        .nth(1)
-        .unwrap_or("")
-        .to_string();
-    // §Fase 37.d (D3) — an OWNED copy of the flow's variable map, moved
-    // into the store-op task; the filter compiler resolves `${name}`
-    // in `where_expr` against it into `$N` bind parameters.
-    let where_bindings: std::collections::HashMap<String, String> =
-        ctx.vars().clone();
-
-    // §Fase 35.o / 35.p — when the `persist` / `mutate` step declared a
-    // `{ col: value }` block, the SQL row is exactly those columns with
-    // their value expressions interpolated against the flow context.
-    // With no block (`store_fields` is `None`) fall back to the v1.31.0
-    // behaviour: every user binding as a text column. `store_fields` is
-    // only materialised for `persist`/`mutate`, so `retrieve`/`purge`
-    // (which ignore `data`) always take the fallback. Every value binds
-    // as text (D12 — no column-type schema in v1.31).
-    let data: Vec<(String, SqlValue)> = match store_fields {
-        Some(fields) => fields
-            .iter()
-            .map(|(col, expr)| {
-                (col.clone(), SqlValue::Text(ctx.interpolate(expr)))
-            })
-            .collect(),
-        None => ctx
-            .user_bindings()
-            .into_iter()
-            .map(|(k, v)| (k, SqlValue::Text(v)))
-            .collect(),
-    };
-
-    let store_name = store_name.to_string();
-    let step_type = step_type.to_string();
-    let store_name_for_reinsert = store_name.clone();
-
-    // §Fase 37.x.j (D1) — take the pin OUT of the shared map for the
-    // duration of this dispatch. After the dispatch returns (success
-    // OR error), the pin is re-inserted UNCONDITIONALLY so the next
-    // store op against this same store reuses it.
-    //
-    // §Fase 37.x.j.10 — no longer wrapped in block_on_store. The
-    // async fn runs on the caller's runtime, so the pin's reactor
-    // handles stay valid for every `.await` below.
-    let mut pin: Option<crate::pinned_conn::PinnedConn> =
-        pinned_conns.remove(&store_name);
-
-    // §Fase 37.x.j (D1) — resolve the SHARED backend from the registry
-    // cache. The registry caches `PostgresStoreBackend` by resolved
-    // DSN; the backend's inner `PgPool` is `Arc<...>` so the clone
-    // shares pool state with every other call AND with the eagerly-
-    // acquired pin in `pinned_conns`.
-    let backend = match store_registry.resolve(&store_name) {
-        Ok(crate::store::registry::StoreHandle::Postgres(b)) => b,
-        Ok(_) => {
-            // Re-insert the pin if we removed one (we won't dispatch).
-            if let Some(p) = pin {
-                pinned_conns.insert(store_name_for_reinsert, p);
-            }
-            return Err(StoreError::Connect {
-                source: format!(
-                    "axonstore `{store_name}` expected to resolve to \
-                     a postgresql backend but the registry returned \
-                     `in_memory`. Routing bug — the SQL gate in \
-                     `execute_real` should have skipped this step."
-                ),
-            });
-        }
-        Err(e) => {
-            if let Some(p) = pin {
-                pinned_conns.insert(store_name_for_reinsert, p);
-            }
-            return Err(e);
-        }
-    };
-
-    // §Fase 37.x.j.10 — dispatch body inlined here. `pin` is `&mut`-
-    // borrowed inside each match arm for the StoreConn::Pinned variant;
-    // the borrow ends at the end of each arm so we can re-insert `pin`
-    // unconditionally below regardless of result.
-    let result: Result<String, StoreError> = async {
-        match step_type.as_str() {
-            "retrieve" => {
-                // §35.i Pillar III — retrieve drains off a lazy cursor,
-                // bounded (never materializes a huge result set).
-                // §35.g Pillar I — every tuple born Untrusted,
-                // confidence_floor filters sub-floor rows. The result
-                // is an epistemic envelope carrying both dispositions.
-                let cancel = crate::cancel_token::CancellationFlag::new();
-                // §Fase 37.x.j (D1) — build `StoreConn::Pinned` when a
-                // pin is held for this store (the post-37.x.j default
-                // for server-driven flows), else `StoreConn::Pool`
-                // (legacy path for CLI / pre-server callers). The
-                // Pinned variant routes the SELECT through the exact
-                // physical Postgres backend connection acquired at
-                // flow start — Supavisor/PgBouncer cannot swap.
-                let mut store_conn = match &mut pin {
-                    Some(p) => p.as_store_conn(),
-                    None => crate::store::store_conn::StoreConn::Pool(backend.pool()),
-                };
-                let stream_outcome = row_stream::stream_retrieve(
-                    &backend,
-                    &mut store_conn,
-                    &store_name,
-                    &where_expr,
-                    // §Fase 67.b — the ORDER BY / LIMIT clauses.
-                    order_by,
-                    limit_expr,
-                    // §Fase 76.d — the aggregate / GROUP BY clauses.
-                    aggregate,
-                    group_by,
-                    row_stream::DEFAULT_RETRIEVE_POLICY,
-                    row_stream::DEFAULT_MAX_ROWS,
-                    &cancel,
-                    &where_bindings,
-                )
-                .await?;
-                let metadata = row_stream::stream_metadata(
-                    row_stream::DEFAULT_RETRIEVE_POLICY,
-                    &stream_outcome,
-                );
-                let outcome = epistemic::enforce_retrieve_floor(
-                    epistemic::mark_retrieved(stream_outcome.rows),
-                    confidence_floor,
-                );
-                let mut envelope =
-                    epistemic::retrieve_envelope(&outcome, confidence_floor);
-                envelope["stream"] = metadata;
-                Ok(serde_json::to_string(&envelope)
-                    .unwrap_or_else(|_| "{}".to_string()))
-            }
-            "purge" => {
-                // §Fase 37.x.j (D1) — pinned/pool dispatch (see retrieve).
-                let mut store_conn = match &mut pin {
-                    Some(p) => p.as_store_conn(),
-                    None => crate::store::store_conn::StoreConn::Pool(backend.pool()),
-                };
-                let n = backend
-                    .purge(&mut store_conn, &store_name, &where_expr, &where_bindings)
-                    .await?;
-                Ok(format!("{n} row(s) purged"))
-            }
-            "persist" => {
-                // §35.g Pillar I — a sub-floor or un-elevated write
-                // into a confidence-floored store is a typed error.
-                epistemic::enforce_persist_floor(
-                    &data,
-                    confidence_floor,
-                    &store_name,
-                )?;
-                // §Fase 37.x.j (D1) — pinned/pool dispatch.
-                let mut store_conn = match &mut pin {
-                    Some(p) => p.as_store_conn(),
-                    None => crate::store::store_conn::StoreConn::Pool(backend.pool()),
-                };
-                let n = backend.insert(&mut store_conn, &store_name, &data).await?;
-                Ok(format!("{n} row(s) persisted"))
-            }
-            "mutate" => {
-                // §Fase 37.x.j (D1) — pinned/pool dispatch.
-                let mut store_conn = match &mut pin {
-                    Some(p) => p.as_store_conn(),
-                    None => crate::store::store_conn::StoreConn::Pool(backend.pool()),
-                };
-                let n = backend
-                    .mutate(&mut store_conn, &store_name, &where_expr, &data, &where_bindings)
-                    .await?;
-                Ok(format!("{n} row(s) mutated"))
-            }
-            // The caller only routes the four store-op step types here.
-            other => Err(StoreError::Query {
-                op: "store",
-                source: format!("unsupported store step type `{other}`"),
-            }),
-        }
-    }.await;
-
-    // §Fase 37.x.j (D1) — re-insert the pin (UNCONDITIONALLY — success
-    // OR error path) so the next store op against this store reuses
-    // the same physical Postgres backend connection. `pin` was taken
-    // out at the top of this fn and the dispatch above only borrows
-    // it `&mut`-wise inside each match arm — so it's still owned here
-    // regardless of `result`'s Ok/Err outcome.
-    if let Some(p) = pin {
-        pinned_conns.insert(store_name_for_reinsert, p);
+    // §Fase 118.b.3 — the REFUSAL. Without the `postgres` feature no driver is
+    // linked, so a `backend: postgresql` axonstore cannot be read or written.
+    // The signature is UNCHANGED across both profiles — the gate is one block,
+    // not a second shape of this fifteen-parameter function (D118.2's rejected
+    // option (ii)). Everything upstream — the flow, the dispatcher, the step
+    // walk — compiles and runs identically; only the SQL itself is absent, and
+    // it says so in writing.
+    #[cfg(not(feature = "postgres"))]
+    {
+        return Err(crate::store::error::StoreError::Connect {
+            source: format!(
+                "axonstore `{store_name}`: this build was compiled without the `postgres`                  feature, so no PostgreSQL driver is linked and the `{step_type}` step cannot                  reach a database.
+  Reinstall with: cargo install axon-lang --features postgres
+                   (`axon check` type-checks the declaration in every build; an in-memory                  axonstore keeps working here.)"
+            ),
+        });
     }
+    #[cfg(feature = "postgres")]
+    {
+        // The connection + confidence_floor live on the `IRAxonStore` the
+        // registry validated.
+        let spec = store_registry.spec(store_name);
+        let _connection = spec.map(|s| s.connection.clone()).unwrap_or_default();
+        let confidence_floor = spec.and_then(|s| s.confidence_floor);
 
-    result
+        // §Fase 37.x.j (D1) — the SHARED backend is resolved from the
+        // registry cache INSIDE the `block_on_store` async block below
+        // (the registry's `resolve` may need a tokio context when it
+        // lazily builds the PgPool on first reference). Pre-37.x.j the
+        // runner created a fresh `PgPool` per `connect_named` call — a
+        // pre-existing inefficiency that 37.x.j fixes en passant by
+        // routing through the cached pool.
+
+        // `memory_expression` is `"store:where"` for retrieve/mutate/purge
+        // and the bare store name for persist — the where-expr is whatever
+        // follows the first colon (empty when absent).
+        let where_expr = memory_expr
+            .splitn(2, ':')
+            .nth(1)
+            .unwrap_or("")
+            .to_string();
+        // §Fase 37.d (D3) — an OWNED copy of the flow's variable map, moved
+        // into the store-op task; the filter compiler resolves `${name}`
+        // in `where_expr` against it into `$N` bind parameters.
+        let where_bindings: std::collections::HashMap<String, String> =
+            ctx.vars().clone();
+
+        // §Fase 35.o / 35.p — when the `persist` / `mutate` step declared a
+        // `{ col: value }` block, the SQL row is exactly those columns with
+        // their value expressions interpolated against the flow context.
+        // With no block (`store_fields` is `None`) fall back to the v1.31.0
+        // behaviour: every user binding as a text column. `store_fields` is
+        // only materialised for `persist`/`mutate`, so `retrieve`/`purge`
+        // (which ignore `data`) always take the fallback. Every value binds
+        // as text (D12 — no column-type schema in v1.31).
+        let data: Vec<(String, SqlValue)> = match store_fields {
+            Some(fields) => fields
+                .iter()
+                .map(|(col, expr)| {
+                    (col.clone(), SqlValue::Text(ctx.interpolate(expr)))
+                })
+                .collect(),
+            None => ctx
+                .user_bindings()
+                .into_iter()
+                .map(|(k, v)| (k, SqlValue::Text(v)))
+                .collect(),
+        };
+
+        let store_name = store_name.to_string();
+        let step_type = step_type.to_string();
+        let store_name_for_reinsert = store_name.clone();
+
+        // §Fase 37.x.j (D1) — take the pin OUT of the shared map for the
+        // duration of this dispatch. After the dispatch returns (success
+        // OR error), the pin is re-inserted UNCONDITIONALLY so the next
+        // store op against this same store reuses it.
+        //
+        // §Fase 37.x.j.10 — no longer wrapped in block_on_store. The
+        // async fn runs on the caller's runtime, so the pin's reactor
+        // handles stay valid for every `.await` below.
+        let mut pin: Option<crate::pinned_conn::PinnedConn> =
+            pinned_conns.remove(&store_name);
+
+        // §Fase 37.x.j (D1) — resolve the SHARED backend from the registry
+        // cache. The registry caches `PostgresStoreBackend` by resolved
+        // DSN; the backend's inner `PgPool` is `Arc<...>` so the clone
+        // shares pool state with every other call AND with the eagerly-
+        // acquired pin in `pinned_conns`.
+        let backend = match store_registry.resolve(&store_name) {
+            Ok(crate::store::registry::StoreHandle::Postgres(b)) => b,
+            Ok(_) => {
+                // Re-insert the pin if we removed one (we won't dispatch).
+                if let Some(p) = pin {
+                    pinned_conns.insert(store_name_for_reinsert, p);
+                }
+                return Err(StoreError::Connect {
+                    source: format!(
+                        "axonstore `{store_name}` expected to resolve to \
+                         a postgresql backend but the registry returned \
+                         `in_memory`. Routing bug — the SQL gate in \
+                         `execute_real` should have skipped this step."
+                    ),
+                });
+            }
+            Err(e) => {
+                if let Some(p) = pin {
+                    pinned_conns.insert(store_name_for_reinsert, p);
+                }
+                return Err(e);
+            }
+        };
+
+        // §Fase 37.x.j.10 — dispatch body inlined here. `pin` is `&mut`-
+        // borrowed inside each match arm for the StoreConn::Pinned variant;
+        // the borrow ends at the end of each arm so we can re-insert `pin`
+        // unconditionally below regardless of result.
+        let result: Result<String, StoreError> = async {
+            match step_type.as_str() {
+                "retrieve" => {
+                    // §35.i Pillar III — retrieve drains off a lazy cursor,
+                    // bounded (never materializes a huge result set).
+                    // §35.g Pillar I — every tuple born Untrusted,
+                    // confidence_floor filters sub-floor rows. The result
+                    // is an epistemic envelope carrying both dispositions.
+                    let cancel = crate::cancel_token::CancellationFlag::new();
+                    // §Fase 37.x.j (D1) — build `StoreConn::Pinned` when a
+                    // pin is held for this store (the post-37.x.j default
+                    // for server-driven flows), else `StoreConn::Pool`
+                    // (legacy path for CLI / pre-server callers). The
+                    // Pinned variant routes the SELECT through the exact
+                    // physical Postgres backend connection acquired at
+                    // flow start — Supavisor/PgBouncer cannot swap.
+                    let mut store_conn = match &mut pin {
+                        Some(p) => p.as_store_conn(),
+                        None => crate::store::store_conn::StoreConn::Pool(backend.pool()),
+                    };
+                    let stream_outcome = row_stream::stream_retrieve(
+                        &backend,
+                        &mut store_conn,
+                        &store_name,
+                        &where_expr,
+                        // §Fase 67.b — the ORDER BY / LIMIT clauses.
+                        order_by,
+                        limit_expr,
+                        // §Fase 76.d — the aggregate / GROUP BY clauses.
+                        aggregate,
+                        group_by,
+                        row_stream::DEFAULT_RETRIEVE_POLICY,
+                        row_stream::DEFAULT_MAX_ROWS,
+                        &cancel,
+                        &where_bindings,
+                    )
+                    .await?;
+                    let metadata = row_stream::stream_metadata(
+                        row_stream::DEFAULT_RETRIEVE_POLICY,
+                        &stream_outcome,
+                    );
+                    let outcome = epistemic::enforce_retrieve_floor(
+                        epistemic::mark_retrieved(stream_outcome.rows),
+                        confidence_floor,
+                    );
+                    let mut envelope =
+                        epistemic::retrieve_envelope(&outcome, confidence_floor);
+                    envelope["stream"] = metadata;
+                    Ok(serde_json::to_string(&envelope)
+                        .unwrap_or_else(|_| "{}".to_string()))
+                }
+                "purge" => {
+                    // §Fase 37.x.j (D1) — pinned/pool dispatch (see retrieve).
+                    let mut store_conn = match &mut pin {
+                        Some(p) => p.as_store_conn(),
+                        None => crate::store::store_conn::StoreConn::Pool(backend.pool()),
+                    };
+                    let n = backend
+                        .purge(&mut store_conn, &store_name, &where_expr, &where_bindings)
+                        .await?;
+                    Ok(format!("{n} row(s) purged"))
+                }
+                "persist" => {
+                    // §35.g Pillar I — a sub-floor or un-elevated write
+                    // into a confidence-floored store is a typed error.
+                    epistemic::enforce_persist_floor(
+                        &data,
+                        confidence_floor,
+                        &store_name,
+                    )?;
+                    // §Fase 37.x.j (D1) — pinned/pool dispatch.
+                    let mut store_conn = match &mut pin {
+                        Some(p) => p.as_store_conn(),
+                        None => crate::store::store_conn::StoreConn::Pool(backend.pool()),
+                    };
+                    let n = backend.insert(&mut store_conn, &store_name, &data).await?;
+                    Ok(format!("{n} row(s) persisted"))
+                }
+                "mutate" => {
+                    // §Fase 37.x.j (D1) — pinned/pool dispatch.
+                    let mut store_conn = match &mut pin {
+                        Some(p) => p.as_store_conn(),
+                        None => crate::store::store_conn::StoreConn::Pool(backend.pool()),
+                    };
+                    let n = backend
+                        .mutate(&mut store_conn, &store_name, &where_expr, &data, &where_bindings)
+                        .await?;
+                    Ok(format!("{n} row(s) mutated"))
+                }
+                // The caller only routes the four store-op step types here.
+                other => Err(StoreError::Query {
+                    op: "store",
+                    source: format!("unsupported store step type `{other}`"),
+                }),
+            }
+        }.await;
+
+        // §Fase 37.x.j (D1) — re-insert the pin (UNCONDITIONALLY — success
+        // OR error path) so the next store op against this store reuses
+        // the same physical Postgres backend connection. `pin` was taken
+        // out at the top of this fn and the dispatch above only borrows
+        // it `&mut`-wise inside each match arm — so it's still owned here
+        // regardless of `result`'s Ok/Err outcome.
+        if let Some(p) = pin {
+            pinned_conns.insert(store_name_for_reinsert, p);
+        }
+
+        result
+    }
 }
 
 /// §Fase 35.e — Sync wrapper retained for CLI tests + pre-async callers.
@@ -4194,6 +4218,9 @@ pub fn execute_server_flow(
                 // pooler (store ops then acquire per-op, releasing across
                 // cognition). `acquire_pin` also refuses in that mode, but
                 // skipping here avoids the loop's work + a misleading warn.
+                // §Fase 118.b.3 — no driver, no pins to acquire. The map stays empty,
+                // which is exactly what an uninhabited `PinnedConn` already guarantees.
+                #[cfg(feature = "postgres")]
                 if crate::store::pooler_mode::connection_pinning_enabled() {
                     for store_name in &needed_pg_stores {
                         if let Ok(crate::store::registry::StoreHandle::Postgres(backend_pool)) =
@@ -4380,6 +4407,7 @@ pub fn execute_server_flow(
                 .filter(|_| crate::store::pooler_mode::connection_pinning_enabled())
             {
                 match store_registry.resolve(store_name) {
+                    #[cfg(feature = "postgres")]
                     Ok(crate::store::registry::StoreHandle::Postgres(backend_pool)) => {
                         match backend_pool.acquire_pin().await {
                             Ok(conn) => {
@@ -5082,6 +5110,7 @@ mod fase35e_tests {
         assert_eq!(n, 42);
     }
 
+    #[cfg(feature = "postgres")]
     #[test]
     fn sql_store_step_surfaces_missing_env_var_never_a_kv_fallback() {
         // The SQL path is reached (routing works) and fails honestly:
@@ -5107,6 +5136,7 @@ mod fase35e_tests {
         assert!(matches!(result, Err(StoreError::MissingEnvVar { .. })));
     }
 
+    #[cfg(feature = "postgres")]
     #[test]
     fn sql_persist_below_confidence_floor_is_blocked() {
         // §35.g Pillar I — a store declaring confidence_floor rejects
@@ -5123,6 +5153,7 @@ mod fase35e_tests {
         assert!(matches!(result, Err(StoreError::Epistemic(_))));
     }
 
+    #[cfg(feature = "postgres")]
     #[test]
     fn sql_store_step_persist_builds_a_row_from_user_bindings() {
         // persist into a postgresql store writes the flow's user
@@ -5140,6 +5171,7 @@ mod fase35e_tests {
         assert!(matches!(result, Err(StoreError::PoolInit { .. })));
     }
 
+    #[cfg(feature = "postgres")]
     #[test]
     fn sql_persist_scopes_the_row_to_the_declared_field_block() {
         // §Fase 35.o — a `persist` carrying a `{ col: value }` block
@@ -5173,6 +5205,7 @@ mod fase35e_tests {
         assert!(matches!(result, Err(StoreError::PoolInit { .. })));
     }
 
+    #[cfg(feature = "postgres")]
     #[test]
     fn sql_mutate_scopes_the_set_to_the_declared_field_block() {
         // §Fase 35.p — a `mutate` carrying a `{ col: value }` block

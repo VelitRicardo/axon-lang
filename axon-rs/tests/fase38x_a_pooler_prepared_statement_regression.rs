@@ -1,3 +1,9 @@
+//! §Fase 118.b.3 — this suite exercises the SQL data plane (the Postgres
+//! backend, the pinned-connection contract, live introspection), which lives
+//! behind the `postgres` feature. Gated at the file level: the core suites keep
+//! running in a build with no driver.
+#![cfg(feature = "postgres")]
+
 //! §Fase 38.x.a — Pooler-coherent Transactions Contract — diagnostic anchor.
 //!
 //! Pins the regression the kivi adopter reported on 2026-05-20 (smoke 16,

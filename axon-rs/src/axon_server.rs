@@ -28791,7 +28791,27 @@ pub fn run_serve(config: ServerConfig) -> i32 {
     };
 
     rt.block_on(async {
+        // §Fase 118.b.3 — `server` WITHOUT `postgres` is a real, supported profile:
+        // a governed HTTP runtime whose storage plane is in-memory. It is the
+        // combination an adopter gets from `--features server`, so it must build,
+        // and a `--database-url` handed to a binary with no driver must REFUSE IN
+        // WRITING rather than be silently ignored — a server that quietly runs on
+        // memory when it was pointed at Postgres is exactly the silent degradation
+        // §111 exists to forbid.
+        #[cfg(not(feature = "postgres"))]
+        if let Some(ref db_url) = database_url {
+            let _ = db_url;
+            tracing::error!(
+                "`--database-url` was supplied but this build was compiled without the                  `postgres` feature, so no PostgreSQL driver is linked and the storage                  plane stays IN-MEMORY. Reinstall with: cargo install axon-lang                  --features server,postgres"
+            );
+            eprintln!(
+                "X `--database-url` requires the `postgres` feature - this build has no PostgreSQL driver, so storage stays IN-MEMORY (nothing is persisted).
+  Reinstall with: cargo install axon-lang --features server,postgres"
+            );
+        }
+
         // Initialize PostgreSQL storage if DATABASE_URL is configured
+        #[cfg(feature = "postgres")]
         if let Some(ref db_url) = database_url {
             match crate::db_pool::create_pool(db_url).await {
                 Ok(pool) => {

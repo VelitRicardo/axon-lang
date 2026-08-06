@@ -34,7 +34,7 @@ use std::sync::{Arc, Mutex};
 
 use axon::ir_nodes::{IRAxonStore, IRLease, IRResource};
 use axon::resource_resolver::MapResourceResolver;
-use axon::store::postgres_backend::StoreError;
+use axon::store::error::StoreError;
 use axon::store::registry::StoreRegistry;
 
 fn resource(name: &str, lifetime: &str) -> IRResource {

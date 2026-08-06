@@ -65,6 +65,7 @@
 //! byte-identical across both profiles** and not one `#[cfg]` enters the
 //! cognition path. That is the property option (ii) could never have.
 
+#[cfg(feature = "postgres")]
 use crate::store::store_conn::StoreConn;
 
 /// A Postgres connection pinned for the lifetime of one flow's use of one
@@ -82,8 +83,22 @@ use crate::store::store_conn::StoreConn;
 /// doctrine: holding a scarce connection across a flow's LLM steps starves the
 /// pool. The `Option<PinnedConn>` the executor carries is therefore genuinely
 /// optional — `None` is a supported, common, correct state, not a failure.
+#[cfg(feature = "postgres")]
 pub struct PinnedConn(sqlx::pool::PoolConnection<sqlx::Postgres>);
 
+/// §Fase 118.b.3 — the shape this module was built for, now real.
+///
+/// Without a driver there can be no pinned connection, and this says exactly
+/// that. `PinnedConn` is **uninhabited**, so `HashMap<String, PinnedConn>` is a
+/// perfectly good type that is *provably always empty*. Every executor signature
+/// — `runner`, `flow_dispatcher`, `streaming_via_dispatcher` — stays
+/// byte-identical across both profiles, and **not one `#[cfg]` enters the
+/// cognition path**. That is the property D118.2's option (ii) could never have
+/// had, and the whole reason the port was built before the gate.
+#[cfg(not(feature = "postgres"))]
+pub enum PinnedConn {}
+
+#[cfg(feature = "postgres")]
 impl PinnedConn {
     /// Wrap a freshly-acquired pooled connection.
     ///
@@ -105,6 +120,7 @@ impl PinnedConn {
     }
 }
 
+#[cfg(feature = "postgres")]
 impl std::fmt::Debug for PinnedConn {
     /// Deliberately says nothing about the connection.
     ///
