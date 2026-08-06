@@ -56,7 +56,19 @@ fn locked_versions(name: &str) -> usize {
 /// So the check is rewritten to say what D117.1 actually MEANT — `aws-secrets` is
 /// not on by default — and to pin the whole set, so the next change to `default`
 /// has to be deliberate and has to come here.
-const EXPECTED_DEFAULT: &str = r#"default = ["cli", "documents", "server"]"#;
+/// §Fase 118.c — MOVED, deliberately, and this is where the decision is recorded.
+///
+/// D118.1 (ratified 2026-08-04 as option (c)): a bare `cargo install axon-lang`
+/// builds the COMPILER alone; the runtime is a second binary you install only if
+/// you run one. Measured 2026-08-06 — install 11m09s → 7m05s (−36%), `axon`
+/// 36.1 → 19.1 MiB (−47%), 235 → 187 crates.
+///
+/// This gate did its job: the manifest change turned it red, its own failure
+/// message named §118.c and told the next reader to update this constant in the
+/// same commit, and that is exactly what happened. A packaging default that can
+/// move without a human noticing is how §117's crates.io README stayed wrong for
+/// six releases.
+const EXPECTED_DEFAULT: &str = r#"default = ["cli"]"#;
 
 #[test]
 fn fase117c_aws_sdk_is_opt_in() {

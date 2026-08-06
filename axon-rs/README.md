@@ -29,8 +29,52 @@ The crate publishes as `axon-lang`; the library import is `use axon::*`.
 cargo install axon-lang
 ```
 
-This installs the `axon` binary. If the build stops with a `cc`/linker error
-rather than a Rust error, the C toolchain is what is missing.
+This installs **`axon`** — the compiler and governance CLI. It is what you want
+in CI, in a pre-commit hook, and on a developer machine: `axon check` needs no
+database, no HTTP server and no API key.
+
+If the build stops with a `cc`/linker error rather than a Rust error, the C
+toolchain is what is missing.
+
+### Running governed flows: `axon-server`
+
+`axon` compiles and audits; **`axon-server` executes**. It is a separate binary
+behind a feature flag, the way `psql` and `postgres` — or `docker` and `dockerd`
+— are separate:
+
+```bash
+cargo install axon-lang --features server            # adds `axon-server`
+cargo install axon-lang --features server,postgres   # …with the SQL data plane
+```
+
+| feature | adds |
+| ------- | ---- |
+| *(none — the default)* | `axon`: check, compile, run, dossier, audit, sbom, prove, verify, fmt, fix, repl, … |
+| `server` | the `axon-server` binary — HTTP / SSE / NDJSON / WebSocket |
+| `postgres` | `backend: postgresql` axonstores, `axon store introspect` |
+| `documents` | the OOXML surface (§99/§100/§106) and `axon evidence-package` |
+
+**Both binaries are AGPL and both live in this crate.** The split is a *role*
+boundary — compiler vs runtime — not a paid one.
+
+Nothing disappears when you install less. **Every subcommand stays in `--help`
+under every profile**, and one whose feature is absent refuses in writing with
+the exact command that brings it back:
+
+```
+$ axon serve
+X `axon serve` requires the `server` feature - this build was compiled without it…
+  Reinstall with: cargo install axon-lang --features server
+  and run `axon-server` (the `axon` you have keeps working for everything else).
+```
+
+`axon check` type-checks a program that declares `backend: postgresql` even in a
+build with no database driver — the compiler resolves a *declaration*; it opens
+no connection.
+
+**What the split costs and buys** (measured 2026-08-06, warm registry, cold
+target dir): the default install is **11m09s → 7m05s** and the `axon` binary
+**36.1 MiB → 19.1 MiB**.
 
 ## See it work
 
@@ -66,14 +110,15 @@ the type system, so it holds at compile time or it does not hold at all.
 
 ## What's in the box
 
-One binary, 28 subcommands. The ones you are most likely to reach for:
+**28 subcommands, all of them listed under every profile.** The ones you are most
+likely to reach for:
 
 | Command | Does |
 | ------- | ---- |
 | `axon check` | lex, parse, type-check — the compliance gate |
 | `axon run` | compile and execute (`--tool-mode stub` runs with no API keys) |
 | `axon compile` | lower to IR JSON |
-| `axon serve` | run the HTTP / SSE / NDJSON / WebSocket server |
+| `axon serve` | run the HTTP / SSE / NDJSON / WebSocket server — needs `--features server`, and points you at `axon-server` |
 | `axon dossier` · `axon audit` · `axon sbom` | regulatory posture, gap analysis, SBOM |
 | `axon prove` · `axon verify` | emit and independently check proof objects |
 | `axon fmt` · `axon fix` · `axon repl` · `axon inspect` | the usual tooling |

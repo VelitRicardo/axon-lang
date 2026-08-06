@@ -1,6 +1,6 @@
 [package]
 name = "axon-lang"
-version = "2.81.0"
+version = "2.82.0"
 authors = ["AXON Project", "Ricardo Velit"]
 edition = "2021"
 rust-version = "1.95"
@@ -240,7 +240,36 @@ image = { version = "0.25", default-features = false, features = ["png", "jpeg",
 # what they got before. Moving the default to `["cli"]` — D118.1's two-binary
 # shape — is §118.c, deliberately a separate commit with its own release note,
 # because THAT is the change an adopter feels.
-default = ["cli", "documents", "server", "postgres"]
+# §Fase 118.c (D118.1, RATIFIED 2026-08-04 as option (c)) — the default is the
+# COMPILER, and the runtime is a separate artefact.
+#
+#   cargo install axon-lang                      -> `axon` alone
+#   cargo install axon-lang --features server    -> `axon` + `axon-server`
+#
+# MEASURED 2026-08-06, warm registry / cold target dir / serial:
+#   install   11m 09s -> 7m 05s   (-36%)
+#   `axon`    36.1 MiB -> 19.1 MiB (-47%)
+#   crates    235 -> 187
+#
+# The five-minute target §117 left open is NOT reached — 7m 05s — and the plan
+# vivo records that as missed rather than quietly restating it. What remains is
+# `reqwest` (the seven LLM backends), `tokio`, rustls and the ESK crypto: the
+# product, not packaging.
+#
+# SEMVER, in the first line rather than a footnote (the §117 precedent): removing
+# features from `default` is a MAJOR change by the Cargo Book, because a
+# downstream crate relying on the implicit default loses it silently. Shipped as
+# a MINOR because every capability remains REACHABLE — `axon serve` stays in
+# `--help` and refuses in writing with the exact reinstall command, the OOXML
+# tools stay registered, `axon store introspect` refuses at exit 2, and `axon
+# check` still type-checks a `backend: postgresql` program with no driver linked.
+# Nothing silently disappears; a build without a feature says so.
+#
+# The one KNOWN downstream consumer, `axon-enterprise`, needs
+# `features = ["server", "postgres", "documents"]` — audited, not assumed
+# (§118.d): 12 server items, 3 postgres + 3 store submodules, and 4 `ooxml`
+# items via §106's enterprise-only Governed Document Egress.
+default = ["cli"]
 
 # ── The additive core (§Fase 118) ─────────────────────────────────────────────
 #
