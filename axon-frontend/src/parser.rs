@@ -6339,19 +6339,69 @@ impl Parser {
                     "kp" | "Kp" => node.kp = self.parse_optional_float(),
                     "ki" | "Ki" => node.ki = self.parse_optional_float(),
                     "kd" | "Kd" => node.kd = self.parse_optional_float(),
-                    "tolerance" => node.tolerance = self.parse_optional_float(),
                     "max_steps" => node.max_steps = self.parse_optional_int(),
+                    // §Fase 119.b — `epsilon:` is what the README publishes; `tolerance:`
+                    // is what the parser has always accepted. They are the SAME ε — the
+                    // convergence band of `Converge(e, ε, N)`. Both spellings resolve here
+                    // rather than one of them silently vanishing into `skip_value()`.
+                    "tolerance" | "epsilon" => node.tolerance = self.parse_optional_float(),
                     "on_violation" => {
                         node.on_violation = self.consume_any_ident_or_kw()?.value.clone()
                     }
                     _ => self.skip_value(),
                 }
             } else if self.check(TokenType::LBrace) {
-                self.skip_braced_block()?;
+                // §Fase 119.b — `pid { Kp: 2.0, Ki: 0.3, Kd: 0.1 }`, which is the form
+                // README §XV publishes and the form every mandate example uses.
+                //
+                // THIS BLOCK USED TO BE `skip_braced_block()`. The consequence was not a
+                // parse error — it was SILENT ACCEPTANCE: `axon check` printed
+                // "0 errors" and the IR came out with `kp: None, ki: None, kd: None`.
+                // The developer wrote the published example, the compiler agreed, and the
+                // ENTIRE CONTROL LAW was discarded between them. A dropped specification
+                // that reports success is the §111 defect living in the parser.
+                if field_name == "pid" {
+                    self.parse_pid_block(&mut node)?;
+                } else {
+                    self.skip_braced_block()?;
+                }
             }
         }
         self.consume(TokenType::RBrace)?;
         Ok(node)
+    }
+
+    /// §Fase 119.b — `pid { Kp: <f>, Ki: <f>, Kd: <f> }`.
+    ///
+    /// The gains of the Cybernetic Refinement Calculus controller
+    /// (`docs/papers/paper_mandate.md` §3): `u(t) = Kp·e(t) + Ki·∫e + Kd·de/dt`.
+    /// Accepts both capitalised (`Kp`, the papers' and README's notation) and
+    /// lower-case spellings, because the flat `kp:` form was already accepted and
+    /// removing it would break programs that use it.
+    ///
+    /// Unknown keys inside the block are skipped rather than refused — the enclosing
+    /// declaration keeps that behaviour, and tightening it is a separate, wider
+    /// decision than this sub-fase should make unilaterally.
+    fn parse_pid_block(&mut self, node: &mut MandateDefinition) -> Result<(), ParseError> {
+        self.consume(TokenType::LBrace)?;
+        while !self.check(TokenType::RBrace) && !self.check(TokenType::Eof) {
+            let key = self.current().value.clone();
+            self.advance();
+            if self.check(TokenType::Colon) {
+                self.advance();
+                match key.as_str() {
+                    "kp" | "Kp" => node.kp = self.parse_optional_float(),
+                    "ki" | "Ki" => node.ki = self.parse_optional_float(),
+                    "kd" | "Kd" => node.kd = self.parse_optional_float(),
+                    _ => self.skip_value(),
+                }
+            }
+            if self.check(TokenType::Comma) {
+                self.advance();
+            }
+        }
+        self.consume(TokenType::RBrace)?;
+        Ok(())
     }
 
     /// §Fase 111.f — `compute <Name>(p: T, …) -> T { <expr> }`.

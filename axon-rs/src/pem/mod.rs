@@ -29,6 +29,9 @@
 
 pub mod backend;
 pub mod continuity_token;
+/// §Fase 119.b — `e(t)` for `mandate`. The paper places the semantic validator
+/// inside the PEM engine (`docs/papers/paper_mandate.md`), so it lives here.
+pub mod semantic_validator;
 pub mod state;
 
 pub use self::backend::{
@@ -39,4 +42,7 @@ pub use self::continuity_token::{
 };
 pub use self::state::{
     CognitiveState, FixedPoint, MemoryEntry, Q32_32_SCALE,
+};
+pub use self::semantic_validator::{
+    Clause, Constraint, ConstraintSet, Predicate, ValidatorError, Verdict, Violation,
 };
