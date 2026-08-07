@@ -455,9 +455,10 @@ pub async fn run_streaming_via_dispatcher(
         // `capacity: 20` real on a POST, a phantom on an SSE. The exact
         // "real-on-one-path, dead-on-the-other" defect §111 exists to end, so it
         // is wired in BOTH places.
-        let _refused = reg.resolve_from_resources(
+        let _refused = reg.resolve_from_resources_within(
             &ir.resources,
             &crate::resource_resolver::EnvResourceResolver,
+            &ir.fabrics,
         );
         std::sync::Arc::new(reg)
     };

@@ -7253,6 +7253,38 @@ impl<'a> TypeChecker<'a> {
     /// Enforces: (a) zones ≥ 1 when present; (b) shield_ref, if non-empty,
     /// is a declared shield.
     fn check_fabric(&mut self, node: &FabricDefinition) {
+        // ── §Fase 119.e — axon-E041 region/provider mismatch ────────────────
+        //
+        // §111's finding on `fabric`: `provider`/`region`/`zones` were
+        // "consumed by NOTHING". This is the first thing they decide. The
+        // knowledge doc names this check by its code and its example:
+        // `provider: aws  region: "eastus"` describes a substrate that does
+        // not exist, and a typed expectation that cannot be true is worse
+        // than an untyped one — it reads as verified.
+        //
+        // The provider catalog stays OPEN (the doc is explicit that the
+        // runtime decides deployability); only providers whose region shape
+        // is public fact are judged, and `substrate` reports when it makes
+        // no judgment rather than inventing one.
+        if !node.provider.is_empty() {
+            if let Some(false) =
+                crate::substrate::region_matches_provider(&node.provider, &node.region)
+            {
+                let hint = match crate::substrate::provider_shape(&node.provider) {
+                    crate::substrate::ProviderShape::Validated { example } => {
+                        format!(" (a {} region looks like \"{example}\")", node.provider)
+                    }
+                    crate::substrate::ProviderShape::Unvalidated => String::new(),
+                };
+                self.emit(
+                    format!(
+                        "axon-E041 region/provider mismatch: fabric '{}' declares                          provider '{}' with region \"{}\"{hint}. The substrate this                          fabric describes does not exist, so every resource placed                          `within` it expects to find something that is not there.",
+                        node.name, node.provider, node.region
+                    ),
+                    &node.loc,
+                );
+            }
+        }
         if let Some(z) = node.zones {
             if z < 1 {
                 self.emit(
@@ -7292,6 +7324,43 @@ impl<'a> TypeChecker<'a> {
     /// resource names within a single manifest (Separation Logic `*` disjointness
     /// within-manifest — cross-manifest aliasing is a separate check).
     fn check_manifest(&mut self, node: &ManifestDefinition) {
+        // ── §Fase 119.e — axon-E042 compliance ↔ substrate jurisdiction ─────
+        //
+        // The knowledge doc's own example: *"Compliance shields cross-validate
+        // this against their declared geographic constraints — e.g. a
+        // GDPR-tagged manifest deployed to a non-EU region is rejected."*
+        // This is where the fabric's `region` stops being a label: it decides
+        // whether a declared obligation can hold.
+        //
+        // An UNDETERMINABLE jurisdiction is a violation too, reported
+        // distinctly. "We cannot tell" must never read as "it is fine" — the
+        // whole point of a typed expectation is that it was shown.
+        if !node.fabric_ref.is_empty() && !node.compliance.is_empty() {
+            // Resolved from the program, not from accumulated state: the
+            // declaration ORDER must not decide whether the check runs.
+            let substrate = self.program.declarations.iter().find_map(|d| match d {
+                Declaration::Fabric(f) if f.name == node.fabric_ref => {
+                    Some((f.provider.clone(), f.region.clone()))
+                }
+                _ => None,
+            });
+            if let Some((provider, region)) = substrate {
+                for tag in &node.compliance {
+                    if let Some(v) =
+                        crate::substrate::compliance_violation(tag, &provider, &region)
+                    {
+                        self.emit(
+                            format!(
+                                "axon-E042 compliance/jurisdiction: manifest '{}' {v}",
+                                node.name
+                            ),
+                            &node.loc,
+                        );
+                    }
+                }
+            }
+        }
+
         // (a) resource references must resolve
         let mut seen: std::collections::HashSet<&String> = std::collections::HashSet::new();
         for res_name in &node.resources {

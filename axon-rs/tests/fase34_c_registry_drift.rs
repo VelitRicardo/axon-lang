@@ -323,6 +323,7 @@ fn s6_register_direct_path_respects_caller_set_is_streaming() {
         timeout: String::new(),
         runtime: String::new(),
         resource_ref: String::new(),
+        substrate: None,
         capacity: None,
         sandbox: None,
         max_results: None,

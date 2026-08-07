@@ -4066,9 +4066,10 @@ pub fn execute_server_flow(
     // Runs AFTER the base-URL pass so a resource-backed tool overrides the legacy
     // slug resolution. `refused` tools (unresolvable endpoint) are dropped, so a
     // dispatch of one fails honestly rather than reaching a phantom.
-    let _refused_tools = registry.resolve_from_resources(
+    let _refused_tools = registry.resolve_from_resources_within(
         &ir.resources,
         &crate::resource_resolver::EnvResourceResolver,
+        &ir.fabrics,
     );
     // §Fase 102 (D102.9) — stamp the dispatching tenant onto every scrape entry
     // (keys the §102.d adaptive-selector memory) + apply the per-tenant

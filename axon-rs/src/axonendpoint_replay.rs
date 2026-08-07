@@ -128,6 +128,15 @@ pub struct StepAuditRecord {
     /// impl backing the stream.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tool_name: Option<String>,
+    /// §Fase 119.e — the `fabric` substrate this dispatch ran on:
+    /// `"<provider>/<region>"`, resolved from the tool's `resource`'s
+    /// `within:`. The knowledge doc's compliance propagation, made a fact:
+    /// *"every audit row emitted under a fabric carries
+    /// (fabric.provider, fabric.region) so cross-jurisdiction data movement
+    /// is auditable."* Elided when the tool names no fabric-placed resource,
+    /// so every pre-§119.e row is byte-identical.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub substrate: Option<String>,
     /// `Some(n)` where `n` is the count of `ToolChunk`s the source
     /// stream produced (including empty-delta intermediates and the
     /// terminator chunk). Distinct from `tokens_emitted` — that

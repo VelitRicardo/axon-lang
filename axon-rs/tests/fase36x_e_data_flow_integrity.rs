@@ -72,6 +72,7 @@ fn echo_tool(name: &str) -> ToolEntry {
         timeout: String::new(),
         runtime: String::new(),
         resource_ref: String::new(),
+        substrate: None,
         capacity: None,
         sandbox: None,
         max_results: None,

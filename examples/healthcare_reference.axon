@@ -105,12 +105,19 @@ fabric ClinicalCloud {
   shield:     PHIShield
 }
 
+// §Fase 119.e — this manifest used to declare `GDPR` alongside HIPAA while
+// its fabric deploys to `aws / us-east-1`. `axon-E042` refuses that: GDPR
+// binds regulated data to the EU jurisdiction, and Virginia is not in it —
+// the deployment would move the data out of the jurisdiction the tag promises
+// to keep it in. The two obligations are not composable on ONE substrate; a
+// GDPR deployment needs its own EU-region fabric and manifest. The example
+// now declares what this substrate can actually honor.
 manifest ProductionHealthcare {
   resources:   [EHRDatabase, TrialArchive, InferenceEngine]
   fabric:      ClinicalCloud
   region:      "us-east-1"
   zones:       3
-  compliance:  [HIPAA, GDPR, GxP, SOC2]
+  compliance:  [HIPAA, GxP, SOC2]
 }
 
 // ── Observation + control ─────────────────────────────────────────

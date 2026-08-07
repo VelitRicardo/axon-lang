@@ -527,6 +527,7 @@ async fn s4_from_entry_rejects_invalid_url_scheme() {
         timeout: "10s".into(),
         runtime: "ftp://example.com/".into(),
         resource_ref: String::new(),
+        substrate: None,
         capacity: None, // wrong scheme
         sandbox: None,
         max_results: None,
@@ -579,6 +580,7 @@ fn registry_with_http(name: &str, runtime: &str, effect_row: Vec<&str>) -> Arc<T
         timeout: "5s".into(),
         runtime: runtime.into(),
         resource_ref: String::new(),
+        substrate: None,
         capacity: None,
         sandbox: None,
         max_results: None,

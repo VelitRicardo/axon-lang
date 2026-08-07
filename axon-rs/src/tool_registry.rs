@@ -44,6 +44,19 @@ pub struct ToolEntry {
     /// `ServerState`, keyed by resource — a per-request semaphore would reset every
     /// time and bound nothing.
     pub capacity: Option<u32>,
+    /// §Fase 119.e — the substrate this tool's channel actually runs on:
+    /// `(provider, region)` of the `fabric` its `resource` lives `within`.
+    ///
+    /// §111's finding on `fabric` was that provider/region were "consumed by
+    /// NOTHING at runtime". This field is where they arrive at something that
+    /// RUNS: resolved once at binding time (`resolve_from_resources`), stamped
+    /// on every dispatch through this tool, and carried into the audit row so
+    /// cross-jurisdiction data movement is auditable — the knowledge doc's
+    /// "compliance propagation", made a fact instead of a sentence.
+    ///
+    /// Empty ⇒ the resource declares no `within:` (pre-§113 programs), and the
+    /// audit says "unattributed" rather than inventing a substrate.
+    pub substrate: Option<(String, String)>,
     pub sandbox: Option<bool>,
     pub max_results: Option<i64>,
     pub output_schema: String,
@@ -303,6 +316,7 @@ impl ToolRegistry {
                 timeout: String::new(),
                 runtime: String::new(),
                 resource_ref: String::new(),
+                substrate: None,
                 capacity: None,
                 sandbox: None,
                 max_results: None,
@@ -328,6 +342,7 @@ impl ToolRegistry {
                 timeout: String::new(),
                 runtime: String::new(),
                 resource_ref: String::new(),
+                substrate: None,
                 capacity: None,
                 sandbox: None,
                 max_results: None,
@@ -375,6 +390,7 @@ impl ToolRegistry {
                     // Endpoint + capacity are DERIVED from it by
                     // `resolve_from_resources` on the server path.
                     resource_ref: spec.resource_ref.clone(),
+                    substrate: None,
                     capacity: None,
                     sandbox: spec.sandbox,
                     max_results: spec.max_results,
@@ -455,6 +471,22 @@ impl ToolRegistry {
         resources: &[IRResource],
         resolver: &dyn crate::resource_resolver::ResourceResolver,
     ) -> Vec<String> {
+        self.resolve_from_resources_within(resources, resolver, &[])
+    }
+
+    /// §Fase 119.e — the same binding, with the `fabric` catalog in hand so a
+    /// resource's `within:` resolves to the substrate the tool runs on.
+    ///
+    /// Fails CLOSED on a dangling `within:` — a resource placed in a fabric
+    /// that is not in the program describes a substrate nobody declared, and
+    /// binding a channel to it would connect to something whose jurisdiction
+    /// and provider are unknown while the declaration claims otherwise.
+    pub fn resolve_from_resources_within(
+        &mut self,
+        resources: &[IRResource],
+        resolver: &dyn crate::resource_resolver::ResourceResolver,
+        fabrics: &[crate::ir_nodes::IRFabric],
+    ) -> Vec<String> {
         let mut refused = Vec::new();
         for entry in self.tools.values_mut() {
             if entry.resource_ref.is_empty() {
@@ -481,6 +513,26 @@ impl ToolRegistry {
                         resolve_tool_endpoint(slug, &entry.name, &addr)
                     };
                     entry.capacity = res.capacity.filter(|c| *c > 0).map(|c| c as u32);
+                    // §Fase 119.e — the substrate reaches the running channel.
+                    if !res.within.is_empty() {
+                        match fabrics.iter().find(|f| f.name == res.within) {
+                            Some(f) => {
+                                entry.substrate =
+                                    Some((f.provider.clone(), f.region.clone()));
+                            }
+                            None if fabrics.is_empty() => {
+                                // No catalog threaded (pre-§119.e call sites):
+                                // leave unattributed rather than refuse, so the
+                                // legacy entry point stays byte-identical.
+                            }
+                            None => {
+                                // A catalog WAS threaded and the fabric is not
+                                // in it: the resource names a substrate nobody
+                                // declared. Refuse the binding.
+                                refused.push(entry.name.clone());
+                            }
+                        }
+                    }
                 }
                 Err(_) => {
                     refused.push(entry.name.clone());
@@ -796,6 +848,7 @@ mod tests {
             timeout: "10s".to_string(),
             runtime: String::new(),
             resource_ref: String::new(),
+            substrate: None,
             capacity: None,
             sandbox: None,
             max_results: Some(5),
@@ -910,6 +963,7 @@ mod tests {
             timeout: String::new(),
             runtime: String::new(),
             resource_ref: String::new(),
+            substrate: None,
             capacity: None,
             sandbox: None,
             max_results: None,
@@ -943,6 +997,7 @@ mod tests {
             timeout: "10s".to_string(),
             runtime: String::new(),
             resource_ref: String::new(),
+            substrate: None,
             capacity: None,
             sandbox: None,
             max_results: Some(5),
@@ -976,6 +1031,7 @@ mod tests {
             timeout: String::new(),
             runtime: String::new(),
             resource_ref: String::new(),
+            substrate: None,
             capacity: None,
             sandbox: None,
             max_results: None,
@@ -1051,6 +1107,7 @@ mod tests {
             timeout: String::new(),
             runtime: "/crm/search".to_string(),
             resource_ref: String::new(),
+            substrate: None,
             capacity: None,
             sandbox: None,
             max_results: None,
@@ -1069,6 +1126,7 @@ mod tests {
             timeout: String::new(),
             runtime: "fhir".to_string(),
             resource_ref: String::new(),
+            substrate: None,
             capacity: None,
             sandbox: None,
             max_results: None,
@@ -1087,6 +1145,7 @@ mod tests {
             timeout: String::new(),
             runtime: "https://pinned.example.com/api".to_string(),
             resource_ref: String::new(),
+            substrate: None,
             capacity: None,
             sandbox: None,
             max_results: None,
@@ -1128,6 +1187,7 @@ mod tests {
             timeout: String::new(),
             runtime: "/x".to_string(),
             resource_ref: String::new(),
+            substrate: None,
             capacity: None,
             sandbox: None,
             max_results: None,
@@ -1153,6 +1213,7 @@ mod tests {
             timeout: String::new(),
             runtime: String::new(),
             resource_ref: String::new(),
+            substrate: None,
             capacity: None,
             sandbox: None,
             max_results: None,
@@ -1171,6 +1232,7 @@ mod tests {
             timeout: String::new(),
             runtime: String::new(),
             resource_ref: String::new(),
+            substrate: None,
             capacity: None,
             sandbox: None,
             max_results: None,

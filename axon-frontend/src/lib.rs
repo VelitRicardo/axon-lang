@@ -53,6 +53,9 @@ pub mod refinement;
 /// §Fase 119.b — the `mandate` stability judgment (`D < |Kp+Ki+Kd| < 1/L`),
 /// shared verbatim with the runtime controller in axon-rs.
 pub mod stability;
+/// §Fase 119.e — the `fabric` substrate judgment (provider ↔ region ↔
+/// jurisdiction), shared verbatim with the runtime.
+pub mod substrate;
 pub mod stream_effect;
 
 // §Fase 11.c — closed catalogue of regulatory authorisations

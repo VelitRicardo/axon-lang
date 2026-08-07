@@ -291,7 +291,7 @@ pub const PRIMITIVE_REGISTRY: &[PrimitiveInfo] = &[
         category: "cognitive_io",
         top_level: true,
         since: "Fase 6",
-        summary: "The cloud-substrate declaration — provider, region, zones, ephemerality, bound shield.",
+        summary: "The cloud-substrate declaration: provider/region are cross-validated at compile time (an impossible region and an unsatisfiable compliance obligation are both refused) and travel with every channel bound to a resource placed `within` it, into its audit row.",
         doc_status: DocStatus::Documented,
         is_advertised: true,
     },

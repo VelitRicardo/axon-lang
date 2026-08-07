@@ -174,7 +174,7 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     // well-written and unit-tested; the language never grew a way to reach them.
     // Founder-ratified: designing that consumption surface is §112+.
     ("resource", Real { proof: "tests/fase113_c_resource_is_a_wire.rs (§113.c — an `axonstore { resource: Db }` DERIVES its DSN and its POOL SIZE from the resource: `capacity: 20` produces twenty connections. Before §113 `capacity` was read by zero lines of code in either repo while every pool sat at a hardcoded 10, and `lifetime` — sold as Linear Logic — was read by nothing at all)" }),
-    ("fabric", NotImplemented { finding: "§113 — `within:` gave it SUBJECTS, and disjointness is now unrepresentable by construction (one field ⇒ a resource cannot be in two fabrics). But `provider`/`region`/`zones` are consumed by NOTHING at runtime: in `LiveHandler::provision` the parameter is literally `_fabrics`, and that function refuses anyway. Still governs nothing that runs" }),
+    ("fabric", Partial { gap: "§119.e made provider/region DECIDE things, on the line the knowledge doc draws (fabric describes what the runtime expects to find; it is explicitly NOT infrastructure-as-code, so `provision` is not what it owed). COMPILE TIME: `axon-E041` refuses a region that cannot belong to the declared provider (the doc's own `provider: aws region: \"eastus\"` example) and `axon-E042` refuses a compliance obligation the substrate cannot satisfy (the doc's own \"a GDPR-tagged manifest deployed to a non-EU region is rejected\") — with an UNDETERMINABLE jurisdiction counted as a violation, never a pass. RUNTIME: a tool whose resource lives `within` a fabric carries that fabric's (provider, region) on its binding and into its audit row — the doc's compliance propagation, made a fact — and a `within:` naming an undeclared fabric REFUSES the binding. Gates: axon-frontend/tests/fase119_e_fabric_substrate.rs (10) + substrate unit suite (11) + axon-rs/tests/fase119_e_fabric_runtime.rs (5); 6/6 mutations killed. THE GAP: the provider catalog is open by design, so a provider whose region shape this compiler does not know is accepted UNVALIDATED (visible via ProviderShape::Unvalidated) — and `zones`/`ephemeral`/`shield:` are still consumed by nothing, so a fabric-level shield does not yet wrap resource acquisition" }),
     ("manifest", Partial { gap: "§111 F14 — the κ/compliance half IS genuinely consumed (it feeds attestation + the audit scorer); the \"desired shape\" half is dead" }),
     ("observe", Real { proof: "tests/fase112_c_cognitive_io_deploy.rs (§112.a/c — a real Handler reaches a real target through a deny-by-default SourceRegistry; an observation that cannot be taken REFUSES. The only prior Handler returned certainty 1.0 unconditionally, without going anywhere)" }),
     ("reconcile", Real { proof: "tests/fase112_e_reconcile_drift.rs (§112.e — REAL Jaccard drift between the manifest's desired shape and the world's actual shape. It used to compare the belief against ITSELF: when evidence was missing it defaulted to the manifest, so drift was structurally always 0.0)" }),
@@ -321,7 +321,31 @@ pub const KNOWN_DEBT: &[&str] = &[
     //
     // Calling it Real here is exactly the lie §111.g exists to prevent, told by the
     // person who wrote the gate. The ledger only shrinks by what is PROVEN.
-    "fabric",
+    // §Fase 119.e (2026-08-07) — `fabric` LEFT this ledger, and with it the
+    // ledger itself: provider/region now refuse an impossible substrate and an
+    // unsatisfiable obligation at compile time, and reach the running channel
+    // and its audit row. SIXTH AND LAST TURN.
+    //
+    // ═══════════════════════════════════════════════════════════════════
+    //  THE RATCHET IS EMPTY.
+    //
+    //  §111 opened it with 22 advertised primitives that were not real, and
+    //  built this list as the ledger of what the language owed. §111.f paid
+    //  `compute`. §112 paid six of the Cognitive-I/O block. §113 paid
+    //  `resource`/`lease`. §114 paid the governed channel. §119 paid the last
+    //  five: `mandate` (b), `lambda` + `ots` (c), `hibernate` (d), `fabric`
+    //  (e) — all on 2026-08-07.
+    //
+    //  An empty KNOWN_DEBT does NOT mean every primitive is Real. Several are
+    //  `Partial` with the gap NAMED in `advertised.rs` — which is the whole
+    //  point of the distinction: `Partial` is a bounded, published limit an
+    //  adopter can read and plan around; `NotImplemented` was an advertised
+    //  promise with nothing behind it. There is none of the latter left.
+    //
+    //  KEEP THIS LIST EMPTY. Adding a name back means the language advertised
+    //  something it does not have — which is exactly the state §111 existed to
+    //  end, and the gate below will make that addition loud.
+    // ═══════════════════════════════════════════════════════════════════
 ];
 
 /// Look up what an advertised name's runtime actually does.

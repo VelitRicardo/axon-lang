@@ -243,6 +243,7 @@ fn fuzz_tool_entry(rng: &mut Lcg) -> ToolEntry {
         },
         runtime,
         resource_ref: String::new(),
+        substrate: None,
         capacity: None,
         sandbox: None,
         max_results: None,

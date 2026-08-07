@@ -448,6 +448,11 @@ async fn run_step_streaming_tool(
                             chunks_degraded: 0,
                             timestamp_ms: now_ms(),
                             tool_name: Some(entry.name.clone()),
+                            // §Fase 119.e — the substrate travels with the row.
+                            substrate: entry
+                                .substrate
+                                .as_ref()
+                                .map(|(p, r)| format!("{p}/{r}")),
                             tool_chunks_emitted: Some(0),
                             tool_output_hash_hex: Some(String::new()),
                             tool_terminator_kind: Some("shed".to_string()),
@@ -598,6 +603,11 @@ async fn run_step_streaming_tool(
             chunks_degraded: summary.chunks_degraded,
             timestamp_ms: now_ms(),
             tool_name: Some(entry.name.clone()),
+                            // §Fase 119.e — the substrate travels with the row.
+                            substrate: entry
+                                .substrate
+                                .as_ref()
+                                .map(|(p, r)| format!("{p}/{r}")),
             tool_chunks_emitted: Some(summary.chunks_pushed),
             tool_output_hash_hex: Some(summary.output_hash_hex.clone()),
             tool_terminator_kind: Some(terminator_kind.to_string()),
@@ -1232,6 +1242,7 @@ pub async fn run_pure_shape(
             chunks_degraded: degrade_count,
             timestamp_ms: now_ms(),
             tool_name: None,
+            substrate: None,
             tool_chunks_emitted: None,
             tool_output_hash_hex: None,
             tool_terminator_kind: None,
