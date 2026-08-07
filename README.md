@@ -3084,9 +3084,12 @@ u(t) = −ΔL_t = K_p·e(t) + K_i·∫₀ᵗ e(τ)dτ + K_d·de(t)/dt
 where `e(t) ∈ ℝ⁺` is the semantic divergence computed in real-time by the
 `SemanticValidator`.
 
-**Theorem 1 (Asymptotic Stability of Active Inference):** Under tuned gains
-`K_p, K_i, K_d > 0`, the semantic error `e(t)` bounded by `M` is
-asymptotically stable in the Lyapunov sense.
+**Theorem 1 (Asymptotic Stability of Active Inference):** Under gains
+`K_p > 0, K_i ≥ 0, K_d ≥ 0` whose combined control effort **exceeds the
+backend's drift bound** (`|K_p + K_i + K_d| > D`, with `sup|drift(t)| ≤ D`),
+the semantic error `e(t)` is asymptotically stable in the Lyapunov sense.
+The sign conditions alone are necessary but **not sufficient**: gains below
+the drift floor leave `V̇` non-negative and the cage open.
 
 *Proof:* Define the Lyapunov candidate `V(e) = ½·e(t)²`, representing the
 thermodynamic "Free Energy" of the semantic violation. The time derivative
@@ -3124,8 +3127,48 @@ Converge(e, ε, N) = ∃ t ≤ N : |e(t)| < ε
 Anti-windup:  I_clamped = clamp(∫e, −I_max, I_max)
 ```
 
-The compiler statically verifies: `K_p > 0`, `K_i ≥ 0`, `K_d ≥ 0`, `ε > 0`,
-`N ≥ 1` — rejecting physically unstable configurations at compile time.
+**Static verification — the stability band.** Two independent results bound
+the gains in opposite directions, and both are enforced at compile time:
+
+```text
+D  <  |K_p + K_i + K_d|  <  1/L         (both endpoints exclusive)
+```
+
+- **Floor** (Lyapunov, Theorem 1): the control effort must *exceed* the
+  backend's drift bound `D = sup|drift(t)|` — too small, and the cage does
+  not hold.
+- **Ceiling** (Lipschitz): the effort must stay *below* `1/L`, the reciprocal
+  Lipschitz constant of the refinement map — too large, and the loop
+  oscillates or diverges.
+
+`D` and `L` are **measured properties of a backend**, and the compiler never
+invents them. You declare them, and the compiler verifies the theorem
+conditionally on your declaration — the declared bounds then travel in the IR
+as proof obligations for dispatch:
+
+```axon
+mandate SECCompliance {
+    constraint: "no forward-looking statements without safe harbor language"
+    pid { Kp: 2.0, Ki: 0.3, Kd: 0.1 }
+    stability { D: 0.5, L: 0.4 }
+    epsilon: 0.05
+    max_steps: 8
+    on_violation: halt
+}
+```
+
+Here `|2.0 + 0.3 + 0.1| = 2.4` lies inside `(0.5, 2.5)` and the mandate
+compiles; gains of `pid { Kp: 0.3, Ki: 0.1, Kd: 0.05 }` pass every sign test
+yet are **refused at compile time**, because `0.45` cannot beat the declared
+drift. If `D ≥ 1/L` the band is empty — no gains whatever can stabilise that
+backend, and the compiler says so.
+
+Without a `stability` declaration the compiler verifies the necessary sign
+conditions — `K_p > 0`, `K_i ≥ 0`, `K_d ≥ 0`, `ε ∈ (0, 1]`, `N ≥ 1` — and the
+IR carries no bounds, so the runtime can see that nothing further was
+statically promised. (`ε` is capped at 1 because `e = 1 − CSR` cannot exceed
+1: a wider band would admit even total violation, a mandate that could never
+fail.)
 
 #### B. Sweet Argument — The Thermodynamic Cage for LLMs
 

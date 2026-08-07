@@ -1703,6 +1703,8 @@ impl IRGenerator {
             kd: n.kd,
             tolerance: n.tolerance,
             max_steps: n.max_steps,
+            drift_bound: n.drift_bound,
+            lipschitz: n.lipschitz,
             on_violation: n.on_violation.clone(),
         }
     }

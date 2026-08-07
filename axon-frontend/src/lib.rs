@@ -50,6 +50,9 @@ pub mod type_checker;
 // The matching runtime implementations (`trust_verifiers`,
 // `stream_runtime`) live in the `axon` runtime crate.
 pub mod refinement;
+/// §Fase 119.b — the `mandate` stability judgment (`D < |Kp+Ki+Kd| < 1/L`),
+/// shared verbatim with the runtime controller in axon-rs.
+pub mod stability;
 pub mod stream_effect;
 
 // §Fase 11.c — closed catalogue of regulatory authorisations

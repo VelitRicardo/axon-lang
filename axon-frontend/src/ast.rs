@@ -1797,6 +1797,12 @@ pub struct MandateDefinition {
     pub kd: Option<f64>,
     pub tolerance: Option<f64>,
     pub max_steps: Option<i64>,
+    /// §Fase 119.b — declared drift bound `D` (`sup|drift(t)|`, paper_mandate
+    /// §3). A HYPOTHESIS the runtime must discharge by measurement, not a fact.
+    pub drift_bound: Option<f64>,
+    /// §Fase 119.b — declared Lipschitz constant `L` of the refinement map
+    /// (prompt_opt §6.3). Same standing as `drift_bound`.
+    pub lipschitz: Option<f64>,
     pub on_violation: String, // coerce | halt | retry
     pub loc: Loc,
     /// Fase 14.b — leading comment trivia attached to this declaration

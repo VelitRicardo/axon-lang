@@ -58,197 +58,15 @@
 //! `u(t)` into a logit bias (Tier 1) or into corrective pressure on the next
 //! attempt (Tier 2) is the actuator's job and lives elsewhere.
 
-use std::fmt;
-
-/// The three gains of `u(t) = Kp·e + Ki·∫e + Kd·de/dt`.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Gains {
-    pub kp: f64,
-    pub ki: f64,
-    pub kd: f64,
-}
-
-impl Gains {
-    /// The aggregate the Lipschitz condition bounds: `|Kp + Ki + Kd|`.
-    pub fn effort(&self) -> f64 {
-        (self.kp + self.ki + self.kd).abs()
-    }
-}
-
-/// Why a mandate's declared gains are not admissible.
-///
-/// Every variant carries the numbers, because a diagnostic that says "unstable
-/// gains" without saying which bound was crossed and by how much cannot be acted
-/// on by the developer who wrote them.
-#[derive(Debug, Clone, PartialEq)]
-pub enum GainError {
-    /// `Kp ≤ 0`: no restoring force at all. Published in README §XV.
-    NonPositiveProportional { kp: f64 },
-    /// `Ki < 0`: the integral term would amplify accumulated error.
-    NegativeIntegral { ki: f64 },
-    /// `Kd < 0`: the derivative term would amplify acceleration.
-    NegativeDerivative { kd: f64 },
-    /// Below the drift floor — `paper_mandate.md` §3's precondition.
-    BelowDriftFloor { effort: f64, drift_bound: f64 },
-    /// Above the Lipschitz ceiling — `prompt_opt` §6.3.
-    AboveLipschitzCeiling { effort: f64, ceiling: f64 },
-    /// `D ≥ 1/L`: the band itself is empty. Not a bad configuration — an
-    /// uncageable backend.
-    EmptyBand { drift_bound: f64, ceiling: f64 },
-    /// `ε ≤ 0`: a band no response can enter. Published in README §XV.
-    NonPositiveTolerance { epsilon: f64 },
-    /// `N < 1`: a budget that permits no attempt.
-    NonPositiveStepBudget { max_steps: u32 },
-}
-
-impl fmt::Display for GainError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            GainError::NonPositiveProportional { kp } => write!(
-                f,
-                "Kp is {kp}, but a mandate with no proportional term applies no \
-                 restoring force to a violating response"
-            ),
-            GainError::NegativeIntegral { ki } => write!(
-                f,
-                "Ki is {ki}; a negative integral gain amplifies accumulated \
-                 error instead of correcting it"
-            ),
-            GainError::NegativeDerivative { kd } => write!(
-                f,
-                "Kd is {kd}; a negative derivative gain amplifies error \
-                 acceleration instead of damping it"
-            ),
-            GainError::BelowDriftFloor {
-                effort,
-                drift_bound,
-            } => write!(
-                f,
-                "the control effort |Kp+Ki+Kd| = {effort} does not exceed this \
-                 backend's measured drift bound D = {drift_bound}. The Lyapunov \
-                 argument for this mandate is conditional on exceeding it \
-                 (paper_mandate §3), so with these gains the cage does not hold"
-            ),
-            GainError::AboveLipschitzCeiling { effort, ceiling } => write!(
-                f,
-                "the control effort |Kp+Ki+Kd| = {effort} is at or above the \
-                 convergence ceiling 1/L = {ceiling}; the refinement loop would \
-                 oscillate or diverge rather than settle (prompt_opt §6.3)"
-            ),
-            GainError::EmptyBand {
-                drift_bound,
-                ceiling,
-            } => write!(
-                f,
-                "no gains can stabilise this mandate on this backend: the drift \
-                 floor D = {drift_bound} is at or above the convergence ceiling \
-                 1/L = {ceiling}, so the stability band is empty. This is a \
-                 property of the backend, not of the declaration"
-            ),
-            GainError::NonPositiveTolerance { epsilon } => write!(
-                f,
-                "epsilon is {epsilon}; a convergence band that is not strictly \
-                 positive is one no response can ever enter"
-            ),
-            GainError::NonPositiveStepBudget { max_steps } => write!(
-                f,
-                "max_steps is {max_steps}; a mandate must permit at least one \
-                 refinement attempt"
-            ),
-        }
-    }
-}
-
-impl std::error::Error for GainError {}
-
-/// The admissible interval for `|Kp + Ki + Kd|`: `(D, 1/L)`.
-///
-/// Both endpoints are **exclusive**. At `effort == D` the control effort merely
-/// matches the drift and the Lyapunov derivative is not strictly negative; at
-/// `effort == 1/L` the contraction factor is exactly 1 and the map is no longer
-/// a contraction. Neither endpoint gives the strict inequality its theorem
-/// requires, so neither is admitted.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct StabilityBand {
-    /// `D` — `sup|drift(t)|` for the backend, measured, not assumed.
-    pub floor: f64,
-    /// `1/L` — the reciprocal Lipschitz constant of the refinement map.
-    pub ceiling: f64,
-}
-
-impl StabilityBand {
-    /// Build the band from a measured drift bound and Lipschitz constant.
-    ///
-    /// Returns [`GainError::EmptyBand`] when `D ≥ 1/L` — the backend admits no
-    /// stable mandate at all.
-    pub fn new(drift_bound: f64, lipschitz: f64) -> Result<Self, GainError> {
-        let ceiling = if lipschitz <= 0.0 {
-            // L = 0 means the refinement map does not expand error at all;
-            // there is no upper bound to respect.
-            f64::INFINITY
-        } else {
-            1.0 / lipschitz
-        };
-        let floor = drift_bound.max(0.0);
-        if floor >= ceiling {
-            return Err(GainError::EmptyBand {
-                drift_bound: floor,
-                ceiling,
-            });
-        }
-        Ok(StabilityBand { floor, ceiling })
-    }
-
-    /// The band for a backend with no measured drift and no measured expansion.
-    ///
-    /// Used when a backend has not been characterised. It admits any gains that
-    /// pass the sign tests — **which is exactly the vacuous check §119.b exists
-    /// to replace**, so callers must treat an uncharacterised backend as a gap
-    /// to close, not as a pass.
-    pub fn uncharacterised() -> Self {
-        StabilityBand {
-            floor: 0.0,
-            ceiling: f64::INFINITY,
-        }
-    }
-
-    /// Whether this band came from real measurements.
-    pub fn is_characterised(&self) -> bool {
-        self.floor > 0.0 && self.ceiling.is_finite()
-    }
-
-    /// The full compile-time check: signs, then the band.
-    ///
-    /// This is the function `axon check` must call. Signs first, because
-    /// `Kp = -5` should be reported as a negative gain rather than as a band
-    /// violation — `effort()` takes an absolute value and would otherwise
-    /// describe it in terms the developer cannot map back to what they wrote.
-    pub fn admits(&self, gains: &Gains) -> Result<(), GainError> {
-        if gains.kp <= 0.0 {
-            return Err(GainError::NonPositiveProportional { kp: gains.kp });
-        }
-        if gains.ki < 0.0 {
-            return Err(GainError::NegativeIntegral { ki: gains.ki });
-        }
-        if gains.kd < 0.0 {
-            return Err(GainError::NegativeDerivative { kd: gains.kd });
-        }
-        let effort = gains.effort();
-        if effort <= self.floor {
-            return Err(GainError::BelowDriftFloor {
-                effort,
-                drift_bound: self.floor,
-            });
-        }
-        if effort >= self.ceiling {
-            return Err(GainError::AboveLipschitzCeiling {
-                effort,
-                ceiling: self.ceiling,
-            });
-        }
-        Ok(())
-    }
-}
+// §Fase 119.b.3 — the band arithmetic moved to `axon_frontend::stability`.
+//
+// It was born here, next to the controller that first needed it — which is the
+// §118 smell: the TYPE CHECKER needs the same judgment (README §XV promises
+// compile-time rejection of unstable gains), the frontend has zero deps, and
+// this crate already depends on it. One admissibility judgment, two call
+// sites; a mandate the compiler admits is exactly a mandate this controller
+// would admit. The re-export keeps `axon::pem::StabilityBand` working.
+pub use axon_frontend::stability::{GainError, Gains, StabilityBand};
 
 /// What the controller says to do after observing one `e(t)`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -295,14 +113,17 @@ pub struct MandateSpec {
 impl MandateSpec {
     /// Validate the whole declaration against a band.
     pub fn validate(&self, band: &StabilityBand) -> Result<(), GainError> {
-        if self.epsilon <= 0.0 {
-            return Err(GainError::NonPositiveTolerance {
+        // ε ∈ (0, 1], NOT merely ε > 0: e = 1 − CSR is confined to [0, 1], so a
+        // band wider than 1 admits even total violation — a mandate that could
+        // never fail. Same rule as the compile-time judgment, same reason.
+        if self.epsilon <= 0.0 || self.epsilon > 1.0 {
+            return Err(GainError::ToleranceOutOfRange {
                 epsilon: self.epsilon,
             });
         }
         if self.max_steps < 1 {
             return Err(GainError::NonPositiveStepBudget {
-                max_steps: self.max_steps,
+                max_steps: i64::from(self.max_steps),
             });
         }
         band.admits(&self.gains)
@@ -556,112 +377,28 @@ mod tests {
 
     // ---- the stability band: a BAND, not a sign ----
 
-    #[test]
-    fn the_band_rejects_gains_that_are_too_small_to_beat_the_drift() {
-        // Every sign test in README §XV passes here; only the paper's
-        // precondition catches it.
-        let band = StabilityBand::new(0.8, 0.5).expect("D=0.8 < 1/L=2.0");
-        let weak = gains(0.3, 0.1, 0.05); // effort 0.45 ≤ D = 0.8
-        assert!(weak.kp > 0.0 && weak.ki >= 0.0 && weak.kd >= 0.0);
-        match band.admits(&weak) {
-            Err(GainError::BelowDriftFloor {
-                effort,
-                drift_bound,
-            }) => {
-                assert!((effort - 0.45).abs() < 1e-12);
-                assert_eq!(drift_bound, 0.8);
-            }
-            other => panic!("expected BelowDriftFloor, got {other:?}"),
-        }
-    }
 
-    #[test]
-    fn the_band_rejects_gains_that_are_too_large_to_converge() {
-        let band = StabilityBand::new(0.1, 0.5).expect("D=0.1 < 1/L=2.0");
-        match band.admits(&gains(2.0, 0.3, 0.1)) {
-            // effort 2.4 ≥ 1/L = 2.0
-            Err(GainError::AboveLipschitzCeiling { effort, ceiling }) => {
-                assert!((effort - 2.4).abs() < 1e-12);
-                assert_eq!(ceiling, 2.0);
-            }
-            other => panic!("expected AboveLipschitzCeiling, got {other:?}"),
-        }
-    }
 
-    #[test]
-    fn the_band_admits_gains_between_the_two_bounds() {
-        let band = StabilityBand::new(0.5, 0.5).expect("D=0.5 < 1/L=2.0");
-        assert_eq!(band.admits(&gains(1.0, 0.2, 0.05)), Ok(())); // effort 1.25
-    }
 
-    #[test]
-    fn both_endpoints_are_exclusive_because_both_theorems_are_strict() {
-        let band = StabilityBand::new(1.0, 0.5).expect("D=1.0 < 1/L=2.0");
-        assert!(
-            band.admits(&gains(1.0, 0.0, 0.0)).is_err(),
-            "effort exactly at D gives a non-strict Lyapunov derivative"
-        );
-        assert!(
-            band.admits(&gains(2.0, 0.0, 0.0)).is_err(),
-            "effort exactly at 1/L gives a contraction factor of exactly 1"
-        );
-    }
 
-    #[test]
-    fn a_backend_whose_drift_exceeds_the_ceiling_has_an_empty_band() {
-        // D = 3.0, 1/L = 2.0. No gains at all can cage this backend, and that
-        // is a property of the backend rather than a declaration to keep tuning.
-        match StabilityBand::new(3.0, 0.5) {
-            Err(GainError::EmptyBand {
-                drift_bound,
-                ceiling,
-            }) => {
-                assert_eq!((drift_bound, ceiling), (3.0, 2.0));
-            }
-            other => panic!("expected EmptyBand, got {other:?}"),
-        }
-    }
 
-    #[test]
-    fn the_sign_tests_are_reported_as_signs_not_as_band_violations() {
-        // effort() takes an absolute value, so Kp = -5 would otherwise be
-        // described to the developer in terms of a bound they never wrote.
-        let band = StabilityBand::new(0.1, 0.5).unwrap();
-        assert_eq!(
-            band.admits(&gains(-5.0, 0.0, 0.0)),
-            Err(GainError::NonPositiveProportional { kp: -5.0 })
-        );
-        assert_eq!(
-            band.admits(&gains(1.0, -0.2, 0.0)),
-            Err(GainError::NegativeIntegral { ki: -0.2 })
-        );
-        assert_eq!(
-            band.admits(&gains(1.0, 0.0, -0.3)),
-            Err(GainError::NegativeDerivative { kd: -0.3 })
-        );
-    }
 
-    #[test]
-    fn an_uncharacterised_band_says_so_rather_than_pretending_to_have_checked() {
-        let band = StabilityBand::uncharacterised();
-        assert!(
-            !band.is_characterised(),
-            "an uncharacterised backend must be visible as a gap; treating this \
-             pass as a real check is exactly the vacuous gate §119.b replaces"
-        );
-        assert!(StabilityBand::new(0.5, 0.5).unwrap().is_characterised());
-    }
 
     #[test]
     fn epsilon_and_step_budget_are_rejected_at_the_declaration() {
         let band = StabilityBand::uncharacterised();
         assert_eq!(
             spec(1.0, 0.0, 0.0, 0.0, 5).validate(&band),
-            Err(GainError::NonPositiveTolerance { epsilon: 0.0 })
+            Err(GainError::ToleranceOutOfRange { epsilon: 0.0 })
         );
         assert_eq!(
             spec(1.0, 0.0, 0.0, -0.1, 5).validate(&band),
-            Err(GainError::NonPositiveTolerance { epsilon: -0.1 })
+            Err(GainError::ToleranceOutOfRange { epsilon: -0.1 })
+        );
+        assert_eq!(
+            spec(1.0, 0.0, 0.0, 1.5, 5).validate(&band),
+            Err(GainError::ToleranceOutOfRange { epsilon: 1.5 }),
+            "ε > 1 is vacuous: e = 1 − CSR cannot exceed 1, so the mandate              could never fail"
         );
         assert_eq!(
             spec(1.0, 0.0, 0.0, 0.1, 0).validate(&band),
@@ -675,16 +412,6 @@ mod tests {
         assert!(Controller::new(spec(0.3, 0.1, 0.05, 0.1, 5), &band).is_err());
     }
 
-    #[test]
-    fn every_error_variant_names_the_numbers_the_developer_wrote() {
-        let band = StabilityBand::new(0.8, 0.5).unwrap();
-        let msg = band.admits(&gains(0.3, 0.1, 0.05)).unwrap_err().to_string();
-        assert!(msg.contains("0.45") && msg.contains("0.8"), "{msg}");
-        assert!(
-            msg.contains("paper_mandate"),
-            "the refusal must cite the precondition it enforces: {msg}"
-        );
-    }
 
     // ---- Vía B: the paper's simulation, as a gate ----
 

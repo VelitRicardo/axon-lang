@@ -517,9 +517,14 @@ fn tc_mandate_missing_constraint() {
 
 #[test]
 fn tc_mandate_bad_pid() {
+    // §Fase 119.b.3 — the messages come from the shared stability judgment
+    // (axon_frontend::stability) now, and say WHY the sign matters instead of
+    // restating the inequality.
     let errors = type_check(r#"mandate Bad { constraint: "x" kp: -1.0 ki: -0.5 }"#);
-    assert!(errors.iter().any(|e| e.message.contains("kp must be > 0.0")));
-    assert!(errors.iter().any(|e| e.message.contains("ki must be >= 0.0")));
+    assert!(errors.iter().any(|e| e.message.contains("no restoring force")));
+    assert!(errors
+        .iter()
+        .any(|e| e.message.contains("amplifies accumulated error")));
 }
 
 #[test]

@@ -6886,56 +6886,39 @@ impl<'a> TypeChecker<'a> {
             );
         }
 
-        // PID gains
-        if let Some(v) = node.kp {
-            if v <= 0.0 {
-                self.emit(
-                    format!("kp must be > 0.0, got {} in mandate '{}'", v, node.name),
-                    &node.loc,
-                );
-            }
-        }
-        if let Some(v) = node.ki {
-            if v < 0.0 {
-                self.emit(
-                    format!("ki must be >= 0.0, got {} in mandate '{}'", v, node.name),
-                    &node.loc,
-                );
-            }
-        }
-        if let Some(v) = node.kd {
-            if v < 0.0 {
-                self.emit(
-                    format!("kd must be >= 0.0, got {} in mandate '{}'", v, node.name),
-                    &node.loc,
-                );
-            }
-        }
-
-        // Tolerance ε ∈ (0, 1]
-        if let Some(v) = node.tolerance {
-            if v <= 0.0 || v > 1.0 {
-                self.emit(
-                    format!(
-                        "tolerance must be in (0.0, 1.0], got {} in mandate '{}'",
-                        v, node.name
-                    ),
-                    &node.loc,
-                );
-            }
-        }
-
-        // max_steps >= 1
-        if let Some(v) = node.max_steps {
-            if v < 1 {
-                self.emit(
-                    format!(
-                        "max_steps must be >= 1, got {} in mandate '{}'",
-                        v, node.name
-                    ),
-                    &node.loc,
-                );
-            }
+        // ── §Fase 119.b — ONE admissibility judgment, shared with the runtime ──
+        //
+        // These checks used to be five hand-rolled `if let Some(v)` sign tests
+        // in this function, while axon-rs carried its own copy of the same
+        // arithmetic for the controller. Two copies of a stability judgment is
+        // the §118 smell (a general concept parked where it was first needed),
+        // and worse here: the two could drift, and a mandate the compiler
+        // admits could be one the runtime refuses.
+        //
+        // Now `stability::MandateStatics` is the single source of the
+        // judgment. When the declaration carries `stability { D:, L: }`, the
+        // full band `D < |Kp+Ki+Kd| < 1/L` is verified — both endpoints
+        // exclusive, per the strict inequalities of paper_mandate §3 and
+        // prompt_opt §6.3. Without it, only the sign conditions apply (they
+        // are necessary regardless), and the IR carries no bounds — so the
+        // runtime can SEE that nothing was statically promised.
+        //
+        // Note also what made this reachable at all: until §119.b.1 the
+        // published `pid { }` / `epsilon:` syntax parsed with every gain
+        // silently dropped to `None`, so every `if let Some(v)` below was
+        // dead for any README-style mandate. The validation existed and no
+        // program could reach it.
+        let statics = crate::stability::MandateStatics {
+            kp: node.kp,
+            ki: node.ki,
+            kd: node.kd,
+            epsilon: node.tolerance,
+            max_steps: node.max_steps,
+            drift_bound: node.drift_bound,
+            lipschitz: node.lipschitz,
+        };
+        for err in statics.admissibility_errors() {
+            self.emit(format!("mandate '{}': {}", node.name, err), &node.loc);
         }
 
         // on_violation policy

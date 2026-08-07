@@ -6318,6 +6318,8 @@ impl Parser {
             kd: None,
             tolerance: None,
             max_steps: None,
+            drift_bound: None,
+            lipschitz: None,
             on_violation: String::new(),
             loc: Loc {
                 line: tok.line,
@@ -6362,6 +6364,8 @@ impl Parser {
                 // that reports success is the §111 defect living in the parser.
                 if field_name == "pid" {
                     self.parse_pid_block(&mut node)?;
+                } else if field_name == "stability" {
+                    self.parse_stability_block(&mut node)?;
                 } else {
                     self.skip_braced_block()?;
                 }
@@ -6401,6 +6405,56 @@ impl Parser {
             }
         }
         self.consume(TokenType::RBrace)?;
+        Ok(())
+    }
+
+    /// §Fase 119.b — `stability { D: <f>, L: <f> }`.
+    ///
+    /// The declared hypotheses of the mandate's stability theorem: `D` is the
+    /// drift bound `sup|drift(t)|` (paper_mandate §3), `L` the Lipschitz
+    /// constant of the refinement map (prompt_opt §6.3). With them declared,
+    /// the type checker verifies the full band `D < |Kp+Ki+Kd| < 1/L`; without
+    /// them it can verify only the sign conditions, which the papers show to be
+    /// necessary but not sufficient. The declaration travels in the IR as a
+    /// proof obligation for dispatch — the compiler never invents these
+    /// numbers, because they are measured properties of a backend it cannot
+    /// see, and fabricating them would make the static check vacuous.
+    ///
+    /// An empty block is a PARSE error, not a silent no-op: `stability { }`
+    /// asserts nothing, can discharge nothing, and the developer who wrote it
+    /// believed otherwise.
+    fn parse_stability_block(
+        &mut self,
+        node: &mut MandateDefinition,
+    ) -> Result<(), ParseError> {
+        let open = self.consume(TokenType::LBrace)?;
+        while !self.check(TokenType::RBrace) && !self.check(TokenType::Eof) {
+            let key = self.current().value.clone();
+            self.advance();
+            if self.check(TokenType::Colon) {
+                self.advance();
+                match key.as_str() {
+                    "D" | "d" | "drift_bound" => {
+                        node.drift_bound = self.parse_optional_float()
+                    }
+                    "L" | "l" | "lipschitz" => node.lipschitz = self.parse_optional_float(),
+                    _ => self.skip_value(),
+                }
+            }
+            if self.check(TokenType::Comma) {
+                self.advance();
+            }
+        }
+        self.consume(TokenType::RBrace)?;
+        if node.drift_bound.is_none() && node.lipschitz.is_none() {
+            return Err(ParseError {
+                message: "the `stability { }` block declares neither `D` nor `L` — it                           asserts nothing and can discharge nothing. Declare the drift                           bound (`D:`), the Lipschitz constant (`L:`), or both; or remove                           the block."
+                    .to_string(),
+                line: open.line,
+                column: open.column,
+                ..Default::default()
+            });
+        }
         Ok(())
     }
 

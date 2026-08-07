@@ -2106,6 +2106,13 @@ pub struct IRMandate {
     pub kd: Option<f64>,
     pub tolerance: Option<f64>,
     pub max_steps: Option<i64>,
+    /// §Fase 119.b — the declared stability hypotheses `(D, L)`, carried to the
+    /// runtime as PROOF OBLIGATIONS: the static band check was conditional on
+    /// them, so dispatch must verify them against the measured backend or
+    /// refuse. `None` means nothing was statically promised — absence is
+    /// visible, never defaulted.
+    pub drift_bound: Option<f64>,
+    pub lipschitz: Option<f64>,
     pub on_violation: String,
 }
 
