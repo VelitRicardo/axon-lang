@@ -405,6 +405,7 @@ fn step_with_apply(name: &str, ask: &str, apply_ref: &str) -> IRStep {
         confidence_floor: None,
         navigate_ref: String::new(),
         apply_ref: apply_ref.into(),
+        guards: Vec::new(),
         requires_context: None,        now_tz: None,        body: Vec::new(),
     }
 }

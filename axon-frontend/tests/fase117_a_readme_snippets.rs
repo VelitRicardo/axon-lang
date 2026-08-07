@@ -115,9 +115,12 @@ const KNOWN_UNCOMPILABLE: &[(u64, &str)] = &[
     (0xd2d40bcdb71707d5, "block 34: ots ThreatPatcher — `ots` is in KNOWN_DEBT"),
     (0x74e1447e5fe9fd94, "block 35: ots ProtocolAdapter — `ots` is in KNOWN_DEBT"),
     (0x906572430bbc8bb7, "block 36: ots MathOperator — `ots` is in KNOWN_DEBT"),
-    (0xd6a53497ef00289f, "block 40: mandate SECCompliance — `mandate` is in KNOWN_DEBT"),
-    (0xdecbc77b99fbe0b5, "block 41: mandate ClinicalProtocol — `mandate` is in KNOWN_DEBT"),
-    (0x0ee2f0a8f2c1fd89, "block 42: mandate LegalPrecision — `mandate` is in KNOWN_DEBT"),
+    // §Fase 119 (D119.4) — the three mandate blocks (40–42) LEFT this ledger
+    // on 2026-08-06: `mandate X on Y` (and `shield X on Y -> b`) became a
+    // step-body statement, which was the real reason all three failed — not
+    // `pid`, and not mandate being unimplemented. Block 42 additionally
+    // declared two tools it referenced. First rows ever retired from this
+    // ratchet.
     (0x8944f7fd287174f9, "block 43: lambda SensorReading — `lambda` is in KNOWN_DEBT"),
     (0xf4bf6a58604cdcbd, "block 44: lambda RawTemp — `lambda` is in KNOWN_DEBT"),
     (0xb8f872e365006817, "block 45: lambda RawQuote — `lambda` is in KNOWN_DEBT"),

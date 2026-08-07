@@ -3231,6 +3231,7 @@ impl Parser {
             apply_ref: String::new(),
             requires_context: None,
             now_tz: None,
+            guards: Vec::new(),
             loc,
         };
 
@@ -3356,6 +3357,28 @@ impl Parser {
                         column: inner.column,
                         ..Default::default()
                     });
+                }
+                // §Fase 119 (D119.4) — `mandate X on Y`, `shield X on Y -> b`,
+                // `ots X on Y` as STEP-BODY statements. README §XV has always
+                // written the application here — next to the `output:` it
+                // constrains — and the parser accepted the same form only at
+                // flow level, which is why README blocks 40–42 never compiled.
+                // The published position is also the better semantics: a
+                // mandate inside a step is scoped to THIS step's generation;
+                // the flow-level form governs a bare statement whose subject
+                // must be inferred. One concept, two positions, same AST shape
+                // as the flow-level `*ApplyStep` family.
+                TokenType::Mandate => {
+                    let g = self.parse_step_guard("mandate")?;
+                    node.guards.push(g);
+                }
+                TokenType::Shield => {
+                    let g = self.parse_step_guard("shield")?;
+                    node.guards.push(g);
+                }
+                TokenType::Ots => {
+                    let g = self.parse_step_guard("ots")?;
+                    node.guards.push(g);
                 }
                 // Sub-constructs (probe, reason, weave, stream) → skip structurally
                 TokenType::Probe
@@ -4581,6 +4604,70 @@ impl Parser {
             target,
             output_type,
         ))
+    }
+
+    /// §Fase 119 (D119.4) — `<kind> <Name> [on <target>] [-> <binding>]` inside
+    /// a `step { }` body.
+    ///
+    /// Differences from the flow-level `parse_apply_step`, both deliberate:
+    ///
+    /// - The target may be a CALL EXPRESSION, captured verbatim: README block
+    ///   42 writes `mandate LegalPrecision on ContractDrafter(terms)`. The
+    ///   flow-level form never needed this; the published step-level form does.
+    /// - No trailing braced block is skipped. A guard is one statement; a
+    ///   silently-skipped block after it would be the §119.b.1 defect again.
+    fn parse_step_guard(&mut self, kind: &str) -> Result<StepGuardNode, ParseError> {
+        let tok = self.current().clone();
+        self.advance(); // consume the keyword
+        let name = self.consume_any_ident_or_kw()?.value.clone();
+        let mut target = String::new();
+        let mut binding = String::new();
+        if self.current().value == "on" {
+            self.advance();
+            target = self.consume_any_ident_or_kw()?.value.clone();
+            // `ContractDrafter(terms)` — capture the balanced argument list
+            // verbatim into the target string.
+            if self.check(TokenType::LParen) {
+                let mut depth = 0usize;
+                loop {
+                    let t = self.current().clone();
+                    match t.ttype {
+                        TokenType::LParen => depth += 1,
+                        TokenType::RParen => depth -= 1,
+                        TokenType::Eof => {
+                            return Err(ParseError {
+                                message: format!(
+                                    "unterminated argument list in `{kind} {name} on {target}(…`"
+                                ),
+                                line: t.line,
+                                column: t.column,
+                                ..Default::default()
+                            })
+                        }
+                        _ => {}
+                    }
+                    target.push_str(&t.value);
+                    self.advance();
+                    if depth == 0 {
+                        break;
+                    }
+                }
+            }
+        }
+        if self.check(TokenType::Arrow) {
+            self.advance();
+            binding = self.consume_any_ident_or_kw()?.value.clone();
+        }
+        Ok(StepGuardNode {
+            kind: kind.to_string(),
+            name,
+            target,
+            binding,
+            loc: Loc {
+                line: tok.line,
+                column: tok.column,
+            },
+        })
     }
 
     fn parse_weave_step(&mut self) -> Result<FlowStep, ParseError> {

@@ -11046,6 +11046,36 @@ impl<'a> TypeChecker<'a> {
                 // cognitive delegation; the honest-compiler `axon-W004` points
                 // the adopter to the deterministic `use <Tool>(k=v)` form.
                 FlowStep::Step(s) => {
+                    // §Fase 119 (D119.4) — step-body guards resolve exactly
+                    // like their flow-level twins. A guard naming a ghost is a
+                    // cage around nothing: the step would run ungoverned while
+                    // reading as governed. (This lives INSIDE the existing Step
+                    // arm — a first draft added a second `FlowStep::Step` arm
+                    // above this one, and the unreachable-pattern warning
+                    // caught it silently disabling every §59/§68/§91 step
+                    // check below.)
+                    for g in &s.guards {
+                        if g.name.is_empty() {
+                            continue;
+                        }
+                        match self.symbols.lookup(&g.name) {
+                            None => self.emit(
+                                format!(
+                                    "Undefined {} '{}' in step '{}' of flow '{}'",
+                                    g.kind, g.name, s.name, flow_name
+                                ),
+                                &g.loc,
+                            ),
+                            Some(sym) if sym.kind != g.kind => self.emit(
+                                format!(
+                                    "'{}' is a {}, not a {} (step '{}' of flow '{}')",
+                                    g.name, sym.kind, g.kind, s.name, flow_name
+                                ),
+                                &g.loc,
+                            ),
+                            _ => {}
+                        }
+                    }
                     self.check_apply_tool(s);
                     // §Fase 68.e — `apply: <Compute>` is a model-selection no-op;
                     // `axon-W006` points the adopter to `requires_context:`.

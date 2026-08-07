@@ -881,6 +881,16 @@ impl IRGenerator {
                 apply_ref: s.apply_ref.clone(),
                 requires_context: s.requires_context,
                 now_tz: s.now_tz.clone(),
+                guards: s
+                    .guards
+                    .iter()
+                    .map(|g| crate::ir_nodes::IRStepGuard {
+                        kind: g.kind.clone(),
+                        name: g.name.clone(),
+                        target: g.target.clone(),
+                        binding: g.binding.clone(),
+                    })
+                    .collect(),
                 body: Vec::new(),
             }),
             // §Fase 92.b — `mint <Credential> as <binding>`.
@@ -1406,6 +1416,7 @@ impl IRGenerator {
                     apply_ref: String::new(),
                     requires_context: None,
                     now_tz: None,
+                    guards: Vec::new(),
                     body: Vec::new(),
                 })
             }

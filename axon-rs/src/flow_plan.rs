@@ -793,6 +793,7 @@ mod tests {
             confidence_floor: None,
             navigate_ref: String::new(),
             apply_ref: String::new(),
+            guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: vec![],
         });
         assert_eq!(ir_flow_node_kind(&n), "step");
@@ -907,6 +908,7 @@ mod tests {
             confidence_floor: None,
             navigate_ref: String::new(),
             apply_ref: String::new(),
+            guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: vec![],
         });
         // Pinned drift assertion: the canonical "step" kind is

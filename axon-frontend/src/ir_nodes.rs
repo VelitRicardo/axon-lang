@@ -1047,7 +1047,23 @@ pub struct IRStep {
     /// byte-identical (no IR-SHA drift); legacy IR → `None` → no injection.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub now_tz: Option<String>,
+    /// §Fase 119 (D119.4) — governance applications scoped to this step.
+    /// Elided when empty so every pre-§119 program's IR JSON stays
+    /// byte-identical (no IR-SHA drift — the §68.b/§91.a discipline).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub guards: Vec<IRStepGuard>,
     pub body: Vec<serde_json::Value>,
+}
+
+/// §Fase 119 (D119.4) — one step-scoped governance application. For a
+/// `mandate` guard, dispatch must run the §119.b control loop over THIS
+/// step's generation, with the mandate's declared `(D, L)` obligations.
+#[derive(Debug, Clone, Serialize)]
+pub struct IRStepGuard {
+    pub kind: String,
+    pub name: String,
+    pub target: String,
+    pub binding: String,
 }
 
 #[derive(Debug, Clone, Serialize)]

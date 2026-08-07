@@ -546,6 +546,7 @@ mod tests {
                 confidence_floor: None,
                 navigate_ref: String::new(),
                 apply_ref: String::new(),
+                guards: Vec::new(),
                 requires_context: None,                now_tz: None,                body: Vec::new(),
             })]
         };
@@ -698,6 +699,7 @@ mod tests {
             confidence_floor: None,
             navigate_ref: String::new(),
             apply_ref: String::new(),
+            guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: Vec::new(),
         }
     }

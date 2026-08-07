@@ -3289,6 +3289,14 @@ mandate LegalPrecision {
     on_violation: coerce
 }
 
+tool LegalDB {
+    timeout: 15s
+}
+
+tool TemplateEngine {
+    timeout: 10s
+}
+
 agent ContractDrafter {
     goal: "Generate all clauses for the service agreement"
     tools: [LegalDB, TemplateEngine]

@@ -1442,6 +1442,7 @@ mod tests {
             confidence_floor: None,
             navigate_ref: String::new(),
             apply_ref: String::new(),
+            guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: Vec::new(),
         };
         let (mut ctx, mut rx) = fresh_ctx();
@@ -1494,6 +1495,7 @@ mod tests {
 
             now_tz: None,
 
+            guards: Vec::new(),
             body: Vec::new(),
         };
         let (mut ctx, _rx) = fresh_ctx();
@@ -1529,6 +1531,7 @@ mod tests {
 
             now_tz: None,
 
+            guards: Vec::new(),
             body: Vec::new(),
         };
         let (mut ctx, _rx) = fresh_ctx();
@@ -1565,6 +1568,7 @@ mod tests {
             confidence_floor: None,
             navigate_ref: String::new(),
             apply_ref: String::new(),
+            guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: Vec::new(),
         };
         let (mut ctx, _rx) = fresh_ctx();
@@ -1606,6 +1610,7 @@ mod tests {
             confidence_floor: None,
             navigate_ref: String::new(),
             apply_ref: String::new(),
+            guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: Vec::new(),
         };
         let (mut ctx, _rx) = fresh_ctx();
@@ -1639,6 +1644,7 @@ mod tests {
             confidence_floor: None,
             navigate_ref: String::new(),
             apply_ref: String::new(),
+            guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: Vec::new(),
         }
     }
@@ -1750,6 +1756,7 @@ mod tests {
             confidence_floor: None,
             navigate_ref: String::new(),
             apply_ref: String::new(),
+            guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: Vec::new(),
         };
         let cancel = CancellationFlag::new();
@@ -1781,6 +1788,7 @@ mod tests {
             confidence_floor: None,
             navigate_ref: String::new(),
             apply_ref: String::new(),
+            guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: Vec::new(),
         };
         let (tx, _rx) = mpsc::unbounded_channel();
@@ -1822,6 +1830,7 @@ mod tests {
             confidence_floor: None,
             navigate_ref: String::new(),
             apply_ref: String::new(),
+            guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: Vec::new(),
         };
         let (mut ctx, _rx) = fresh_ctx();
@@ -1859,6 +1868,7 @@ mod tests {
             confidence_floor: None,
             navigate_ref: String::new(),
             apply_ref: String::new(),
+            guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: Vec::new(),
         };
         let (mut ctx, _rx) = fresh_ctx();

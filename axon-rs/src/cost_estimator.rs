@@ -438,6 +438,7 @@ mod tests {
             use_tool: None, probe: None, reason: None, weave: None,
             output_type: "".into(), confidence_floor: None,
             navigate_ref: "".into(), apply_ref: "".into(),
+            guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: vec![],
         });
         assert_eq!(classify_node(&step), StepKind::Ask);
@@ -470,6 +471,7 @@ mod tests {
                 use_tool: None, probe: None, reason: None, weave: None,
                 output_type: "".into(), confidence_floor: None,
                 navigate_ref: "".into(), apply_ref: "".into(),
+                guards: Vec::new(),
                 requires_context: None,                now_tz: None,                body: vec![],
             }),
             IRFlowNode::Step(IRStep {
@@ -479,6 +481,7 @@ mod tests {
                 use_tool: None, probe: None, reason: None, weave: None,
                 output_type: "".into(), confidence_floor: None,
                 navigate_ref: "".into(), apply_ref: "".into(),
+                guards: Vec::new(),
                 requires_context: None,                now_tz: None,                body: vec![],
             }),
             IRFlowNode::UseTool(IRUseToolStep {
@@ -506,6 +509,7 @@ mod tests {
             use_tool: None, probe: None, reason: None, weave: None,
             output_type: "".into(), confidence_floor: None,
             navigate_ref: "".into(), apply_ref: "".into(),
+            guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: vec![],
         });
 
@@ -599,6 +603,7 @@ mod tests {
                     use_tool: None, probe: None, reason: None, weave: None,
                     output_type: "".into(), confidence_floor: None,
                     navigate_ref: "".into(), apply_ref: "".into(),
+                    guards: Vec::new(),
                     requires_context: None,                    now_tz: None,                    body: vec![],
                 }),
                 IRFlowNode::Reason(IRReasonStep {
@@ -687,6 +692,7 @@ mod tests {
                     use_tool: None, probe: None, reason: None, weave: None,
                     output_type: "".into(), confidence_floor: None,
                     navigate_ref: "".into(), apply_ref: "".into(),
+                    guards: Vec::new(),
                     requires_context: None,                    now_tz: None,                    body: vec![],
                 }),
             ],

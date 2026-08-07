@@ -2668,6 +2668,30 @@ pub struct GenericFlowStep {
 
 // ── Step ─────────────────────────────────────────────────────────────────────
 
+/// §Fase 119 (D119.4) — a governance application written INSIDE the step it
+/// governs: `mandate SECCompliance on data`, `shield PatientShield on symptoms
+/// -> clean_data`, `ots Extract on raw`.
+///
+/// README §XV has always written the application in this position — a mandate
+/// next to the `output:` it constrains, scoped to THIS step's generation — and
+/// the parser accepted the same form only at flow level, which is why README
+/// blocks 40–42 never compiled. The AST node is deliberately the same shape as
+/// the flow-level `*ApplyStep` family: one concept, two positions.
+#[derive(Debug)]
+pub struct StepGuardNode {
+    /// Which primitive: `"mandate"` | `"shield"` | `"ots"`.
+    pub kind: String,
+    /// The declared governor this guard names (e.g. `SECCompliance`).
+    pub name: String,
+    /// What it is applied to — a binding or a call expression, verbatim
+    /// (`data`, `ContractDrafter(terms)`). Empty when no `on` clause.
+    pub target: String,
+    /// The binding the guarded result flows into (`-> clean_data`). Empty when
+    /// absent.
+    pub binding: String,
+    pub loc: Loc,
+}
+
 #[derive(Debug)]
 pub struct StepNode {
     pub name: String,
@@ -2693,6 +2717,9 @@ pub struct StepNode {
     /// Overrides a bound `context`'s `now:` for this step. `None` → no
     /// temporal injection (back-compat).
     pub now_tz: Option<String>,
+    /// §Fase 119 (D119.4) — the governance applications declared in this
+    /// step's body, in source order. Empty for every pre-§119 program.
+    pub guards: Vec<StepGuardNode>,
     pub loc: Loc,
 }
 
