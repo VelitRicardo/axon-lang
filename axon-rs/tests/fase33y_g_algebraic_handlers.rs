@@ -21,13 +21,33 @@
 
 use axon::cancel_token::CancellationFlag;
 use axon::flow_dispatcher::algebraic_handlers::{
-    apply_mandate_to_target, apply_ots_to_target, apply_shield_to_target,
+    apply_ots_to_target, apply_shield_to_target,
     invoke_daemon, listen_on_channel,
 };
 use axon::flow_dispatcher::{dispatch_node, DispatchCtx, DispatchError, NodeOutcome};
 use axon::flow_execution_event::FlowExecutionEvent;
 use axon::ir_nodes::*;
 use tokio::sync::mpsc;
+
+/// §Fase 119.b — a declared mandate for fixtures that route MandateApply
+/// through the real enforcement path.
+fn test_mandate_spec(name: &str, constraint: &str) -> axon::ir_nodes::IRMandate {
+    axon::ir_nodes::IRMandate {
+        node_type: "mandate",
+        source_line: 0,
+        source_column: 0,
+        name: name.into(),
+        constraint: constraint.into(),
+        kp: Some(1.0),
+        ki: None,
+        kd: None,
+        tolerance: Some(0.05),
+        max_steps: Some(1),
+        drift_bound: None,
+        lipschitz: None,
+        on_violation: "halt".into(),
+    }
+}
 
 fn fresh_ctx() -> (
     DispatchCtx,
@@ -126,14 +146,12 @@ fn apply_ots_oss_passthrough() {
     assert_eq!(apply_ots_to_target("g711", "audio", &ctx), "audio");
 }
 
-#[test]
-fn apply_mandate_oss_passthrough() {
-    let (ctx, _rx) = fresh_ctx();
-    assert_eq!(
-        apply_mandate_to_target("gdpr_erasure", "record", &ctx),
-        "record"
-    );
-}
+// §Fase 119.b — `apply_mandate_oss_passthrough` was DELETED here. It pinned
+// the §111 F18 identity ("gdpr_erasure" transforming nothing, in green, for
+// years). The passthrough helper no longer exists; the enforcement loop's
+// gates live in `flow_dispatcher::algebraic_handlers::tests` and the
+// fail-closed regression is
+// `an_unresolved_mandate_name_fails_closed_never_identity`.
 
 #[test]
 fn listen_returns_awaiting_placeholder() {
@@ -209,9 +227,18 @@ async fn dispatch_node_routes_ots_apply() {
 //  §4 — MandateApply through dispatch_node
 // ────────────────────────────────────────────────────────────────────
 
+/// §Fase 119.b — this routing test used to pass through the identity
+/// passthrough with an unresolvable name. It now routes a DECLARED mandate
+/// whose constraint the target already satisfies, so the real enforcement
+/// path completes via the free pre-check (zero attempts) and the binding
+/// still lands — same wire shape, real handler.
 #[tokio::test]
 async fn dispatch_node_routes_mandate_apply() {
     let (mut ctx, mut rx) = fresh_ctx();
+    ctx.mandate_specs = std::sync::Arc::new(vec![test_mandate_spec(
+        "retention_30d",
+        "must contain \"log\"",
+    )]);
     dispatch_node(&mandate_apply("retention_30d", "log_entry", "retained"), &mut ctx)
         .await
         .unwrap();
@@ -454,6 +481,11 @@ async fn algebraic_handlers_advance_step_counter() {
     assert_eq!(ctx.step_counter, 1);
     dispatch_node(&ots_apply("s", "t", "o"), &mut ctx).await.unwrap();
     assert_eq!(ctx.step_counter, 2);
+    // §Fase 119.b — the mandate must resolve now; "t" satisfies its clause.
+    ctx.mandate_specs = std::sync::Arc::new(vec![test_mandate_spec(
+        "s",
+        "must contain \"t\"",
+    )]);
     dispatch_node(&mandate_apply("s", "t", "o"), &mut ctx).await.unwrap();
     assert_eq!(ctx.step_counter, 3);
     dispatch_node(&compute_apply("sum", vec!["a", "b"], "o"), &mut ctx).await.unwrap();

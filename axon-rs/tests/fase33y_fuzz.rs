@@ -723,8 +723,12 @@ fn assert_clean_outcome(
         //   warden  — an analysis that never ran, reported as "no findings"
         //   quant   — a block whose body was silently skipped
         //   grad    — a stale artifact carrying no compile-time derivative (§109)
+        //   mandate — §119.b: the identity passthrough that bound the target
+        //             unchanged under a compliance-sounding name; with no
+        //             catalog attached, refusing IS the correct total outcome
         Err(DispatchError::BackendError { ref name, .. })
-            if matches!(name.as_str(), "compute" | "yield" | "warden" | "quant" | "grad") => {}
+            if matches!(name.as_str(), "compute" | "yield" | "warden" | "quant" | "grad")
+                || name.starts_with("mandate:") => {}
         Err(DispatchError::BackendError { name, message }) => panic!(
             "33.y.n fuzz: unexpected BackendError for {kind} iter {iter}: name={name} msg={message}"
         ),

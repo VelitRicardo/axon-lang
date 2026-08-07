@@ -400,6 +400,12 @@ pub struct DispatchCtx {
     /// Empty ⇒ `compute … on …` fails CLOSED (axon-T941 catches it at compile
     /// time; this is the runtime's belt).
     pub compute_specs: Arc<Vec<crate::ir_nodes::IRCompute>>,
+    /// §Fase 119.b — the compiled `mandate` declarations, so a `mandate X on Y`
+    /// (flow-level node or step-scoped guard) can build its enforcement loop at
+    /// dispatch. Empty ⇒ every mandate application fails CLOSED — a mandate
+    /// that cannot be resolved enforces nothing, so nothing is released
+    /// (the §111.f compute doctrine, applied to the cage).
+    pub mandate_specs: Arc<Vec<crate::ir_nodes::IRMandate>>,
     pub cancel: CancellationFlag,
     pub tx: mpsc::UnboundedSender<FlowExecutionEvent>,
     pub enforcement_summaries: Arc<
@@ -655,6 +661,8 @@ impl DispatchCtx {
             quant_frame: None,
             // §Fase 111.f — no compute catalog by default: an apply fails CLOSED.
             compute_specs: Arc::new(Vec::new()),
+            // §Fase 119.b — no mandate catalog by default: an apply fails CLOSED.
+            mandate_specs: Arc::new(Vec::new()),
             cancel,
             tx,
             enforcement_summaries: Arc::new(Mutex::new(HashMap::new())),
@@ -763,6 +771,14 @@ impl DispatchCtx {
     /// of binding a placeholder string.
     pub fn with_computes(mut self, specs: Arc<Vec<crate::ir_nodes::IRCompute>>) -> Self {
         self.compute_specs = specs;
+        self
+    }
+
+    /// §Fase 119.b — Builder: attach the compiled `mandate` declarations, so
+    /// `mandate <Name> on …` builds its enforcement loop at dispatch instead
+    /// of discarding the name on the first line.
+    pub fn with_mandates(mut self, specs: Arc<Vec<crate::ir_nodes::IRMandate>>) -> Self {
+        self.mandate_specs = specs;
         self
     }
 

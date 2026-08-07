@@ -96,6 +96,13 @@ fn assert_no_panic(
         //
         // A handler that cannot fail is not total. It is mute.
         Err(DispatchError::BackendError { name, .. }) if name == "compute" => {}
+        // §Fase 119.b — the same doctrine, for the cage: `mandate_apply`
+        // REFUSES when the mandate is undeclared (this fuzz ctx attaches no
+        // mandate catalog, and every random name is undeclared). This fuzz
+        // used to pass because the handler bound the target UNCHANGED under
+        // any name at all — the §111 F18 identity. The refusal is the total,
+        // correct outcome.
+        Err(DispatchError::BackendError { name, .. }) if name.starts_with("mandate:") => {}
         Err(other) => panic!("{label}: unexpected error variant: {other:?}"),
     }
 }

@@ -431,12 +431,19 @@ fn ots_apply_node() -> IRFlowNode {
 }
 
 fn mandate_apply_node() -> IRFlowNode {
+    // §Fase 119.b — this fixture used to carry an EMPTY mandate name and
+    // still complete, because the handler was an identity passthrough. The
+    // handler now enforces: an unresolvable mandate REFUSES (which itself
+    // proves routing), so the routing fixture names a mandate that the
+    // fixture ctx (see `fresh_ctx`) carries in its catalog and that the stub
+    // backend's fixed "(stub)" reply satisfies on the free pre-check's first
+    // attempt.
     IRFlowNode::MandateApply(IRMandateApplyStep {
         node_type: "mandate_apply",
         source_line: 0,
         source_column: 0,
-        mandate_name: String::new(),
-        target: String::new(),
+        mandate_name: "RoutedMandate".into(),
+        target: "stub content present".into(),
         output_type: String::new(),
     })
 }
@@ -676,13 +683,32 @@ fn all_48_pairs() -> Vec<(IRFlowNode, &'static str)> {
 /// a dropped receiver returns DispatchError::ChannelClosed).
 fn fresh_ctx() -> (DispatchCtx, mpsc::UnboundedReceiver<axon::flow_execution_event::FlowExecutionEvent>) {
     let (tx, rx) = mpsc::unbounded_channel();
-    let ctx = DispatchCtx::new(
+    let mut ctx = DispatchCtx::new(
         "TestFlow",
         "stub",
         "system prompt",
         CancellationFlag::new(),
         tx,
     );
+    // §Fase 119.b — the mandate the routing fixture applies. Its constraint
+    // is satisfied by the fixture node's literal target, so the routing test
+    // observes Completed through the REAL enforcement path (free pre-check,
+    // zero attempts) instead of through a passthrough that no longer exists.
+    ctx.mandate_specs = std::sync::Arc::new(vec![axon::ir_nodes::IRMandate {
+        node_type: "mandate",
+        source_line: 0,
+        source_column: 0,
+        name: "RoutedMandate".into(),
+        constraint: "must contain \"stub\"".into(),
+        kp: Some(1.0),
+        ki: None,
+        kd: None,
+        tolerance: Some(0.05),
+        max_steps: Some(1),
+        drift_bound: None,
+        lipschitz: None,
+        on_violation: "halt".into(),
+    }]);
     (ctx, rx)
 }
 

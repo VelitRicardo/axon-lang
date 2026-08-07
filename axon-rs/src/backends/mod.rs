@@ -188,6 +188,15 @@ pub struct ChatRequest {
     /// `false` → call `complete()`. `true` → call `stream()` and consume
     /// the chunk stream incrementally.
     pub stream: bool,
+    /// §Fase 119.b (Tier 1) — per-token logit bias, token_id → bias in the
+    /// OpenAI wire range [-100, 100]. The mandate engine uses −100 BANS for
+    /// `Absent` needles: the probability mass of a forbidden lexeme is
+    /// collapsed before sampling. Emitted only on the OpenAI-compat wire;
+    /// locked-param models (o1/o3, Kimi K2.x) strip it via
+    /// `locked_model::apply_sampling_params`, and providers with no such
+    /// knob ignore the field entirely — Tier 2 (the validation loop)
+    /// carries the guarantee there.
+    pub logit_bias: Option<std::collections::HashMap<u32, i32>>,
     /// Trace ID propagated from the calling flow step. Surfaces in
     /// tracing spans so log lines correlate.
     pub trace_id: Option<String>,

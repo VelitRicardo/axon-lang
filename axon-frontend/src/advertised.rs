@@ -156,7 +156,7 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     ("psyche", Unaudited),
     ("ots", NotImplemented { finding: "§111 F18 — `apply_ots_to_target` is literally `target.to_string()`; no ots_registry exists anywhere, so the documented \"enterprise override\" has no hook to override" }),
     ("mcp", Unaudited),
-    ("mandate", NotImplemented { finding: "§111 F18 — `apply_mandate_to_target` is `target.to_string()`; a compliance-bound transformation that transforms nothing and can never fail" }),
+    ("mandate", Real { proof: "§119.b — the closed loop runs through production dispatch: axon-rs/src/mandate_engine.rs (e = 1 − CSR from pem::semantic_validator, PID from pem::density_matrix, Converge(e,ε,N) with Breach fail-closed, declared-D premise discharge, |C|=0 refused before any token) driven by run_mandate_apply + the D119.4 step guard (buffered — attempts never stream). Tier 1 logit-bias bans on the OpenAI-compat wire, Tier 2 CSP feedback everywhere. Gates: mandate_engine tests (16), algebraic_handlers MandateApply tests (incl. the F18 regression: an unresolved name REFUSES, never identity), openai_compat logit_bias wire tests, fase119_b3_stability_band.rs, fase119_b_mandate_grammar.rs — 9/9 dispatch-chain mutations killed" }),
     ("lambda", NotImplemented { finding: "§111 F18 — `apply_lambda_data` returns the string \"lambda:<name>(<target>)\"; no ΛD evaluation, no CPS dispatcher" }),
     // ── Deterministic compute
     ("compute", Real { proof: "tests/fase111_f_compute_real.rs (§111.f — a named PURE FUNCTION over the §70 expression language, evaluated natively by eval_expr: linear in the term, ZERO tokens, no model in the loop. Every failure refuses rather than binding a string that looks like a number)" }),
@@ -267,7 +267,10 @@ pub const KNOWN_DEBT: &[&str] = &[
     // direction it turns.
     "hibernate",
     "ots",
-    "mandate",
+    // `mandate` LEFT this ledger in §119.b (2026-08-07): the enforcement loop
+    // runs through production dispatch, fails closed, and its name resolving
+    // to nothing is a refusal — the exact call that used to be the identity
+    // passthrough is now the F18 regression test. Second turn of the ratchet.
     "lambda",
     // The Cognitive-I/O block.
     //

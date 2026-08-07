@@ -1506,6 +1506,9 @@ struct NavDispatch {
     observables: std::sync::Arc<Vec<crate::ir_nodes::IRObservable>>,
     /// §Fase 111.f — the compiled `compute` declarations (pure §70 functions).
     compute_specs: std::sync::Arc<Vec<crate::ir_nodes::IRCompute>>,
+    /// §Fase 119.b — the compiled `mandate` declarations, so the enforcement
+    /// loop can resolve the cage it is asked to close.
+    mandate_specs: std::sync::Arc<Vec<crate::ir_nodes::IRMandate>>,
 }
 
 /// §Fase 65.A — kill-switch for the structural-dispatch bridge. ON by default:
@@ -1654,6 +1657,8 @@ async fn dispatch_structural(
     );
     // §Fase 111.f — see above.
     dctx = dctx.with_computes(nd.compute_specs.clone());
+    // §Fase 119.b — attach the mandate catalog so the cage can close.
+    dctx = dctx.with_mandates(nd.mandate_specs.clone());
     // Share the flow's MDN interaction history across all of its navigate nodes
     // so adaptive ω reinforcement sees cross-navigation variance (SSE parity).
     dctx.mdn_histories = histories.clone();
@@ -3613,6 +3618,8 @@ async fn collect_via_dispatcher(
     // §Fase 111.f — attach the compute catalog so `compute … on …` evaluates its
     // declared §70 expression NATIVELY instead of binding "compute:Name(args)".
     ctx = ctx.with_computes(nav_dispatch.compute_specs.clone());
+    // §Fase 119.b — attach the mandate catalog so the cage can close.
+    ctx = ctx.with_mandates(nav_dispatch.mandate_specs.clone());
     // §Fase 72.c — attach the linear-effect budget gate (daemon path only).
     if let Some(gate) = budget {
         ctx = ctx.with_budget(gate);
@@ -4135,6 +4142,9 @@ pub fn execute_server_flow(
             observables: std::sync::Arc::new(ir.observables.clone()),
             // §Fase 111.f — the deterministic muscle finally has something to flex.
             compute_specs: std::sync::Arc::new(ir.compute_specs.clone()),
+            // §Fase 119.b — the mandate declarations reach dispatch: the cage
+            // stops being a name the handler discards.
+            mandate_specs: std::sync::Arc::new(ir.mandate_specs.clone()),
         }
     };
 
@@ -5524,6 +5534,7 @@ flow Recall(q: Text) -> Text {
             scopes: std::sync::Arc::new(Vec::new()),
             observables: std::sync::Arc::new(Vec::new()),
             compute_specs: std::sync::Arc::new(Vec::new()),
+            mandate_specs: std::sync::Arc::new(Vec::new()),
         };
         let pb = vec![("q".to_string(), "DocA".to_string())];
         let collected = collect_via_dispatcher(
@@ -5785,6 +5796,7 @@ flow Producer(tenant_id: Text) -> Text {
             scopes: std::sync::Arc::new(Vec::new()),
             observables: std::sync::Arc::new(Vec::new()),
             compute_specs: std::sync::Arc::new(Vec::new()),
+            mandate_specs: std::sync::Arc::new(Vec::new()),
         }
     }
 }

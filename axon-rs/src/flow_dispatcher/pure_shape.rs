@@ -190,6 +190,50 @@ pub async fn run_step(
             }
         }
     }
+    // §Fase 119.b (D119.4) — a step carrying a `mandate` guard runs the
+    // BUFFERED enforcement loop instead of the streaming path. Deliberate:
+    // a mandated generation must never stream raw attempts to the wire,
+    // because a token that reached the client cannot be unshipped — the
+    // step's output appears only after the constraint set accepted it (or
+    // the declared `on_violation` policy visibly released it).
+    {
+        let mandate_guards: Vec<&crate::ir_nodes::IRStepGuard> = step
+            .guards
+            .iter()
+            .filter(|g| g.kind == "mandate")
+            .collect();
+        if mandate_guards.len() > 1 {
+            // Two controllers over one generation have no defined composition
+            // yet (whose gains? whose budget?). Refusing is honest; guessing
+            // is not. One mandate per step until composition is DESIGNED.
+            return Err(DispatchError::BackendError {
+                name: format!("step:{}", step.name),
+                message: format!(
+                    "step '{}' declares {} mandate guards; composing multiple                      mandates over one generation is not yet defined, so it is                      refused rather than half-enforced. Split the step or merge                      the mandates.",
+                    step.name,
+                    mandate_guards.len()
+                ),
+            });
+        }
+        if let Some(guard) = mandate_guards.first() {
+            return run_step_mandated(step, guard, &prompt, ctx).await;
+        }
+        // Non-mandate guards: `shield` is enforced on the step OUTPUT by the
+        // legacy path's completion hook below is NOT yet wired — and `ots`
+        // has no transformer until §119.c. Silence would be the §111 defect,
+        // so both are surfaced as structured warnings at dispatch.
+        for g in &step.guards {
+            if g.kind != "mandate" {
+                tracing::warn!(
+                    step = step.name.as_str(),
+                    guard_kind = g.kind.as_str(),
+                    guard_name = g.name.as_str(),
+                    "step guard is parsed and carried but not yet enforced on                      this path (shield: flow-level `shield X on Y` IS enforced;                      ots: lands with §119.c)"
+                );
+            }
+        }
+    }
+
     // Legacy path: LLM-side dispatch (Fase 33.y.k+33.z).
     let tools = synthesize_tools_from_step(step);
     let shape = PureShapeStep {
@@ -578,6 +622,100 @@ fn synthesize_tools_from_step(step: &IRStep) -> Vec<crate::backends::ToolSpec> {
 
 /// Probe entry — investigative framing. The target is investigated
 /// deeply; the LLM surfaces what's hidden + returns concisely.
+/// §Fase 119.b — the mandated-step executor: `step S { mandate M on x … }`.
+///
+/// One StepStart, one StepComplete — the attempts in between are buffered
+/// through `enforce_mandate_over` and never reach the wire individually. The
+/// final bound output is the validated one (or the `coerce`-released best
+/// attempt, visibly). The guard's `-> binding` additionally binds the
+/// enforced output under that name for downstream steps.
+async fn run_step_mandated(
+    step: &IRStep,
+    guard: &crate::ir_nodes::IRStepGuard,
+    prompt: &str,
+    ctx: &mut DispatchCtx,
+) -> Result<NodeOutcome, DispatchError> {
+    let step_index = ctx.step_counter;
+    ctx.step_counter += 1;
+    if ctx.cancel.is_cancelled() {
+        return Err(DispatchError::UpstreamCancelled);
+    }
+    let step_name = if step.name.is_empty() {
+        "Step".to_string()
+    } else {
+        step.name.clone()
+    };
+    ctx.tx
+        .send(FlowExecutionEvent::StepStart {
+            step_name: step_name.clone(),
+            step_index,
+            step_type: "step".to_string(),
+            branch_path: ctx.branch_path_string(),
+            timestamp_ms: now_ms(),
+        })
+        .map_err(|_| DispatchError::ChannelClosed)?;
+
+    // The guard's target, when it names a binding, is the content the
+    // generation must govern — it rides the prompt as context. (A call
+    // expression target was captured verbatim by the parser; it interpolates
+    // like any other step input.)
+    let effective_prompt = if guard.target.is_empty() {
+        prompt.to_string()
+    } else {
+        let resolved = ctx
+            .let_bindings
+            .get(&guard.target)
+            .cloned()
+            .unwrap_or_else(|| guard.target.clone());
+        if prompt.is_empty() {
+            resolved
+        } else {
+            format!("{prompt}
+
+Input:
+{resolved}")
+        }
+    };
+
+    let output = super::algebraic_handlers::enforce_mandate_over(
+        &guard.name,
+        None,
+        super::algebraic_handlers::MandateTask::Generate {
+            prompt: effective_prompt,
+        },
+        ctx,
+    )
+    .await?;
+
+    ctx.let_bindings.insert(step_name.clone(), output.clone());
+    if !guard.binding.is_empty() {
+        ctx.let_bindings.insert(guard.binding.clone(), output.clone());
+    }
+    if !step.output_type.is_empty() {
+        ctx.let_bindings
+            .insert(step.output_type.clone(), output.clone());
+    }
+
+    ctx.tx
+        .send(FlowExecutionEvent::StepComplete {
+            step_name: step_name.clone(),
+            step_index,
+            success: true,
+            full_output: output.clone(),
+            tokens_input: 0,
+            tokens_output: 0,
+            branch_path: ctx.branch_path_string(),
+            timestamp_ms: now_ms(),
+        })
+        .map_err(|_| DispatchError::ChannelClosed)?;
+
+    Ok(NodeOutcome::Completed {
+        output,
+        tokens_emitted: 0,
+        step_index,
+    })
+}
+
 pub async fn run_probe(
     probe: &IRProbe,
     ctx: &mut DispatchCtx,
@@ -915,6 +1053,7 @@ pub async fn run_pure_shape(
             top_p: None,
             tools: shape.tools.clone(),
             stream: true,
+            logit_bias: None,
             trace_id: None,
             cancel: cancel.clone(),
         }

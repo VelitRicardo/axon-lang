@@ -102,14 +102,17 @@ pub fn apply_ots_to_target(ots_name: &str, target: &str, _ctx: &DispatchCtx) -> 
     target.to_string()
 }
 
-/// Apply a named mandate to `target`. OSS default: identity
-/// passthrough. Enterprise overrides (axon_enterprise compliance
-/// layer) hook into the registered mandate executor (GDPR
-/// erasure / SOX retention / HIPAA minimum-necessary).
-pub fn apply_mandate_to_target(mandate_name: &str, target: &str, _ctx: &DispatchCtx) -> String {
-    let _ = mandate_name;
-    target.to_string()
-}
+// §Fase 119.b — `apply_mandate_to_target` was DELETED here.
+//
+// It was `target.to_string()` with `let _ = mandate_name;` — the mandate's
+// name discarded on the first line, documented as an "enterprise override
+// hook" that nothing could override into existence (§111 F18, the same
+// factory-of-the-lie shape as `invoke_compute_capability`, deleted above).
+// `run_mandate_apply` now drives `crate::mandate_engine::MandateRuntime`:
+// the target is validated for free, refined in a buffered closed loop when
+// it violates, and NOTHING is bound unless the constraint set accepted it
+// or the declared `on_violation: coerce` policy visibly released the best
+// attempt. There is nothing left for a placeholder to stand in for.
 
 // §Fase 111.f — `invoke_compute_capability` was DELETED here.
 //
@@ -293,7 +296,26 @@ pub async fn run_ots_apply(
 //  MandateApply
 // ────────────────────────────────────────────────────────────────────
 
-/// Apply a mandate. Wire shape: `step_type: "mandate_apply"`.
+/// §Fase 119.b — `mandate <Name> on <target>`: the closed loop, enforced.
+///
+/// The target binding is evaluated for FREE first — an already-compliant
+/// target costs zero tokens and binds unchanged (`attempts: 0`). A violating
+/// target enters the buffered refinement loop: the backend rewrites it under
+/// the mandate's directive block, every attempt is re-validated
+/// (`e = 1 − CSR`), Tier 1 token bans ride the request where the wire admits
+/// them, and the loop ends in exactly one of:
+///
+/// - **accepted** — the validated output binds (never an intermediate);
+/// - **`on_violation: coerce`** — the BEST attempt binds, visibly: a runtime
+///   warning names the residual error and the audit trail shows the breach
+///   (best-effort is a policy the developer declared, never a silent
+///   fallback);
+/// - **anything else** — the flow FAILS with the breach description. `halt`,
+///   `retry`, and the empty default all fail closed; `retry`'s retries are
+///   the loop itself, already spent.
+///
+/// Mandated content is BUFFERED — attempts never stream to the wire, because
+/// a token that reached the client cannot be unshipped.
 pub async fn run_mandate_apply(
     node: &IRMandateApplyStep,
     ctx: &mut DispatchCtx,
@@ -316,7 +338,16 @@ pub async fn run_mandate_apply(
         .get(&node.target)
         .cloned()
         .unwrap_or_else(|| node.target.clone());
-    let mandated = apply_mandate_to_target(&node.mandate_name, &resolved_target, ctx);
+
+    let mandated = enforce_mandate_over(
+        &node.mandate_name,
+        Some(resolved_target.as_str()),
+        MandateTask::Rewrite {
+            target: resolved_target.clone(),
+        },
+        ctx,
+    )
+    .await?;
 
     let output_key = if !node.output_type.is_empty() {
         node.output_type.clone()
@@ -338,43 +369,189 @@ pub async fn run_mandate_apply(
     })
 }
 
-// ────────────────────────────────────────────────────────────────────
-//  ComputeApply
-// ────────────────────────────────────────────────────────────────────
+/// What the actuator is asked to produce on each attempt.
+pub(crate) enum MandateTask {
+    /// Rewrite pre-existing content until it satisfies the constraint set
+    /// (the flow-level `mandate X on <binding>` node).
+    Rewrite { target: String },
+    /// Generate from a step prompt under the mandate (the step-scoped guard).
+    Generate { prompt: String },
+}
 
-/// **§Fase 111.f — `compute` MADE REAL.** Wire shape: `step_type: "compute_apply"`.
+/// §Fase 119.b — the shared enforcement driver: resolve the declaration,
+/// build the runtime (refusing vacuity), drive the buffered loop against the
+/// resolved backend, apply the declared `on_violation` policy. Used by the
+/// flow-level node above and by the step-guard path in `pure_shape`.
 ///
-/// # What this used to be (§111 F10 — the loudest lie in the README)
-///
-/// `invoke_compute_capability` returned the **literal string**
-/// `"compute:CalculatePremium(x_value, 1.2)"`. That string was bound under
-/// `output_name`, and **a downstream step consumed it as if it were a number**.
-///
-/// It did not fall through to the LLM, so it was not *hallucinating* in the §108
-/// sense — it was worse in one specific way: it was a **fabricated determinism
-/// guarantee**. The README advertises `compute` as *"Deterministic muscle —
-/// native Fast-Path execution **bypassing the LLM**"* and even asserts a
-/// complexity class (*"compute steps: O(n) — linear in input size, native
-/// execution"*). `IRCompute` carried only `name` and `shield_ref`: **no
-/// parameters, no body**. There was nothing to execute, natively or otherwise.
-/// The parser skipped the parameters token by token and the apply site hardcoded
-/// `arguments: Vec::new()`.
-///
-/// # What it is now
-///
-/// A named **pure function over the §70 expression language** — the closed,
-/// total, side-effect-free term algebra the runtime already evaluates natively
-/// via `eval_expr` (the same evaluator behind `let`, `grad` and `conditional`).
-///
-/// ```text
-/// compute Premium(base: Number, rate: Number) -> Number { base * rate * 1.2 }
-/// …
-/// compute Premium on amount, r -> premium      // premium is a NUMBER
-/// ```
-///
-/// Linear in the term. **No model in the loop.** The advertised claim, made true
-/// rather than made louder — and every failure is a refusal, never a string
-/// wearing a number's clothes.
+/// Fails CLOSED at every fork: unresolved mandate name, unfalsifiable
+/// constraint set, inadmissible declaration, backend infrastructure error,
+/// and breach under `halt`/`retry`/default — all are flow errors that name
+/// the mandate (`mandate:<name>`, the shield-registry blame idiom).
+pub(crate) async fn enforce_mandate_over(
+    mandate_name: &str,
+    initial: Option<&str>,
+    task: MandateTask,
+    ctx: &mut DispatchCtx,
+) -> Result<String, DispatchError> {
+    let blame = format!("mandate:{mandate_name}");
+
+    let spec = ctx
+        .mandate_specs
+        .iter()
+        .find(|m| m.name == mandate_name)
+        .cloned()
+        .ok_or_else(|| DispatchError::BackendError {
+            name: blame.clone(),
+            message: format!(
+                "mandate '{mandate_name}' is not in the compiled program's mandate \
+                 catalog; nothing can be enforced, so nothing is released. (The type \
+                 checker rejects unknown names statically — an empty catalog here \
+                 usually means the deploy path did not attach `mandate_specs`.)"
+            ),
+        })?;
+
+    let mut runtime = crate::mandate_engine::MandateRuntime::from_spec(&spec).map_err(|r| {
+        DispatchError::BackendError {
+            name: blame.clone(),
+            message: format!("mandate '{mandate_name}' refused at dispatch: {r}"),
+        }
+    })?;
+
+    // Honest partial coverage is VISIBLE coverage: clauses that steer the
+    // prompt but cannot be mechanically checked are surfaced as a runtime
+    // warning, not silently counted as enforced.
+    // (Not `ctx.runtime_warnings`: that is the CLOSED axon-W002 catalog for
+    // streaming fallbacks, and a free-string push there would distort it —
+    // the §108/§113 lesson. Structured tracing is the honest channel until a
+    // mandate-specific wire surface earns its own catalog entry.)
+    let unchecked = runtime.unchecked_clauses().to_vec();
+    if !unchecked.is_empty() {
+        tracing::warn!(
+            mandate = mandate_name,
+            clauses = unchecked.join("; ").as_str(),
+            "mandate steers but cannot mechanically check {} clause(s)",
+            unchecked.len()
+        );
+    }
+
+    let backend = crate::backends::resolve_streaming_backend_with_key_and_endpoint(
+        &ctx.backend_name,
+        ctx.api_key.as_deref(),
+        ctx.llm_base_url.as_deref(),
+        ctx.llm_chat_path.as_deref(),
+    )
+    .ok_or_else(|| DispatchError::BackendError {
+        name: ctx.backend_name.clone(),
+        message: format!(
+            "not in streaming registry; supported: {}",
+            crate::backends::STREAMING_BACKEND_NAMES.join(", ")
+        ),
+    })?;
+
+    // Tier 1 — token bans where the wire admits them; None elsewhere, and
+    // the loop (Tier 2) carries the guarantee alone.
+    let bias = runtime.logit_bias_bans(backend.default_model());
+
+    let system = {
+        let block = runtime.directive_block();
+        if ctx.system_prompt.is_empty() {
+            block
+        } else {
+            format!("{}\n\n{}", ctx.system_prompt, block)
+        }
+    };
+    let cancel = ctx.cancel.clone();
+    let backend_ref = &backend;
+    let system_ref = &system;
+    let bias_ref = &bias;
+    let task_ref = &task;
+
+    let outcome = runtime
+        .enforce(initial, move |directive| {
+            let user = match task_ref {
+                MandateTask::Rewrite { target } => {
+                    if directive.feedback.is_empty() {
+                        format!(
+                            "Rewrite the following content so it satisfies every mandate \
+                             requirement, changing as little as possible:\n\n{target}"
+                        )
+                    } else {
+                        format!(
+                            "Rewrite the following content so it satisfies every mandate \
+                             requirement, changing as little as possible.\n\nThe previous \
+                             attempt violated these obligations:\n{}\n\nContent:\n\n{target}",
+                            directive.feedback
+                        )
+                    }
+                }
+                MandateTask::Generate { prompt } => {
+                    if directive.feedback.is_empty() {
+                        prompt.clone()
+                    } else {
+                        format!(
+                            "{prompt}\n\nYour previous attempt violated these mandate \
+                             obligations — correct all of them:\n{}",
+                            directive.feedback
+                        )
+                    }
+                }
+            };
+            let request = crate::backends::ChatRequest {
+                model: String::new(),
+                messages: vec![crate::backends::Message::user(user)],
+                system: Some(system_ref.clone()),
+                stream: false,
+                logit_bias: bias_ref.clone(),
+                cancel: cancel.clone(),
+                ..Default::default()
+            };
+            async move {
+                backend_ref
+                    .complete(request)
+                    .await
+                    .map(|r| r.content)
+                    .map_err(|e| e.to_string())
+            }
+        })
+        .await
+        .map_err(|infra| DispatchError::BackendError {
+            name: ctx.backend_name.clone(),
+            message: format!("mandate '{mandate_name}' aborted on backend failure: {infra}"),
+        })?;
+
+    match outcome {
+        Ok(report) => Ok(report.output),
+        Err(breach) => {
+            if spec.on_violation == "coerce" {
+                // The developer DECLARED best-effort. It is honored visibly:
+                // the residual error is a runtime warning and the breach is
+                // in the audit trail — never a silent success.
+                if let crate::mandate_engine::MandateBreach::Unconverged {
+                    best_error,
+                    best_output,
+                    ..
+                } = &breach
+                {
+                    tracing::warn!(
+                        mandate = mandate_name,
+                        residual_error = best_error,
+                        "mandate did not converge; `on_violation: coerce` released \
+                         the best attempt with its residual error on record"
+                    );
+                    return Ok(best_output.clone());
+                }
+                // A PremiseViolated breach is NOT coercible: the declared
+                // drift bound is false on this backend, so even the best
+                // attempt stands on a voided proof.
+            }
+            Err(DispatchError::BackendError {
+                name: blame,
+                message: breach.describe(mandate_name),
+            })
+        }
+    }
+}
+
 pub async fn run_compute_apply(
     node: &IRComputeApplyStep,
     ctx: &mut DispatchCtx,
@@ -700,12 +877,6 @@ mod tests {
     }
 
     #[test]
-    fn apply_mandate_oss_default_is_identity() {
-        let (ctx, _rx) = fresh_ctx();
-        assert_eq!(apply_mandate_to_target("gdpr_erasure", "user record", &ctx), "user record");
-    }
-
-    #[test]
     fn listen_returns_canonical_awaiting_placeholder() {
         let (ctx, _rx) = fresh_ctx();
         assert_eq!(listen_on_channel("event_bus", true, &ctx), "(awaiting event_bus)");
@@ -904,9 +1075,26 @@ mod tests {
 
     // ── MandateApply ─────────────────────────────────────────────────
 
+    /// §Fase 119.b — **this test used to BE the §111 F18 bug.**
+    ///
+    /// It asserted, in green, that `mandate gdpr_erasure on user_record`
+    /// binds `"user_record"` UNCHANGED under `erased` — a mandate named
+    /// "gdpr_erasure" whose enforcement was the identity function, tested
+    /// and passing. It now asserts the wire shape on a mandate that
+    /// actually resolves and enforces (and the fail-closed behavior of the
+    /// old fixture lives in
+    /// `an_unresolved_mandate_name_fails_closed_never_identity`).
     #[tokio::test]
     async fn run_mandate_apply_binds_output() {
         let (mut ctx, mut rx) = fresh_ctx();
+        ctx.mandate_specs = std::sync::Arc::new(vec![mandate_spec(
+            "gdpr_erasure",
+            "must not contain \"ssn\"",
+            2,
+            "halt",
+        )]);
+        ctx.let_bindings
+            .insert("user_record".into(), "name and city only".into());
         let node = IRMandateApplyStep {
             node_type: "mandate_apply",
             source_line: 0,
@@ -918,7 +1106,8 @@ mod tests {
         run_mandate_apply(&node, &mut ctx).await.unwrap();
         assert_eq!(
             ctx.let_bindings.get("erased").unwrap(),
-            "user_record"
+            "name and city only",
+            "a COMPLIANT target binds; a violating one would have been rewritten"
         );
         let first = rx.try_recv().unwrap();
         match first {
@@ -1195,5 +1384,289 @@ mod tests {
             .await,
             Err(DispatchError::UpstreamCancelled)
         ));
+    }
+
+    // ── §Fase 119.b — MandateApply: the loop, through real dispatch ──
+
+    fn mandate_spec(
+        name: &str,
+        constraint: &str,
+        max_steps: i64,
+        on_violation: &str,
+    ) -> crate::ir_nodes::IRMandate {
+        crate::ir_nodes::IRMandate {
+            node_type: "mandate",
+            source_line: 1,
+            source_column: 1,
+            name: name.into(),
+            constraint: constraint.into(),
+            kp: Some(2.0),
+            ki: Some(0.3),
+            kd: Some(0.1),
+            tolerance: Some(0.05),
+            max_steps: Some(max_steps),
+            drift_bound: None,
+            lipschitz: None,
+            on_violation: on_violation.into(),
+        }
+    }
+
+    fn mandate_node(name: &str, target: &str, output: &str) -> IRMandateApplyStep {
+        IRMandateApplyStep {
+            node_type: "mandate_apply",
+            source_line: 0,
+            source_column: 0,
+            mandate_name: name.into(),
+            target: target.into(),
+            output_type: output.into(),
+        }
+    }
+
+    #[tokio::test]
+    async fn a_compliant_target_passes_through_with_zero_attempts() {
+        // The stub backend would return "(stub)"; if the output equals the
+        // ORIGINAL target, the free pre-check accepted it and no model was
+        // consulted.
+        let (mut ctx, _rx) = fresh_ctx();
+        ctx.mandate_specs = std::sync::Arc::new(vec![mandate_spec(
+            "NoGuarantees",
+            "must not contain \"guaranteed\"",
+            3,
+            "halt",
+        )]);
+        ctx.let_bindings
+            .insert("draft".into(), "historical results only".into());
+        let out = run_mandate_apply(&mandate_node("NoGuarantees", "draft", "vetted"), &mut ctx)
+            .await
+            .expect("compliant target passes");
+        match out {
+            NodeOutcome::Completed { output, .. } => {
+                assert_eq!(output, "historical results only");
+            }
+            other => panic!("{other:?}"),
+        }
+        assert_eq!(
+            ctx.let_bindings.get("vetted").map(String::as_str),
+            Some("historical results only")
+        );
+    }
+
+    #[tokio::test]
+    async fn a_violating_target_is_rewritten_through_the_loop_until_accepted() {
+        // The stub backend's fixed reply "(stub)" satisfies `must contain
+        // "stub"`, so the loop converges on attempt 1 — and the BOUND value
+        // is the model's rewrite, not the violating original.
+        let (mut ctx, _rx) = fresh_ctx();
+        ctx.mandate_specs = std::sync::Arc::new(vec![mandate_spec(
+            "MustSayStub",
+            "must contain \"stub\"",
+            3,
+            "halt",
+        )]);
+        ctx.let_bindings.insert("draft".into(), "noncompliant".into());
+        let out = run_mandate_apply(&mandate_node("MustSayStub", "draft", "vetted"), &mut ctx)
+            .await
+            .expect("loop converges via the stub");
+        match out {
+            NodeOutcome::Completed { output, .. } => assert_eq!(output, "(stub)"),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn an_unconverged_mandate_under_halt_fails_the_flow_with_the_breach() {
+        let (mut ctx, _rx) = fresh_ctx();
+        ctx.mandate_specs = std::sync::Arc::new(vec![mandate_spec(
+            "Impossible",
+            "must contain \"unicorn\"",
+            2,
+            "halt",
+        )]);
+        ctx.let_bindings.insert("draft".into(), "plain".into());
+        let err = run_mandate_apply(&mandate_node("Impossible", "draft", ""), &mut ctx)
+            .await
+            .err()
+            .expect("must fail closed");
+        match err {
+            DispatchError::BackendError { name, message } => {
+                assert_eq!(name, "mandate:Impossible");
+                assert!(message.contains("Anchor Breach"), "{message}");
+                assert!(
+                    message.contains("non-compliance cannot be shipped"),
+                    "{message}"
+                );
+            }
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn coerce_releases_the_best_attempt_visibly_instead_of_failing() {
+        let (mut ctx, _rx) = fresh_ctx();
+        ctx.mandate_specs = std::sync::Arc::new(vec![mandate_spec(
+            "Impossible",
+            "must contain \"unicorn\"; must contain \"stub\"",
+            2,
+            "coerce",
+        )]);
+        ctx.let_bindings.insert("draft".into(), "plain".into());
+        let out = run_mandate_apply(&mandate_node("Impossible", "draft", "released"), &mut ctx)
+            .await
+            .expect("coerce is a DECLARED policy, honored");
+        match out {
+            // Best attempt: "(stub)" satisfies 1 of 2 (e = 0.5) vs the
+            // target's 0 of 2 (e = 1.0).
+            NodeOutcome::Completed { output, .. } => assert_eq!(output, "(stub)"),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn an_unfalsifiable_mandate_is_refused_at_dispatch_before_any_token() {
+        let (mut ctx, _rx) = fresh_ctx();
+        ctx.mandate_specs = std::sync::Arc::new(vec![mandate_spec(
+            "Vibes",
+            "output must be insightful and warm",
+            3,
+            "halt",
+        )]);
+        ctx.let_bindings.insert("draft".into(), "text".into());
+        let err = run_mandate_apply(&mandate_node("Vibes", "draft", ""), &mut ctx)
+            .await
+            .err()
+            .expect("unfalsifiable is refused");
+        match err {
+            DispatchError::BackendError { name, message } => {
+                assert_eq!(name, "mandate:Vibes");
+                assert!(message.contains("refused at dispatch"), "{message}");
+                assert!(
+                    message.contains("insightful"),
+                    "the refusal names the clauses: {message}"
+                );
+            }
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn an_unresolved_mandate_name_fails_closed_never_identity() {
+        // THE §111 F18 regression test: this exact call used to bind the
+        // target unchanged. An empty catalog must now refuse.
+        let (mut ctx, _rx) = fresh_ctx();
+        ctx.let_bindings.insert("draft".into(), "user record".into());
+        let err = run_mandate_apply(&mandate_node("gdpr_erasure", "draft", ""), &mut ctx)
+            .await
+            .err()
+            .expect("no catalog, no passthrough");
+        match err {
+            DispatchError::BackendError { name, message } => {
+                assert_eq!(name, "mandate:gdpr_erasure");
+                assert!(message.contains("nothing is released"), "{message}");
+            }
+            other => panic!("{other:?}"),
+        }
+    }
+
+    // ── §Fase 119.b (D119.4) — the step-scoped guard ─────────────────
+
+    fn guarded_step(guard_name: &str) -> crate::ir_nodes::IRStep {
+        crate::ir_nodes::IRStep {
+            node_type: "step",
+            source_line: 0,
+            source_column: 0,
+            name: "Draft".into(),
+            persona_ref: String::new(),
+            given: String::new(),
+            ask: "write the section".into(),
+            use_tool: None,
+            probe: None,
+            reason: None,
+            weave: None,
+            output_type: String::new(),
+            confidence_floor: None,
+            navigate_ref: String::new(),
+            apply_ref: String::new(),
+            requires_context: None,
+            now_tz: None,
+            guards: vec![crate::ir_nodes::IRStepGuard {
+                kind: "mandate".into(),
+                name: guard_name.into(),
+                target: String::new(),
+                binding: "vetted".into(),
+            }],
+            body: Vec::new(),
+        }
+    }
+
+    #[tokio::test]
+    async fn a_step_with_a_mandate_guard_generates_through_the_buffered_loop() {
+        let (mut ctx, _rx) = fresh_ctx();
+        ctx.mandate_specs = std::sync::Arc::new(vec![mandate_spec(
+            "MustSayStub",
+            "must contain \"stub\"",
+            3,
+            "halt",
+        )]);
+        let step = guarded_step("MustSayStub");
+        let out = super::super::pure_shape::run_step(&step, &mut ctx)
+            .await
+            .expect("guarded generation converges via the stub");
+        match out {
+            NodeOutcome::Completed { output, .. } => assert_eq!(output, "(stub)"),
+            other => panic!("{other:?}"),
+        }
+        assert_eq!(
+            ctx.let_bindings.get("vetted").map(String::as_str),
+            Some("(stub)"),
+            "the guard binding carries the ENFORCED output"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_step_guard_breach_fails_the_step_not_just_the_binding() {
+        let (mut ctx, _rx) = fresh_ctx();
+        ctx.mandate_specs = std::sync::Arc::new(vec![mandate_spec(
+            "Impossible",
+            "must contain \"unicorn\"",
+            2,
+            "halt",
+        )]);
+        let step = guarded_step("Impossible");
+        let err = super::super::pure_shape::run_step(&step, &mut ctx)
+            .await
+            .err()
+            .expect("the step fails closed");
+        match err {
+            DispatchError::BackendError { name, .. } => {
+                assert_eq!(name, "mandate:Impossible");
+            }
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn two_mandate_guards_on_one_step_are_refused_not_half_enforced() {
+        let (mut ctx, _rx) = fresh_ctx();
+        ctx.mandate_specs = std::sync::Arc::new(vec![
+            mandate_spec("A", "must contain \"stub\"", 2, "halt"),
+            mandate_spec("B", "must not contain \"x\"", 2, "halt"),
+        ]);
+        let mut step = guarded_step("A");
+        step.guards.push(crate::ir_nodes::IRStepGuard {
+            kind: "mandate".into(),
+            name: "B".into(),
+            target: String::new(),
+            binding: String::new(),
+        });
+        let err = super::super::pure_shape::run_step(&step, &mut ctx)
+            .await
+            .err()
+            .expect("undefined composition is refused");
+        match err {
+            DispatchError::BackendError { message, .. } => {
+                assert!(message.contains("not yet defined"), "{message}");
+            }
+            other => panic!("{other:?}"),
+        }
     }
 }

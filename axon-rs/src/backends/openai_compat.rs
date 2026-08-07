@@ -674,6 +674,17 @@ pub(crate) fn build_request_body(
     if let Some(p) = request.top_p {
         body_obj.insert("top_p".into(), json!(p));
     }
+    // §Fase 119.b (Tier 1) — the mandate engine's token bans. OpenAI's wire
+    // wants string keys. Inserted BEFORE the locked-model strip below, which
+    // already lists `logit_bias` for o1/o3 — a locked model silently loses
+    // the bias and the mandate loop (Tier 2) carries the guarantee alone.
+    if let Some(bias) = &request.logit_bias {
+        let wire: serde_json::Map<String, Value> = bias
+            .iter()
+            .map(|(id, b)| (id.to_string(), json!(b)))
+            .collect();
+        body_obj.insert("logit_bias".into(), Value::Object(wire));
+    }
 
     // OpenAI tool envelope.
     if !request.tools.is_empty() {
@@ -1196,6 +1207,31 @@ mod tests {
         // Kimi K2.x rejects temperature + top_p — they must be stripped.
         assert!(body.get("temperature").is_none());
         assert!(body.get("top_p").is_none());
+    }
+
+    /// §Fase 119.b (Tier 1) — the mandate engine's token bans reach the wire
+    /// as string-keyed `logit_bias`, and a locked model strips them (the loop
+    /// then carries the guarantee alone).
+    #[test]
+    fn body_carries_logit_bias_with_string_keys_for_unlocked_models() {
+        let mut req = req_with(vec![Message::user("hi")]);
+        req.model = "gpt-4o-mini".into();
+        req.logit_bias = Some([(50256u32, -100i32)].into_iter().collect());
+        let body = build_request_body(&req, "gpt-4o-mini", false);
+        let bias = body.get("logit_bias").expect("bias on the wire");
+        assert_eq!(bias["50256"], -100, "OpenAI wants string token ids");
+    }
+
+    #[test]
+    fn body_strips_logit_bias_for_locked_o1_family() {
+        let mut req = req_with(vec![Message::user("hi")]);
+        req.model = "o1-mini".into();
+        req.logit_bias = Some([(50256u32, -100i32)].into_iter().collect());
+        let body = build_request_body(&req, "gpt-4o-mini", false);
+        assert!(
+            body.get("logit_bias").is_none(),
+            "o1 rejects logit_bias; sending it would 400 the whole mandate loop"
+        );
     }
 
     #[test]

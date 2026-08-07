@@ -469,6 +469,9 @@ pub mod replay_token;
 // exposes the PersistenceBackend async trait + in-memory impl;
 // production uses axon_enterprise::cognitive_states (Postgres +
 // envelope encryption).
+/// §Fase 119.b — the `mandate` enforcement engine: the closed loop that
+/// refuses to release any output its constraint set rejects.
+pub mod mandate_engine;
 pub mod pem;
 // §λ-L-E Fase 11.e — Ontological Tool Synthesis binary pipelines.
 // `ots::pipeline` hosts Transformer trait + TransformerRegistry +
