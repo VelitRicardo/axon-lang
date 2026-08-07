@@ -234,12 +234,15 @@ fn continue_node() -> IRFlowNode {
 }
 
 fn lambda_data_apply_node() -> IRFlowNode {
+    // §Fase 119.c — the empty name used to complete via the placeholder
+    // string; the handler now elevates for real, so the routing fixture
+    // names the ΛD that `fresh_ctx` declares in its catalog.
     IRFlowNode::LambdaDataApply(IRLambdaDataApply {
         node_type: "lambda_data_apply",
         source_line: 0,
         source_column: 0,
-        lambda_data_name: String::new(),
-        target: String::new(),
+        lambda_data_name: "RoutedLambda".into(),
+        target: "x".into(),
         output_type: String::new(),
     })
 }
@@ -420,12 +423,15 @@ fn corroborate_node() -> IRFlowNode {
 }
 
 fn ots_apply_node() -> IRFlowNode {
+    // §Fase 119.c — same story as the lambda fixture: the identity
+    // passthrough is gone, so the fixture names the declared, REGISTERED
+    // ots that `fresh_ctx` sets up.
     IRFlowNode::OtsApply(IROtsApplyStep {
         node_type: "ots_apply",
         source_line: 0,
         source_column: 0,
-        ots_name: String::new(),
-        target: String::new(),
+        ots_name: "RoutedOts".into(),
+        target: "x".into(),
         output_type: String::new(),
     })
 }
@@ -694,6 +700,42 @@ fn fresh_ctx() -> (DispatchCtx, mpsc::UnboundedReceiver<axon::flow_execution_eve
     // is satisfied by the fixture node's literal target, so the routing test
     // observes Completed through the REAL enforcement path (free pre-check,
     // zero attempts) instead of through a passthrough that no longer exists.
+    // §Fase 119.c — the ΛD + ots the routing fixtures resolve.
+    ctx.lambda_data_specs = std::sync::Arc::new(vec![axon::ir_nodes::IRLambdaData {
+        node_type: "lambda_data",
+        source_line: 0,
+        source_column: 0,
+        name: "RoutedLambda".into(),
+        ontology: "test.ontology".into(),
+        certainty: 0.8,
+        temporal_frame_start: String::new(),
+        temporal_frame_end: String::new(),
+        provenance: "test".into(),
+        derivation: "derived".into(),
+    }]);
+    ctx.ots_specs = std::sync::Arc::new(vec![axon::ir_nodes::IROts {
+        node_type: "ots",
+        source_line: 0,
+        source_column: 0,
+        name: "RoutedOts".into(),
+        teleology: "route".into(),
+        homotopy_search: "shallow".into(),
+        loss_function: "L2".into(),
+    }]);
+    struct RoutedIdentityUpper;
+    impl axon::ots_registry::OtsTransformer for RoutedIdentityUpper {
+        fn transform(
+            &self,
+            content: &str,
+            _ctx: &axon::ots_registry::OtsTransformContext,
+        ) -> axon::ots_registry::OtsVerdict {
+            axon::ots_registry::OtsVerdict::Transformed(content.to_uppercase())
+        }
+    }
+    axon::ots_registry::register_ots_transformer(
+        "RoutedOts",
+        std::sync::Arc::new(RoutedIdentityUpper),
+    );
     ctx.mandate_specs = std::sync::Arc::new(vec![axon::ir_nodes::IRMandate {
         node_type: "mandate",
         source_line: 0,

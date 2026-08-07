@@ -406,6 +406,14 @@ pub struct DispatchCtx {
     /// that cannot be resolved enforces nothing, so nothing is released
     /// (the §111.f compute doctrine, applied to the cage).
     pub mandate_specs: Arc<Vec<crate::ir_nodes::IRMandate>>,
+    /// §Fase 119.c — the compiled `lambda` (ΛD) declarations, so a
+    /// `lambda X on y` can construct ψ = ⟨T, V, E⟩ at dispatch instead of
+    /// binding the placeholder string "lambda:<name>(<target>)". Empty ⇒
+    /// fails CLOSED.
+    pub lambda_data_specs: Arc<Vec<crate::ir_nodes::IRLambdaData>>,
+    /// §Fase 119.c — the compiled `ots` declarations, resolved against the
+    /// name-keyed `ots_registry`. Empty ⇒ fails CLOSED.
+    pub ots_specs: Arc<Vec<crate::ir_nodes::IROts>>,
     pub cancel: CancellationFlag,
     pub tx: mpsc::UnboundedSender<FlowExecutionEvent>,
     pub enforcement_summaries: Arc<
@@ -663,6 +671,9 @@ impl DispatchCtx {
             compute_specs: Arc::new(Vec::new()),
             // §Fase 119.b — no mandate catalog by default: an apply fails CLOSED.
             mandate_specs: Arc::new(Vec::new()),
+            // §Fase 119.c — no ΛD / ots catalogs by default: fail CLOSED.
+            lambda_data_specs: Arc::new(Vec::new()),
+            ots_specs: Arc::new(Vec::new()),
             cancel,
             tx,
             enforcement_summaries: Arc::new(Mutex::new(HashMap::new())),
@@ -779,6 +790,19 @@ impl DispatchCtx {
     /// of discarding the name on the first line.
     pub fn with_mandates(mut self, specs: Arc<Vec<crate::ir_nodes::IRMandate>>) -> Self {
         self.mandate_specs = specs;
+        self
+    }
+
+    /// §Fase 119.c — Builder: attach the compiled ΛD declarations, so
+    /// `lambda <Name> on …` constructs ψ instead of a placeholder string.
+    pub fn with_lambdas(mut self, specs: Arc<Vec<crate::ir_nodes::IRLambdaData>>) -> Self {
+        self.lambda_data_specs = specs;
+        self
+    }
+
+    /// §Fase 119.c — Builder: attach the compiled `ots` declarations.
+    pub fn with_ots(mut self, specs: Arc<Vec<crate::ir_nodes::IROts>>) -> Self {
+        self.ots_specs = specs;
         self
     }
 

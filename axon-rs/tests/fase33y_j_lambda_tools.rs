@@ -20,24 +20,49 @@
 //!   SAME wire envelope.
 
 use axon::cancel_token::CancellationFlag;
-use axon::flow_dispatcher::lambda_tools::{apply_lambda_data, invoke_tool};
+use axon::flow_dispatcher::lambda_tools::invoke_tool;
 use axon::flow_dispatcher::{dispatch_node, DispatchCtx, DispatchError, NodeOutcome};
 use axon::flow_execution_event::FlowExecutionEvent;
 use axon::ir_nodes::*;
 use tokio::sync::mpsc;
+
+fn lambda_spec(name: &str) -> axon::ir_nodes::IRLambdaData {
+    axon::ir_nodes::IRLambdaData {
+        node_type: "lambda_data",
+        source_line: 0,
+        source_column: 0,
+        name: name.into(),
+        ontology: "test.ontology".into(),
+        certainty: 0.8,
+        temporal_frame_start: String::new(),
+        temporal_frame_end: String::new(),
+        provenance: "test".into(),
+        derivation: "derived".into(),
+    }
+}
 
 fn fresh_ctx() -> (
     DispatchCtx,
     mpsc::UnboundedReceiver<FlowExecutionEvent>,
 ) {
     let (tx, rx) = mpsc::unbounded_channel();
-    let ctx = DispatchCtx::new(
+    let mut ctx = DispatchCtx::new(
         "TestFlow",
         "stub",
         "",
         CancellationFlag::new(),
         tx,
     );
+    // §Fase 119.c — the ΛD declarations these fixtures apply. The handler
+    // elevates for real now; an undeclared name refuses (covered by the
+    // fuzz arm below), so the named fixtures must resolve.
+    ctx.lambda_data_specs = std::sync::Arc::new(vec![
+        lambda_spec("normalize"),
+        lambda_spec("clean"),
+        lambda_spec("x"),
+        lambda_spec("polish"),
+        lambda_spec("process"),
+    ]);
     (ctx, rx)
 }
 
@@ -67,18 +92,13 @@ fn use_tool_node(tool: &str, arg: &str) -> IRFlowNode {
 //  §1 — Public helpers
 // ────────────────────────────────────────────────────────────────────
 
-#[test]
-fn apply_lambda_data_resolves_target() {
-    let (mut ctx, _rx) = fresh_ctx();
-    ctx.let_bindings.insert("x".into(), "10".into());
-    assert_eq!(apply_lambda_data("square", "x", &ctx), "lambda:square(10)");
-}
-
-#[test]
-fn apply_lambda_data_literal_when_target_unset() {
-    let (ctx, _rx) = fresh_ctx();
-    assert_eq!(apply_lambda_data("inc", "5", &ctx), "lambda:inc(5)");
-}
+// §Fase 119.c — `apply_lambda_data_resolves_target` and
+// `apply_lambda_data_literal_when_target_unset` were DELETED here. They
+// pinned the placeholder string "lambda:<name>(<target>)" in green — the
+// §111 F18 shape — while the real evaluator sat unreached on the dead sync
+// path. The elevation suite lives in `flow_dispatcher::lambda_tools::tests`,
+// and its fail-closed inversion is
+// `an_undeclared_lambda_fails_closed_never_placeholder`.
 
 #[test]
 fn invoke_tool_resolves_argument() {
@@ -110,10 +130,9 @@ async fn dispatch_node_routes_lambda_with_explicit_output() {
     dispatch_node(&lambda_node("normalize", "data", "normalized"), &mut ctx)
         .await
         .unwrap();
-    assert_eq!(
-        ctx.let_bindings.get("normalized").unwrap(),
-        "lambda:normalize(raw_input)"
-    );
+    let psi: serde_json::Value =
+        serde_json::from_str(ctx.let_bindings.get("normalized").unwrap()).expect("ψ JSON");
+    assert_eq!(psi["V"], "raw_input", "the elevation carries the resolved target");
     let first = rx.try_recv().unwrap();
     match first {
         FlowExecutionEvent::StepStart { step_type, .. } => {
@@ -127,10 +146,10 @@ async fn dispatch_node_routes_lambda_with_explicit_output() {
 async fn lambda_canonical_fallback_when_output_empty() {
     let (mut ctx, _rx) = fresh_ctx();
     dispatch_node(&lambda_node("clean", "doc", ""), &mut ctx).await.unwrap();
-    assert_eq!(
-        ctx.let_bindings.get("doc_lambda_applied").unwrap(),
-        "lambda:clean(doc)"
-    );
+    let psi: serde_json::Value =
+        serde_json::from_str(ctx.let_bindings.get("doc_lambda_applied").unwrap())
+            .expect("ψ JSON");
+    assert_eq!(psi["V"], "doc", "unresolved binding elevates the literal");
 }
 
 // ────────────────────────────────────────────────────────────────────
@@ -214,10 +233,12 @@ async fn lambda_chain_with_remember_round_trip() {
     dispatch_node(&lambda_node("polish", "draft", "final"), &mut ctx)
         .await
         .unwrap();
-    assert_eq!(
-        ctx.let_bindings.get("final").unwrap(),
-        "lambda:polish(intermediate-value)"
-    );
+    // §Fase 119.c — the recalled binding elevates to a REAL ψ whose V is the
+    // remembered value; the placeholder shape is dead.
+    let psi: serde_json::Value =
+        serde_json::from_str(ctx.let_bindings.get("final").unwrap()).expect("ψ JSON");
+    assert_eq!(psi["V"], "intermediate-value");
+    assert_eq!(psi["spec_name"], "polish");
 }
 
 #[tokio::test]
@@ -254,9 +275,13 @@ async fn lambda_then_use_tool_chain() {
         .await
         .unwrap();
 
-    assert_eq!(
-        ctx.let_bindings.get("validate_result").unwrap(),
-        "tool:validate(lambda:process(raw))"
+    // §Fase 119.c — the chain now threads a REAL ψ into the tool: the bound
+    // value is `tool:validate(<ψ JSON>)`, not the old nested placeholder.
+    let bound = ctx.let_bindings.get("validate_result").unwrap();
+    assert!(bound.starts_with("tool:validate("), "{bound}");
+    assert!(
+        bound.contains("\"V\":\"raw\"") && bound.contains("\"spec_name\":\"process\""),
+        "the elevated ψ must flow through the chain: {bound}"
     );
 }
 
@@ -319,6 +344,10 @@ fn assert_no_panic(label: &str, outcome: &Result<NodeOutcome, DispatchError>) {
         Ok(_) => {}
         Err(DispatchError::UpstreamCancelled) => {}
         Err(DispatchError::ChannelClosed) => {}
+        // §Fase 119.c — a random name is an UNDECLARED ΛD, and refusing is
+        // the correct total outcome (this fuzz used to "pass" because the
+        // handler fabricated a placeholder string for any input at all).
+        Err(DispatchError::BackendError { name, .. }) if name.starts_with("lambda:") => {}
         Err(other) => panic!("{label}: unexpected: {other:?}"),
     }
 }

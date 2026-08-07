@@ -11058,6 +11058,11 @@ impl<'a> TypeChecker<'a> {
                         if g.name.is_empty() {
                             continue;
                         }
+                        // §Fase 119.c — the guard keyword and the symbol table
+                        // disagree on lambda's name: the keyword is `lambda`,
+                        // the declaration kind is `lambda_data`.
+                        let expected_kind =
+                            if g.kind == "lambda" { "lambda_data" } else { g.kind.as_str() };
                         match self.symbols.lookup(&g.name) {
                             None => self.emit(
                                 format!(
@@ -11066,7 +11071,7 @@ impl<'a> TypeChecker<'a> {
                                 ),
                                 &g.loc,
                             ),
-                            Some(sym) if sym.kind != g.kind => self.emit(
+                            Some(sym) if sym.kind != expected_kind => self.emit(
                                 format!(
                                     "'{}' is a {}, not a {} (step '{}' of flow '{}')",
                                     g.name, sym.kind, g.kind, s.name, flow_name

@@ -726,9 +726,14 @@ fn assert_clean_outcome(
         //   mandate — §119.b: the identity passthrough that bound the target
         //             unchanged under a compliance-sounding name; with no
         //             catalog attached, refusing IS the correct total outcome
+        //   lambda  — §119.c: the placeholder string "lambda:<name>(<target>)"
+        //             a downstream step consumed as if it were ψ
+        //   ots     — §119.c: the identity under a transformation's name
         Err(DispatchError::BackendError { ref name, .. })
             if matches!(name.as_str(), "compute" | "yield" | "warden" | "quant" | "grad")
-                || name.starts_with("mandate:") => {}
+                || name.starts_with("mandate:")
+                || name.starts_with("lambda:")
+                || name.starts_with("ots:") => {}
         Err(DispatchError::BackendError { name, message }) => panic!(
             "33.y.n fuzz: unexpected BackendError for {kind} iter {iter}: name={name} msg={message}"
         ),

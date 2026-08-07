@@ -472,6 +472,10 @@ pub mod replay_token;
 /// §Fase 119.b — the `mandate` enforcement engine: the closed loop that
 /// refuses to release any output its constraint set rejects.
 pub mod mandate_engine;
+/// §Fase 119.c — the name-keyed `ots` transformer registry (shield_registry's
+/// proven shape). An unregistered ots REFUSES at dispatch — a transformation
+/// that transforms nothing is the §111 F18 lie.
+pub mod ots_registry;
 pub mod pem;
 // §λ-L-E Fase 11.e — Ontological Tool Synthesis binary pipelines.
 // `ots::pipeline` hosts Transformer trait + TransformerRegistry +

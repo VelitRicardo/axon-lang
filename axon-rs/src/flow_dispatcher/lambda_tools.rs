@@ -52,23 +52,15 @@ use crate::ir_nodes::{IRLambdaDataApply, IRUseToolStep};
 //  Public helpers (enterprise hooks override these)
 // ────────────────────────────────────────────────────────────────────
 
-/// Apply a named ΛD (lambda data structure) to a target. OSS
-/// default: resolves `target` through `ctx.let_bindings` (literal
-/// if missing) + returns canonical `"lambda:<name>(<resolved_target>)"`.
-/// Enterprise overrides hook the Fase 15 CPS dispatcher (real
-/// lambda evaluation against the IR).
-pub fn apply_lambda_data(
-    lambda_name: &str,
-    target: &str,
-    ctx: &DispatchCtx,
-) -> String {
-    let resolved_target = ctx
-        .let_bindings
-        .get(target)
-        .cloned()
-        .unwrap_or_else(|| target.to_string());
-    format!("lambda:{lambda_name}({resolved_target})")
-}
+// §Fase 119.c — `apply_lambda_data` was DELETED here.
+//
+// It returned the string `"lambda:<name>(<target>)"` (§111 F18) while the
+// REAL evaluator — `lambda_runtime::build_psi`, with Theorem 5.1 enforced at
+// apply time — already existed on the sync runner path (Fase 15.c), which
+// production stopped taking at the §65 unified-executor cutover. The engine
+// was real; the live wire bound a placeholder. `run_lambda_data_apply` now
+// drives the same evaluator, with D10 parity: both paths bind the serialized
+// ψ, or refuse.
 
 /// Invoke a tool with an argument. OSS default: resolves
 /// `argument` through `ctx.let_bindings` (literal if missing) +
@@ -91,11 +83,15 @@ pub fn invoke_tool(tool_name: &str, argument: &str, ctx: &DispatchCtx) -> String
 //  LambdaDataApply (Fase 15 ΛD apply)
 // ────────────────────────────────────────────────────────────────────
 
-/// LambdaDataApply handler. Wire shape:
-/// `step_type: "lambda_data_apply"`. Resolves the lambda via
-/// [`apply_lambda_data`] + binds result under `output_type` (or
-/// `<target>_lambda_applied` canonical fallback) in
-/// `ctx.let_bindings`.
+/// §Fase 119.c — `lambda <Name> on <target> [-> <binding>]`: ΛD elevation,
+/// REAL on the production dispatch path.
+///
+/// Resolves the declaration from `ctx.lambda_data_specs` (fail closed —
+/// an unresolvable ΛD elevates nothing, so nothing is bound), resolves the
+/// target through `ctx.let_bindings`, enforces Theorem 5.1 at apply time
+/// (`lambda_runtime::enforce_theorem_5_1`, inside `build_psi`: only `raw`
+/// data may carry c = 1.0), and binds the serialized ψ = ⟨T, V, E⟩ — the
+/// SAME shape the sync runner has always bound (D10 parity).
 pub async fn run_lambda_data_apply(
     node: &IRLambdaDataApply,
     ctx: &mut DispatchCtx,
@@ -113,7 +109,7 @@ pub async fn run_lambda_data_apply(
     };
     emit_step_start(ctx, &step_name, step_index, "lambda_data_apply")?;
 
-    let result = apply_lambda_data(&node.lambda_data_name, &node.target, ctx);
+    let psi_json = elevate_lambda(&node.lambda_data_name, &node.target, ctx)?;
 
     let output_key = if !node.output_type.is_empty() {
         node.output_type.clone()
@@ -123,43 +119,75 @@ pub async fn run_lambda_data_apply(
         String::new()
     };
     if !output_key.is_empty() {
-        ctx.let_bindings.insert(output_key, result.clone());
+        ctx.let_bindings.insert(output_key, psi_json.clone());
     }
 
-    emit_step_complete(ctx, &step_name, step_index, &result, 0, true)?;
+    emit_step_complete(ctx, &step_name, step_index, &psi_json, 0, true)?;
 
     Ok(NodeOutcome::Completed {
-        output: result,
+        output: psi_json,
         tokens_emitted: 0,
         step_index,
     })
 }
 
-// ────────────────────────────────────────────────────────────────────
-//  UseTool (Fase 22 mid-step tool dispatch)
-// ────────────────────────────────────────────────────────────────────
+/// §Fase 119.c — the shared ΛD elevation: declaration → ψ → serialized JSON.
+///
+/// Used by the flow-level node above and by the step-scoped `lambda` guard
+/// in `pure_shape::run_step` (README blocks 46-47's position), which runs it
+/// BEFORE prompt interpolation so the elevated binding is in scope for the
+/// step's `ask`.
+pub(crate) fn elevate_lambda(
+    lambda_name: &str,
+    target: &str,
+    ctx: &DispatchCtx,
+) -> Result<String, DispatchError> {
+    let blame = format!("lambda:{lambda_name}");
+    let spec = ctx
+        .lambda_data_specs
+        .iter()
+        .find(|l| l.name == lambda_name)
+        .ok_or_else(|| DispatchError::BackendError {
+            name: blame.clone(),
+            message: format!(
+                "lambda '{lambda_name}' is not in the compiled program's \u{039b}D \
+                 catalog; nothing can be elevated, so nothing is bound. (The type \
+                 checker rejects unknown names statically \u{2014} an empty catalog \
+                 here usually means the deploy path did not attach \
+                 `lambda_data_specs`.)"
+            ),
+        })?;
 
-/// UseTool handler. Wire shape: `step_type: "use_tool"`. Binds the
-/// result under the `<tool_name>_result` canonical key in
-/// `ctx.let_bindings`.
-///
-/// # §Fase 58.f.2 — real dispatch on the streaming path
-///
-/// When the request-scoped `ctx.tool_registry` (wired by
-/// `run_streaming_via_dispatcher` since §36.i, so it is populated on
-/// every production SSE flow) resolves the tool to a locally-
-/// dispatchable provider (`native` / `stub` / `http` / `mcp`), the
-/// handler POSTs the STRUCTURED JSON body assembled from
-/// `node.named_args` (keyword form, D2) — or the interpolated single
-/// argument (legacy `on <arg>`, D5) — to the tool's `runtime:`
-/// endpoint (D7) and binds the real response. This retires the
-/// `"tool:<name>(<arg>)"` placeholder on the SSE path, reaching
-/// dispatch parity with the synchronous server path (§58.f).
-///
-/// The placeholder ([`invoke_tool`]) survives ONLY as the D5
-/// fall-back for tools with no registry, an unregistered name, or a
-/// provider that intentionally falls through to the LLM (e.g.
-/// `brave`) — those keep their pre-58 behavior byte-for-byte.
+    let snapshot = crate::lambda_runtime::SpecSnapshot {
+        name: spec.name.clone(),
+        ontology: spec.ontology.clone(),
+        certainty: spec.certainty,
+        temporal_frame_start: spec.temporal_frame_start.clone(),
+        temporal_frame_end: spec.temporal_frame_end.clone(),
+        provenance: spec.provenance.clone(),
+        derivation: spec.derivation.clone(),
+    };
+    let resolved_target = ctx
+        .let_bindings
+        .get(target)
+        .cloned()
+        .unwrap_or_else(|| target.to_string());
+
+    let psi = crate::lambda_runtime::build_psi(
+        &snapshot,
+        serde_json::Value::String(resolved_target),
+    )
+    .map_err(|e| DispatchError::BackendError {
+        name: blame,
+        message: e.to_string(),
+    })?;
+
+    serde_json::to_string(&psi).map_err(|e| DispatchError::BackendError {
+        name: format!("lambda:{lambda_name}"),
+        message: format!("\u{03c8} serialization failed: {e}"),
+    })
+}
+
 pub async fn run_use_tool(
     node: &IRUseToolStep,
     ctx: &mut DispatchCtx,
@@ -575,25 +603,155 @@ mod tests {
         (ctx, rx)
     }
 
-    // ── apply_lambda_data ────────────────────────────────────────────
+    // §Fase 119.c — `apply_lambda_data_literal_target` and
+    // `apply_lambda_data_resolves_target_through_bindings` were DELETED
+    // here. They pinned the placeholder string "lambda:<name>(<target>)" in
+    // green — the §111 F18 shape, tested and passing — while the real
+    // evaluator sat unreached on the dead sync path. The elevation suite
+    // below replaces them.
 
-    #[test]
-    fn apply_lambda_data_literal_target() {
-        let (ctx, _rx) = fresh_ctx();
-        assert_eq!(
-            apply_lambda_data("inc", "5", &ctx),
-            "lambda:inc(5)"
+    fn lambda_spec(name: &str, certainty: f64, derivation: &str) -> crate::ir_nodes::IRLambdaData {
+        crate::ir_nodes::IRLambdaData {
+            node_type: "lambda_data",
+            source_line: 0,
+            source_column: 0,
+            name: name.into(),
+            ontology: "measurement.temperature.celsius".into(),
+            certainty,
+            temporal_frame_start: "2026-01-01T00:00:00Z".into(),
+            temporal_frame_end: "2026-12-31T23:59:59Z".into(),
+            provenance: "Sensor_X".into(),
+            derivation: derivation.into(),
+        }
+    }
+
+    #[tokio::test]
+    async fn a_declared_lambda_elevates_to_a_real_psi_not_a_placeholder() {
+        // THE §111 F18 regression test for lambda: this used to bind the
+        // string "lambda:SensorReading(21.5)".
+        let (mut ctx, _rx) = fresh_ctx();
+        ctx.lambda_data_specs =
+            std::sync::Arc::new(vec![lambda_spec("SensorReading", 0.95, "raw")]);
+        ctx.let_bindings.insert("reading".into(), "21.5".into());
+        let node = IRLambdaDataApply {
+            node_type: "lambda_data_apply",
+            source_line: 0,
+            source_column: 0,
+            lambda_data_name: "SensorReading".into(),
+            target: "reading".into(),
+            output_type: "typed".into(),
+        };
+        run_lambda_data_apply(&node, &mut ctx).await.expect("elevates");
+        let bound = ctx.let_bindings.get("typed").expect("psi bound").clone();
+        let psi: serde_json::Value = serde_json::from_str(&bound).expect("psi is JSON");
+        assert_eq!(psi["T"], "measurement.temperature.celsius");
+        assert_eq!(psi["V"], "21.5");
+        assert_eq!(psi["E"]["c"], 0.95);
+        assert_eq!(psi["E"]["rho"], "Sensor_X");
+        assert!(
+            !bound.contains("lambda:"),
+            "the placeholder string shape must be dead: {bound}"
         );
     }
 
-    #[test]
-    fn apply_lambda_data_resolves_target_through_bindings() {
+    #[tokio::test]
+    async fn theorem_5_1_is_enforced_at_apply_time_on_the_dispatch_path() {
+        // c = 1.0 with derivation 'inferred' violates the Epistemic
+        // Degradation Theorem: only raw data may carry absolute certainty.
         let (mut ctx, _rx) = fresh_ctx();
-        ctx.let_bindings.insert("x".into(), "42".into());
-        assert_eq!(
-            apply_lambda_data("square", "x", &ctx),
-            "lambda:square(42)"
+        ctx.lambda_data_specs =
+            std::sync::Arc::new(vec![lambda_spec("Overclaim", 1.0, "inferred")]);
+        let node = IRLambdaDataApply {
+            node_type: "lambda_data_apply",
+            source_line: 0,
+            source_column: 0,
+            lambda_data_name: "Overclaim".into(),
+            target: "x".into(),
+            output_type: "out".into(),
+        };
+        let err = run_lambda_data_apply(&node, &mut ctx)
+            .await
+            .err()
+            .expect("theorem violation refuses");
+        match err {
+            DispatchError::BackendError { name, message } => {
+                assert_eq!(name, "lambda:Overclaim");
+                assert!(message.contains("Theorem 5.1"), "{message}");
+            }
+            other => panic!("{other:?}"),
+        }
+        assert!(
+            ctx.let_bindings.get("out").is_none(),
+            "nothing binds on a refused elevation"
         );
+    }
+
+    #[tokio::test]
+    async fn an_undeclared_lambda_fails_closed_never_placeholder() {
+        let (mut ctx, _rx) = fresh_ctx();
+        let node = IRLambdaDataApply {
+            node_type: "lambda_data_apply",
+            source_line: 0,
+            source_column: 0,
+            lambda_data_name: "ghost".into(),
+            target: "x".into(),
+            output_type: "out".into(),
+        };
+        let err = run_lambda_data_apply(&node, &mut ctx)
+            .await
+            .err()
+            .expect("undeclared refuses");
+        match err {
+            DispatchError::BackendError { name, message } => {
+                assert_eq!(name, "lambda:ghost");
+                assert!(message.contains("nothing is bound"), "{message}");
+            }
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn a_lambda_step_guard_elevates_before_the_prompt_interpolates() {
+        // README blocks 46-47's shape: the elevated binding must be in scope
+        // for the step's ask. The stub backend answers the generation; the
+        // assertion is on the BINDING the guard produced.
+        let (mut ctx, _rx) = fresh_ctx();
+        ctx.lambda_data_specs =
+            std::sync::Arc::new(vec![lambda_spec("RawQuote", 0.9, "inferred")]);
+        ctx.let_bindings.insert("ticker".into(), "ACME".into());
+        let step = crate::ir_nodes::IRStep {
+            node_type: "step",
+            source_line: 0,
+            source_column: 0,
+            name: "Price".into(),
+            persona_ref: String::new(),
+            given: String::new(),
+            ask: "assess ${verified_quote}".into(),
+            use_tool: None,
+            probe: None,
+            reason: None,
+            weave: None,
+            output_type: String::new(),
+            confidence_floor: None,
+            navigate_ref: String::new(),
+            apply_ref: String::new(),
+            requires_context: None,
+            now_tz: None,
+            guards: vec![crate::ir_nodes::IRStepGuard {
+                kind: "lambda".into(),
+                name: "RawQuote".into(),
+                target: "ticker".into(),
+                binding: "verified_quote".into(),
+            }],
+            body: Vec::new(),
+        };
+        super::super::pure_shape::run_step(&step, &mut ctx)
+            .await
+            .expect("guarded step runs via the stub");
+        let bound = ctx.let_bindings.get("verified_quote").expect("elevated");
+        let psi: serde_json::Value = serde_json::from_str(bound).expect("json");
+        assert_eq!(psi["V"], "ACME");
+        assert_eq!(psi["E"]["delta"], "inferred");
     }
 
     // ── invoke_tool ──────────────────────────────────────────────────
@@ -620,8 +778,13 @@ mod tests {
     // ── LambdaDataApply ──────────────────────────────────────────────
 
     #[tokio::test]
+    /// §Fase 119.c — these two tests used to pin the PLACEHOLDER in green:
+    /// `"lambda:transform(raw)"` bound as if it were an elevation. They now
+    /// declare the lambdas they apply and assert the wire shape over a real ψ.
     async fn run_lambda_data_apply_binds_under_output_type() {
         let (mut ctx, mut rx) = fresh_ctx();
+        ctx.lambda_data_specs =
+            std::sync::Arc::new(vec![lambda_spec("transform", 0.8, "derived")]);
         ctx.let_bindings.insert("input_data".into(), "raw".into());
         let node = IRLambdaDataApply {
             node_type: "lambda_data_apply",
@@ -634,15 +797,14 @@ mod tests {
         let outcome = run_lambda_data_apply(&node, &mut ctx).await.unwrap();
         match outcome {
             NodeOutcome::Completed { output, tokens_emitted, .. } => {
-                assert_eq!(output, "lambda:transform(raw)");
+                let psi: serde_json::Value = serde_json::from_str(&output).expect("ψ JSON");
+                assert_eq!(psi["V"], "raw");
+                assert_eq!(psi["E"]["c"], 0.8);
                 assert_eq!(tokens_emitted, 0);
             }
             other => panic!("expected Completed, got {other:?}"),
         }
-        assert_eq!(
-            ctx.let_bindings.get("transformed").unwrap(),
-            "lambda:transform(raw)"
-        );
+        assert!(ctx.let_bindings.get("transformed").is_some());
         let first = rx.try_recv().unwrap();
         match first {
             FlowExecutionEvent::StepStart { step_type, .. } => {
@@ -655,6 +817,8 @@ mod tests {
     #[tokio::test]
     async fn run_lambda_data_apply_canonical_fallback() {
         let (mut ctx, _rx) = fresh_ctx();
+        ctx.lambda_data_specs =
+            std::sync::Arc::new(vec![lambda_spec("norm", 0.8, "derived")]);
         let node = IRLambdaDataApply {
             node_type: "lambda_data_apply",
             source_line: 0,
@@ -664,10 +828,12 @@ mod tests {
             output_type: String::new(),
         };
         run_lambda_data_apply(&node, &mut ctx).await.unwrap();
-        assert_eq!(
-            ctx.let_bindings.get("doc_lambda_applied").unwrap(),
-            "lambda:norm(doc)"
-        );
+        let bound = ctx
+            .let_bindings
+            .get("doc_lambda_applied")
+            .expect("canonical fallback key");
+        let psi: serde_json::Value = serde_json::from_str(bound).expect("ψ JSON");
+        assert_eq!(psi["V"], "doc", "unresolved binding elevates the literal");
     }
 
     // ── UseTool ──────────────────────────────────────────────────────

@@ -164,6 +164,37 @@ pub async fn run_step(
     // agent pattern's data threads — retrieve context → deliberate →
     // persist — on the streaming dispatcher path, matching the
     // synchronous path's interpolation contract (Fase 35.q).
+    // §Fase 119.c — pre-generation elevations. A `lambda X on y -> b` or
+    // `ots X on y -> b` inside the step body transforms its input BEFORE the
+    // step's generation, so the produced binding is in scope for the prompt
+    // interpolation below (README blocks 46-47 write exactly this: elevate
+    // the quote, then reason over ${verified_quote}). Both fail CLOSED
+    // through their shared drivers — an elevation that cannot run must not
+    // let the step generate over the raw, unelevated input.
+    for g in &step.guards {
+        match g.kind.as_str() {
+            "lambda" => {
+                let psi_json = super::lambda_tools::elevate_lambda(&g.name, &g.target, ctx)?;
+                if !g.binding.is_empty() {
+                    ctx.let_bindings.insert(g.binding.clone(), psi_json);
+                }
+            }
+            "ots" => {
+                let resolved = ctx
+                    .let_bindings
+                    .get(&g.target)
+                    .cloned()
+                    .unwrap_or_else(|| g.target.clone());
+                let out =
+                    super::algebraic_handlers::transform_ots(&g.name, &resolved, ctx)?;
+                if !g.binding.is_empty() {
+                    ctx.let_bindings.insert(g.binding.clone(), out);
+                }
+            }
+            _ => {}
+        }
+    }
+
     let prompt =
         crate::exec_context::interpolate_vars(&step.ask, &ctx.let_bindings);
 
@@ -218,17 +249,16 @@ pub async fn run_step(
         if let Some(guard) = mandate_guards.first() {
             return run_step_mandated(step, guard, &prompt, ctx).await;
         }
-        // Non-mandate guards: `shield` is enforced on the step OUTPUT by the
-        // legacy path's completion hook below is NOT yet wired — and `ots`
-        // has no transformer until §119.c. Silence would be the §111 defect,
-        // so both are surfaced as structured warnings at dispatch.
+        // §Fase 119.c — `lambda` and `ots` guards are ENFORCED above (pre-
+        // generation elevations). `shield` remains the one guard kind not yet
+        // enforced on the step path (flow-level `shield X on Y` IS enforced);
+        // silence would be the §111 defect, so it warns structurally.
         for g in &step.guards {
-            if g.kind != "mandate" {
+            if g.kind == "shield" {
                 tracing::warn!(
                     step = step.name.as_str(),
-                    guard_kind = g.kind.as_str(),
                     guard_name = g.name.as_str(),
-                    "step guard is parsed and carried but not yet enforced on                      this path (shield: flow-level `shield X on Y` IS enforced;                      ots: lands with §119.c)"
+                    "step-scoped shield guard is parsed and carried but not yet                      enforced on this path (flow-level `shield X on Y` IS enforced)"
                 );
             }
         }

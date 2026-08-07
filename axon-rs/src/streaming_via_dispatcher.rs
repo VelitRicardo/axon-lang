@@ -589,6 +589,22 @@ pub async fn run_streaming_via_dispatcher(
             .collect(),
     );
 
+    // §Fase 119.c — the declaration catalogs, threaded on the SSE entry too.
+    //
+    // FOUND BY THE D10 PARITY GATE, and worth naming: this entry built its
+    // ctx without ANY of the apply-family catalogs, so a `lambda X on y` on
+    // the SSE path refused ("empty catalog") while the sync path elevated.
+    // Nobody had seen it because the placeholder handlers fabricated success
+    // for any input — the §111 F18 lie was MASKING the missing threading.
+    // The moment the handlers became real (§119.b/c), the parity corpus
+    // caught the drift on the first full run: fixture
+    // cross_vertical/08_rate_limiting_lambda, sync=true async=false.
+    ctx = ctx
+        .with_computes(std::sync::Arc::new(ir.compute_specs.clone()))
+        .with_mandates(std::sync::Arc::new(ir.mandate_specs.clone()))
+        .with_lambdas(std::sync::Arc::new(ir.lambda_data_specs.clone()))
+        .with_ots(std::sync::Arc::new(ir.ots_specs.clone()));
+
     // §Fase 37.b (D1, D4) — The Request Binding Contract. Seed the
     // flow's declared parameters from the parsed request body BEFORE
     // the flow walk, so `${param}` resolves everywhere downstream — a

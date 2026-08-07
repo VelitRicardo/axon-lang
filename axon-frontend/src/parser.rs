@@ -2940,6 +2940,32 @@ impl Parser {
     }
 
     fn parse_type_expr(&mut self) -> Result<TypeExpr, ParseError> {
+        // §Fase 119.c — a LEADING bracket is the list-type sugar the README
+        // has always written in flow signatures: `readings: [SensorReading]`
+        // (blocks 44-45). It lowers to exactly what `List<SensorReading>`
+        // produces, so nothing downstream learns a new shape — the §39.a
+        // comment below already names `List<T>` as the canonical carrier.
+        if self.check(TokenType::LBracket) {
+            let open = self.current().clone();
+            self.advance();
+            let inner = self.parse_type_expr()?;
+            self.consume(TokenType::RBracket)?;
+            let mut optional = false;
+            if self.check(TokenType::Question) {
+                self.advance();
+                optional = true;
+            }
+            return Ok(TypeExpr {
+                name: "List".to_string(),
+                generic_param: if inner.generic_param.is_empty() {
+                    inner.name
+                } else {
+                    format!("{}<{}>", inner.name, inner.generic_param)
+                },
+                optional,
+                loc: self.loc_of(&open),
+            });
+        }
         let name_tok = self.consume(TokenType::Identifier)?;
         let loc = self.loc_of(&name_tok);
         let mut generic_param = String::new();
@@ -3378,6 +3404,16 @@ impl Parser {
                 }
                 TokenType::Ots => {
                     let g = self.parse_step_guard("ots")?;
+                    node.guards.push(g);
+                }
+                // §Fase 119.c — `lambda RawQuote on ticker -> verified_quote`
+                // inside a step body: README blocks 46-47's exact shape, the
+                // D119.4 statement position extended to the fourth member of
+                // the apply family. Semantically it is an ELEVATION, not a
+                // guard: dispatch runs it BEFORE the step's generation, so the
+                // elevated binding is in scope for the prompt.
+                TokenType::Lambda => {
+                    let g = self.parse_step_guard("lambda")?;
                     node.guards.push(g);
                 }
                 // Sub-constructs (probe, reason, weave, stream) → skip structurally
@@ -6381,8 +6417,17 @@ impl Parser {
                     "homotopy_search" => {
                         node.homotopy_search = self.consume_any_ident_or_kw()?.value.clone()
                     }
+                    // §Fase 119.c — README's ots blocks write the loss as a bare
+                    // identifier (`loss_function: SemanticPreservation`, `L2`,
+                    // `Contrastive`); the parser accepted only a string literal, so
+                    // all three published blocks failed at this exact token. Both
+                    // spellings resolve to the same field.
                     "loss_function" => {
-                        node.loss_function = self.consume(TokenType::StringLit)?.value.clone()
+                        node.loss_function = if self.check(TokenType::StringLit) {
+                            self.consume(TokenType::StringLit)?.value.clone()
+                        } else {
+                            self.consume_any_ident_or_kw()?.value.clone()
+                        }
                     }
                     _ => self.skip_value(),
                 }

@@ -103,6 +103,12 @@ fn assert_no_panic(
         // any name at all — the §111 F18 identity. The refusal is the total,
         // correct outcome.
         Err(DispatchError::BackendError { name, .. }) if name.starts_with("mandate:") => {}
+        // §Fase 119.c — same doctrine for the other two apply-family members:
+        // this fuzz ctx attaches no ΛD/ots catalogs, so every random name is
+        // undeclared and the refusal is the total, correct outcome. Both used
+        // to "pass" by fabricating (a placeholder string / an identity).
+        Err(DispatchError::BackendError { name, .. }) if name.starts_with("lambda:") => {}
+        Err(DispatchError::BackendError { name, .. }) if name.starts_with("ots:") => {}
         Err(other) => panic!("{label}: unexpected error variant: {other:?}"),
     }
 }

@@ -154,10 +154,10 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     ("corpus", Real { proof: "mdn (signed Epistemic PageRank; §62–§64)" }),
     // ── Advanced cognition & trust
     ("psyche", Unaudited),
-    ("ots", NotImplemented { finding: "§111 F18 — `apply_ots_to_target` is literally `target.to_string()`; no ots_registry exists anywhere, so the documented \"enterprise override\" has no hook to override" }),
+    ("ots", Partial { gap: "§119.c made the dispatch layer REAL: `apply_ots_to_target` (identity, §111 F18) is deleted; `run_ots_apply` resolves the declaration, consults the name-keyed `ots_registry` (shield_registry's shape — the hook that F18 said did not exist, now tested by registering a transformer and watching it fire), propagates transformer refusals, and REFUSES an unregistered name (identity under a transformation's name fabricates a result). Step-scoped `ots X on y -> b` elevates before generation. THE GAP: no OSS transformer registers by default — any generic default would be the identity lie again — so OSS `ots` refuses at runtime until the media pipeline (crate::ots) or an enterprise vertical registers; the paper's JIT synthesis pipeline remains future work" }),
     ("mcp", Unaudited),
     ("mandate", Real { proof: "§119.b — the closed loop runs through production dispatch: axon-rs/src/mandate_engine.rs (e = 1 − CSR from pem::semantic_validator, PID from pem::density_matrix, Converge(e,ε,N) with Breach fail-closed, declared-D premise discharge, |C|=0 refused before any token) driven by run_mandate_apply + the D119.4 step guard (buffered — attempts never stream). Tier 1 logit-bias bans on the OpenAI-compat wire, Tier 2 CSP feedback everywhere. Gates: mandate_engine tests (16), algebraic_handlers MandateApply tests (incl. the F18 regression: an unresolved name REFUSES, never identity), openai_compat logit_bias wire tests, fase119_b3_stability_band.rs, fase119_b_mandate_grammar.rs — 9/9 dispatch-chain mutations killed" }),
-    ("lambda", NotImplemented { finding: "§111 F18 — `apply_lambda_data` returns the string \"lambda:<name>(<target>)\"; no ΛD evaluation, no CPS dispatcher" }),
+    ("lambda", Real { proof: "§119.c — the ΛD engine (lambda_data.rs: ψ = ⟨T,V,E⟩, four invariants, compose with c_out ≤ min(c_i); lambda_runtime.rs: Theorem 5.1 enforced at apply — only raw data may carry c = 1.0) now runs on the PRODUCTION dispatch path: `apply_lambda_data` (the placeholder string, §111 F18) is deleted, `run_lambda_data_apply` builds ψ via build_psi with D10 runner parity, an undeclared lambda REFUSES, and the step-scoped `lambda X on y -> b` (README blocks 46-47) elevates BEFORE prompt interpolation. Gates: lambda_tools elevation suite incl. the F18 regression + fase119_c_apply_grammar.rs; mutations C1/C2/C5 killed" }),
     // ── Deterministic compute
     ("compute", Real { proof: "tests/fase111_f_compute_real.rs (§111.f — a named PURE FUNCTION over the §70 expression language, evaluated natively by eval_expr: linear in the term, ZERO tokens, no model in the loop. Every failure refuses rather than binding a string that looks like a number)" }),
     // ── Reactive processes & platform boundary
@@ -266,12 +266,16 @@ pub const KNOWN_DEBT: &[&str] = &[
     // the §70 expression language. This is the ratchet turning — the only
     // direction it turns.
     "hibernate",
-    "ots",
     // `mandate` LEFT this ledger in §119.b (2026-08-07): the enforcement loop
     // runs through production dispatch, fails closed, and its name resolving
     // to nothing is a refusal — the exact call that used to be the identity
     // passthrough is now the F18 regression test. Second turn of the ratchet.
-    "lambda",
+    //
+    // `lambda` and `ots` LEFT in §119.c (2026-08-07), the same day: the ΛD
+    // engine reached the production dispatch path (Real), and ots's dispatch
+    // layer + registry hook became real with an honestly-named gap (Partial:
+    // no OSS transformer registers by default — a generic default would be
+    // the identity lie F18 named). Third and fourth turns.
     // The Cognitive-I/O block.
     //
     // §112 PAID SIX OF THESE. `observe` · `ensemble` · `immune` · `reflex` · `heal` ·

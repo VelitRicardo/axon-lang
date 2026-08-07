@@ -1509,6 +1509,9 @@ struct NavDispatch {
     /// §Fase 119.b — the compiled `mandate` declarations, so the enforcement
     /// loop can resolve the cage it is asked to close.
     mandate_specs: std::sync::Arc<Vec<crate::ir_nodes::IRMandate>>,
+    /// §Fase 119.c — the compiled ΛD + ots declarations (same doctrine).
+    lambda_data_specs: std::sync::Arc<Vec<crate::ir_nodes::IRLambdaData>>,
+    ots_specs: std::sync::Arc<Vec<crate::ir_nodes::IROts>>,
 }
 
 /// §Fase 65.A — kill-switch for the structural-dispatch bridge. ON by default:
@@ -1659,6 +1662,9 @@ async fn dispatch_structural(
     dctx = dctx.with_computes(nd.compute_specs.clone());
     // §Fase 119.b — attach the mandate catalog so the cage can close.
     dctx = dctx.with_mandates(nd.mandate_specs.clone());
+    // §Fase 119.c — attach the ΛD + ots catalogs.
+    dctx = dctx.with_lambdas(nd.lambda_data_specs.clone());
+    dctx = dctx.with_ots(nd.ots_specs.clone());
     // Share the flow's MDN interaction history across all of its navigate nodes
     // so adaptive ω reinforcement sees cross-navigation variance (SSE parity).
     dctx.mdn_histories = histories.clone();
@@ -3620,6 +3626,9 @@ async fn collect_via_dispatcher(
     ctx = ctx.with_computes(nav_dispatch.compute_specs.clone());
     // §Fase 119.b — attach the mandate catalog so the cage can close.
     ctx = ctx.with_mandates(nav_dispatch.mandate_specs.clone());
+    // §Fase 119.c — attach the ΛD + ots catalogs.
+    ctx = ctx.with_lambdas(nav_dispatch.lambda_data_specs.clone());
+    ctx = ctx.with_ots(nav_dispatch.ots_specs.clone());
     // §Fase 72.c — attach the linear-effect budget gate (daemon path only).
     if let Some(gate) = budget {
         ctx = ctx.with_budget(gate);
@@ -4145,6 +4154,9 @@ pub fn execute_server_flow(
             // §Fase 119.b — the mandate declarations reach dispatch: the cage
             // stops being a name the handler discards.
             mandate_specs: std::sync::Arc::new(ir.mandate_specs.clone()),
+            // §Fase 119.c — ΛD + ots reach dispatch too.
+            lambda_data_specs: std::sync::Arc::new(ir.lambda_data_specs.clone()),
+            ots_specs: std::sync::Arc::new(ir.ots_specs.clone()),
         }
     };
 
@@ -5535,6 +5547,8 @@ flow Recall(q: Text) -> Text {
             observables: std::sync::Arc::new(Vec::new()),
             compute_specs: std::sync::Arc::new(Vec::new()),
             mandate_specs: std::sync::Arc::new(Vec::new()),
+            lambda_data_specs: std::sync::Arc::new(Vec::new()),
+            ots_specs: std::sync::Arc::new(Vec::new()),
         };
         let pb = vec![("q".to_string(), "DocA".to_string())];
         let collected = collect_via_dispatcher(
@@ -5797,6 +5811,8 @@ flow Producer(tenant_id: Text) -> Text {
             observables: std::sync::Arc::new(Vec::new()),
             compute_specs: std::sync::Arc::new(Vec::new()),
             mandate_specs: std::sync::Arc::new(Vec::new()),
+            lambda_data_specs: std::sync::Arc::new(Vec::new()),
+            ots_specs: std::sync::Arc::new(Vec::new()),
         }
     }
 }

@@ -92,15 +92,17 @@ pub fn apply_shield_to_target(shield_name: &str, target: &str, _ctx: &DispatchCt
     target.to_string()
 }
 
-/// Apply a named OTS (One-True-Source) transform to `target`. OSS
-/// default: identity passthrough. Enterprise overrides
-/// (axon_enterprise.ots) hook into a registered transformer
-/// (audio resamplers / image rasterizers / document
-/// canonicalisers).
-pub fn apply_ots_to_target(ots_name: &str, target: &str, _ctx: &DispatchCtx) -> String {
-    let _ = ots_name;
-    target.to_string()
-}
+// §Fase 119.c — `apply_ots_to_target` was DELETED here.
+//
+// It was `target.to_string()` with the name discarded (§111 F18): a
+// transformation that transformed nothing under a declared teleology, and
+// the "enterprise override" its doc promised had no hook to exist through.
+// `run_ots_apply` now consults `crate::ots_registry` (the shield_registry
+// shape): a registered transformer transforms, a transformer refusal fails
+// the flow with blame, and an UNREGISTERED name REFUSES — because unlike a
+// shield (a filter, where absence honestly leaves data untouched), an ots
+// output CLAIMS to be the transformed input, and identity under that claim
+// fabricates a result.
 
 // §Fase 119.b — `apply_mandate_to_target` was DELETED here.
 //
@@ -245,9 +247,15 @@ pub async fn run_shield_apply(
 //  OtsApply
 // ────────────────────────────────────────────────────────────────────
 
-/// Apply a One-True-Source transform. Wire shape:
-/// `step_type: "ots_apply"`. Same resolution + output-binding
-/// shape as [`run_shield_apply`].
+/// §Fase 119.c — `ots <Name> on <target>`: registry-dispatched transform.
+///
+/// Resolution order, every fork fail-closed:
+/// 1. the declaration must exist in `ctx.ots_specs` (unknown ⇒ refusal);
+/// 2. a transformer must be registered for the name in
+///    [`crate::ots_registry`] (unregistered ⇒ refusal — identity under a
+///    transformation's name fabricates a result, §111 F18);
+/// 3. the transformer's own verdict: `Transformed` binds, `Refused` fails
+///    the flow naming the ots and the transformer's reason.
 pub async fn run_ots_apply(
     node: &IROtsApplyStep,
     ctx: &mut DispatchCtx,
@@ -270,7 +278,8 @@ pub async fn run_ots_apply(
         .get(&node.target)
         .cloned()
         .unwrap_or_else(|| node.target.clone());
-    let transformed = apply_ots_to_target(&node.ots_name, &resolved_target, ctx);
+
+    let transformed = transform_ots(&node.ots_name, &resolved_target, ctx)?;
 
     let output_key = if !node.output_type.is_empty() {
         node.output_type.clone()
@@ -292,30 +301,59 @@ pub async fn run_ots_apply(
     })
 }
 
-// ────────────────────────────────────────────────────────────────────
-//  MandateApply
-// ────────────────────────────────────────────────────────────────────
+/// §Fase 119.c — the shared ots transform: declaration → registry → verdict.
+/// Used by the flow-level node above and by the step-scoped `ots` guard.
+pub(crate) fn transform_ots(
+    ots_name: &str,
+    content: &str,
+    ctx: &DispatchCtx,
+) -> Result<String, DispatchError> {
+    let blame = format!("ots:{ots_name}");
+    let spec = ctx
+        .ots_specs
+        .iter()
+        .find(|o| o.name == ots_name)
+        .ok_or_else(|| DispatchError::BackendError {
+            name: blame.clone(),
+            message: format!(
+                "ots '{ots_name}' is not in the compiled program's ots catalog; \
+                 nothing can be synthesized, so nothing is bound."
+            ),
+        })?;
 
-/// §Fase 119.b — `mandate <Name> on <target>`: the closed loop, enforced.
-///
-/// The target binding is evaluated for FREE first — an already-compliant
-/// target costs zero tokens and binds unchanged (`attempts: 0`). A violating
-/// target enters the buffered refinement loop: the backend rewrites it under
-/// the mandate's directive block, every attempt is re-validated
-/// (`e = 1 − CSR`), Tier 1 token bans ride the request where the wire admits
-/// them, and the loop ends in exactly one of:
-///
-/// - **accepted** — the validated output binds (never an intermediate);
-/// - **`on_violation: coerce`** — the BEST attempt binds, visibly: a runtime
-///   warning names the residual error and the audit trail shows the breach
-///   (best-effort is a policy the developer declared, never a silent
-///   fallback);
-/// - **anything else** — the flow FAILS with the breach description. `halt`,
-///   `retry`, and the empty default all fail closed; `retry`'s retries are
-///   the loop itself, already spent.
-///
-/// Mandated content is BUFFERED — attempts never stream to the wire, because
-/// a token that reached the client cannot be unshipped.
+    match crate::ots_registry::lookup_ots_transformer(ots_name) {
+        None => Err(DispatchError::BackendError {
+            name: blame,
+            message: format!(
+                "ots '{ots_name}' has no registered transformer; binding the \
+                 input unchanged under a transformation's name would fabricate \
+                 a result, so it is refused. Register one via \
+                 axon::ots_registry::register_ots_transformer (the in-tree \
+                 media pipeline and enterprise verticals register here)."
+            ),
+        }),
+        Some(t) => {
+            let tctx = crate::ots_registry::OtsTransformContext {
+                ots_name: ots_name.to_string(),
+                teleology: spec.teleology.clone(),
+                homotopy_search: spec.homotopy_search.clone(),
+                loss_function: spec.loss_function.clone(),
+            };
+            match t.transform(content, &tctx) {
+                crate::ots_registry::OtsVerdict::Transformed(out) => Ok(out),
+                crate::ots_registry::OtsVerdict::Refused { code, reason } => {
+                    Err(DispatchError::BackendError {
+                        name: blame,
+                        message: format!(
+                            "ots '{ots_name}' transformer refused [{code}]: {reason}"
+                        ),
+                    })
+                }
+            }
+        }
+    }
+}
+
 pub async fn run_mandate_apply(
     node: &IRMandateApplyStep,
     ctx: &mut DispatchCtx,
@@ -871,12 +909,6 @@ mod tests {
     }
 
     #[test]
-    fn apply_ots_oss_default_is_identity() {
-        let (ctx, _rx) = fresh_ctx();
-        assert_eq!(apply_ots_to_target("audio_resampler", "raw bytes", &ctx), "raw bytes");
-    }
-
-    #[test]
     fn listen_returns_canonical_awaiting_placeholder() {
         let (ctx, _rx) = fresh_ctx();
         assert_eq!(listen_on_channel("event_bus", true, &ctx), "(awaiting event_bus)");
@@ -1050,9 +1082,23 @@ mod tests {
 
     // ── OtsApply ─────────────────────────────────────────────────────
 
+    /// §Fase 119.c — **this test used to BE the §111 F18 bug for ots.**
+    ///
+    /// It asserted, in green, that `ots g711_mulaw on raw_audio` binds
+    /// `"samples"` UNCHANGED under `pcm` — a µ-law transcoder whose transform
+    /// was the identity function, tested and passing. It now routes a
+    /// declared, REGISTERED ots through the real path and asserts the wire
+    /// shape; the fail-closed inversions live in
+    /// `an_unregistered_ots_refuses_never_identity` and
+    /// `an_undeclared_ots_fails_closed_before_the_registry`.
     #[tokio::test]
     async fn run_ots_apply_binds_output() {
         let (mut ctx, mut rx) = fresh_ctx();
+        ctx.ots_specs = std::sync::Arc::new(vec![ots_spec("g711_mulaw")]);
+        crate::ots_registry::register_ots_transformer(
+            "g711_mulaw",
+            std::sync::Arc::new(ReverseTransformer),
+        );
         ctx.let_bindings.insert("raw_audio".into(), "samples".into());
         let node = IROtsApplyStep {
             node_type: "ots_apply",
@@ -1063,7 +1109,12 @@ mod tests {
             output_type: "pcm".into(),
         };
         run_ots_apply(&node, &mut ctx).await.unwrap();
-        assert_eq!(ctx.let_bindings.get("pcm").unwrap(), "samples");
+        crate::ots_registry::unregister_ots_transformer("g711_mulaw");
+        assert_eq!(
+            ctx.let_bindings.get("pcm").unwrap(),
+            "selpmas",
+            "the bound value is the TRANSFORM's output, never the input"
+        );
         let first = rx.try_recv().unwrap();
         match first {
             FlowExecutionEvent::StepStart { step_type, .. } => {
@@ -1665,6 +1716,140 @@ mod tests {
         match err {
             DispatchError::BackendError { message, .. } => {
                 assert!(message.contains("not yet defined"), "{message}");
+            }
+            other => panic!("{other:?}"),
+        }
+    }
+
+    // ── §Fase 119.c — OtsApply: registry or refusal ──────────────────
+
+    fn ots_spec(name: &str) -> crate::ir_nodes::IROts {
+        crate::ir_nodes::IROts {
+            node_type: "ots",
+            source_line: 0,
+            source_column: 0,
+            name: name.into(),
+            teleology: "normalize the payload".into(),
+            homotopy_search: "shallow".into(),
+            loss_function: "L2".into(),
+        }
+    }
+
+    fn ots_node(name: &str, target: &str, output: &str) -> IROtsApplyStep {
+        IROtsApplyStep {
+            node_type: "ots_apply",
+            source_line: 0,
+            source_column: 0,
+            ots_name: name.into(),
+            target: target.into(),
+            output_type: output.into(),
+        }
+    }
+
+    struct ReverseTransformer;
+    impl crate::ots_registry::OtsTransformer for ReverseTransformer {
+        fn transform(
+            &self,
+            content: &str,
+            ctx: &crate::ots_registry::OtsTransformContext,
+        ) -> crate::ots_registry::OtsVerdict {
+            // The context must carry the DECLARATION — a transformer that
+            // cannot see the teleology cannot serve it.
+            assert!(!ctx.teleology.is_empty());
+            crate::ots_registry::OtsVerdict::Transformed(
+                content.chars().rev().collect::<String>(),
+            )
+        }
+    }
+
+    struct AlwaysRefuses;
+    impl crate::ots_registry::OtsTransformer for AlwaysRefuses {
+        fn transform(
+            &self,
+            _content: &str,
+            _ctx: &crate::ots_registry::OtsTransformContext,
+        ) -> crate::ots_registry::OtsVerdict {
+            crate::ots_registry::OtsVerdict::Refused {
+                code: "E-OTS-SHAPE".into(),
+                reason: "input is not the declared shape".into(),
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn a_registered_transformer_transforms_and_binds() {
+        let (mut ctx, _rx) = fresh_ctx();
+        ctx.ots_specs = std::sync::Arc::new(vec![ots_spec("Reverser119c")]);
+        crate::ots_registry::register_ots_transformer(
+            "Reverser119c",
+            std::sync::Arc::new(ReverseTransformer),
+        );
+        ctx.let_bindings.insert("raw".into(), "abc".into());
+        let out = run_ots_apply(&ots_node("Reverser119c", "raw", "normalized"), &mut ctx)
+            .await
+            .expect("registered transformer runs");
+        crate::ots_registry::unregister_ots_transformer("Reverser119c");
+        match out {
+            NodeOutcome::Completed { output, .. } => assert_eq!(output, "cba"),
+            other => panic!("{other:?}"),
+        }
+        assert_eq!(ctx.let_bindings.get("normalized").map(String::as_str), Some("cba"));
+    }
+
+    #[tokio::test]
+    async fn an_unregistered_ots_refuses_never_identity() {
+        // THE §111 F18 regression test for ots: this exact call used to bind
+        // the target unchanged.
+        let (mut ctx, _rx) = fresh_ctx();
+        ctx.ots_specs = std::sync::Arc::new(vec![ots_spec("NoTransformer119c")]);
+        ctx.let_bindings.insert("raw".into(), "abc".into());
+        let err = run_ots_apply(&ots_node("NoTransformer119c", "raw", "out"), &mut ctx)
+            .await
+            .err()
+            .expect("unregistered must refuse");
+        match err {
+            DispatchError::BackendError { name, message } => {
+                assert_eq!(name, "ots:NoTransformer119c");
+                assert!(message.contains("fabricate"), "{message}");
+            }
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn an_undeclared_ots_fails_closed_before_the_registry() {
+        let (mut ctx, _rx) = fresh_ctx();
+        let err = run_ots_apply(&ots_node("ghost", "raw", ""), &mut ctx)
+            .await
+            .err()
+            .expect("undeclared must refuse");
+        match err {
+            DispatchError::BackendError { name, message } => {
+                assert_eq!(name, "ots:ghost");
+                assert!(message.contains("nothing is bound"), "{message}");
+            }
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn a_transformer_refusal_fails_the_flow_with_its_reason() {
+        let (mut ctx, _rx) = fresh_ctx();
+        ctx.ots_specs = std::sync::Arc::new(vec![ots_spec("Strict119c")]);
+        crate::ots_registry::register_ots_transformer(
+            "Strict119c",
+            std::sync::Arc::new(AlwaysRefuses),
+        );
+        ctx.let_bindings.insert("raw".into(), "abc".into());
+        let err = run_ots_apply(&ots_node("Strict119c", "raw", ""), &mut ctx)
+            .await
+            .err()
+            .expect("transformer refusal propagates");
+        crate::ots_registry::unregister_ots_transformer("Strict119c");
+        match err {
+            DispatchError::BackendError { message, .. } => {
+                assert!(message.contains("E-OTS-SHAPE"), "{message}");
+                assert!(message.contains("not the declared shape"), "{message}");
             }
             other => panic!("{other:?}"),
         }

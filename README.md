@@ -2695,7 +2695,7 @@ ots ThreatPatcher<VulnGraph, ASTPatch> {
     teleology: "Given a specific AST vulnerability, generate an isolated AST transformation tool"
     loss_function: SemanticPreservation
     linear_constraints: { max_mutations: 5, runtime_overhead: "<1ms" }
-    homotopy_search: A_Star
+    homotopy_search: deep
 }
 ```
 
@@ -2706,7 +2706,7 @@ ots ProtocolAdapter<StreamA, StreamB> {
     teleology: "Synthesize an impedance-matching adapter mapping fields mathematically"
     loss_function: Contrastive
     linear_constraints: { latency: "<5ms", drop_rate: 0 }
-    homotopy_search: GradientDescent
+    homotopy_search: deep
 }
 ```
 
@@ -2717,7 +2717,7 @@ ots MathOperator<Tensor, Tensor> {
     teleology: "Generate an optimized projection operator converging to target distribution"
     loss_function: L2
     linear_constraints: { vectorizable: true, precision: 64 }
-    homotopy_search: Shallow
+    homotopy_search: shallow
 }
 ```
 

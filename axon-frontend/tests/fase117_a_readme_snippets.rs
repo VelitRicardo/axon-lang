@@ -112,19 +112,21 @@ const KNOWN_UNCOMPILABLE: &[(u64, &str)] = &[
     // CANNOT be made to compile — there is nothing to compile them against.
     // They are the README half of a debt §111 already recorded on the compiler
     // side, and they leave this ledger the day their primitive leaves that one.
-    (0xd2d40bcdb71707d5, "block 34: ots ThreatPatcher — `ots` is in KNOWN_DEBT"),
-    (0x74e1447e5fe9fd94, "block 35: ots ProtocolAdapter — `ots` is in KNOWN_DEBT"),
-    (0x906572430bbc8bb7, "block 36: ots MathOperator — `ots` is in KNOWN_DEBT"),
+    // §Fase 119.c — the three ots blocks (34-36) LEFT this ledger on
+    // 2026-08-07: `loss_function:` accepts the identifier form the README
+    // always wrote, and the README's homotopy_search values were bent to the
+    // CLOSED catalog (A_Star/GradientDescent named algorithms nothing
+    // dispatches on — widening the catalog would have fabricated it).
     // §Fase 119 (D119.4) — the three mandate blocks (40–42) LEFT this ledger
     // on 2026-08-06: `mandate X on Y` (and `shield X on Y -> b`) became a
     // step-body statement, which was the real reason all three failed — not
     // `pid`, and not mandate being unimplemented. Block 42 additionally
     // declared two tools it referenced. First rows ever retired from this
     // ratchet.
-    (0x8944f7fd287174f9, "block 43: lambda SensorReading — `lambda` is in KNOWN_DEBT"),
-    (0xf4bf6a58604cdcbd, "block 44: lambda RawTemp — `lambda` is in KNOWN_DEBT"),
-    (0xb8f872e365006817, "block 45: lambda RawQuote — `lambda` is in KNOWN_DEBT"),
-    (0xf3306c058ceed04e, "block 46: lambda PatientObservation — `lambda` is in KNOWN_DEBT"),
+    // §Fase 119.c — the four lambda blocks (43-46) LEFT this ledger on
+    // 2026-08-07: `[T]` in flow signatures is List<T> sugar, and
+    // `lambda X on y -> b` is a step-body statement (the D119.4 position,
+    // extended to the fourth member of the apply family).
 
     // ── Family G — undefined references ────────────────────────────────────
     (0x10f35cdaf52e1469, "block 8: agent CaseLawResearcher — references undeclared symbols"),

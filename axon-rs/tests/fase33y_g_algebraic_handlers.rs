@@ -21,7 +21,7 @@
 
 use axon::cancel_token::CancellationFlag;
 use axon::flow_dispatcher::algebraic_handlers::{
-    apply_ots_to_target, apply_shield_to_target,
+    apply_shield_to_target,
     invoke_daemon, listen_on_channel,
 };
 use axon::flow_dispatcher::{dispatch_node, DispatchCtx, DispatchError, NodeOutcome};
@@ -31,6 +31,31 @@ use tokio::sync::mpsc;
 
 /// §Fase 119.b — a declared mandate for fixtures that route MandateApply
 /// through the real enforcement path.
+/// §Fase 119.c — a declared ots + deterministic transformer for fixtures
+/// that route OtsApply through the real registry path.
+fn test_ots_spec(name: &str) -> axon::ir_nodes::IROts {
+    axon::ir_nodes::IROts {
+        node_type: "ots",
+        source_line: 0,
+        source_column: 0,
+        name: name.into(),
+        teleology: "test transform".into(),
+        homotopy_search: "shallow".into(),
+        loss_function: "L2".into(),
+    }
+}
+
+struct UpperTransformer;
+impl axon::ots_registry::OtsTransformer for UpperTransformer {
+    fn transform(
+        &self,
+        content: &str,
+        _ctx: &axon::ots_registry::OtsTransformContext,
+    ) -> axon::ots_registry::OtsVerdict {
+        axon::ots_registry::OtsVerdict::Transformed(content.to_uppercase())
+    }
+}
+
 fn test_mandate_spec(name: &str, constraint: &str) -> axon::ir_nodes::IRMandate {
     axon::ir_nodes::IRMandate {
         node_type: "mandate",
@@ -140,11 +165,11 @@ fn apply_shield_oss_passthrough() {
     assert_eq!(apply_shield_to_target("hipaa", "PII text", &ctx), "PII text");
 }
 
-#[test]
-fn apply_ots_oss_passthrough() {
-    let (ctx, _rx) = fresh_ctx();
-    assert_eq!(apply_ots_to_target("g711", "audio", &ctx), "audio");
-}
+// §Fase 119.c — `apply_ots_oss_passthrough` was DELETED here. It pinned the
+// §111 F18 identity (a µ-law codec transforming nothing, in green). The
+// registry-or-refusal gates live in `flow_dispatcher::algebraic_handlers::
+// tests`; the fail-closed inversion is
+// `an_unregistered_ots_refuses_never_identity`.
 
 // §Fase 119.b — `apply_mandate_oss_passthrough` was DELETED here. It pinned
 // the §111 F18 identity ("gdpr_erasure" transforming nothing, in green, for
@@ -206,14 +231,23 @@ async fn shield_apply_canonical_fallback_when_output_type_empty() {
 //  §3 — OtsApply through dispatch_node
 // ────────────────────────────────────────────────────────────────────
 
+/// §Fase 119.c — this routing test used to ride the identity passthrough.
+/// It now routes a DECLARED ots through a REGISTERED transformer; the bound
+/// value is the transform's output, which is itself proof the real path ran.
 #[tokio::test]
 async fn dispatch_node_routes_ots_apply() {
     let (mut ctx, mut rx) = fresh_ctx();
+    ctx.ots_specs = std::sync::Arc::new(vec![test_ots_spec("resample")]);
+    axon::ots_registry::register_ots_transformer(
+        "resample",
+        std::sync::Arc::new(UpperTransformer),
+    );
     ctx.let_bindings.insert("audio_raw".into(), "samples".into());
     dispatch_node(&ots_apply("resample", "audio_raw", "pcm"), &mut ctx)
         .await
         .unwrap();
-    assert_eq!(ctx.let_bindings.get("pcm").unwrap(), "samples");
+    axon::ots_registry::unregister_ots_transformer("resample");
+    assert_eq!(ctx.let_bindings.get("pcm").unwrap(), "SAMPLES");
     let first = rx.try_recv().unwrap();
     match first {
         FlowExecutionEvent::StepStart { step_type, .. } => {
@@ -479,7 +513,11 @@ async fn algebraic_handlers_advance_step_counter() {
     assert_eq!(ctx.step_counter, 0);
     dispatch_node(&shield_apply("s", "t", "o"), &mut ctx).await.unwrap();
     assert_eq!(ctx.step_counter, 1);
+    // §Fase 119.c — the ots must resolve now; register a transformer for it.
+    ctx.ots_specs = std::sync::Arc::new(vec![test_ots_spec("s")]);
+    axon::ots_registry::register_ots_transformer("s", std::sync::Arc::new(UpperTransformer));
     dispatch_node(&ots_apply("s", "t", "o"), &mut ctx).await.unwrap();
+    axon::ots_registry::unregister_ots_transformer("s");
     assert_eq!(ctx.step_counter, 2);
     // §Fase 119.b — the mandate must resolve now; "t" satisfies its clause.
     ctx.mandate_specs = std::sync::Arc::new(vec![test_mandate_spec(
