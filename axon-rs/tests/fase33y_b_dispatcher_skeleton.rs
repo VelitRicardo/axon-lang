@@ -261,7 +261,7 @@ fn hibernate_node() -> IRFlowNode {
         node_type: "hibernate",
         source_line: 0,
         source_column: 0,
-        event_name: String::new(),
+        event_name: "user_input_evt".into(),
         timeout: String::new(),
     })
 }
@@ -1079,6 +1079,15 @@ async fn every_ir_flow_node_routes_to_its_labeled_handler() {
         }
 
         match (outcome, pure_shape_like, orchestration, strict_empty_completed, algebraic_handler) {
+            // §Fase 119.d — hibernate routes to its handler and yields the
+            // SUSPENSION outcome (the walk loop parks + halts). Reaching
+            // Hibernated IS proof of routing; the old Completed-with-
+            // placeholder was the F20 defect this arm replaces.
+            (Ok(NodeOutcome::Hibernated { ref event_name, .. }), _, _, _, _)
+                if expected_kind == "hibernate" =>
+            {
+                assert_eq!(event_name, "user_input_evt");
+            }
             // Pure-shape: stub-backend produces "(stub)" with 1 token.
             (Ok(NodeOutcome::Completed { output, tokens_emitted, .. }), true, _, _, _) => {
                 assert_eq!(

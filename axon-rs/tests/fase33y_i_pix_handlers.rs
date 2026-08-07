@@ -11,7 +11,7 @@
 
 use axon::cancel_token::CancellationFlag;
 use axon::flow_dispatcher::pix::{
-    await_event_with_timeout, drill_pix_subtree, trail_navigation,
+    drill_pix_subtree, trail_navigation,
 };
 use axon::flow_dispatcher::{dispatch_node, DispatchCtx, DispatchError, NodeOutcome};
 use axon::flow_execution_event::FlowExecutionEvent;
@@ -68,15 +68,10 @@ fn trail_node(navigate_ref: &str) -> IRFlowNode {
 //  §1 — Public helpers
 // ────────────────────────────────────────────────────────────────────
 
-#[test]
-fn await_event_marker_and_placeholder_round_trip() {
-    let (mut ctx, _rx) = fresh_ctx();
-    let out = await_event_with_timeout("test_event", "10s", &mut ctx);
-    assert_eq!(out, "(hibernating test_event timeout=10s)");
-    assert!(ctx
-        .let_bindings
-        .contains_key("__hibernating_test_event"));
-}
+// §Fase 119.d — `await_event_marker_and_placeholder_round_trip` was DELETED
+// here. It pinned the §111 F20 placeholder in green: a "(hibernating …)"
+// string while the flow kept walking. The real suspension's gates live in
+// tests/fase119_d_hibernate.rs.
 
 #[test]
 fn drill_pix_seeded_value_returned() {
@@ -101,16 +96,22 @@ fn trail_seeded_value_returned() {
 //  §2 — Hibernate through dispatch_node
 // ────────────────────────────────────────────────────────────────────
 
+/// §Fase 119.d — routing now yields the SUSPENSION outcome (the walk loop
+/// parks and halts); the marker-binding this test used to pin was the F20
+/// placeholder's residue.
 #[tokio::test]
 async fn dispatch_node_routes_hibernate_sets_marker() {
     let (mut ctx, mut rx) = fresh_ctx();
-    dispatch_node(&hibernate_node("user_input", "5m"), &mut ctx)
+    let outcome = dispatch_node(&hibernate_node("user_input", "5m"), &mut ctx)
         .await
         .unwrap();
-    assert_eq!(
-        ctx.let_bindings.get("__hibernating_user_input").unwrap(),
-        "awaiting timeout=5m"
-    );
+    match outcome {
+        NodeOutcome::Hibernated { event_name, timeout, .. } => {
+            assert_eq!(event_name, "user_input");
+            assert_eq!(timeout, "5m");
+        }
+        other => panic!("expected Hibernated, got {other:?}"),
+    }
     let first = rx.try_recv().unwrap();
     match first {
         FlowExecutionEvent::StepStart { step_type, .. } => {
@@ -122,17 +123,16 @@ async fn dispatch_node_routes_hibernate_sets_marker() {
 
 #[tokio::test]
 async fn hibernate_placeholder_output_contains_event_and_timeout() {
+    // §Fase 119.d — renamed in spirit: there IS no placeholder output any
+    // more. The outcome is the suspension itself.
     let (mut ctx, _rx) = fresh_ctx();
     let outcome = dispatch_node(&hibernate_node("evt_X", "1h"), &mut ctx)
         .await
         .unwrap();
-    match outcome {
-        NodeOutcome::Completed { output, .. } => {
-            assert!(output.contains("evt_X"));
-            assert!(output.contains("1h"));
-        }
-        other => panic!("expected Completed, got {other:?}"),
-    }
+    assert!(
+        matches!(outcome, NodeOutcome::Hibernated { .. }),
+        "got {outcome:?}"
+    );
 }
 
 // ────────────────────────────────────────────────────────────────────
@@ -262,30 +262,12 @@ async fn drill_inside_for_in_per_iter() {
     assert_eq!(ctx.let_bindings.get("first_result").unwrap(), "value-A");
 }
 
-#[tokio::test]
-async fn hibernate_chain_with_recall() {
-    let (mut ctx, _rx) = fresh_ctx();
-    // Hibernate sets the marker; later a Recall could read it.
-    dispatch_node(&hibernate_node("user_resp", "30s"), &mut ctx)
-        .await
-        .unwrap();
-    dispatch_node(
-        &IRFlowNode::Recall(IRRecallStep {
-            node_type: "recall",
-            source_line: 0,
-            source_column: 0,
-            query: "marker_state".into(),
-            memory_source: "__hibernating_user_resp".into(),
-        }),
-        &mut ctx,
-    )
-    .await
-    .unwrap();
-    assert_eq!(
-        ctx.let_bindings.get("marker_state").unwrap(),
-        "awaiting timeout=30s"
-    );
-}
+// §Fase 119.d — `hibernate_chain_with_recall` was DELETED here. It chained a
+// Recall AFTER a hibernate in the same walk and read the marker binding —
+// i.e., it TESTED the F20 defect: execution continuing past a suspension
+// point. Nothing runs after a hibernate in its own walk any more; what runs
+// afterwards is the RESUMED continuation, and that chain is gated end-to-end
+// in tests/fase119_d_hibernate.rs.
 
 #[tokio::test]
 async fn trail_after_navigate_chain() {

@@ -476,6 +476,9 @@ pub mod mandate_engine;
 /// proven shape). An unregistered ots REFUSES at dispatch — a transformation
 /// that transforms nothing is the §111 F18 lie.
 pub mod ots_registry;
+/// §Fase 119.d — `hibernate`: the parking lot, the continuation id, and the
+/// lazy-expiry timeout. The flow HALTS; resume rides `emit`.
+pub mod hibernation;
 pub mod pem;
 // §λ-L-E Fase 11.e — Ontological Tool Synthesis binary pipelines.
 // `ots::pipeline` hosts Transformer trait + TransformerRegistry +

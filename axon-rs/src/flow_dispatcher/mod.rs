@@ -1167,6 +1167,16 @@ pub enum NodeOutcome {
     /// final flow output. Parents propagate unchanged until the
     /// flow-loop level observes it.
     Return { value: String },
+    /// §Fase 119.d — the hibernate handler observed its suspension point.
+    /// The WALK LOOP (which alone knows the node's position in the body)
+    /// parks the continuation and HALTS the run. Nested constructs that see
+    /// this outcome refuse — suspending inside a branch has no defined
+    /// continuation shape yet, and guessing is not honesty.
+    Hibernated {
+        event_name: String,
+        timeout: String,
+        step_index: usize,
+    },
 }
 
 // ────────────────────────────────────────────────────────────────────
@@ -1609,3 +1619,89 @@ mod tests {
         }
     }
 }
+
+/// §Fase 119.d — re-enter a parked continuation: rebuild a ctx from the
+/// seed, bind the wake payload under the event name, walk the remaining
+/// top-level nodes, and record the terminal outcome in the parking lot
+/// (the original client's stream ended at the halt, so the lot is where
+/// the result lands).
+pub fn resume_parked_flow(
+    parked: crate::hibernation::ParkedFlow,
+    wake_payload: String,
+) -> futures::future::BoxFuture<'static, ()> {
+    // The explicit BoxFuture return type cuts the Send-inference cycle:
+    // dispatch_node → run_emit → spawn(resume_parked_flow) → dispatch_node.
+    // With a nominal (Send) future type here, run_emit's Send proof no longer
+    // recurses into this body.
+    Box::pin(resume_parked_flow_inner(parked, wake_payload))
+}
+
+async fn resume_parked_flow_inner(
+    parked: crate::hibernation::ParkedFlow,
+    wake_payload: String,
+) {
+    let id = parked.continuation_id.clone();
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+    // Drain wire events: no client is attached to a resumed run.
+    tokio::spawn(async move { while rx.recv().await.is_some() {} });
+
+    let mut ctx = DispatchCtx::new(
+        &parked.flow_name,
+        &parked.backend_name,
+        &parked.system_prompt,
+        crate::cancel_token::CancellationFlag::new(),
+        tx,
+    );
+    ctx.tenant_id = parked.tenant_id.clone();
+    ctx.session_id = parked.session_id.clone();
+    ctx.step_counter = parked.step_counter;
+    ctx.let_bindings = parked.let_bindings.clone();
+    ctx.let_bindings
+        .insert(parked.event_name.clone(), wake_payload);
+    ctx = ctx
+        .with_computes(parked.compute_specs.clone())
+        .with_mandates(parked.mandate_specs.clone())
+        .with_lambdas(parked.lambda_data_specs.clone())
+        .with_ots(parked.ots_specs.clone());
+
+    let mut last_output = String::new();
+    for node in &parked.remaining_nodes {
+        match dispatch_node(node, &mut ctx).await {
+            Ok(NodeOutcome::Completed { output, .. }) => last_output = output,
+            Ok(NodeOutcome::Return { value }) => {
+                last_output = value;
+                break;
+            }
+            Ok(NodeOutcome::Hibernated { .. }) => {
+                // A second hibernate in the continuation: not yet defined —
+                // record honestly rather than parking a park.
+                crate::hibernation::parking_lot().record_outcome(
+                    &id,
+                    crate::hibernation::ResumedOutcome::Failed {
+                        error: "a resumed continuation hibernated again; chained \
+                                hibernation is not yet defined"
+                            .to_string(),
+                    },
+                );
+                return;
+            }
+            Ok(_) => {}
+            Err(e) => {
+                tracing::warn!(continuation = id.as_str(), error = ?e,
+                    "resumed continuation failed");
+                crate::hibernation::parking_lot().record_outcome(
+                    &id,
+                    crate::hibernation::ResumedOutcome::Failed {
+                        error: format!("{e:?}"),
+                    },
+                );
+                return;
+            }
+        }
+    }
+    crate::hibernation::parking_lot().record_outcome(
+        &id,
+        crate::hibernation::ResumedOutcome::Completed { output: last_output },
+    );
+}
+

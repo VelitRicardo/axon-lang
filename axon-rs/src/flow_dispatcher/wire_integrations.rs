@@ -545,6 +545,21 @@ pub async fn run_emit(
         emit_to_channel(&node.channel_ref, &resolved_value, ctx)
     };
 
+    // §Fase 119.d — the wake signal: an emit on channel C resumes every
+    // unexpired continuation hibernating on C. Fire-and-forget: the resumed
+    // run has no attached client, its result lands in the parking lot's
+    // outcome record. Expired entries are reaped here (lazy timeout).
+    {
+        let now = crate::flow_execution_event::now_ms() as i64;
+        let woken = crate::hibernation::parking_lot()
+            .take_resumable(&node.channel_ref, now);
+        for parked in woken {
+            let payload = emitted.clone();
+            tokio::spawn(crate::flow_dispatcher::resume_parked_flow(parked, payload));
+        }
+    }
+
+
     // §Fase 74.e — record the producer's Chan-Output (`emit:<channel>`) in
     // the §11.c replay/audit chain when a sink is attached. Best-effort —
     // the emit already happened; a receipt-append failure is logged, not

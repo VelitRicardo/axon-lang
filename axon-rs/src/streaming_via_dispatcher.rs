@@ -684,7 +684,7 @@ pub async fn run_streaming_via_dispatcher(
             _ => None,
         });
 
-    for node in &flow.steps {
+    for (node_index, node) in flow.steps.iter().enumerate() {
         if cancel.is_cancelled() {
             break;
         }
@@ -718,6 +718,54 @@ pub async fn run_streaming_via_dispatcher(
             }
             Ok(NodeOutcome::Return { .. }) => {
                 // Explicit `return` in flow body — short-circuit.
+                steps_executed += 1;
+                break;
+            }
+            Ok(NodeOutcome::Hibernated {
+                event_name,
+                timeout,
+                ..
+            }) => {
+                // §Fase 119.d — park the continuation and HALT. The task ends
+                // here: no stream held open, no timer, no polling. Resume
+                // rides `emit` (see run_emit); a late resume is refused by
+                // the lot's lazy expiry.
+                let (src_line, src_col) = match node {
+                    crate::ir_nodes::IRFlowNode::Hibernate(h) => {
+                        (h.source_line, h.source_column)
+                    }
+                    _ => (0, 0),
+                };
+                let cid = crate::hibernation::continuation_id(
+                    &flow.name,
+                    &event_name,
+                    src_line,
+                    src_col,
+                );
+                let deadline_ms = crate::hibernation::timeout_to_ms(&timeout)
+                    .map(|d| crate::flow_execution_event::now_ms() as i64 + d);
+                crate::hibernation::parking_lot().park(crate::hibernation::ParkedFlow {
+                    continuation_id: cid.clone(),
+                    flow_name: flow.name.clone(),
+                    event_name: event_name.clone(),
+                    deadline_ms,
+                    remaining_nodes: flow.steps[node_index + 1..].to_vec(),
+                    let_bindings: ctx.let_bindings.clone(),
+                    step_counter: ctx.step_counter,
+                    backend_name: ctx.backend_name.clone(),
+                    system_prompt: ctx.system_prompt.clone(),
+                    tenant_id: ctx.tenant_id.clone(),
+                    session_id: ctx.session_id.clone(),
+                    mandate_specs: ctx.mandate_specs.clone(),
+                    lambda_data_specs: ctx.lambda_data_specs.clone(),
+                    ots_specs: ctx.ots_specs.clone(),
+                    compute_specs: ctx.compute_specs.clone(),
+                });
+                tracing::info!(
+                    continuation = cid.as_str(),
+                    event = event_name.as_str(),
+                    "flow hibernated; the run halts and resume rides `emit`"
+                );
                 steps_executed += 1;
                 break;
             }

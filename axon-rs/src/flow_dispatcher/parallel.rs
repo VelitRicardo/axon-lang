@@ -179,6 +179,9 @@ pub async fn run_par(
     // Propagate a branch's `Return` sentinel (flow-terminating); otherwise the
     // merged completion.
     match outcome {
+            // §Fase 119.d — suspending inside a nested construct is refused.
+            NodeOutcome::Hibernated { .. } => { return Err(DispatchError::BackendError { name: "hibernate".to_string(), message: "hibernate inside a nested construct (par branch) has no defined continuation shape yet; place it at top-level flow position"
+                .to_string() }); }
         NodeOutcome::Return { value } => Ok(NodeOutcome::Return { value }),
         _ => Ok(NodeOutcome::Completed {
             output: full_output,
@@ -295,6 +298,9 @@ pub async fn run_branches_concurrently(
     for (bc, outcome) in branch_ctxs.iter().zip(results.into_iter()) {
         max_step_counter = max_step_counter.max(bc.step_counter);
         match outcome {
+            // §Fase 119.d — suspending inside a nested construct is refused.
+            Ok(NodeOutcome::Hibernated { .. }) => { return Err(DispatchError::BackendError { name: "hibernate".to_string(), message: "hibernate inside a nested construct (par branch) has no defined \n                 continuation shape yet; place it at top-level flow position"
+                .to_string() }); }
             Ok(NodeOutcome::Completed {
                 output,
                 tokens_emitted,
@@ -356,6 +362,9 @@ async fn dispatch_branch_body(
         let outcome = Box::pin(crate::flow_dispatcher::dispatch_node(child, ctx)).await;
         ctx.branch_path.pop();
         match outcome? {
+            // §Fase 119.d — suspending inside a nested construct is refused.
+            NodeOutcome::Hibernated { .. } => { return Err(DispatchError::BackendError { name: "hibernate".to_string(), message: "hibernate inside a nested construct (par branch) has no defined \n                 continuation shape yet; place it at top-level flow position"
+                .to_string() }); }
             NodeOutcome::Completed {
                 output,
                 tokens_emitted,

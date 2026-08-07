@@ -54,18 +54,12 @@ use crate::ir_nodes::{IRDrillStep, IRHibernateStep, IRTrailStep};
 //  Public helpers (enterprise hooks override these)
 // ────────────────────────────────────────────────────────────────────
 
-/// Await a named event with a timeout. OSS default: binds
-/// `__hibernating_<event>` marker + returns a canonical
-/// `"(hibernating <event> timeout=<t>)"` placeholder so adopters
-/// observe the suspension shape on the wire. Enterprise overrides
-/// (axon_enterprise.cognitive_states) wire the real CPS-style
-/// suspend/resume via the supervisor's event dispatcher.
-pub fn await_event_with_timeout(event_name: &str, timeout: &str, ctx: &mut DispatchCtx) -> String {
-    let marker_key = format!("__hibernating_{event_name}");
-    ctx.let_bindings
-        .insert(marker_key, format!("awaiting timeout={timeout}"));
-    format!("(hibernating {event_name} timeout={timeout})")
-}
+// §Fase 119.d — `await_event_with_timeout` was DELETED here. It inserted a
+// marker binding and returned "(hibernating <event> timeout=<t>)" while the
+// flow KEPT WALKING — a hibernation that kept spending (§111 F20). The
+// suspension is real now: NodeOutcome::Hibernated + the walk loop's park
+// + halt, with resume riding `emit` (crate::hibernation).
+
 
 /// Drill into a PIX subtree to answer a query. OSS default: looks
 /// up `__pix_<pix_ref>_<subtree_path>` in let_bindings (binding
@@ -102,10 +96,16 @@ pub fn trail_navigation(navigate_ref: &str, ctx: &DispatchCtx) -> String {
 //  Hibernate (Fase 11.e — event-await with timeout)
 // ────────────────────────────────────────────────────────────────────
 
-/// Hibernate handler. Wire shape: `step_type: "hibernate"`. Binds
-/// the suspension marker under `__hibernating_<event_name>` in
-/// let_bindings. Returns Completed with the canonical placeholder
-/// string as output.
+/// §Fase 119.d — `hibernate <event> [timeout]`: observe the suspension point.
+///
+/// §111 F20 found this handler returning "(hibernating …)" SYNCHRONOUSLY —
+/// the flow kept walking, kept spending, while claiming to sleep. It now
+/// returns [`NodeOutcome::Hibernated`]; the WALK LOOP (which alone knows the
+/// node's position in the body) parks the continuation and HALTS the run.
+/// The task dies: no compute, no tokens — the primitive's one guarantee.
+///
+/// Inside a nested branch (par / for-in), suspension has no defined
+/// continuation shape yet, so it REFUSES rather than half-suspends.
 pub async fn run_hibernate(
     node: &IRHibernateStep,
     ctx: &mut DispatchCtx,
@@ -116,6 +116,20 @@ pub async fn run_hibernate(
     let step_index = ctx.step_counter;
     ctx.step_counter += 1;
 
+    if !ctx.branch_path.is_empty() {
+        return Err(DispatchError::BackendError {
+            name: "hibernate".to_string(),
+            message: format!(
+                "hibernate '{}' appears inside a nested branch ({}); suspending \
+                 a branch has no defined continuation shape yet, so it is \
+                 refused rather than half-suspended. Place hibernate at \
+                 top-level flow position.",
+                node.event_name,
+                ctx.branch_path_string()
+            ),
+        });
+    }
+
     let step_name = if node.event_name.is_empty() {
         "Hibernate".to_string()
     } else {
@@ -123,16 +137,13 @@ pub async fn run_hibernate(
     };
     emit_step_start(ctx, &step_name, step_index, "hibernate")?;
 
-    let placeholder = await_event_with_timeout(&node.event_name, &node.timeout, ctx);
-
-    emit_step_complete(ctx, &step_name, step_index, &placeholder, 0)?;
-
-    Ok(NodeOutcome::Completed {
-        output: placeholder,
-        tokens_emitted: 0,
+    Ok(NodeOutcome::Hibernated {
+        event_name: node.event_name.clone(),
+        timeout: node.timeout.clone(),
         step_index,
     })
 }
+
 
 // ────────────────────────────────────────────────────────────────────
 //  Drill (Fase 11.e PIX — drill into hidden-state subtree)
@@ -309,15 +320,55 @@ mod tests {
 
     // ── Public helpers ───────────────────────────────────────────────
 
-    #[test]
-    fn await_event_sets_marker_and_returns_placeholder() {
+    // §Fase 119.d — `await_event_sets_marker_and_returns_placeholder` was
+    // DELETED here. It pinned the §111 F20 placeholder in green: a
+    // "(hibernating …)" string returned synchronously while the flow kept
+    // walking. The suspension is real now; its gates live in
+    // `tests/fase119_d_hibernate.rs` (halt, park, emit-wake, lazy expiry).
+
+    /// §Fase 119.d — the handler observes the suspension point; the walk
+    /// loop parks and halts. Inside a nested branch it refuses.
+    #[tokio::test]
+    async fn run_hibernate_returns_the_suspension_outcome() {
         let (mut ctx, _rx) = fresh_ctx();
-        let out = await_event_with_timeout("user_action", "5m", &mut ctx);
-        assert_eq!(out, "(hibernating user_action timeout=5m)");
-        assert_eq!(
-            ctx.let_bindings.get("__hibernating_user_action").unwrap(),
-            "awaiting timeout=5m"
-        );
+        let node = IRHibernateStep {
+            node_type: "hibernate",
+            source_line: 7,
+            source_column: 3,
+            event_name: "user_action".into(),
+            timeout: "5m".into(),
+        };
+        match run_hibernate(&node, &mut ctx).await.unwrap() {
+            NodeOutcome::Hibernated {
+                event_name,
+                timeout,
+                ..
+            } => {
+                assert_eq!(event_name, "user_action");
+                assert_eq!(timeout, "5m");
+            }
+            other => panic!("expected Hibernated, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn run_hibernate_refuses_inside_a_branch() {
+        let (mut ctx, _rx) = fresh_ctx();
+        ctx.branch_path.push("par[0]".into());
+        let node = IRHibernateStep {
+            node_type: "hibernate",
+            source_line: 7,
+            source_column: 3,
+            event_name: "ev".into(),
+            timeout: String::new(),
+        };
+        let err = run_hibernate(&node, &mut ctx).await.err().expect("refuses");
+        match err {
+            DispatchError::BackendError { message, .. } => {
+                assert!(message.contains("no defined"), "{message}");
+            }
+            other => panic!("{other:?}"),
+        }
     }
 
     #[test]
@@ -356,36 +407,11 @@ mod tests {
 
     // ── Hibernate ────────────────────────────────────────────────────
 
-    #[tokio::test]
-    async fn run_hibernate_emits_wire_shape_and_marker() {
-        let (mut ctx, mut rx) = fresh_ctx();
-        let node = IRHibernateStep {
-            node_type: "hibernate",
-            source_line: 0,
-            source_column: 0,
-            event_name: "user_input".into(),
-            timeout: "30s".into(),
-        };
-        let outcome = run_hibernate(&node, &mut ctx).await.unwrap();
-        match outcome {
-            NodeOutcome::Completed { output, tokens_emitted, .. } => {
-                assert_eq!(output, "(hibernating user_input timeout=30s)");
-                assert_eq!(tokens_emitted, 0);
-            }
-            other => panic!("expected Completed, got {other:?}"),
-        }
-        assert_eq!(
-            ctx.let_bindings.get("__hibernating_user_input").unwrap(),
-            "awaiting timeout=30s"
-        );
-        let first = rx.try_recv().unwrap();
-        match first {
-            FlowExecutionEvent::StepStart { step_type, .. } => {
-                assert_eq!(step_type, "hibernate");
-            }
-            e => panic!("expected StepStart, got {e:?}"),
-        }
-    }
+    // §Fase 119.d — `run_hibernate_emits_wire_shape_and_marker` was DELETED
+    // here: it pinned the F20 placeholder ("(hibernating …)" + marker binding
+    // + Completed outcome) in green. The handler now returns the SUSPENSION
+    // (`run_hibernate_returns_the_suspension_outcome` below) and the walk
+    // loop parks + halts (tests/fase119_d_hibernate.rs).
 
     // ── Drill ────────────────────────────────────────────────────────
 

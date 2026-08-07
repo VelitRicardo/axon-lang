@@ -842,6 +842,9 @@ pub async fn run_for_in(
         ctx.branch_path.pop();
 
         match iter_outcome {
+            // §Fase 119.d — suspending inside a nested construct is refused.
+            Ok(NodeOutcome::Hibernated { .. }) => { return Err(DispatchError::BackendError { name: "hibernate".to_string(), message: "hibernate inside a nested construct (for-in / orchestration) has no defined \n                 continuation shape yet; place it at top-level flow position"
+                .to_string() }); }
             Ok(NodeOutcome::Completed {
                 output,
                 tokens_emitted,
@@ -1007,6 +1010,9 @@ async fn dispatch_body(
         ctx.branch_path.pop();
 
         match outcome? {
+            // §Fase 119.d — suspending inside a nested construct is refused.
+            NodeOutcome::Hibernated { .. } => { return Err(DispatchError::BackendError { name: "hibernate".to_string(), message: "hibernate inside a nested construct (for-in / orchestration) has no defined \n                 continuation shape yet; place it at top-level flow position"
+                .to_string() }); }
             NodeOutcome::Completed {
                 output,
                 tokens_emitted,

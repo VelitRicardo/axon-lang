@@ -981,18 +981,22 @@ fn execute_stub(
                     continue;
                 }
                 "hibernate" => {
-                    // Bind a placeholder token; full ContinuityTokenSigner
-                    // integration is the Python runner's job.
+                    // §Fase 119.d — the sync walk HALTS at hibernate, matching
+                    // the dispatcher path (D10 parity): a hibernation that
+                    // keeps walking keeps spending, which inverts the
+                    // primitive's one guarantee (§111 F20). The dispatcher
+                    // path additionally parks the continuation for resume;
+                    // the sync stub runner records the halt and stops.
                     stub_ctx.set("__hibernation_token__", "<stub-token>");
                     if trace {
                         events.push(TraceEvent {
                             event: "hibernate".to_string(),
                             unit: unit.flow_name.clone(),
                             step: step.step_name.clone(),
-                            detail: format!("flow={}", unit.flow_name),
+                            detail: format!("flow={} HALTED", unit.flow_name),
                         });
                     }
-                    continue;
+                    break;
                 }
                 "drill" => {
                     // Bind under `drill:<pix_ref>` so adopter code

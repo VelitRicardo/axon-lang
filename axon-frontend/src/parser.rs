@@ -4869,7 +4869,16 @@ impl Parser {
         let mut event = String::new();
         let mut timeout = String::new();
         if !self.at_declaration_start() && !self.check(TokenType::RBrace) {
-            event = self.consume_any_ident_or_kw()?.value.clone();
+            // §Fase 119.d — README §III writes `hibernate until "event_name"`
+            // (the `until` keyword + a STRING event). The parser accepted only
+            // the bare-identifier form, so the published block never compiled.
+            // Both forms resolve to the same field.
+            let first = self.consume_any_ident_or_kw()?.value.clone();
+            if first == "until" && self.check(TokenType::StringLit) {
+                event = self.consume(TokenType::StringLit)?.value.clone();
+            } else {
+                event = first;
+            }
         }
         if !self.at_declaration_start() && !self.check(TokenType::RBrace) {
             let next = self.current().clone();

@@ -708,6 +708,11 @@ fn assert_clean_outcome(
             // UpstreamCancelled. ChannelClosed is acceptable when the
             // receiver drops between iters (test runtime teardown).
         }
+        // §Fase 119.d — hibernate yields the SUSPENSION outcome: the walk
+        // loop (not exercised by this per-node fuzz) parks and halts. The
+        // outcome itself is the correct, total answer — the Completed-with-
+        // placeholder it replaces was the §111 F20 defect.
+        Ok(NodeOutcome::Hibernated { .. }) if kind == "hibernate" => {}
         Ok(other) => panic!(
             "33.y.n fuzz: unexpected NodeOutcome variant for {kind} iter {iter}: {other:?}"
         ),

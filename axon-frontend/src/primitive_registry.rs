@@ -942,7 +942,7 @@ pub const PRIMITIVE_REGISTRY: &[PrimitiveInfo] = &[
         category: "cognition",
         top_level: false,
         since: "pre-§111 (introduction unrecorded)",
-        summary: "Suspend-until — ADVERTISED BUT NOT IMPLEMENTED (§111 F20, KNOWN_DEBT): returns a placeholder synchronously; no CPS suspend, no resume, timeout not honored.",
+        summary: "Suspend-until: the flow HALTS at the hibernate point (zero further compute and tokens), the continuation parks under a deterministic SHA-256 id, `emit` on the awaited channel resumes the remaining steps, and a resume after the declared timeout is refused.",
         doc_status: DocStatus::Documented,
         is_advertised: true,
     },

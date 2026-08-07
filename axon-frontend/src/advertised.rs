@@ -122,7 +122,7 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     ("doubt", Unaudited),
     // ── Concurrency & continuation
     ("par", Real { proof: "parallel::run_par (real fan-out via join_all, §65)" }),
-    ("hibernate", NotImplemented { finding: "§111 F20 — returns \"(hibernating …)\" synchronously; no CPS suspend, no resume, timeout not honored" }),
+    ("hibernate", Partial { gap: "§119.d made the suspension REAL on the production dispatch path: the walk HALTS at the hibernate point (the task dies — zero further compute, zero tokens, the primitive's economic guarantee), the continuation parks under the README's SHA-256(flow ∥ event ∥ position) id with the remaining nodes + bindings + catalogs, `emit <channel>` WAKES matching continuations (fire-and-forget resume through the real dispatcher), a late resume is REFUSED by lazy expiry (no timer burns while asleep), and `hibernate until \"event\"` — the README's own spelling — parses. Gates: tests/fase119_d_hibernate.rs (halt counted in StepCompletes, park, emit-wake e2e, nested refusal) + hibernation unit suite; 4/4 mutations killed incl. the F20 walk-keeps-going reinjection. THE GAP: the parking lot is in-process (the pem::InMemoryBackend discipline) — a continuation does not survive process restart, so README's sleep-for-months across restarts is the durable-store enterprise catch-up (cognitive_states), and chained hibernation inside a resumed continuation is not yet defined" }),
     // ── Deterministic data plane (§108)
     ("dataspace", Real { proof: "dataspace_engine (columnar, first-party)" }),
     ("ingest", Real { proof: "cognitive::run_ingest — bounds-before-parse, sha256 + Untrusted taint (§108)" }),
@@ -265,7 +265,10 @@ pub const KNOWN_DEBT: &[&str] = &[
     // `compute` LEFT this ledger in §111.f: it is now a real pure function over
     // the §70 expression language. This is the ratchet turning — the only
     // direction it turns.
-    "hibernate",
+    // `hibernate` LEFT this ledger in §119.d (2026-08-07): the walk halts,
+    // the continuation parks under the published SHA-256 id, emit wakes it,
+    // and lazy expiry refuses lateness. Fifth turn of the ratchet.
+    //
     // `mandate` LEFT this ledger in §119.b (2026-08-07): the enforcement loop
     // runs through production dispatch, fails closed, and its name resolving
     // to nothing is a refusal — the exact call that used to be the identity

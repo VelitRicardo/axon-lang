@@ -206,3 +206,63 @@ flow F(x: T) -> U {
         "a declared lambda must resolve cleanly: {errors:?}"
     );
 }
+
+/// §Fase 119.d — README §III writes `hibernate until "quarterly_data_available"`;
+/// the parser accepted only the bare-identifier form, so the published block
+/// failed at exactly this token. Both spellings resolve to the same field.
+#[test]
+fn hibernate_until_string_is_the_readme_spelling_and_parses() {
+    let program = parse(
+        r#"
+flow W(x: T) -> U {
+    step S { ask: "q" output: D }
+    hibernate until "quarterly_data_available"
+}
+"#,
+    );
+    let flow = program
+        .declarations
+        .iter()
+        .find_map(|d| match d {
+            Declaration::Flow(f) => Some(f),
+            _ => None,
+        })
+        .expect("flow");
+    let h = flow
+        .body
+        .iter()
+        .find_map(|s| match s {
+            FlowStep::Hibernate(h) => Some(h),
+            _ => None,
+        })
+        .expect("hibernate parsed");
+    assert_eq!(h.event_name, "quarterly_data_available");
+
+    // The legacy bare-identifier + duration form still parses.
+    let program = parse(
+        r#"
+flow W2(x: T) -> U {
+    step S { ask: "q" output: D }
+    hibernate user_reply 24h
+}
+"#,
+    );
+    let flow = program
+        .declarations
+        .iter()
+        .find_map(|d| match d {
+            Declaration::Flow(f) => Some(f),
+            _ => None,
+        })
+        .expect("flow");
+    let h = flow
+        .body
+        .iter()
+        .find_map(|s| match s {
+            FlowStep::Hibernate(h) => Some(h),
+            _ => None,
+        })
+        .expect("hibernate parsed");
+    assert_eq!(h.event_name, "user_reply");
+    assert_eq!(h.timeout, "24h");
+}
