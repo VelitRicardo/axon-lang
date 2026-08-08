@@ -63,9 +63,31 @@ const KNOWN_UNCOMPILABLE: &[(u64, &str)] = &[
     (0x425cfaac8362e16a, "block 15: tool WebSearch — field grammar drift"),
     (0xa635a0be5887ff2b, "block 38: tool MarketData — field grammar drift"),
     (0xbbe28e149cb95e78, "block 51: shield ClinicalShield — field grammar drift"),
-    (0x56a2865ca114d657, "block 47: compute CalculatePremium — `,` in field value"),
-    (0xdb657847c1fa995a, "block 48: compute NormalizeMetrics — `,` in field value"),
-    (0xc10bd6bb3dbd6226, "block 49: compute EligibilityScore — `,` in field value"),
+    // §Fase 119.f — DIAGNOSED 2026-08-08, and the reason above ("`,` in field
+    // value") was only the FIRST token that failed. The real blocker is
+    // deeper and worth naming precisely, because it is a language decision
+    // rather than a parser patch:
+    //
+    //   compute CalculatePremium {
+    //       input: base_rate (Float), risk_factor (Float), years (Float)
+    //       output: PremiveResult
+    //       logic { let annual = base_rate * risk_factor
+    //               let total  = annual * years
+    //               return total - total * 0.05 }
+    //   }
+    //
+    // `input:`/`output:` are cheap aliases for the parenthesised parameter
+    // list and `-> T` the parser already takes. `logic { … }` is NOT: it is a
+    // LET-CHAIN, and §111.f deliberately made `compute` a pure function over
+    // ONE §70 expression — `Expr` has no `Let` variant. Supporting the
+    // published body means adding `Expr::Let(name, bound, body)` to the §70
+    // engine AND its evaluator in axon-rs (`eval_expr`), which is a real
+    // language change with a PCC surface, not a grammar tweak. Inlining the
+    // bindings instead would duplicate evaluation and quietly change
+    // semantics. Owner: the §70 expression engine.
+    (0x56a2865ca114d657, "block 47: compute CalculatePremium — `logic { let … return }` is a LET-CHAIN; §70's Expr has no Let variant (§111.f made compute ONE pure expression). Needs Expr::Let in the engine + eval_expr, not a parser patch"),
+    (0xdb657847c1fa995a, "block 48: compute NormalizeMetrics — same: `logic { }` let-chain body"),
+    (0xc10bd6bb3dbd6226, "block 49: compute EligibilityScore — same: `logic { }` let-chain body"),
     (0x8ec59ea78ba27d50, "block 54: axonstore Users — `env` unquoted in field"),
     (0xf8c2160c210922da, "block 55: axonstore KnowledgeBase — `env` unquoted in field"),
 
