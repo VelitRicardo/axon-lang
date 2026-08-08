@@ -10001,8 +10001,9 @@ impl<'a> TypeChecker<'a> {
                      surfaces a streaming wire (per-chunk axon.token \
                      events + axon.complete envelope) where bare \
                      `Stream<T>` / `List<T>` declarations are valid. \
-                 See https://axon-lang.io/docs/wire-envelope for the \
-                 ψ-vector contract. \
+                 See the wire-envelope contract in the docs \
+                 (https://www.ricardovelit.com/axon-docs) for the \
+                 ψ-vector shape. \
                  (Fase 39 D2 + D12 — Pure Silicon Cognition)",
                 node.name,
                 node.output_type,

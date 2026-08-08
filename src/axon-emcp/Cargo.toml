@@ -20,7 +20,7 @@ path = "src/main.rs"
 # returns the same diagnostics `axon check` would print. We consume by
 # path (in-tree development) + a version constraint (so cargo-publish
 # resolves a registry version too, matching the §Fase 40 D1 discipline).
-axon-frontend = { path = "../../axon-frontend", version = "=1.58.0" }
+axon-frontend = { path = "../../axon-frontend", version = "=1.59.0" }
 
 # Serde JSON for the MCP wire protocol (JSON-RPC 2.0 over stdio).
 serde = { version = "1", features = ["derive"] }

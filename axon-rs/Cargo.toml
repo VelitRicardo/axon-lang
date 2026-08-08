@@ -1,11 +1,16 @@
 [package]
 name = "axon-lang"
-version = "2.82.0"
+version = "2.83.0"
 authors = ["AXON Project", "Ricardo Velit"]
 edition = "2021"
 rust-version = "1.95"
 license = "AGPL-3.0-or-later"
 repository = "https://github.com/VelitRicardo/axon-lang"
+# §Fase 119.g — D119.2 named the canonical documentation host. Until now BOTH
+# fields were absent, so the crates.io page showed no documentation link at
+# all: an adopter landing there had nowhere to go but the README.
+homepage = "https://www.ricardovelit.com/axon-docs"
+documentation = "https://www.ricardovelit.com/axon-docs"
 # §Fase 117.b — package-LOCAL readme. This used to point at `../README.md`, and
 # cargo overrode it on every publish ("there is already a file named README.md in
 # the root of the package. The archived crate will contain the copy in the root")
@@ -59,7 +64,7 @@ path = "src/main.rs"
 # without dragging tokio/axum/sqlx/aws. Path is used for in-tree builds;
 # `version` makes the dep cargo-publishable (crates.io requires non-path
 # deps to carry a version specifier).
-axon-frontend = { path = "../axon-frontend", version = "=1.58.0" }
+axon-frontend = { path = "../axon-frontend", version = "=1.59.0" }
 # §Fase 116.a — the axon-agora protocol layer (the first official library):
 # Platform/Operation enums, the SocialConnector seam, scope/protocol/posture/
 # quota single-source-of-truth. Pure data + traits (serde only) — the network

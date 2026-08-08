@@ -558,7 +558,7 @@ fn validate_list(
                 },
                 got_length: None,
                 remediation_url: if field_path.is_empty() {
-                    "https://axon-lang.io/docs/cardinality-mismatch".to_string()
+                    "https://www.ricardovelit.com/axon-docs".to_string()
                 } else {
                     String::new()
                 },
@@ -652,7 +652,7 @@ fn validate_struct(
                     None
                 },
                 remediation_url: if field_path.is_empty() && v.is_array() {
-                    "https://axon-lang.io/docs/cardinality-mismatch".to_string()
+                    "https://www.ricardovelit.com/axon-docs".to_string()
                 } else {
                     String::new()
                 },

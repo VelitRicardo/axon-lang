@@ -119,12 +119,18 @@ use Host::{DoesNotResolve, Resolves};
 const CLASSIFIED_HOSTS: &[(&str, Host)] = &[
     // ── ours ──
     ("axon-lang.io", DoesNotResolve(
-        "HTTP 000 / no DNS answer. Used for the in-toto/SLSA builder IDs in the audit-evidence \
-         bundle AND for user-facing help links (`remediation_url`, the type checker's \
-         wire-envelope hint — the first error the README demo produces). D117.3 is ratified as \
-         written: §117.b lands this classifier, and the string rewrite waits on the founder \
-         naming the canonical documentation host. NOTE: `axon.dev` (301) and \
-         `bemarking.com.co` (308) both answer, if either is the intended target.",
+        "HTTP 000 / no DNS answer. §Fase 119.g REMOVED every USER-FACING use of it. D119.2 \
+         named the canonical host (https://www.ricardovelit.com/axon-docs — HTTP 200 on www \
+         and apex, probed 2026-08-08), so the type checker's wire-envelope hint and both \
+         `remediation_url` sites now point there. They point at the docs ROOT because the \
+         deep paths 404 today, and sending an adopter to a 404 would recreate the very \
+         defect this fixes. \
+         WHAT REMAINS under this host is NOT a link: the in-toto/SLSA builder IDs in \
+         `esk/attestation.rs` and `evidence_packager.rs`. A builder ID is a URI IDENTITY by \
+         spec, not a fetchable page, so a non-resolving one is legitimate there. Changing it \
+         is a DECISION, not a docs fix — every attestation already issued carries the old ID \
+         and a verifier pinned to it would stop matching. Owner: the ESK attestation surface, \
+         with a migration story.",
     )),
     ("axon.dev", Resolves),
     ("auth.bemarking.com", Resolves),
