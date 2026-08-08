@@ -1437,6 +1437,26 @@ mod capability_slug_tests {
 pub struct Parser {
     tokens: Vec<Token>,
     pos: usize,
+    /// §Fase 119.f — declarations lifted out of a FLOW BODY to program level.
+    ///
+    /// README nests an epistemic block inside a flow to scope the helper
+    /// flows it calls:
+    ///
+    /// ```text
+    /// flow MarketIntelligence(sector: String) -> Report {
+    ///     know { flow GatherData(sector: String) -> DataSet { … } }
+    ///     par { … }
+    /// }
+    /// ```
+    ///
+    /// A top-level `know { … }` already HOISTS its children into the
+    /// program-level IR collections, stamping `epistemic_mode` on each
+    /// (`ir_generator`, §99.d/§105/§110). Hoisting the nested one to a
+    /// top-level `Declaration::Epistemic` therefore makes it byte-identical
+    /// to the form that already works — zero new handling in the checker, the
+    /// IR generator, or the runtime. The alternative (a new FlowStep variant
+    /// carrying declarations) would fork every one of those.
+    hoisted: Vec<Declaration>,
     /// Fase 14.a — leading trivia parallel array, indexed by the
     /// effective-token position. `leading_trivia[i]` is the comment
     /// trivia that appeared between the previous effective token (or
@@ -1505,6 +1525,7 @@ impl Parser {
         }
 
         Parser {
+            hoisted: Vec::new(),
             tokens: effective,
             pos: 0,
             leading_trivia: leading,
@@ -1574,6 +1595,16 @@ impl Parser {
             program
                 .declaration_trivia
                 .push(DeclarationTrivia { leading, trailing });
+            // §Fase 119.f — drain anything a flow body hoisted to program
+            // level. Appended AFTER the enclosing declaration so source order
+            // still reads top-to-bottom in `axon desugar`.
+            for hoisted in std::mem::take(&mut self.hoisted) {
+                program.declarations.push(hoisted);
+                program.declaration_trivia.push(DeclarationTrivia {
+                    leading: Vec::new(),
+                    trailing: Vec::new(),
+                });
+            }
         }
         // §Fase 80.g — expand `voice` declarations FIRST (they may emit
         // `from Preset@vN` upstream legs), then §80.f preset references,
@@ -3130,6 +3161,31 @@ impl Parser {
         let tok = self.current().clone();
 
         match tok.ttype {
+            // §Fase 119.f — an epistemic block INSIDE a flow body. Its
+            // children are hoisted to program level (see `Parser::hoisted`),
+            // which is exactly what a top-level block already does, so the
+            // nested spelling costs nothing downstream. The flow itself gets
+            // no node: the block declares, it does not execute.
+            TokenType::Know | TokenType::Believe | TokenType::Speculate
+                if self
+                    .tokens
+                    .get(self.pos + 1)
+                    .is_some_and(|t| t.ttype == TokenType::LBrace) =>
+            {
+                let block = self.parse_epistemic_block()?;
+                self.hoisted.push(Declaration::Epistemic(block));
+                self.parse_flow_step()
+            }
+            TokenType::Doubt
+                if self
+                    .tokens
+                    .get(self.pos + 1)
+                    .is_some_and(|t| t.ttype == TokenType::LBrace) =>
+            {
+                let block = self.parse_epistemic_block()?;
+                self.hoisted.push(Declaration::Epistemic(block));
+                self.parse_flow_step()
+            }
             TokenType::Step => self.parse_step().map(FlowStep::Step),
             TokenType::If => self.parse_if().map(FlowStep::If),
             TokenType::For => self.parse_for_in().map(FlowStep::ForIn),

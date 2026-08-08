@@ -58,7 +58,6 @@ const KNOWN_UNCOMPILABLE: &[(u64, &str)] = &[
     // "Expected Colon, found Identifier(...)", "Expected StringLit, found
     // Identifier('env')", "Expected identifier or keyword value, found ','".
     // Owner: §118, per primitive.
-    (0xa9ba00796cdc4b40, "block 5: persona SupportAgent — field grammar drift"),
     (0xb291368d4a4f07b6, "block 7: persona ResearchAnalyst — field grammar drift"),
     (0x4dac1337eb78dbea, "block 11: shield InputGuard — bare agent name in step body"),
     (0x425cfaac8362e16a, "block 15: tool WebSearch — field grammar drift"),
@@ -67,7 +66,6 @@ const KNOWN_UNCOMPILABLE: &[(u64, &str)] = &[
     (0x56a2865ca114d657, "block 47: compute CalculatePremium — `,` in field value"),
     (0xdb657847c1fa995a, "block 48: compute NormalizeMetrics — `,` in field value"),
     (0xc10bd6bb3dbd6226, "block 49: compute EligibilityScore — `,` in field value"),
-    (0xbd4628145ab5b09f, "block 53: axonstore Ledger — `env` unquoted in field"),
     (0x8ec59ea78ba27d50, "block 54: axonstore Users — `env` unquoted in field"),
     (0xf8c2160c210922da, "block 55: axonstore KnowledgeBase — `env` unquoted in field"),
 
@@ -94,6 +92,26 @@ const KNOWN_UNCOMPILABLE: &[(u64, &str)] = &[
     // was stale and the compiler was right. Block 30 was the compiler moving:
     // `safety:` is what README §psyche publishes and the parser only took
     // `safety_constraints:` (the epsilon/tolerance resolution of §119.b.1).
+
+    // §Fase 119.f — an epistemic block nested INSIDE a flow body now parses
+    // (README scopes helper flows that way). Its children hoist to program
+    // level, which is exactly what a TOP-LEVEL `know { … }` already does —
+    // so the nested spelling costs nothing in the checker, the IR generator
+    // or the runtime. A new FlowStep variant carrying declarations would
+    // have forked all three.
+
+    // §Fase 119.f — block 54 (the financial-ledger example) was REWRITTEN,
+    // not merely re-digested: it published `transact { … }`, which §111
+    // RETRACTED (axon-T938 — it never opened a transaction, took no lock and
+    // rolled nothing back). The prose claimed "both writes roll back
+    // atomically", which was never true. The example now uses the idempotent
+    // form T938's own diagnostic prescribes (both legs keyed by the same
+    // `entry_ref`, so a retry converges instead of double-posting), and the
+    // scope note says the construct is gone rather than "on the roadmap".
+    //
+    // It still does not compile, for a DIFFERENT and real reason — a
+    // checker gap, kept in the ledger so it is not lost:
+    (0x2c4bd66c6bf06a37, "block 54: axonstore Ledger — axon-T802 classes a bare identifier in a `persist into … { }` field block as a TEXT LITERAL instead of a reference to the flow parameter, so `amount: amount` (param `Real`) is rejected against a `Float` column. §60's literal/reference classification exists for `use`/`let` argument values and never reached field blocks. Owner: the store type-checker, not the README"),
 
     // ── Family C — `pix` ───────────────────────────────────────────────────
     // Seven blocks, all "Expected Colon, found Identifier(<name>)": the

@@ -4412,13 +4412,14 @@ Rust's ownership model.
 
 #### 3. Argumento con tres casos de uso
 
-> *Scope note — the `schema { … }`, `transact { … }` and `migrate()` constructs
-> in the examples below parse today and illustrate the design model. v1.30.0
-> shipped the four pillars (epistemic floor, audit chain, `Stream<Row>`,
-> capability typing); v1.31.0 (Fase 38) added the *Declared & Compile-Time-
-> Typed Store Schema* (DDL synthesis from `schema { … }`); v2.0.0 (Fase 39)
-> added the `FlowEnvelope⟨T⟩` wire contract. Multi-statement transactions
-> remain on the 38.x roadmap.*
+> *Scope note — `schema { … }` is REAL (v1.31.0 / Fase 38: DDL synthesis from
+> the declaration), as are the four pillars (epistemic floor, audit chain,
+> `Stream<Row>`, capability typing, v1.30.0) and the `FlowEnvelope⟨T⟩` wire
+> contract (v2.0.0 / Fase 39). **`transact { … }` was RETRACTED in Fase 111
+> (`axon-T938`) and no longer compiles** — it never opened a transaction, so
+> the construct was removed rather than left to look like one; the examples
+> below use the idempotent form instead. `migrate()` illustrates the design
+> model and is not shipped.*
 
 **Use Case 1 — Financial Ledger with Atomic Double-Entry Bookkeeping**
 
@@ -4452,18 +4453,25 @@ anchor LedgerIntegrity {
 }
 
 flow RecordTransfer(from_acct: String, to_acct: String, amount: Real) -> LedgerEntry {
-    transact Ledger {
-        persist into Ledger { entry_ref: "TXN-001", type: "debit",  amount: amount, account: from_acct }
-        persist into Ledger { entry_ref: "TXN-001", type: "credit", amount: amount, account: to_acct  }
-    }
+    // Both legs carry the SAME `entry_ref`, which is the idempotency key: a
+    // retry converges on the same pair instead of duplicating one side.
+    persist into Ledger { entry_ref: "TXN-001", type: "debit",  amount: amount, account: from_acct }
+    persist into Ledger { entry_ref: "TXN-001", type: "credit", amount: amount, account: to_acct  }
 }
 ```
 
 - `isolation: serializable` prevents phantom reads during concurrent transfers
-- If either INSERT fails, the Linear Logic token is not committed — both writes
-  roll back atomically
+- **Multi-statement transactions are NOT shipped.** `transact { … }` was
+  retracted in §Fase 111 (`axon-T938`): it never opened a transaction, took no
+  lock and rolled nothing back, so writes inside it were exactly as atomic as
+  writes outside it. A fabricated atomicity guarantee is worse than an absent
+  one, because you only discover it on the failure path. Until real
+  transactional semantics land, the shape above is the honest one: issue the
+  writes directly and key them by `entry_ref` so a retry CONVERGES instead of
+  double-posting
 - `confidence_floor: 0.99` means the agent must be nearly certain before
-  writing financial data — a 0.97-confidence output gets rejected with rollback
+  writing financial data — a 0.97-confidence output is rejected before it
+  reaches the store
 - The `LedgerIntegrity` anchor enforces double-entry balance semantics on top
   of the database's ACID guarantees — two independent layers of correctness
 
