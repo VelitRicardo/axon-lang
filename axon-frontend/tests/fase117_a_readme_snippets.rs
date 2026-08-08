@@ -60,10 +60,7 @@ const KNOWN_UNCOMPILABLE: &[(u64, &str)] = &[
     // Owner: §118, per primitive.
     (0xa9ba00796cdc4b40, "block 5: persona SupportAgent — field grammar drift"),
     (0xb291368d4a4f07b6, "block 7: persona ResearchAnalyst — field grammar drift"),
-    (0xb1f41e01bf60999e, "block 10: persona OnboardingSpecialist — field grammar drift"),
     (0x4dac1337eb78dbea, "block 11: shield InputGuard — bare agent name in step body"),
-    (0x12461c4565a69904, "block 13: shield ResearchShield — field grammar drift"),
-    (0xcdf3c8f0279d30ee, "block 14: tool MarketFeed — field grammar drift"),
     (0x425cfaac8362e16a, "block 15: tool WebSearch — field grammar drift"),
     (0xa635a0be5887ff2b, "block 38: tool MarketData — field grammar drift"),
     (0xbbe28e149cb95e78, "block 51: shield ClinicalShield — field grammar drift"),
@@ -86,6 +83,18 @@ const KNOWN_UNCOMPILABLE: &[(u64, &str)] = &[
     // (NavConfig.d_max) — a field decided by nothing would be the §111
     // defect this fase exists to end.
 
+    // §Fase 119.f — six SEMANTIC rows left this ledger on 2026-08-08. They
+    // were not grammar gaps: they were incomplete examples (the block-42
+    // shape from §119.c). Blocks 8/13 named tools nobody declared; block 10
+    // used a `tone:` outside the closed catalog (inventing `warm` would
+    // fabricate a tone nothing distinguishes — `empathetic` IS that tone);
+    // block 14 named a provider outside T948's catalog (omitting `provider:`
+    // is the documented LLM-routed form); block 37 still carried `taint:`,
+    // a field §111 explicitly RETRACTED — the one case here where the README
+    // was stale and the compiler was right. Block 30 was the compiler moving:
+    // `safety:` is what README §psyche publishes and the parser only took
+    // `safety_constraints:` (the epsilon/tolerance resolution of §119.b.1).
+
     // ── Family C — `pix` ───────────────────────────────────────────────────
     // Seven blocks, all "Expected Colon, found Identifier(<name>)": the
     // documented `pix <Name> { … }` header does not match the parser. Owner:
@@ -96,14 +105,12 @@ const KNOWN_UNCOMPILABLE: &[(u64, &str)] = &[
     // Same shape as `pix`: "Expected Colon, found Identifier(<name>)".
     (0x7815bf9da91face3, "block 28: corpus CaseLawGraph — header grammar drift"),
     (0x4f6fce64b79cc42d, "block 29: corpus FinancialNetwork — header grammar drift"),
-    (0xa5a68efabbe9e3fd, "block 37: corpus ClinicalDB from mcp(...) — header grammar drift"),
     (0x196753b0511e697e, "block 39: corpus LegalCorpus — header grammar drift"),
 
     // ── Family E — `psyche` ────────────────────────────────────────────────
     // Type errors rather than parse errors, e.g. "Psyche 'TherapeuticProfile'
     // requires at least one safety_constraint" — the README's own examples
     // violate the rule the checker enforces.
-    (0xf88d4b467c1e92c8, "block 30: psyche TherapeuticProfile — missing safety_constraint"),
     (0xd3b41e172d2a5c47, "block 31: psyche AffectTrajectory — checker rule violation"),
     (0x4568161d810e4a44, "block 32: psyche TeamCognition — checker rule violation"),
     (0xe5863dbe8efaab0e, "block 33: psyche StudentEpistemics — checker rule violation"),
@@ -131,7 +138,6 @@ const KNOWN_UNCOMPILABLE: &[(u64, &str)] = &[
     // extended to the fourth member of the apply family).
 
     // ── Family G — undefined references ────────────────────────────────────
-    (0x10f35cdaf52e1469, "block 8: agent CaseLawResearcher — references undeclared symbols"),
     (0x6261cff9f54df359, "block 9: agent DataGatherer — references undeclared symbols"),
 ];
 

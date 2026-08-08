@@ -868,6 +868,17 @@ A law firm deploys an agent that autonomously researches case law until it finds
 sufficient precedent — or exhausts its budget and escalates to a human attorney:
 
 ```axon
+// §Fase 119.f — the tools this agent uses must EXIST: an agent naming a
+// tool nobody declared is an incomplete example, not a grammar gap (the
+// same shape as §119.c's block 42).
+tool WebSearch {
+    timeout: 10s
+}
+
+tool PDFExtractor {
+    timeout: 30s
+}
+
 agent CaseLawResearcher {
     goal: "Find 3+ relevant precedents for the contract dispute
            with verified court citations"
@@ -931,9 +942,17 @@ A SaaS platform uses an agent to guide new customers through a personalized
 onboarding flow, adapting when it gets stuck:
 
 ```axon
+tool APICall {
+    timeout: 10s
+}
+
+tool Calculator {
+    timeout: 5s
+}
+
 persona OnboardingSpecialist {
     domain: ["product knowledge", "user experience"]
-    tone: warm
+    tone: empathetic
     confidence_threshold: 0.80
 }
 
@@ -1117,6 +1136,14 @@ shield ResearchShield {
     sandbox: true
 }
 
+tool web_search {
+    timeout: 10s
+}
+
+tool file_reader {
+    timeout: 10s
+}
+
 agent Researcher {
     goal: "Gather market intelligence from public sources"
     tools: [web_search, file_reader]
@@ -1263,7 +1290,6 @@ real-time quotes (speculative) and confirmed trades (factual):
 
 ```axon
 tool MarketFeed {
-    provider: bloomberg
     timeout: 5s
     effects: <io, network, epistemic:speculate>
 }
@@ -2870,7 +2896,6 @@ shield PatientShield {
     scan: [pii_leak, data_exfil]
     strategy: classifier
     on_breach: sanitize_and_retry
-    taint: untrusted
     redact: [ssn, medical_record_number, date_of_birth]
 }
 

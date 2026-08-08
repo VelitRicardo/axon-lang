@@ -6427,7 +6427,11 @@ impl Parser {
                     "dimensions" => node.dimensions = self.parse_bracketed_identifiers()?,
                     "manifold_noise" => node.manifold_noise = self.parse_optional_float(),
                     "manifold_momentum" => node.manifold_momentum = self.parse_optional_float(),
-                    "safety_constraints" => {
+                    // §Fase 119.f — `safety:` is what README §psyche publishes;
+                    // `safety_constraints:` is what the parser has always taken.
+                    // One field, two spellings — the `epsilon`/`tolerance`
+                    // resolution of §119.b.1.
+                    "safety_constraints" | "safety" => {
                         node.safety_constraints = self.parse_bracketed_identifiers()?
                     }
                     "quantum_enabled" => {
