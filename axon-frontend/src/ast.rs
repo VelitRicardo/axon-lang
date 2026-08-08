@@ -2720,8 +2720,10 @@ pub struct StepNode {
     /// §Fase 119 (D119.4) — the governance applications declared in this
     /// step's body, in source order. Empty for every pre-§119 program.
     pub guards: Vec<StepGuardNode>,
-    /// §Fase 119.f — the PIX verbs (`navigate` / `drill` / `trail`) written
-    /// as STATEMENTS in this step's body, in source order.
+    /// §Fase 119.f — the STATEMENTS written in this step's body, in source
+    /// order: the PIX verbs (`navigate` / `drill` / `trail` / `validate`)
+    /// and the step-scoped invocations (`probe … for […]`, `use_tool … with
+    /// …`, a bare `<Agent>(args)` call, `par { … }`).
     ///
     /// README's pix/corpus family writes them exactly here, with a braceless
     /// field list, and each produces a binding (`as: relevant_sections`) the
@@ -3081,6 +3083,12 @@ pub struct LambdaDataApplyNode {
 #[derive(Debug)]
 pub struct ProbeStep {
     pub target: String,
+    /// §Fase 119.f — the extraction list README writes:
+    /// `probe doc for [parties, obligations, dates]`. Pre-§119.f the step
+    /// body reached `probe` and ran `skip_flow_step_structural`, which
+    /// DISCARDED it (the §111 silent-drop shape); the flow-level form kept
+    /// only the target and never had a slot for the fields at all.
+    pub fields: Vec<String>,
     pub loc: Loc,
 }
 #[derive(Debug)]

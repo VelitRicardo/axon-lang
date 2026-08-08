@@ -3140,7 +3140,7 @@ impl Parser {
             TokenType::Lambda => self.parse_lambda_data_apply().map(FlowStep::LambdaDataApply),
 
             // ── Tier 2 flow steps (typed AST) ─────────────────────
-            TokenType::Probe => self.parse_flow_step_simple("probe").map(|l| FlowStep::Probe(ProbeStep { target: l.1, loc: l.0 })),
+            TokenType::Probe => self.parse_flow_step_simple("probe").map(|l| FlowStep::Probe(ProbeStep { target: l.1, fields: Vec::new(), loc: l.0 })),
             TokenType::Reason => self.parse_flow_step_simple("reason").map(|l| FlowStep::Reason(ReasonStep { strategy: String::new(), target: l.1, loc: l.0 })),
             TokenType::Validate => self.parse_flow_step_simple("validate").map(|l| FlowStep::Validate(ValidateStep { target: l.1, rule: String::new(), loc: l.0 })),
             TokenType::Refine => self.parse_flow_step_simple("refine").map(|l| FlowStep::Refine(RefineStep { target: l.1, strategy: String::new(), loc: l.0 })),
@@ -3462,7 +3462,101 @@ impl Parser {
                     let g = self.parse_step_guard("lambda")?;
                     node.guards.push(g);
                 }
-                // Sub-constructs (probe, reason, weave, stream) → skip structurally
+                // §Fase 119.f — `probe <target> for [a, b, c]` as a STATEMENT.
+                //
+                // `probe` used to fall into `skip_flow_step_structural` below,
+                // which DISCARDED it — the §111 silent-drop shape, in the step
+                // parser. The extraction list had nowhere to live even at flow
+                // level. Both are fixed here: the statement is kept, and its
+                // `for [...]` list reaches the AST.
+                TokenType::Probe
+                    if self
+                        .tokens
+                        .get(self.pos + 1)
+                        .is_some_and(|t| t.ttype != TokenType::Colon) =>
+                {
+                    let tok = self.current().clone();
+                    self.advance();
+                    let target = self.consume_any_ident_or_kw()?.value.clone();
+                    let mut fields = Vec::new();
+                    if self.check(TokenType::For) {
+                        self.advance();
+                        self.consume(TokenType::LBracket)?;
+                        while !self.check(TokenType::RBracket) && !self.check(TokenType::Eof) {
+                            fields.push(self.consume_any_ident_or_kw()?.value.clone());
+                            if self.check(TokenType::Comma) {
+                                self.advance();
+                            }
+                        }
+                        self.consume(TokenType::RBracket)?;
+                    }
+                    node.pix_ops.push(FlowStep::Probe(ProbeStep {
+                        target,
+                        fields,
+                        loc: Loc { line: tok.line, column: tok.column },
+                    }));
+                }
+                // §Fase 119.f — `use_tool <name> [with k: v, …]` as a STATEMENT.
+                // §54.a made `use` inside a step body a hard error pointing at
+                // the canonical forms; `use_tool` is the OTHER spelling README
+                // publishes, and it names the tool explicitly, so there is no
+                // ambiguity to protect against — the dispatch is not dropped,
+                // it is recorded.
+                TokenType::Identifier if inner.value == "use_tool" => {
+                    let tok = self.current().clone();
+                    self.advance();
+                    let tool_name = self.consume_any_ident_or_kw()?.value.clone();
+                    let args = if self.current().value == "with" {
+                        self.advance();
+                        let mut named: Vec<(String, String, String)> = Vec::new();
+                        loop {
+                            let k = self.consume_any_ident_or_kw()?.value.clone();
+                            self.consume(TokenType::Colon)?;
+                            // `value_kind` mirrors §60's classification: a
+                            // string literal is a literal, anything else is a
+                            // binding reference the runtime must look up.
+                            let kind = if self.check(TokenType::StringLit) {
+                                "literal"
+                            } else {
+                                "reference"
+                            };
+                            let v = self.parse_expression_string()?;
+                            named.push((k, v, kind.to_string()));
+                            if self.check(TokenType::Comma) {
+                                self.advance();
+                            } else {
+                                break;
+                            }
+                        }
+                        UseArgs::Named(named)
+                    } else if self.current().value == "on" {
+                        self.advance();
+                        UseArgs::LegacyPositional(
+                            self.consume_any_ident_or_kw()?.value.clone(),
+                        )
+                    } else {
+                        UseArgs::LegacyPositional(String::new())
+                    };
+                    node.pix_ops.push(FlowStep::UseTool(UseToolStep {
+                        tool_name,
+                        args,
+                        loc: Loc { line: tok.line, column: tok.column },
+                    }));
+                }
+                // §Fase 119.f — `par { … }` inside a step body.
+                TokenType::Par => {
+                    let block = self.parse_par_block()?;
+                    node.pix_ops.push(FlowStep::Par(block));
+                }
+                // Sub-constructs (reason, weave, stream) → skip structurally.
+                //
+                // ⚠️ §Fase 119.f — this arm is still the §111 silent-drop shape
+                // for the three that remain: a `reason { … }` / `weave [ … ]` /
+                // `stream { … }` written in a step body is PARSED AND THROWN
+                // AWAY. `probe` left it above; the other three need their own
+                // AST slots on the step, which is a wider change than the
+                // README ledger needs today. Named here so it is not
+                // rediscovered as a surprise.
                 TokenType::Probe
                 | TokenType::Reason
                 | TokenType::Weave
