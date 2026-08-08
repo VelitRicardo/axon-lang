@@ -1,6 +1,6 @@
 [package]
 name = "axon-csys"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["AXON Project", "Ricardo Velit"]
 edition = "2021"
 rust-version = "1.95"
@@ -10,6 +10,30 @@ readme = "README.md"
 keywords = ["axon", "c23", "ffi", "kernel", "performance"]
 categories = ["development-tools::ffi", "external-ffi-bindings"]
 description = "axon-csys — Fase 25 (Silicon + Cognition sesión 1). C23 metal-bound kernels for axon-lang. The Rust crate hosts safe wrappers; the c-src/ tree hosts the kernels: cache-line-aligned slab allocator (25.d), G.711 mulaw + linear PCM resampler (25.c), algebraic effects FSM dispatcher with computed gotos (25.e), BPE tokenizer with #embed (25.g), HMAC-SHA256 continuity token (25.h), plus an adopter-facing C transpiler bridge (25.f). Each kernel ships with a byte-identical drift gate against the Rust reference impl. 25.b ships only the build-infrastructure probe; later sub-fases append their kernels."
+
+# ─── §Fase 119.h — the C toolchain becomes OPT-IN ────────────────────
+#
+# `cc::Build::compile` PANICS when no C compiler is found, and this crate's
+# build script called it unconditionally — so `cargo install axon-lang` on a
+# machine without a toolchain did not take long, it FAILED (verified: exit
+# 101, "ToolNotFound"). That is the only defect in the adopter path that can
+# leave someone at zero, and it made the C kernels a REQUIREMENT rather than
+# what they actually are: an optimisation.
+#
+# With `native` off, the same public API is served by pure-Rust twins that
+# MIRROR the C line by line. They add no dependency: this crate's own module
+# doc promises "the auditable, dep-free default", and paying for the fallback
+# with four third-party crates would retract that promise to fix a different
+# one. The fidelity argument is not "trust the mirror" either — the drift
+# gates that cross-validate the C against `sha2`/`hmac`/`base64`/`subtle` and
+# the NIST CAVS vectors are implementation-agnostic, so
+# `cargo test --no-default-features` runs THE SAME gates against the twins.
+#
+# `default = ["native"]` keeps anyone depending on axon-csys directly
+# unchanged. `axon-lang` opts OUT by default so its install needs no toolchain.
+[features]
+default = ["native"]
+native = ["dep:fancy-regex"]
 
 [lib]
 name = "axon_csys"
@@ -24,7 +48,12 @@ path = "src/lib.rs"
 # (HTTP downloads of merge tables at build time, the CoreBPE struct,
 # its internal data structures). The result is one direct dep instead
 # of one direct + many transitive.
-fancy-regex = "0.13"
+#
+# §Fase 119.h — OPTIONAL, because the pretokeniser it backs only exists when
+# the C23 BPE kernel does. Dropping it takes seven crates out of the
+# toolchain-free tree (fancy-regex, bit-set, bit-vec, regex-automata,
+# aho-corasick, memchr, regex-syntax).
+fancy-regex = { version = "0.13", optional = true }
 
 [build-dependencies]
 # §Fase 25.b D3 — cc-rs is the de facto Rust ecosystem standard for
@@ -44,6 +73,12 @@ tiktoken-rs = "0.6"
 # for SHA-256 / HMAC / base64url-no-pad / constant-time compare. Not
 # linked into production binaries — purely cross-validation against
 # our in-house C kernel.
+#
+# §Fase 119.h — they now cross-validate BOTH implementations. `tests/crypto.rs`
+# declares no `required-features`, so `cargo test --no-default-features` runs
+# the very same NIST CAVS vectors and reference comparisons against the
+# pure-Rust twins in `crypto::portable`. The toolchain-free build is measured
+# by the gate that was written to judge the C.
 sha2 = "0.10"
 hmac = "0.12"
 base64 = "0.22"
@@ -58,6 +93,35 @@ rand = { version = "0.9", default-features = false, features = ["std", "std_rng"
 # regression gating in 25.k.
 criterion = { version = "0.5", default-features = false, features = ["html_reports", "cargo_bench_support"] }
 
+# ─── §Fase 119.h — which suites need the C ───────────────────────────
+#
+# `required-features` is not a convenience here, it is the honesty gate: a
+# test target that reaches a C-only module MUST refuse to build without it,
+# rather than being quietly cfg'd into a no-op that reports success. The
+# four kernels below have no Rust twin by design (a Rust slab allocator is a
+# different artifact, not the same one), and `drift_gate.rs` holds `Slab`s.
+#
+# `tests/crypto.rs` is deliberately ABSENT from this list — it is the lane
+# that judges the twins.
+[[test]]
+name = "audio"
+required-features = ["native"]
+[[test]]
+name = "buffer"
+required-features = ["native"]
+[[test]]
+name = "effects"
+required-features = ["native"]
+[[test]]
+name = "probe"
+required-features = ["native"]
+[[test]]
+name = "tokens"
+required-features = ["native"]
+[[test]]
+name = "drift_gate"
+required-features = ["native"]
+
 # §Fase 25.j — bench registration. Each entry corresponds to a
 # `benches/<name>.rs` file; `harness = false` lets criterion install
 # its own runner (the cargo default is libtest, which doesn't know
@@ -65,24 +129,31 @@ criterion = { version = "0.5", default-features = false, features = ["html_repor
 [[bench]]
 name = "sha256"
 harness = false
+required-features = ["native"]
 [[bench]]
 name = "hmac"
 harness = false
+required-features = ["native"]
 [[bench]]
 name = "base64"
 harness = false
+required-features = ["native"]
 [[bench]]
 name = "bpe"
 harness = false
+required-features = ["native"]
 [[bench]]
 name = "audio"
 harness = false
+required-features = ["native"]
 [[bench]]
 name = "buffer"
 harness = false
+required-features = ["native"]
 [[bench]]
 name = "effects"
 harness = false
+required-features = ["native"]
 
 # ─── target/ bloat control (disk hygiene, same as axon-rs) ───────────
 # debug=1 (line-tables) for our code; strip debug info from third-party deps.

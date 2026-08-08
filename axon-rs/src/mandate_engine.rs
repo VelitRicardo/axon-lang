@@ -563,6 +563,46 @@ mod tests {
         }
     }
 
+    /// §Fase 119.h — Tier 1 without the C23 tokeniser.
+    ///
+    /// `logit_bias_bans` needs BPE ranks to name the tokens it wants
+    /// banned, so a toolchain-free build cannot emit them. The design
+    /// already accounts for this — `tokenizer_for` returns `None` and
+    /// Tier 2's CSP feedback carries the mandate, because the LOOP is the
+    /// guarantee and Tier 1 is only an accelerator. This test pins that
+    /// the fallback is EMPTY rather than wrong: a build that emitted bans
+    /// against invented ranks would be biasing tokens nobody chose.
+    #[cfg(not(feature = "csys-native"))]
+    #[test]
+    fn without_the_c_kernel_tier_one_contributes_nothing_and_tier_two_still_holds() {
+        let rt = MandateRuntime::from_spec(&spec(
+            "must not contain \"guaranteed\"; must contain \"disclaimer\"",
+        ))
+        .expect("a falsifiable mandate with admissible gains");
+
+        assert!(
+            rt.logit_bias_bans("gpt-4o-mini").is_none(),
+            "no tokeniser means no ranks, and the absence must be reported as `None`. An empty \
+             map would read as \"nothing needed banning\" — indistinguishable from a mandate with \
+             no Absent clauses, and a wire layer would send it as a real instruction."
+        );
+        assert!(
+            super::tokenizer_for("gpt-4o-mini").is_none(),
+            "the whole reason Tier 1 is empty: cl100k/o200k cannot be constructed without the \
+             C23 kernel"
+        );
+
+        // Tier 2 is untouched, and it is where the guarantee lives. The
+        // semantic validator is pure Rust, so the mandate still carries the
+        // constraint it was written to enforce — the loop just lost one
+        // accelerator, not its teeth.
+        assert!(
+            rt.directive_block().contains("guaranteed"),
+            "the CSP feedback that carries the mandate in a toolchain-free build must still name \
+             the constraint"
+        );
+    }
+
     // ── the refusals: zero tokens spent ─────────────────────────────
 
     #[test]
@@ -821,6 +861,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "csys-native")]
     #[test]
     fn absent_needles_are_banned_at_minus_one_hundred_for_tokenised_families() {
         let rt = MandateRuntime::from_spec(&spec(

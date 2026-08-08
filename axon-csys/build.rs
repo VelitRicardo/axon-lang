@@ -72,6 +72,15 @@ fn probe_c23_embed(c_src: &Path, out_dir: &Path) -> bool {
 }
 
 fn main() {
+    // §Fase 119.h — without the `native` feature this build script does
+    // NOTHING. `cc::Build::compile` panics when no compiler is present, so
+    // running it unconditionally made a C toolchain a hard install
+    // requirement; the pure-Rust path exists precisely so it is not one.
+    if std::env::var_os("CARGO_FEATURE_NATIVE").is_none() {
+        println!("cargo:rerun-if-changed=build.rs");
+        return;
+    }
+
     let manifest_dir = PathBuf::from(
         env::var("CARGO_MANIFEST_DIR")
             .expect("CARGO_MANIFEST_DIR is always set by cargo when invoking build scripts"),

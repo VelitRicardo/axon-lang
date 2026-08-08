@@ -65,7 +65,7 @@ pub struct ServerExecutionResult {
 
     /// §Fase 33.x.d — Per-step `EnforcementSummary` from the
     /// `StreamPolicyEnforcer` runs. Empty in two cases:
-    ///   1. Legacy synchronous path (`run_streaming_legacy_path`) —
+    ///   1. Legacy synchronous path (deleted in 33.z.e) —
     ///      the enforcer is not run; the wire stays byte-identical
     ///      with v1.24.0 (D4 byte-compat).
     ///   2. Async streaming path where no step in the flow has a

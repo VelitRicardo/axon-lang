@@ -1,6 +1,6 @@
 [package]
 name = "axon-lang"
-version = "2.83.0"
+version = "2.84.0"
 authors = ["AXON Project", "Ricardo Velit"]
 edition = "2021"
 rust-version = "1.95"
@@ -201,7 +201,12 @@ futures = "0.3"
 # only via the `stream` feature; pinning a direct dep keeps the surface
 # stable across reqwest minor bumps.
 bytes = "1"
-axon-csys = { path = "../axon-csys", version = "=0.2.0" }
+#   §Fase 119.h — consumed WITHOUT its `native` feature. `cc::Build::compile`
+#   panics when no C compiler is present, so an unconditional axon-csys made a
+#   C toolchain a hard REQUIREMENT of `cargo install axon-lang` — not a slow
+#   install, a FAILED one (verified: exit 101, "ToolNotFound"). Turn the
+#   kernels back on with `--features csys-native`.
+axon-csys = { path = "../axon-csys", version = "=0.3.0", default-features = false }
 # §Fase 101.e — the IDP-E sidecar's hostile image DECODE (PNG/JPEG/BMP/TIFF).
 # OPTIONAL + behind the `idpe-sidecar` feature so the main runtime NEVER links a
 # CVE-prone image parser: decode runs ONLY in the isolated `idpe-sidecar` binary
@@ -350,6 +355,29 @@ aws-secrets = ["dep:aws-config", "dep:aws-sdk-secretsmanager"]
 # Enables the isolated image-decode sidecar binary. Off by default: adopters who
 # only ingest OOXML (§100) or feed pre-decoded rasters never pull `image`.
 idpe-sidecar = ["dep:image"]
+
+# §Fase 119.h — the C23 kernels, OPT-IN.
+#
+# §118 measured install time and binary size and left one wall standing that
+# neither metric shows: without a C compiler `cargo install axon-lang` does not
+# take longer, it FAILS. That is the only defect in the adopter path that can
+# leave someone at zero, and the memory of §118 flagged it as the recommended
+# next step for exactly that reason.
+#
+# What the flag actually buys, stated without inflation:
+#   ON  — the C23 BPE kernel, so `count_tokens` is EXACT for the cl100k/o200k
+#         families and `mandate`'s Tier 1 logit-bias bans can be emitted;
+#         plus the C SHA-256/HMAC/base64url kernels.
+#   OFF — `count_tokens` returns `CountKind::Estimate` (the provenance travels
+#         WITH the number, so no caller is misled), `mandate` Tier 1
+#         contributes nothing and Tier 2 carries the guarantee, and the crypto
+#         is served by pure-Rust twins that the SAME NIST CAVS drift gates
+#         judge (`cargo test -p axon-csys --no-default-features`, 42/42).
+#
+# Both degradations were designed in before this feature existed — see
+# `mandate_engine::tokenizer_for` and `axon_csys::tokens::count_tokens`. This
+# flag did not create them; it made them reachable.
+csys-native = ["axon-csys/native"]
 
 # §Fase 118.b.2 — D118.1 (RATIFIED 2026-08-04, option (c)): the second binary.
 #

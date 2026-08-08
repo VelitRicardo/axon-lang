@@ -24,11 +24,23 @@
 //! identical / epsilon-bounded drift gate that catches divergence before
 //! it leaves CI.
 
+// §Fase 119.h — these four modules ARE the C kernels: a cache-line slab
+// allocator, a G.711/PCM resampler, a computed-goto effects FSM, and the
+// build-infrastructure probe. There is no meaningful pure-Rust "fallback" for
+// them — a Rust slab allocator is a different artifact, not the same one —
+// and nothing upstream reaches them (`axon-lang` uses only `tokens`,
+// `crypto` and `envelope`). So without `native` they are simply ABSENT,
+// which is the honest shape: the feature that compiles the C is the feature
+// that provides them.
+#[cfg(feature = "native")]
 pub mod audio;
+#[cfg(feature = "native")]
 pub mod buffer;
 pub mod crypto;
+#[cfg(feature = "native")]
 pub mod effects;
 pub mod envelope;
+#[cfg(feature = "native")]
 pub mod probe;
 pub mod tokens;
 
@@ -38,19 +50,23 @@ pub use envelope::{
     EpistemicEnvelope, EpistemicEnvelopeCRepr, EpistemicKind, THEOREM_5_1_CEILING,
 };
 
+#[cfg(feature = "native")]
 pub use audio::{
     mulaw_decode, mulaw_encode, resample_linear_pcm16, resample_linear_pcm16_output_len,
     ResampleError,
 };
+#[cfg(feature = "native")]
 pub use buffer::{BufferPool, BufferPoolSnapshot, PoolClass, Slab};
 pub use crypto::{
     b64url_decode, b64url_encode, ct_eq, hex_decode, hex_encode, hmac_sha256, sha256,
     ContinuityWire, ContinuityWireError, HmacSha256, Sha256, SHA256_BLOCK_SIZE, SHA256_DIGEST_SIZE,
 };
+#[cfg(feature = "native")]
 pub use effects::{
     BuiltWire, Clause, DispatchError, DispatchResult, Dispatcher, EffectDecl, Frame, Instruction,
     Opcode, TraceEvent, Value as EffectValue, WireBuilder,
 };
+#[cfg(feature = "native")]
 pub use probe::{
     probe_add, probe_c_standard, probe_cacheline_alignment, probe_cacheline_marker,
     probe_cacheline_size, probe_features, probe_version, AxonCsysFeatures, AxonCsysVersion,

@@ -52,6 +52,7 @@ pub struct EpistemicEnvelopeCRepr {
     pub epistemic_kind: u8,
 }
 
+#[cfg(feature = "native")]
 extern "C" {
     fn axon_csys_envelope_validate_degradation(
         env: EpistemicEnvelopeCRepr,
@@ -166,6 +167,7 @@ pub const THEOREM_5_1_CEILING: f64 = 0.99;
 /// §Theorem 5.1 — canonical entry point. Calls the C23 kernel
 /// `axon_csys_envelope_validate_degradation`. See
 /// [`EpistemicEnvelope::validate_degradation`] for semantics.
+#[cfg(feature = "native")]
 pub fn validate_degradation(env: EpistemicEnvelope) -> EpistemicEnvelope {
     let c_input: EpistemicEnvelopeCRepr = env.into();
     let c_output =
@@ -173,11 +175,55 @@ pub fn validate_degradation(env: EpistemicEnvelope) -> EpistemicEnvelope {
     c_output.into()
 }
 
+/// §Fase 119.h — the same function without the C toolchain.
+///
+/// A LINE-BY-LINE mirror of `c-src/effects/envelope.c`, not a
+/// reinterpretation: defensive normalisation first (NaN / ±Inf / out-of-range
+/// coerced into `[0,1]` BEFORE the ceiling check, so the post-condition holds
+/// regardless of caller misbehaviour), then the Theorem 5.1 clamp on derived
+/// states only, then `derived_status` + `epistemic_kind` pass through
+/// untouched.
+///
+/// The drift gate in this module's tests runs against whichever path is
+/// compiled, so the two cannot diverge silently.
+#[cfg(not(feature = "native"))]
+pub fn validate_degradation(mut env: EpistemicEnvelope) -> EpistemicEnvelope {
+    env.certainty = normalise(env.certainty);
+    if env.derived_status && env.certainty > THEOREM_5_1_CEILING {
+        env.certainty = THEOREM_5_1_CEILING;
+    }
+    env
+}
+
+/// §Fase 119.h — the C helper `axon_csys_envelope_normalise`, in Rust.
+/// Non-finite and negative inputs collapse to `0.0`; above `1.0` saturates.
+#[cfg(not(feature = "native"))]
+fn normalise(c: f64) -> f64 {
+    if !c.is_finite() || c < 0.0 {
+        return 0.0;
+    }
+    if c > 1.0 {
+        return 1.0;
+    }
+    c
+}
+
 /// §Theorem 5.1 ceiling exported by the C23 kernel. Returns
 /// `0.99`. Used by drift-gate tests to detect Rust/C divergence
 /// in the bound.
+#[cfg(feature = "native")]
 pub fn theorem_5_1_ceiling_from_c() -> f64 {
     unsafe { axon_csys_envelope_theorem_5_1_ceiling() }
+}
+
+/// §Fase 119.h — without the C kernel there is no second source to compare
+/// against, so this returns the Rust constant. The drift gate that calls it
+/// becomes a tautology in this configuration — which is exactly why the
+/// `native` build must keep running in CI: the comparison only means
+/// something when both sides exist.
+#[cfg(not(feature = "native"))]
+pub fn theorem_5_1_ceiling_from_c() -> f64 {
+    THEOREM_5_1_CEILING
 }
 
 /// Belt-and-suspenders unconditional ceiling clamp. Calls the C23
@@ -185,8 +231,21 @@ pub fn theorem_5_1_ceiling_from_c() -> f64 {
 /// path (canonical is [`validate_degradation`]); this is the
 /// secondary guard for callers that want the absolute ceiling
 /// regardless of `derived_status`.
+#[cfg(feature = "native")]
 pub fn clamp_ceiling(certainty: f64) -> f64 {
     unsafe { axon_csys_envelope_clamp_ceiling(certainty) }
+}
+
+/// §Fase 119.h — mirror of `axon_csys_envelope_clamp_ceiling`: normalise,
+/// then saturate at the Theorem 5.1 ceiling.
+#[cfg(not(feature = "native"))]
+pub fn clamp_ceiling(certainty: f64) -> f64 {
+    let c = normalise(certainty);
+    if c > THEOREM_5_1_CEILING {
+        THEOREM_5_1_CEILING
+    } else {
+        c
+    }
 }
 
 // ──────────────────────────────────────────────────────────────────────

@@ -28,10 +28,13 @@
 //! The drift gate test suite cross-validates against tiktoken-rs
 //! kept as a `[dev-dependency]` (production builds do not link it).
 
+#[cfg(feature = "native")]
 use std::ffi::c_void;
+#[cfg(feature = "native")]
 use std::ptr;
 use std::sync::OnceLock;
 
+#[cfg(feature = "native")]
 use fancy_regex::Regex;
 
 // ──────────────────────────────────────────────────────────────────────
@@ -53,19 +56,31 @@ const MERGES_O200K_BASE: &[u8] = include_bytes!("../c-src/tokens/merges_o200k_ba
 // ──────────────────────────────────────────────────────────────────────
 
 #[allow(non_camel_case_types)]
+#[cfg(feature = "native")]
 type axon_csys_bpe_error_t = i32;
 
+#[cfg(feature = "native")]
 const AXON_CSYS_BPE_OK: axon_csys_bpe_error_t = 0;
+#[cfg(feature = "native")]
 const AXON_CSYS_BPE_BAD_MAGIC: axon_csys_bpe_error_t = -1;
+#[cfg(feature = "native")]
 const AXON_CSYS_BPE_BAD_VERSION: axon_csys_bpe_error_t = -2;
+#[cfg(feature = "native")]
 const AXON_CSYS_BPE_BAD_LAYOUT: axon_csys_bpe_error_t = -3;
+#[cfg(feature = "native")]
 const AXON_CSYS_BPE_OOM: axon_csys_bpe_error_t = -4;
+#[cfg(feature = "native")]
 const AXON_CSYS_BPE_NULL_ARG: axon_csys_bpe_error_t = -5;
+#[cfg(feature = "native")]
 const AXON_CSYS_BPE_BUFFER_TOO_SMALL: axon_csys_bpe_error_t = -6;
+#[cfg(feature = "native")]
 const AXON_CSYS_BPE_UNKNOWN_RANK: axon_csys_bpe_error_t = -7;
+#[cfg(feature = "native")]
 const AXON_CSYS_BPE_PIECE_TOO_LONG: axon_csys_bpe_error_t = -8;
+#[cfg(feature = "native")]
 const AXON_CSYS_BPE_NOT_FOUND: axon_csys_bpe_error_t = -9;
 
+#[cfg(feature = "native")]
 extern "C" {
     fn axon_csys_bpe_load(
         blob: *const u8,
@@ -121,6 +136,15 @@ pub enum BpeError {
     NullArg,
     /// Output buffer too small for the encode result.
     BufferTooSmall,
+    /// §Fase 119.h — the crate was built without the `native` feature, so the
+    /// C23 BPE kernel is not linked and no tokeniser can be constructed.
+    ///
+    /// This is NOT a failure to recover from: it is the declared shape of a
+    /// toolchain-free build. Callers degrade — `count_tokens` returns a
+    /// `CountKind::Estimate`, and `mandate`'s Tier 1 logit-bias bans simply
+    /// do not apply while Tier 2 carries the guarantee. Both degradations
+    /// were designed in before this feature existed.
+    NativeKernelUnavailable,
     /// Rank ID was out of vocabulary range.
     UnknownRank,
     /// Pretokenised piece exceeded `AXON_CSYS_BPE_MAX_PIECE` bytes.
@@ -148,6 +172,10 @@ impl std::fmt::Display for BpeError {
             Self::OutOfMemory => write!(f, "BPE: encoder allocation failed"),
             Self::NullArg => write!(f, "BPE: FFI received NULL pointer"),
             Self::BufferTooSmall => write!(f, "BPE: output buffer too small"),
+            Self::NativeKernelUnavailable => write!(
+                f,
+                "BPE: built without the `native` feature, so the C23 kernel is not                  linked and no tokeniser exists. Token counts degrade to estimates                  and mandate's Tier 1 logit-bias bans do not apply; rebuild with                  `--features csys-native` (needs a C compiler) for exact BPE"
+            ),
             Self::UnknownRank => write!(f, "BPE: rank id out of vocabulary range"),
             Self::PieceTooLong => write!(f, "BPE: pretokenised piece exceeds maximum length"),
             Self::NotFound => write!(f, "BPE: byte sequence not in vocabulary"),
@@ -159,6 +187,7 @@ impl std::fmt::Display for BpeError {
 
 impl std::error::Error for BpeError {}
 
+#[cfg(feature = "native")]
 fn err_from_code(code: axon_csys_bpe_error_t) -> Option<BpeError> {
     match code {
         AXON_CSYS_BPE_OK => None,
@@ -186,6 +215,56 @@ fn err_from_code(code: axon_csys_bpe_error_t) -> Option<BpeError> {
 /// table for the vocabulary is O(vocab_size). Adopters should cache the
 /// tokeniser at process scope (the [`cl100k_base`] / [`o200k_base`]
 /// helpers do this via `OnceLock`).
+/// §Fase 119.h — `Tokenizer` without the C23 kernel: **uninhabited**.
+///
+/// A toolchain-free build links no BPE engine, so a tokeniser cannot exist.
+/// Modelling that as an empty enum rather than a struct-that-errors is the
+/// §118 `PinnedConn` pattern, and it buys two things:
+///
+/// 1. **Signatures stay profile-independent.** `cl100k_base() ->
+///    Result<&'static Tokenizer, BpeError>` is the same type in both builds,
+///    so downstream code compiles unchanged and simply takes the `Err` arm.
+/// 2. **The impossible paths are proved impossible, not asserted.** Each
+///    method below is `match *self {}` — the compiler accepts it precisely
+///    because no value of this type can be constructed, so there is no
+///    `unreachable!()` to trust and no panic to ship.
+#[cfg(not(feature = "native"))]
+pub enum Tokenizer {}
+
+#[cfg(not(feature = "native"))]
+impl Tokenizer {
+    pub fn from_blob(
+        _blob: &'static [u8],
+        _pat: &str,
+        _special: Vec<(String, u32)>,
+    ) -> Result<Self, BpeError> {
+        Err(BpeError::NativeKernelUnavailable)
+    }
+    pub fn vocab_size(&self) -> u32 {
+        match *self {}
+    }
+    pub fn encode_with_special_tokens(&self, _text: &str) -> Result<Vec<u32>, BpeError> {
+        match *self {}
+    }
+    pub fn encode_ordinary(&self, _text: &str) -> Result<Vec<u32>, BpeError> {
+        match *self {}
+    }
+    pub fn lookup_rank(&self, _bytes: &[u8]) -> Option<u32> {
+        match *self {}
+    }
+    pub fn decode_bytes(&self, _ranks: &[u32]) -> Result<Vec<u8>, BpeError> {
+        match *self {}
+    }
+    pub fn embedded_pat(&self) -> &str {
+        match *self {}
+    }
+    /// No kernel, so nothing was embedded by `#embed` or otherwise.
+    pub fn embedded_via_c23_embed() -> bool {
+        false
+    }
+}
+
+#[cfg(feature = "native")]
 pub struct Tokenizer {
     /// Owned C handle. Freed in `Drop`.
     handle: *mut c_void,
@@ -201,9 +280,12 @@ pub struct Tokenizer {
 // merge loop never mutates encoder state — it allocates parts on
 // the caller's stack). Therefore the handle can cross threads
 // freely.
+#[cfg(feature = "native")]
 unsafe impl Send for Tokenizer {}
+#[cfg(feature = "native")]
 unsafe impl Sync for Tokenizer {}
 
+#[cfg(feature = "native")]
 impl Tokenizer {
     /// Construct a tokeniser from a serialised merges blob, a
     /// pretokeniser regex pattern, and a list of special tokens.
@@ -404,6 +486,7 @@ impl Tokenizer {
     }
 }
 
+#[cfg(feature = "native")]
 impl Drop for Tokenizer {
     fn drop(&mut self) {
         unsafe { axon_csys_bpe_destroy(self.handle) };
@@ -555,7 +638,26 @@ pub fn utf8_boundary_floor(bytes: &[u8], max_offset: usize) -> usize {
     if bytes.is_empty() {
         return 0;
     }
-    unsafe { axon_csys_utf8_boundary_floor(bytes.as_ptr(), bytes.len(), max_offset) }
+    #[cfg(feature = "native")]
+    {
+        unsafe { axon_csys_utf8_boundary_floor(bytes.as_ptr(), bytes.len(), max_offset) }
+    }
+    // §Fase 119.h — the C kernel is a SIMD FAST PATH, not the meaning. The
+    // meaning is "walk back to the nearest non-continuation byte", which is
+    // four lines of safe Rust; the drift gate compares them.
+    #[cfg(not(feature = "native"))]
+    {
+        let mut i = max_offset.min(bytes.len());
+        while i > 0 && (bytes[i - 1] & 0b1100_0000) == 0b1000_0000 {
+            i -= 1;
+        }
+        // `i` now sits just after a lead byte or at 0; step back over the lead
+        // itself only when the sequence it starts is incomplete.
+        if i > 0 && i < bytes.len() && (bytes[i] & 0b1100_0000) == 0b1000_0000 {
+            i -= 1;
+        }
+        i
+    }
 }
 
 /// SIMD-accelerated UTF-8 codepoint count over `bytes`. Counts
@@ -567,5 +669,13 @@ pub fn utf8_count_chars(bytes: &[u8]) -> usize {
     if bytes.is_empty() {
         return 0;
     }
-    unsafe { axon_csys_utf8_count_chars(bytes.as_ptr(), bytes.len()) }
+    #[cfg(feature = "native")]
+    {
+        unsafe { axon_csys_utf8_count_chars(bytes.as_ptr(), bytes.len()) }
+    }
+    // §Fase 119.h — same contract as the C: count non-continuation bytes.
+    #[cfg(not(feature = "native"))]
+    {
+        bytes.iter().filter(|b| (*b & 0b1100_0000) != 0b1000_0000).count()
+    }
 }

@@ -45,9 +45,12 @@ use std::sync::Mutex;
 static TOKENIZER_FALLBACK: Mutex<bool> = Mutex::new(false);
 
 /// Read the current flag value. Cheap — single Mutex acquisition.
-/// Called once per `run_streaming_legacy_path` chunking decision
-/// (per-flow, not per-token), so the lock contention is
-/// negligible.
+///
+/// §Fase 119.h — NOT WIRED. This was read once per chunking decision in
+/// `run_streaming_legacy_path`, which sub-fase 33.z.e deleted. Nothing in the
+/// crate calls this function today except its own tests, and nothing calls
+/// [`set_tokenizer_fallback`] either, so the flag is permanently `false`
+/// whatever an adopter does. See the module header.
 pub fn tokenizer_fallback_enabled() -> bool {
     *TOKENIZER_FALLBACK
         .lock()
@@ -121,19 +124,20 @@ impl Drop for TokenizerFallbackGuard {
 ///
 /// # When this fires
 ///
-/// Called from `run_streaming_legacy_path` ONLY when
-/// [`tokenizer_fallback_enabled`] returns `true`. The default
-/// behavior (flag OFF) preserves the v1.24.0 whitespace 3-word
-/// chunking — adopters that don't opt in see identical wire
-/// behavior.
+/// §Fase 119.h — NEVER, in the current build. It fired from
+/// `run_streaming_legacy_path` when [`tokenizer_fallback_enabled`] returned
+/// `true`; 33.z.e deleted that function, and no other caller took its place.
+/// The paragraph that used to stand here described the wiring as live.
 ///
 /// # Fallback semantics
 ///
-/// If tokenizer construction or encoding fails (cl100k_base()
-/// returns a `BpeError`), the function returns an empty Vec; the
-/// caller falls back to whitespace chunking. NO panic, NO silent
-/// success on a bad tokenizer — the adopter sees the same wire
-/// shape as flag-off.
+/// If tokenizer construction or encoding fails — which is now the DEFAULT,
+/// since §119.h made the C23 BPE kernel opt-in — this returns an empty Vec.
+/// The contract was that the caller then falls back to whitespace chunking;
+/// with no caller, the empty Vec goes nowhere. Stated plainly so nobody
+/// re-derives the guarantee from the old text: calling this directly in a
+/// build without `csys-native` yields NOTHING, and the round-trip property
+/// its tests assert holds only with the kernel present.
 ///
 /// # UTF-8 boundary safety
 ///
@@ -249,6 +253,7 @@ mod tests {
         assert!(chunks.is_empty());
     }
 
+    #[cfg(feature = "csys-native")]
     #[test]
     fn bpe_chunk_english_produces_token_level_granularity() {
         // "Hello world" via cl100k_base ⇒ ~2 tokens
@@ -268,6 +273,7 @@ mod tests {
         assert_eq!(joined, "Hello world");
     }
 
+    #[cfg(feature = "csys-native")]
     #[test]
     fn bpe_chunk_finer_than_whitespace_for_long_text() {
         // Long English prose: whitespace chunks(3) groups 3 words
@@ -287,6 +293,7 @@ mod tests {
         assert_eq!(joined, text);
     }
 
+    #[cfg(feature = "csys-native")]
     #[test]
     fn bpe_chunk_round_trip_preserves_content() {
         // Round-trip pin: joining all BPE chunks reconstructs the

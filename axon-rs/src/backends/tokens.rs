@@ -40,6 +40,50 @@ pub use axon_csys::tokens::{count_tokens, estimate, CountKind, TokenCount};
 mod tests {
     use super::*;
 
+    /// §Fase 119.h — the toolchain-free half of the contract.
+    ///
+    /// The tests above are gated on `csys-native` because they assert
+    /// EXACT counts, which only the C23 BPE kernel can produce. Gating
+    /// them and stopping there would leave the default profile — the one
+    /// `cargo install axon-lang` actually produces — asserting nothing at
+    /// all about tokenisation, which is the failure mode this project has
+    /// hit repeatedly: a suite that shrinks silently reads as a suite that
+    /// passes.
+    ///
+    /// So the degradation gets its own gate. Without the kernel every
+    /// family falls to the 4-chars-per-token estimate, and the point is
+    /// that the number arrives LABELLED: `CountKind::Estimate` travels
+    /// with it, so no caller can mistake one for the other.
+    #[cfg(not(feature = "csys-native"))]
+    #[test]
+    fn without_the_c_kernel_every_family_degrades_to_a_labelled_estimate() {
+        for model in [
+            "gpt-4o-mini",
+            "gpt-3.5-turbo",
+            "o1-preview",
+            "o3-mini",
+            "chatgpt-4o-latest",
+            "kimi-k2.6",
+            "moonshot-v1-8k",
+            "glm-4",
+            "openrouter:openai/gpt-4o-mini",
+        ] {
+            let got = count_tokens(model, "axon for axon — four-pillar streaming language.");
+            assert_eq!(
+                got.kind,
+                CountKind::Estimate,
+                "{model}: without `csys-native` there is no BPE kernel, so the count MUST be \
+                 reported as an estimate. An `Exact` here would mean the count is unlabelled \
+                 guesswork — the one outcome worse than a guess."
+            );
+            assert!(
+                got.count > 0,
+                "{model}: the estimate must still be a usable number — degrading to zero would \
+                 silently zero out every budget and quota computed from it"
+            );
+        }
+    }
+
     #[test]
     fn empty_text_is_zero_tokens() {
         let r = count_tokens("gpt-4o-mini", "");
@@ -95,6 +139,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "csys-native")]
     #[test]
     fn gpt_4o_uses_o200k_exact() {
         let r = count_tokens("gpt-4o-mini", "hello world");
@@ -105,12 +150,14 @@ mod tests {
         assert!(r.count <= 5);
     }
 
+    #[cfg(feature = "csys-native")]
     #[test]
     fn gpt_3_5_turbo_uses_cl100k_exact() {
         let r = count_tokens("gpt-3.5-turbo", "hello world");
         assert_eq!(r.kind, CountKind::Exact);
     }
 
+    #[cfg(feature = "csys-native")]
     #[test]
     fn o1_and_o3_use_o200k_exact() {
         let a = count_tokens("o1-mini", "hello world");
@@ -121,6 +168,7 @@ mod tests {
         assert_eq!(a.count, b.count);
     }
 
+    #[cfg(feature = "csys-native")]
     #[test]
     fn kimi_and_glm_use_cl100k_exact() {
         let a = count_tokens("kimi-k2.6", "hello world");
@@ -129,12 +177,14 @@ mod tests {
         assert_eq!(b.kind, CountKind::Exact);
     }
 
+    #[cfg(feature = "csys-native")]
     #[test]
     fn moonshot_alias_uses_cl100k_exact() {
         let r = count_tokens("moonshot-v1-8k", "hello world");
         assert_eq!(r.kind, CountKind::Exact);
     }
 
+    #[cfg(feature = "csys-native")]
     #[test]
     fn openrouter_strips_prefix_and_recurses() {
         // openrouter:openai/gpt-4o-mini → gpt-4o-mini → o200k_base
@@ -148,6 +198,7 @@ mod tests {
         assert_eq!(r.kind, CountKind::Estimate);
     }
 
+    #[cfg(feature = "csys-native")]
     #[test]
     fn case_insensitive_model_matching() {
         // Adopters sometimes specify mixed case; the dispatch must work.

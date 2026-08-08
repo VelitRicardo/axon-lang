@@ -440,7 +440,7 @@ pub fn build_streaming_plan(
 ///
 /// §Fase 33.z.e — the `unsupported_feature_reason` rejection step
 /// has been DELETED in lockstep with `PlanError::LegacyOrchestrationRequired`
-/// + `run_streaming_legacy_path`. The per-IRFlowNode dispatcher
+/// + the v1.26.0 legacy path 33.z.e deleted. The per-IRFlowNode dispatcher
 /// (Fase 33.y 45/45) handles every IRFlowNode variant; the planner
 /// no longer needs to gate against a closed-deferred-catalog. Any
 /// shape the planner could compile pre-33.z.e is dispatchable

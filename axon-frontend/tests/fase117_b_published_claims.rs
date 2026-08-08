@@ -86,10 +86,22 @@ fn fase117b_readme_states_the_real_msrv() {
 
 #[test]
 fn fase117b_readme_documents_the_c_toolchain_prerequisite() {
-    // `axon-csys` is a NON-OPTIONAL dependency with a build script that compiles
-    // C23 via `cc`. `cargo install axon-lang` therefore needs a C compiler, and
-    // 2.80.0's docs never said so once — the failure surfaces as an opaque
-    // linker error with nothing in the docs to explain it.
+    // `cargo install axon-lang` needs a C compiler, and 2.80.0's docs never said
+    // so once — the failure surfaces as an opaque linker error with nothing in
+    // the docs to explain it.
+    //
+    // §Fase 119.h — the REASON changed even though the requirement did not, and
+    // that distinction is the whole reason this comment is being rewritten
+    // rather than left alone. The original owner was `axon-csys`, a hard
+    // dependency compiling C23 through `cc`. It is now opt-in behind
+    // `csys-native`. What still forces a C toolchain is `ring`, pulled by
+    // `rustls` and `jsonwebtoken` — upstream, and load-bearing, since rustls is
+    // how the compiler reaches every model provider.
+    //
+    // The assertion is unchanged because the adopter-visible fact is unchanged.
+    // Had this gate been written against the CAUSE instead of the CLAIM, it
+    // would have gone green the moment axon-csys became optional and quietly
+    // stopped protecting anything — while the install still failed.
     let readme = std::fs::read_to_string(repo_root().join("README.md")).expect("README.md");
     assert!(
         readme.contains("C compiler"),

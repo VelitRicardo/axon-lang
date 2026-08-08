@@ -18988,20 +18988,21 @@ pub struct StreamingExecution {
     pub exited: std::sync::Arc<tokio::sync::Notify>,
     /// §Fase 33.x.d — Per-step `EnforcementSummary` side-channel.
     ///
-    /// Populated by the async streaming producer
-    /// (`run_streaming_async_path`) as each step's
+    /// Populated by the streaming producer
+    /// ([`crate::streaming_via_dispatcher::run_streaming_via_dispatcher`],
+    /// which replaced 33.x.b's `run_streaming_async_path` in 33.z.e) as each step's
     /// [`crate::stream_effect_dispatcher::StreamPolicyEnforcer`]
     /// finishes draining. Read by the consumer (`execute_sse_handler`)
     /// when emitting `axon.complete` so the wire body includes the
     /// enforcement summary per step that had a declared
     /// `<stream:<policy>>` effect.
     ///
-    /// Empty for:
-    ///   - The legacy synchronous fallback path
-    ///     (`run_streaming_legacy_path`) — preserves v1.24.0 wire
-    ///     byte-compat for adopter shapes the streaming path defers.
-    ///   - The async path when no step has a declared effect policy
-    ///     — no enforcer is constructed; no summary to publish.
+    /// Empty when no step has a declared effect policy — no enforcer is
+    /// constructed, so there is no summary to publish.
+    ///
+    /// §Fase 119.h — a second bullet here named the v1.24.0 legacy
+    /// synchronous fallback. 33.z.e deleted that path, so the only way this
+    /// stays empty today is the reason above.
     ///
     /// The lock is `tokio::sync::Mutex` so the producer can hold it
     /// across `.await` points without risk of deadlock from
@@ -19013,8 +19014,9 @@ pub struct StreamingExecution {
     >,
     /// §Fase 33.x.f — Per-step audit record side-channel.
     ///
-    /// Populated by the async streaming producer
-    /// (`run_streaming_async_path`) after each step finishes
+    /// Populated by the streaming producer
+    /// ([`crate::streaming_via_dispatcher::run_streaming_via_dispatcher`],
+    /// which replaced 33.x.b's `run_streaming_async_path` in 33.z.e) after each step finishes
     /// draining: one
     /// [`crate::axonendpoint_replay::StepAuditRecord`] per
     /// `IRFlowNode::Step` that executed. Read by the SSE handler
@@ -19025,11 +19027,7 @@ pub struct StreamingExecution {
     /// field so `GET /v1/replay/<trace_id>` returns the per-step
     /// sequence to regulators / auditors.
     ///
-    /// Empty for:
-    ///   - The legacy synchronous fallback path
-    ///     (`run_streaming_legacy_path`) — preserves v1.24.0 wire +
-    ///     replay byte-compat.
-    ///   - SSE routes WITHOUT `replay: true` — recording the
+    /// Empty for SSE routes WITHOUT `replay: true` — recording the
     ///     side-channel costs ~one Mutex push per step regardless
     ///     of replay binding (cheap), but the entry is never written.
     pub step_audit_records: std::sync::Arc<

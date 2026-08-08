@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://www.ricardovelit.com/axon-docs"><img src="https://img.shields.io/badge/docs-ricardovelit.com%2Faxon--docs-blue" alt="Documentation"></a>
-  <img src="https://img.shields.io/badge/version-v2.83.0-informational" alt="Version">
+  <img src="https://img.shields.io/badge/version-v2.84.0-informational" alt="Version">
   <img src="https://img.shields.io/badge/status-production-brightgreen" alt="Status: Production">
   <img src="https://img.shields.io/badge/runtime-100%25%20Rust%20%2B%20C23-orange" alt="100% Rust + C23">
   <img src="https://img.shields.io/badge/streaming-SSE%20%7C%20NDJSON%20%7C%20WebSocket-brightgreen" alt="Streaming">
@@ -4848,11 +4848,27 @@ axon-constructor/
 | Requirement | Why |
 | ----------- | --- |
 | [Rust](https://rustup.rs) **1.95+** | `rust-version` in every manifest. Older toolchains fail with an MSRV error, not a compile error. |
-| A working **C compiler** (MSVC / clang / gcc) | `axon-csys` is a non-optional dependency and builds C23 kernels via `cc`. On Windows the MSVC Build Tools suffice; on Debian/Ubuntu, `build-essential`. |
+| A working **C compiler** (MSVC / clang / gcc) | `ring` — reached through `rustls` (HTTPS to every model provider) and `jsonwebtoken` — compiles C unconditionally in its build script. On Windows the MSVC Build Tools suffice; on Debian/Ubuntu, `build-essential`. |
 
 > These are checked at build time, not install time — if `cargo install` stops
 > with a `cc`/linker error rather than a Rust error, the C toolchain is what is
 > missing.
+>
+> **On the C requirement, precisely.** Until 2.84.0 there were two sources of
+> it. One was ours: `axon-csys`, which compiles the C23 BPE and crypto kernels,
+> was a hard dependency, so a machine without `cc` did not get a slow install —
+> it got exit 101. That one is gone; the kernels now live behind
+> `--features csys-native`, and the default build serves the same API from
+> pure-Rust twins that the same NIST CAVS drift gates judge. The cost of
+> leaving them off is bounded and labelled: `count_tokens` returns
+> `CountKind::Estimate` instead of an exact BPE count, and `mandate` drops its
+> Tier 1 logit-bias bans while Tier 2 — the refinement loop that *is* the
+> guarantee — is untouched.
+>
+> The other source is `ring`, and it is not ours to remove. It is how `rustls`
+> does TLS, which is how this compiler talks to every model provider. So the
+> row above is still true today, and this note exists because the honest
+> version of "we made the C optional" is "we removed the half we owned".
 
 ### Option 1 — `cargo install` (recommended)
 

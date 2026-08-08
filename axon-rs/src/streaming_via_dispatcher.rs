@@ -12,13 +12,15 @@
 //! The 33.z.b sub-fase ships the producer behind a feature flag
 //! (`AXON_STREAMING_VIA_DISPATCHER`, default OFF) so v1.27.0-alpha
 //! adopters who DON'T opt in see byte-identical v1.26.0 wire
-//! behavior (D4 safety net during the migration). When the flag is
-//! ON, `server_execute_streaming` invokes
-//! [`run_streaming_via_dispatcher`] instead of the v1.26.0 paths
-//! (`run_streaming_async_path` for canonical Step + `run_streaming_legacy_path`
-//! for everything else). Sub-fase 33.z.c flips the flag default
-//! from OFF to ON for v1.27.0 stable; sub-fase 33.z.e deletes the
-//! flag + the legacy path entirely.
+//! behavior (D4 safety net during the migration).
+//!
+//! §Fase 119.h — that migration is OVER, and the paragraph above is kept
+//! only as the record of how it was staged. 33.z.c flipped the default;
+//! 33.z.e deleted the flag and both v1.26.0 entry points. Today
+//! `server_execute_streaming` calls [`run_streaming_via_dispatcher`]
+//! unconditionally — there is no flag to set and no other path to fall back
+//! to. The names that used to appear here (`run_streaming_async_path`,
+//! `run_streaming_legacy_path`) resolve to nothing in this crate.
 //!
 //! Mirrors the proven Fase 33.x.h opt-in BPE chunking pattern —
 //! land a new hot path behind a flag, validate with adopters,
@@ -95,8 +97,9 @@ use tokio::sync::mpsc::UnboundedSender;
 /// `flow_dispatcher::dispatch_node` hot path end-to-end, emitting
 /// FlowExecutionEvents on the inbound mpsc channel.
 ///
-/// Signature mirrors [`run_streaming_legacy_path`] for drop-in
-/// replacement under the `AXON_STREAMING_VIA_DISPATCHER` flag.
+/// The signature was shaped as a drop-in replacement for the v1.26.0
+/// `run_streaming_legacy_path`, which 33.z.e deleted; it is now simply the
+/// streaming entry point's signature.
 ///
 /// # Arguments
 ///

@@ -989,7 +989,8 @@ pub async fn run_pure_shape(
         .map_err(|_| DispatchError::ChannelClosed)?;
 
     // 5. Resolve backend through the streaming registry. Mirrors
-    //    `run_streaming_async_path`'s resolution discipline.
+    //    the resolution discipline of 33.x.b's `run_streaming_async_path`
+    //    (deleted in 33.z.e; the discipline outlived the function).
     // §Fase 65.C — pin the per-tenant API key (when the caller threaded one
     // via `with_api_key`) so the LLM call uses THIS tenant's key, not the
     // process env var. `None` ⇒ the prior env-key behavior, unchanged.
