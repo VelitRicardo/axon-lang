@@ -6877,13 +6877,25 @@ impl Parser {
     /// lower-case spellings, because the flat `kp:` form was already accepted and
     /// removing it would break programs that use it.
     ///
-    /// Unknown keys inside the block are skipped rather than refused — the enclosing
-    /// declaration keeps that behaviour, and tightening it is a separate, wider
-    /// decision than this sub-fase should make unilaterally.
+    /// §Fase 119.h — unknown keys inside the block are REFUSED.
+    ///
+    /// §119.b left them skipped, reasoning that the enclosing declaration behaves
+    /// that way and tightening it was a wider decision. Measuring the published
+    /// 2.84.0 binary showed what that costs, and the cost is not symmetric:
+    /// misspelling a GAIN is caught (the missing gain fails the sign conditions),
+    /// but misspelling a BOUND is not — `stability { drift: 0.5, L: 0.25 }`
+    /// compiles clean, and the mandate is admitted with no Lyapunov floor at all.
+    /// The typo does not weaken the check, it DELETES it.
+    ///
+    /// These two blocks are not like the enclosing declaration. They are closed
+    /// catalogues of three and two keys, every one of which is a proof obligation,
+    /// and an unrecognised key here is never a field a later version will use —
+    /// it is a typo whose price is a silently discharged safety property.
     fn parse_pid_block(&mut self, node: &mut MandateDefinition) -> Result<(), ParseError> {
         self.consume(TokenType::LBrace)?;
         while !self.check(TokenType::RBrace) && !self.check(TokenType::Eof) {
-            let key = self.current().value.clone();
+            let key_token = self.current().clone();
+            let key = key_token.value.clone();
             self.advance();
             if self.check(TokenType::Colon) {
                 self.advance();
@@ -6891,7 +6903,19 @@ impl Parser {
                     "kp" | "Kp" => node.kp = self.parse_optional_float(),
                     "ki" | "Ki" => node.ki = self.parse_optional_float(),
                     "kd" | "Kd" => node.kd = self.parse_optional_float(),
-                    _ => self.skip_value(),
+                    _ => {
+                        return Err(ParseError {
+                            message: format!(
+                                "`{key}` is not a gain of the PID controller. The block accepts \
+                                 exactly `Kp`, `Ki` and `Kd` (lower-case spellings too). \
+                                 Skipping what it does not recognise would let a typo drop a \
+                                 gain, and the stability band is computed from all three."
+                            ),
+                            line: key_token.line,
+                            column: key_token.column,
+                            ..Default::default()
+                        });
+                    }
                 }
             }
             if self.check(TokenType::Comma) {
@@ -6923,7 +6947,8 @@ impl Parser {
     ) -> Result<(), ParseError> {
         let open = self.consume(TokenType::LBrace)?;
         while !self.check(TokenType::RBrace) && !self.check(TokenType::Eof) {
-            let key = self.current().value.clone();
+            let key_token = self.current().clone();
+            let key = key_token.value.clone();
             self.advance();
             if self.check(TokenType::Colon) {
                 self.advance();
@@ -6932,7 +6957,26 @@ impl Parser {
                         node.drift_bound = self.parse_optional_float()
                     }
                     "L" | "l" | "lipschitz" => node.lipschitz = self.parse_optional_float(),
-                    _ => self.skip_value(),
+                    // §Fase 119.h — see `parse_pid_block`. This is the arm that
+                    // was actually dangerous: a dropped bound is a dropped
+                    // hypothesis, and the theorem it guards then holds vacuously.
+                    _ => {
+                        return Err(ParseError {
+                            message: format!(
+                                "`{key}` is not a hypothesis of the stability theorem. The block \
+                                 accepts exactly `D` (the drift bound, also spelled `d` or \
+                                 `drift_bound`) and `L` (the Lipschitz constant, also `l` or \
+                                 `lipschitz`). This is an error rather than a skipped key \
+                                 because a bound that fails to parse is a bound that is not \
+                                 declared, and the compiler would then verify the band it can \
+                                 see — the sign conditions — and admit the mandate as if the \
+                                 rest had been checked."
+                            ),
+                            line: key_token.line,
+                            column: key_token.column,
+                            ..Default::default()
+                        });
+                    }
                 }
             }
             if self.check(TokenType::Comma) {

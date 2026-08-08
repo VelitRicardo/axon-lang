@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://www.ricardovelit.com/axon-docs"><img src="https://img.shields.io/badge/docs-ricardovelit.com%2Faxon--docs-blue" alt="Documentation"></a>
-  <img src="https://img.shields.io/badge/version-v2.84.0-informational" alt="Version">
+  <img src="https://img.shields.io/badge/version-v2.85.0-informational" alt="Version">
   <img src="https://img.shields.io/badge/status-production-brightgreen" alt="Status: Production">
   <img src="https://img.shields.io/badge/runtime-100%25%20Rust%20%2B%20C23-orange" alt="100% Rust + C23">
   <img src="https://img.shields.io/badge/streaming-SSE%20%7C%20NDJSON%20%7C%20WebSocket-brightgreen" alt="Streaming">

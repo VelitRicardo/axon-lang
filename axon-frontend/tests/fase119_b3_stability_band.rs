@@ -300,3 +300,107 @@ mandate M {
         (Some(0.5), Some(0.4))
     );
 }
+
+// ══════════════════════════════════════════════════════════════════════
+// §Fase 119.h — a misspelled bound is an ERROR, not a dropped hypothesis
+// ══════════════════════════════════════════════════════════════════════
+//
+// Found by smoke-testing the published 2.84.0 binary rather than by reading
+// the code, which matters: the source said, in a comment I wrote in §119.b,
+// that skipping unknown keys was the conservative choice. Measuring showed
+// the cost, and showed it is ASYMMETRIC.
+//
+//   `pid { kpp: 2.0, ... }`          -> refused. The missing gain fails the
+//                                       sign conditions, so the typo surfaces.
+//   `stability { drift: 0.5, ... }`  -> COMPILED CLEAN. The bound is dropped,
+//                                       the Lyapunov floor with it, and the
+//                                       mandate is admitted as though the band
+//                                       had been verified.
+//
+// The direction that stays silent is the one that removes a guarantee. That is
+// the shape this project keeps paying for — a check that passes because the
+// thing it checks was never there — and it is exactly what §119.b.3 was built
+// to prevent, defeated by a typo.
+
+/// Every misspelling that used to compile clean while deleting a hypothesis.
+const DROPPED_BOUNDS: &[(&str, &str)] = &[
+    ("drift", "stability { drift: 0.5, L: 0.4 }"),
+    ("Drift", "stability { Drift: 0.5, L: 0.4 }"),
+    ("lipshitz", "stability { D: 0.5, lipshitz: 0.4 }"),
+    ("Lipschitz", "stability { D: 0.5, Lipschitz: 0.4 }"),
+    ("bound", "stability { bound: 0.5, L: 0.4 }"),
+];
+
+fn parse_result(src: &str) -> Result<axon_frontend::ast::Program, String> {
+    let tokens = Lexer::new(src, "<test>").tokenize().map_err(|e| format!("{e:?}"))?;
+    Parser::new(tokens).parse().map_err(|e| e.message)
+}
+
+fn mandate_with(block: &str) -> String {
+    format!(
+        r#"
+mandate Typo {{
+    constraint: "no forward-looking statements without safe harbor language"
+    pid {{ Kp: 2.0, Ki: 0.3, Kd: 0.1 }}
+    {block}
+    epsilon: 0.05
+    max_steps: 8
+}}
+"#
+    )
+}
+
+#[test]
+fn fase119h_an_unrecognised_stability_key_is_refused_not_skipped() {
+    for (typo, block) in DROPPED_BOUNDS {
+        let err = parse_result(&mandate_with(block)).expect_err(
+            "a stability block naming a key that is not D or L must be a parse error. \
+             Before §119.h it compiled clean and the bound simply vanished, which is worse \
+             than a wrong bound: the theorem then holds vacuously and nothing says so.",
+        );
+        assert!(
+            err.contains(typo),
+            "the error must NAME the offending key so the fix is one edit away; got: {err}"
+        );
+        assert!(
+            err.contains('D') && err.contains('L'),
+            "the error must list what IS accepted — a reader who misspelled `lipschitz` needs \
+             the spelling, not a rejection; got: {err}"
+        );
+    }
+}
+
+#[test]
+fn fase119h_an_unrecognised_pid_key_is_refused_not_skipped() {
+    // Less dangerous than the bounds — a dropped gain fails the sign
+    // conditions downstream — but silent either way, and the two blocks
+    // should not disagree about whether a typo is an error.
+    let err = parse_result(&mandate_with("stability { D: 0.5, L: 0.4 }").replace(
+        "pid { Kp: 2.0, Ki: 0.3, Kd: 0.1 }",
+        "pid { Kpp: 2.0, Ki: 0.3, Kd: 0.1 }",
+    ))
+    .expect_err("an unrecognised PID gain must be a parse error");
+    assert!(err.contains("Kpp"), "the error must name the key; got: {err}");
+}
+
+#[test]
+fn fase119h_the_accepted_spellings_all_still_parse() {
+    // The other half of a closed catalogue: closing it must not narrow it.
+    // Every spelling the grammar documents has to keep working, or this
+    // change trades a silent failure for a loud false one.
+    for block in [
+        "stability { D: 0.5, L: 0.4 }",
+        "stability { d: 0.5, l: 0.4 }",
+        "stability { drift_bound: 0.5, lipschitz: 0.4 }",
+    ] {
+        assert!(
+            check(&mandate_with(block)).is_empty(),
+            "{block} must compile clean — effort 2.4 sits inside (0.5, 2.5)"
+        );
+    }
+    for pid in ["pid { Kp: 2.0, Ki: 0.3, Kd: 0.1 }", "pid { kp: 2.0, ki: 0.3, kd: 0.1 }"] {
+        let src = mandate_with("stability { D: 0.5, L: 0.4 }")
+            .replace("pid { Kp: 2.0, Ki: 0.3, Kd: 0.1 }", pid);
+        assert!(check(&src).is_empty(), "{pid} must compile clean");
+    }
+}
