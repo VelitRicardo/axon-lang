@@ -5434,6 +5434,28 @@ impl Parser {
             .is_some_and(|t| t.ttype == TokenType::Colon)
     }
 
+    /// §Fase 119.f — a CONFIG KEY: `"env:DATABASE_URL"` or the bare
+    /// `env:DATABASE_URL` README publishes.
+    ///
+    /// §113 made `connection:`/`endpoint:` a config KEY rather than a URL or a
+    /// DSN — the address resolves per deployment. README writes both the
+    /// quoted and the bare spelling; the parser took only the quoted one, so
+    /// every published `axonstore` with an unquoted key failed on its own
+    /// third line. One value, two spellings — the epsilon/tolerance
+    /// resolution of §119.b.1, applied to the config surface.
+    fn parse_config_key(&mut self) -> Result<String, ParseError> {
+        if self.check(TokenType::StringLit) {
+            return Ok(self.consume(TokenType::StringLit)?.value.clone());
+        }
+        let scheme = self.consume_any_ident_or_kw()?.value.clone();
+        if self.check(TokenType::Colon) {
+            self.advance();
+            let key = self.consume_any_ident_or_kw()?.value.clone();
+            return Ok(format!("{scheme}:{key}"));
+        }
+        Ok(scheme)
+    }
+
     /// §Fase 119.f — a PIX field value: a string literal OR a binding
     /// reference. README writes `query: question` (the flow parameter) far
     /// more often than a literal, and the parser accepted only the literal —
@@ -7224,9 +7246,7 @@ impl Parser {
                     // resolved `backend:`, which may appear after this
                     // field in source order).
                     "class" => node.class = self.parse_dotted_identifier()?,
-                    "connection" => {
-                        node.connection = self.consume(TokenType::StringLit)?.value.clone()
-                    }
+                    "connection" => node.connection = self.parse_config_key()?,
                     // §Fase 113 — the `resource` this store RUNS ON. When
                     // present the store derives its DSN, its POOL SIZE and its
                     // sharing discipline from the resource; `connection:`
