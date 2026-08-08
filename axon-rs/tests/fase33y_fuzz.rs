@@ -138,6 +138,7 @@ fn random_step(lcg: &mut Lcg) -> IRFlowNode {
         },
         requires_context: None,
         now_tz: None,
+        pix_ops: Vec::new(),
         guards: Vec::new(),
         body: Vec::new(),
     })
@@ -431,6 +432,7 @@ fn random_stream(_lcg: &mut Lcg) -> IRFlowNode {
 
 fn random_navigate(lcg: &mut Lcg) -> IRFlowNode {
     IRFlowNode::Navigate(IRNavigateStep {
+        depth: None,
         node_type: "navigate",
         source_line: 0,
         source_column: 0,
@@ -1026,6 +1028,7 @@ async fn fase33y_n_tool_call_interleaving_d8_d3() {
             },
             requires_context: None,
             now_tz: None,
+            pix_ops: Vec::new(),
             guards: Vec::new(),
             body: Vec::new(),
         });

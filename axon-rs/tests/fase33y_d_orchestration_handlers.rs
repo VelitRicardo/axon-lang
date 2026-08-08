@@ -140,6 +140,7 @@ fn step_node(name: &str, ask: &str) -> IRFlowNode {
         confidence_floor: None,
         navigate_ref: String::new(),
         apply_ref: String::new(),
+        pix_ops: Vec::new(),
         guards: Vec::new(),
         requires_context: None,        now_tz: None,        body: Vec::new(),
     })

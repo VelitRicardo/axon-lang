@@ -79,6 +79,7 @@ fn step(name: &str, ask: &str) -> IRStep {
         confidence_floor: None,
         navigate_ref: String::new(),
         apply_ref: String::new(),
+        pix_ops: Vec::new(),
         guards: Vec::new(),
         requires_context: None,        now_tz: None,        body: Vec::new(),
     }

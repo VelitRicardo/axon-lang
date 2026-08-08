@@ -278,6 +278,7 @@ async fn trail_after_navigate_chain() {
         .insert("__navigate_nav_session_trail".into(), "step1>step2".into());
 
     let nav = IRFlowNode::Navigate(IRNavigateStep {
+        depth: None,
         node_type: "navigate",
         source_line: 0,
         source_column: 0,

@@ -881,6 +881,7 @@ impl IRGenerator {
                 apply_ref: s.apply_ref.clone(),
                 requires_context: s.requires_context,
                 now_tz: s.now_tz.clone(),
+                pix_ops: s.pix_ops.iter().map(|op| self.visit_flow_step(op)).collect(),
                 guards: s
                     .guards
                     .iter()
@@ -1208,6 +1209,7 @@ impl IRGenerator {
                 body: s.body.iter().map(|st| self.visit_flow_step(st)).collect(),
             }),
             FlowStep::Navigate(s) => IRFlowNode::Navigate(IRNavigateStep {
+                depth: s.depth,
                 node_type: "navigate",
                 source_line: s.loc.line,
                 source_column: s.loc.column,
@@ -1416,6 +1418,7 @@ impl IRGenerator {
                     apply_ref: String::new(),
                     requires_context: None,
                     now_tz: None,
+                    pix_ops: Vec::new(),
                     guards: Vec::new(),
                     body: Vec::new(),
                 })

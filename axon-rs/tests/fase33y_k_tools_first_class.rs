@@ -74,6 +74,7 @@ fn step_with_apply(name: &str, ask: &str, apply: &str) -> IRFlowNode {
         confidence_floor: None,
         navigate_ref: String::new(),
         apply_ref: apply.into(),
+        pix_ops: Vec::new(),
         guards: Vec::new(),
         requires_context: None,        now_tz: None,        body: Vec::new(),
     })
@@ -271,6 +272,7 @@ async fn cognitive_framing_variants_unchanged_no_tool_call() {
             max_rows: None,
         }),
         IRFlowNode::Navigate(IRNavigateStep {
+            depth: None,
             node_type: "navigate",
             source_line: 0,
             source_column: 0,

@@ -369,6 +369,7 @@ mod tests {
             requires_context: None,
             now_tz: None,
             guards: Vec::new(),
+            pix_ops: Vec::new(),
             loc: loc(),
         })
     }

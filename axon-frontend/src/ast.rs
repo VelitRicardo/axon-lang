@@ -2720,6 +2720,16 @@ pub struct StepNode {
     /// §Fase 119 (D119.4) — the governance applications declared in this
     /// step's body, in source order. Empty for every pre-§119 program.
     pub guards: Vec<StepGuardNode>,
+    /// §Fase 119.f — the PIX verbs (`navigate` / `drill` / `trail`) written
+    /// as STATEMENTS in this step's body, in source order.
+    ///
+    /// README's pix/corpus family writes them exactly here, with a braceless
+    /// field list, and each produces a binding (`as: relevant_sections`) the
+    /// step's own `ask:` then interpolates. So they are ELEVATIONS, the same
+    /// shape §119.c gave `lambda`/`ots`: dispatch runs them BEFORE the step's
+    /// generation. Reusing the flow-level node types (no new AST shapes) is
+    /// the D119.4 doctrine — one concept, two positions.
+    pub pix_ops: Vec<FlowStep>,
     pub loc: Loc,
 }
 
@@ -3315,6 +3325,12 @@ pub struct StreamBlock {
 }
 #[derive(Debug)]
 pub struct NavigateStep {
+    /// §Fase 119.f — per-navigation `depth:` override (README's pix family
+    /// writes it inline). `None` ⇒ the navigator's bounded-rationality
+    /// default. Threaded into `NavConfig.d_max` at dispatch, so this field
+    /// DECIDES something — adding one consumed by nothing would be the §111
+    /// defect this fase exists to end.
+    pub depth: Option<i64>,
     pub pix_name: String,
     pub corpus_name: String,
     pub query_expr: String,

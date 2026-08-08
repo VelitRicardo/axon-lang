@@ -223,6 +223,7 @@ fn store_specs() -> Vec<IRAxonStore> {
 
 fn navigate_node() -> IRNavigateStep {
     IRNavigateStep {
+        depth: None,
         node_type: "navigate",
         source_line: 0,
         source_column: 0,

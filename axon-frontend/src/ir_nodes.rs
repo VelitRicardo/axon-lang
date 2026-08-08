@@ -1052,6 +1052,13 @@ pub struct IRStep {
     /// byte-identical (no IR-SHA drift — the §68.b/§91.a discipline).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub guards: Vec<IRStepGuard>,
+    /// §Fase 119.f — the PIX verbs written as statements in this step's body
+    /// (`navigate` / `drill` / `trail` / `validate`), in source order. They
+    /// are ELEVATIONS: dispatch runs them before the step generates, so each
+    /// `as:` binding is in scope for the step's `ask:`. Elided when empty so
+    /// every pre-§119.f program's IR JSON is byte-identical.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub pix_ops: Vec<IRFlowNode>,
     pub body: Vec<serde_json::Value>,
 }
 
@@ -1625,6 +1632,9 @@ pub struct IRStreamBlock {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct IRNavigateStep {
+    /// §Fase 119.f — per-navigation depth override → `NavConfig.d_max`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub depth: Option<i64>,
     pub node_type: &'static str,
     pub source_line: u32,
     pub source_column: u32,

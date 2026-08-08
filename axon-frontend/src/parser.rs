@@ -3258,6 +3258,7 @@ impl Parser {
             requires_context: None,
             now_tz: None,
             guards: Vec::new(),
+            pix_ops: Vec::new(),
             loc,
         };
 
@@ -3288,6 +3289,51 @@ impl Parser {
                     self.advance();
                     self.consume(TokenType::Colon)?;
                     node.output_type = self.parse_output_type_string()?;
+                }
+                // §Fase 119.f — `navigate` in a step body is TWO forms, told
+                // apart by the token after the keyword:
+                //   `navigate: <Ref>`        the field (pre-§119.f)
+                //   `navigate <Ref> query: …` the STATEMENT README publishes
+                // The second is an elevation: it binds `as:` before the step
+                // generates, so the step's `ask:` can interpolate it.
+                TokenType::Navigate
+                    if self
+                        .tokens
+                        .get(self.pos + 1)
+                        .is_some_and(|t| t.ttype != TokenType::Colon) =>
+                {
+                    let op = self.parse_navigate_step()?;
+                    node.pix_ops.push(op);
+                }
+                TokenType::Drill => {
+                    let op = self.parse_drill_step()?;
+                    node.pix_ops.push(op);
+                }
+                TokenType::Trail => {
+                    let op = self
+                        .parse_flow_step_simple("trail")
+                        .map(|l| FlowStep::Trail(TrailStep { navigate_ref: l.1, loc: l.0 }))?;
+                    node.pix_ops.push(op);
+                }
+                // §Fase 119.f — `validate <binding> against: <Schema>`, the
+                // form README's pix family publishes inside a step. The
+                // flow-level `validate <target>` already exists; this adds the
+                // step position plus the `against:` clause the docs write.
+                TokenType::Validate => {
+                    let tok = self.current().clone();
+                    self.advance();
+                    let target = self.consume_any_ident_or_kw()?.value.clone();
+                    let mut rule = String::new();
+                    if self.current().value == "against" {
+                        self.advance();
+                        self.consume(TokenType::Colon)?;
+                        rule = self.consume_any_ident_or_kw()?.value.clone();
+                    }
+                    node.pix_ops.push(FlowStep::Validate(ValidateStep {
+                        target,
+                        rule,
+                        loc: Loc { line: tok.line, column: tok.column },
+                    }));
                 }
                 TokenType::Navigate => {
                     self.advance();
@@ -5254,11 +5300,63 @@ impl Parser {
         }))
     }
 
+    /// §Fase 119.f — is the cursor on a `navigate` field (`<name>:`)?
+    ///
+    /// The continuation test for the braceless field list. Closed catalog by
+    /// construction: a name outside it ends the navigate and belongs to the
+    /// enclosing step, which is exactly what makes the delimiter-free form
+    /// unambiguous.
+    fn at_navigate_field(&self) -> bool {
+        const FIELDS: &[&str] = &[
+            // §Fase 119.f — `output` is deliberately ABSENT from the
+            // BRACELESS catalog even though the braced form accepts it as an
+            // alias for `as`. In step-body position `output:` is the STEP's
+            // own field, and a shared name would make the terminator
+            // ambiguous — the braceless navigate would swallow the step's
+            // output type. README writes `as:` in this position throughout;
+            // the braced/flow-level form keeps both spellings.
+            "corpus", "query", "trail", "as", "from", "budget", "where",
+            "depth", "recall",
+        ];
+        self.field_ahead(FIELDS)
+    }
+
+    /// §Fase 119.f — the same test for `drill`.
+    fn at_drill_field(&self) -> bool {
+        // Same reason as `at_navigate_field`: no `output` in the braceless
+        // catalog, because that name belongs to the enclosing step.
+        const FIELDS: &[&str] = &["subtree", "path", "query", "as"];
+        self.field_ahead(FIELDS)
+    }
+
+    /// `<one of names>` immediately followed by `:`.
+    fn field_ahead(&self, names: &[&str]) -> bool {
+        let cur = self.current();
+        if !names.contains(&cur.value.as_str()) {
+            return false;
+        }
+        self.tokens
+            .get(self.pos + 1)
+            .is_some_and(|t| t.ttype == TokenType::Colon)
+    }
+
+    /// §Fase 119.f — a PIX field value: a string literal OR a binding
+    /// reference. README writes `query: question` (the flow parameter) far
+    /// more often than a literal, and the parser accepted only the literal —
+    /// which is why every published `navigate` failed on its own second line.
+    fn parse_pix_value(&mut self) -> Result<String, ParseError> {
+        if self.check(TokenType::StringLit) {
+            return Ok(self.consume(TokenType::StringLit)?.value.clone());
+        }
+        Ok(self.consume_any_ident_or_kw()?.value.clone())
+    }
+
     fn parse_navigate_step(&mut self) -> Result<FlowStep, ParseError> {
         let tok = self.current().clone();
         self.advance();
         let pix_name = self.consume_any_ident_or_kw()?.value.clone();
         let mut node = NavigateStep {
+            depth: None,
             pix_name,
             corpus_name: String::new(),
             query_expr: String::new(),
@@ -5272,6 +5370,55 @@ impl Parser {
                 column: tok.column,
             },
         };
+        // §Fase 119.f — the BRACELESS field form, which is what README §pix/
+        // §corpus publishes everywhere:
+        //
+        //     navigate ContractIndex
+        //         query: question
+        //         trail: enabled
+        //         as: relevant_sections
+        //
+        // Terminated by the field-name set, not by a brace: the navigate
+        // fields are a CLOSED catalog, so "the next token is one of these and
+        // is followed by a colon" is an unambiguous continuation test. That is
+        // the same closed-catalog discipline the rest of the language uses,
+        // and it is why this form needs no delimiter to be parseable.
+        if !self.check(TokenType::LBrace) {
+            while self.at_navigate_field() {
+                let f = self.current().value.clone();
+                self.advance();
+                self.consume(TokenType::Colon)?;
+                match f.as_str() {
+                    "corpus" => node.corpus_name = self.consume_any_ident_or_kw()?.value.clone(),
+                    "query" => node.query_expr = self.parse_pix_value()?,
+                    "trail" => {
+                        let v = self.consume_any_ident_or_kw()?.value;
+                        node.trail_enabled = matches!(v.as_str(), "true" | "enabled" | "on");
+                    }
+                    "output" | "as" => {
+                        node.output_name = self.consume_any_ident_or_kw()?.value.clone()
+                    }
+                    "from" => node.seed = self.consume_any_ident_or_kw()?.value.clone(),
+                    "budget" => node.budget = self.parse_optional_int(),
+                    "where" => node.where_expr = self.parse_pix_value()?,
+                    "depth" => node.depth = self.parse_optional_int(),
+                    // §Fase 119.f — `recall: episodic` selects the MDN memory
+                    // mode README's clinical/legal examples write. The
+                    // navigator's episodic path is §63.C's adaptive corpus
+                    // reinforcement, keyed by the corpus declaration; the
+                    // value is accepted and recorded on the seed so nothing
+                    // is silently dropped, and the adaptive path already
+                    // reads the corpus-level flag.
+                    "recall" => {
+                        let mode = self.consume_any_ident_or_kw()?.value.clone();
+                        if node.seed.is_empty() {
+                            node.seed = format!("recall:{mode}");
+                        }
+                    }
+                    _ => self.skip_value(),
+                }
+            }
+        }
         if self.check(TokenType::LBrace) {
             self.advance();
             while !self.check(TokenType::RBrace) && !self.check(TokenType::Eof) {
@@ -5283,11 +5430,11 @@ impl Parser {
                         "corpus" => {
                             node.corpus_name = self.consume_any_ident_or_kw()?.value.clone()
                         }
-                        "query" => {
-                            node.query_expr = self.consume(TokenType::StringLit)?.value.clone()
-                        }
+                        "query" => node.query_expr = self.parse_pix_value()?,
                         "trail" => {
-                            node.trail_enabled = self.consume_any_ident_or_kw()?.value == "true"
+                            let v = self.consume_any_ident_or_kw()?.value;
+                            node.trail_enabled =
+                                matches!(v.as_str(), "true" | "enabled" | "on");
                         }
                         "output" | "as" => {
                             node.output_name = self.consume_any_ident_or_kw()?.value.clone()
@@ -5330,6 +5477,38 @@ impl Parser {
                 column: tok.column,
             },
         };
+        // §Fase 119.f — `drill <Ref> into "<path>" query: … as: …`, the form
+        // README publishes. `into` is a positional keyword (no colon), the
+        // rest is the same braceless closed-catalog field list as `navigate`.
+        if self.current().value == "into" {
+            self.advance();
+            // §Fase 119.f — README writes BOTH `into "Liabilities"` (a title)
+            // and `into findings.top_region` (a dotted binding path). The
+            // subtree path is dot-separated either way, so both spellings
+            // land in the same field.
+            node.subtree_path = if self.check(TokenType::StringLit) {
+                self.consume(TokenType::StringLit)?.value.clone()
+            } else {
+                self.parse_dotted_identifier()?
+            };
+        }
+        if !self.check(TokenType::LBrace) {
+            while self.at_drill_field() {
+                let f = self.current().value.clone();
+                self.advance();
+                self.consume(TokenType::Colon)?;
+                match f.as_str() {
+                    "subtree" | "path" => {
+                        node.subtree_path = self.consume(TokenType::StringLit)?.value.clone()
+                    }
+                    "query" => node.query_expr = self.parse_pix_value()?,
+                    "output" | "as" => {
+                        node.output_name = self.consume_any_ident_or_kw()?.value.clone()
+                    }
+                    _ => self.skip_value(),
+                }
+            }
+        }
         if self.check(TokenType::LBrace) {
             self.advance();
             while !self.check(TokenType::RBrace) && !self.check(TokenType::Eof) {
@@ -5341,9 +5520,7 @@ impl Parser {
                         "subtree" | "path" => {
                             node.subtree_path = self.consume(TokenType::StringLit)?.value.clone()
                         }
-                        "query" => {
-                            node.query_expr = self.consume(TokenType::StringLit)?.value.clone()
-                        }
+                        "query" => node.query_expr = self.parse_pix_value()?,
                         "output" | "as" => {
                             node.output_name = self.consume_any_ident_or_kw()?.value.clone()
                         }

@@ -186,6 +186,7 @@ fn corpus_source() -> IRCorpusStoreSource {
 
 fn navigate_node(where_expr: &str) -> IRNavigateStep {
     IRNavigateStep {
+        depth: None,
         node_type: "navigate",
         source_line: 0,
         source_column: 0,

@@ -66,6 +66,7 @@ fn step_node() -> IRFlowNode {
         confidence_floor: None,
         navigate_ref: String::new(),
         apply_ref: String::new(),
+        pix_ops: Vec::new(),
         guards: Vec::new(),
         requires_context: None,        now_tz: None,        body: Vec::new(),
     })
@@ -377,6 +378,7 @@ fn stream_node() -> IRFlowNode {
 
 fn navigate_node() -> IRFlowNode {
     IRFlowNode::Navigate(IRNavigateStep {
+        depth: None,
         node_type: "navigate",
         source_line: 0,
         source_column: 0,

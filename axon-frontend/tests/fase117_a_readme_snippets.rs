@@ -74,24 +74,26 @@ const KNOWN_UNCOMPILABLE: &[(u64, &str)] = &[
     (0x8ec59ea78ba27d50, "block 54: axonstore Users — `env` unquoted in field"),
     (0xf8c2160c210922da, "block 55: axonstore KnowledgeBase — `env` unquoted in field"),
 
+    // §Fase 119.f — the pix/corpus family (10 rows) LEFT this ledger on
+    // 2026-08-08. §117 predicted it: "ONE header-grammar decision for
+    // pix/corpus clears 15". The decision turned out to be the D119.4 shape
+    // again — the PIX verbs (`navigate` / `drill` / `trail` / `validate`) are
+    // step-body STATEMENTS with a braceless field list, and each is an
+    // ELEVATION whose `as:` binding the step's own `ask:` interpolates. Plus
+    // three value forms the README always wrote and the parser never took:
+    // `query: <binding>` (not only a literal), `trail: enabled`, and
+    // `into <dotted.path>`. The new `depth:` override is CONSUMED
+    // (NavConfig.d_max) — a field decided by nothing would be the §111
+    // defect this fase exists to end.
+
     // ── Family C — `pix` ───────────────────────────────────────────────────
     // Seven blocks, all "Expected Colon, found Identifier(<name>)": the
     // documented `pix <Name> { … }` header does not match the parser. Owner:
     // the fase that owns `pix` (§62 lineage).
-    (0xf85f85b185d872bf, "block 17: pix ContractIndex — header grammar drift"),
     (0xb24b02521e08ce86, "block 18: pix ClinicalProtocol — header grammar drift"),
-    (0xce95afa6ee05156e, "block 19: pix SDKDocs — header grammar drift"),
-    (0x9c39389a82aaac2b, "block 20: pix GDPRRegulation — header grammar drift"),
-    (0x05236cbea762876a, "block 21: pix BoardInspector — header grammar drift"),
-    (0x720a281c04a63599, "block 22: pix TissueAnalyzer — header grammar drift"),
-    (0x306145f5459ae86f, "block 23: pix SatelliteWatch — header grammar drift"),
 
     // ── Family D — `corpus` ────────────────────────────────────────────────
     // Same shape as `pix`: "Expected Colon, found Identifier(<name>)".
-    (0xccbb7005cbe84a67, "block 24: corpus ClinicalKnowledge — header grammar drift"),
-    (0xc2630fa205e5bc2e, "block 25: corpus CaseLawGraph — header grammar drift"),
-    (0x28456c860b16677e, "block 26: corpus DueDiligence — header grammar drift"),
-    (0xf92913227e84ad9b, "block 27: corpus ClinicalKnowledge — header grammar drift"),
     (0x7815bf9da91face3, "block 28: corpus CaseLawGraph — header grammar drift"),
     (0x4f6fce64b79cc42d, "block 29: corpus FinancialNetwork — header grammar drift"),
     (0xa5a68efabbe9e3fd, "block 37: corpus ClinicalDB from mcp(...) — header grammar drift"),

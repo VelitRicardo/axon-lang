@@ -130,6 +130,7 @@ fn ingest(source: &str, target: &str) -> IRFlowNode {
 
 fn navigate(pix_ref: &str, corpus_ref: &str, query: &str, output_name: &str) -> IRFlowNode {
     IRFlowNode::Navigate(IRNavigateStep {
+        depth: None,
         node_type: "navigate",
         source_line: 0,
         source_column: 0,

@@ -5299,6 +5299,7 @@ mod fase65_navigate_bridge {
     fn routes_only_the_pure_structural_verbs() {
         use crate::ir_nodes::*;
         let nav = IRFlowNode::Navigate(IRNavigateStep {
+            depth: None,
             node_type: "navigate",
             source_line: 0,
             source_column: 0,
@@ -5380,6 +5381,7 @@ mod fase65_navigate_bridge {
         store_sources.insert("LtmGraph".to_string(), src);
         let nd = empty_nav_dispatch(store_sources);
         let nav = crate::ir_nodes::IRFlowNode::Navigate(crate::ir_nodes::IRNavigateStep {
+            depth: None,
             node_type: "navigate",
             source_line: 0,
             source_column: 0,

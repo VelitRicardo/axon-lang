@@ -325,6 +325,7 @@ async fn fuzz_navigate_never_panics_random_input() {
         let query = lcg.ascii_with_random_len(20);
         let output_name = lcg.ascii_with_random_len(10);
         let node = IRFlowNode::Navigate(IRNavigateStep {
+            depth: None,
             node_type: "navigate",
             source_line: 0,
             source_column: 0,
@@ -493,6 +494,7 @@ async fn fuzz_cognitive_nested_in_orchestration_never_panics() {
                 max_rows: None,
             }),
             8 => IRFlowNode::Navigate(IRNavigateStep {
+                depth: None,
                 node_type: "navigate",
                 source_line: 0,
                 source_column: 0,

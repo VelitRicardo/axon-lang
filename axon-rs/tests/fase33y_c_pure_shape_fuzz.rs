@@ -224,6 +224,7 @@ async fn fuzz_run_step_never_panics_random_input() {
             confidence_floor: None,
             navigate_ref: String::new(),
             apply_ref: String::new(),
+            pix_ops: Vec::new(),
             guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: Vec::new(),
         };
@@ -374,6 +375,7 @@ async fn fuzz_random_cancel_timing_across_all_handlers() {
                     confidence_floor: None,
                     navigate_ref: String::new(),
                     apply_ref: String::new(),
+                    pix_ops: Vec::new(),
                     guards: Vec::new(),
                     requires_context: None,                    now_tz: None,                    body: Vec::new(),
                 };
@@ -491,6 +493,7 @@ async fn fuzz_random_policy_pairings_across_handlers() {
                     confidence_floor: None,
                     navigate_ref: String::new(),
                     apply_ref: String::new(),
+                    pix_ops: Vec::new(),
                     guards: Vec::new(),
                     requires_context: None,                    now_tz: None,                    body: Vec::new(),
                 };
@@ -603,6 +606,7 @@ async fn fuzz_chained_steps_step_counter_monotone() {
                 confidence_floor: None,
                 navigate_ref: String::new(),
                 apply_ref: String::new(),
+                pix_ops: Vec::new(),
                 guards: Vec::new(),
                 requires_context: None,                now_tz: None,                body: Vec::new(),
             };

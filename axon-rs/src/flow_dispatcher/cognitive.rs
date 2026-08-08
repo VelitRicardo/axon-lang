@@ -1165,7 +1165,17 @@ pub async fn run_navigate(
             };
             emit_step_start(ctx, &out_name, step_index, "navigate")?;
 
-            let cfg = crate::pix_navigator::NavConfig::default();
+            // §Fase 119.f — the declared per-navigation `depth:` DECIDES the
+            // bounded-rationality depth bound. A field consumed by nothing
+            // would be the §111 defect; this is the consumer.
+            let cfg = crate::pix_navigator::NavConfig {
+                d_max: node
+                    .depth
+                    .filter(|d| *d > 0)
+                    .map(|d| d as usize)
+                    .unwrap_or(crate::pix_navigator::NavConfig::default().d_max),
+                ..crate::pix_navigator::NavConfig::default()
+            };
             let scorer = crate::pix_navigator::LexicalScorer::default();
             let result = crate::pix_navigator::pix_navigate(&tree, &query, &cfg, &scorer);
 
@@ -1835,6 +1845,7 @@ mod tests {
         let mut ctx = ctx.with_mdn_corpora(Arc::new(map));
 
         let node = IRNavigateStep {
+            depth: None,
             node_type: "navigate",
             source_line: 0,
             source_column: 0,
@@ -1888,6 +1899,7 @@ mod tests {
         let mut ctx = ctx.with_mdn_store_sources(Arc::new(sources));
 
         let node = IRNavigateStep {
+            depth: None,
             node_type: "navigate",
             source_line: 0,
             source_column: 0,
@@ -1933,6 +1945,7 @@ mod tests {
             .with_mdn_adaptive(Arc::new(adaptive));
 
         let node = IRNavigateStep {
+            depth: None,
             node_type: "navigate",
             source_line: 0,
             source_column: 0,
@@ -1964,6 +1977,7 @@ mod tests {
         // still emits the `navigate` wire slug (D5 graceful degradation).
         let (mut ctx, mut rx) = fresh_ctx();
         let node = IRNavigateStep {
+            depth: None,
             node_type: "navigate",
             source_line: 0,
             source_column: 0,
@@ -1999,6 +2013,7 @@ mod tests {
                 .into(),
         );
         let node = IRNavigateStep {
+            depth: None,
             node_type: "navigate",
             source_line: 0,
             source_column: 0,
