@@ -103,6 +103,9 @@ fn reason_node() -> IRFlowNode {
         source_column: 0,
         strategy: String::new(),
         target: String::new(),
+        given: String::new(),
+        ask: String::new(),
+        depth: None,
     })
 }
 

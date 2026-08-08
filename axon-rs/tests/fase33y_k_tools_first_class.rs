@@ -332,6 +332,9 @@ async fn pure_shape_variants_no_tool_call_event() {
             source_column: 0,
             strategy: "cot".into(),
             target: "t".into(),
+            given: String::new(),
+            ask: String::new(),
+            depth: None,
         }),
         IRFlowNode::Validate(IRValidateStep {
             node_type: "validate",

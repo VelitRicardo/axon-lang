@@ -263,6 +263,9 @@ async fn fuzz_run_reason_never_panics_random_input() {
             source_column: 0,
             strategy,
             target,
+            given: String::new(),
+            ask: String::new(),
+            depth: None,
         };
         let (mut ctx, _rx) = fresh_ctx();
         let outcome = run_reason(&r, &mut ctx).await;
@@ -397,6 +400,9 @@ async fn fuzz_random_cancel_timing_across_all_handlers() {
                     source_column: 0,
                     strategy: "s".into(),
                     target: "t".into(),
+                    given: String::new(),
+                    ask: String::new(),
+                    depth: None,
                 };
                 run_reason(&r, &mut ctx).await
             }
@@ -516,6 +522,9 @@ async fn fuzz_random_policy_pairings_across_handlers() {
                     source_column: 0,
                     strategy: "".into(),
                     target: "t".into(),
+                    given: String::new(),
+                    ask: String::new(),
+                    depth: None,
                 },
                 &mut ctx,
             )
@@ -642,6 +651,9 @@ async fn fuzz_utf8_random_input_does_not_panic() {
             source_column: 0,
             strategy,
             target,
+            given: String::new(),
+            ask: String::new(),
+            depth: None,
         };
         let (mut ctx, _rx) = fresh_ctx();
         let outcome = run_reason(&r, &mut ctx).await;

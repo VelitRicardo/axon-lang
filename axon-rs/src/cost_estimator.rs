@@ -456,6 +456,7 @@ mod tests {
             node_type: "Reason",
             source_line: 1, source_column: 1,
             strategy: "deductive".into(), target: "t".into(),
+            given: String::new(), ask: String::new(), depth: None,
         });
         assert_eq!(classify_node(&reason), StepKind::Reason);
     }
@@ -614,6 +615,7 @@ mod tests {
                 IRFlowNode::Reason(IRReasonStep {
                     node_type: "Reason", source_line: 3, source_column: 1,
                     strategy: "deductive".into(), target: "conclusion".into(),
+                    given: String::new(), ask: String::new(), depth: None,
                 }),
             ],
             edges: vec![],

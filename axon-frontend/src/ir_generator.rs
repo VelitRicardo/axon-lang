@@ -925,6 +925,12 @@ impl IRGenerator {
                 source_column: s.loc.column,
                 strategy: s.strategy.clone(),
                 target: s.target.clone(),
+                // §Fase 119.f.8 — the block form's fields. Elided when empty so
+                // every pre-§119.f.8 program's IR JSON stays byte-identical
+                // (the §68.b/§91.a no-IR-SHA-drift discipline).
+                given: s.given.clone(),
+                ask: s.ask.clone(),
+                depth: s.depth,
             }),
             FlowStep::Validate(s) => IRFlowNode::Validate(IRValidateStep {
                 node_type: "validate",

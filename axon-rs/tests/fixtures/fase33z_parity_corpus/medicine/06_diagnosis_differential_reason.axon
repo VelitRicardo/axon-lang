@@ -2,7 +2,7 @@
 
 flow DiagnosisDifferentialReason() -> Unit {
     step CollectFindings { ask: "Collect clinical findings" output: Stream<Token> }
-    reason about_differential { target: "posterior_ranking" }
+    reason { target: "posterior_ranking" }
     step EmitTopK { ask: "Emit top-K differential candidates" output: Stream<Token> }
 }
 

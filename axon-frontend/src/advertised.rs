@@ -51,6 +51,17 @@
 //! 3. **A [`RuntimeStatus::Real`] claim must cite its proof**, and if the proof
 //!    names a test file, that file must exist on disk. A claim of reality that
 //!    cannot point at the gate proving it is just a nicer-sounding assertion.
+//! 4. **The proof must cite the PATH, not the engine** — §Fase 119.f.8, learned
+//!    the expensive way. `reason` was attested `Real { proof:
+//!    "pure_shape::run_reason" }`. The citation was accurate: the handler
+//!    existed, worked, and had its own tests. It was also worthless, because the
+//!    grammar that reaches it did not exist — the README's `reason { given ask
+//!    depth }` (16 blocks, each its step's entire cognition) was thrown away at
+//!    PARSE time, and `axon check` said `0 errors`. §111's own phrase: *motor
+//!    real, cable muerto*. A function name proves an engine is there; it says
+//!    nothing about whether any published program can call it. **Cite a gate
+//!    that walks source → dispatch.** This is the table's blind spot, and it is
+//!    why [`KNOWN_DEBT`] being empty is necessary and not sufficient.
 //!
 //! # How to change this file
 //!
@@ -106,7 +117,17 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     ("persona", Real { proof: "flow_dispatcher::pure_shape" }),
     ("intent", Unaudited),
     ("flow", Real { proof: "flow_dispatcher::dispatch_node (exhaustive, zero catch-alls)" }),
-    ("reason", Real { proof: "pure_shape::run_reason" }),
+    // §Fase 119.f.8 — the proof used to read `pure_shape::run_reason`, and it was
+    // TRUE and USELESS. The handler existed and worked; the grammar that reaches
+    // it did not. The README's `reason { given ask depth }` — 16 blocks, each one
+    // its step's entire cognition — was discarded at PARSE time, so this "Real"
+    // attested an engine no published program could call.
+    //
+    // ⚠️ The lesson is about THIS TABLE, not about `reason`: a proof that names a
+    // FUNCTION proves the engine exists. It does not prove any published program
+    // reaches it. Cite the gate that walks the path — grammar to dispatch — and
+    // the attestation means what a reader thinks it means.
+    ("reason", Real { proof: "fase119_f8_reason_block + fase119_f8_reason_prompt_is_built (grammar → IR → prompt); engine pure_shape::run_reason" }),
     ("anchor", Real { proof: "anchor_checker" }),
     ("refine", Real { proof: "pure_shape::run_refine" }),
     ("memory", Real { proof: "cognitive::run_remember / run_recall (PEM write-through)" }),

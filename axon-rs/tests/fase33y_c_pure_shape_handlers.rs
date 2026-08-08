@@ -101,6 +101,11 @@ fn reason(target: &str, strategy: &str) -> IRReasonStep {
         source_column: 0,
         strategy: strategy.into(),
         target: target.into(),
+        // §Fase 119.f.8 — the block form's fields; the positional
+        // `reason <target>` shape this helper builds leaves them empty.
+        given: String::new(),
+        ask: String::new(),
+        depth: None,
     }
 }
 

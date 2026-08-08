@@ -1230,6 +1230,20 @@ pub struct IRReasonStep {
     pub source_column: u32,
     pub strategy: String,
     pub target: String,
+    /// §Fase 119.f.8 — the evidence the deliberation reasons OVER, resolved
+    /// against the flow bindings at dispatch. Elided when empty so every
+    /// pre-§119.f.8 program's IR JSON is byte-identical (no IR-SHA drift).
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub given: String,
+    /// §Fase 119.f.8 — the deliberation's question. The README writes it in
+    /// every one of its sixteen `reason { … }` blocks and, before this fase, it
+    /// reached the model in none of them.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub ask: String,
+    /// §Fase 119.f.8 — the declared deliberation depth. Consumed by the
+    /// dispatch FRAMING, like `strategy`; not a runtime iteration bound.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub depth: Option<u32>,
 }
 
 #[derive(Debug, Clone, Serialize)]

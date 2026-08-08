@@ -3091,10 +3091,45 @@ pub struct ProbeStep {
     pub fields: Vec<String>,
     pub loc: Loc,
 }
+/// §Fase 119.f.8 — `reason { given: … ask: "…" depth: N }`, the README's
+/// most-published cognitive block (16 occurrences) and, until this fase, the
+/// most expensive silent drop in the language.
+///
+/// **What was wrong.** The block form had NO home in this struct: `strategy`
+/// and `target` were its only fields. Written at flow level, `reason { … }`
+/// did not parse at all (the parser wanted `reason <target>`); written inside a
+/// `step { }` body — the only place the README ever writes it — it hit
+/// `skip_flow_step_structural`, which threw the whole block away. Measured on
+/// 2.85.0: a step whose ENTIRE cognition was a `reason { given ask depth }`
+/// block passed `axon check` with exit 0 and lowered to `"ask": ""`,
+/// `"given": ""`. `advertised.rs` attested `reason` as
+/// `Real { proof: "pure_shape::run_reason" }` — and the attestation was true
+/// of an engine no published program could reach. §111's own words: motor
+/// real, cable muerto.
+///
+/// The field set is CLOSED (§119.h.2's rule: when a block skips what it does
+/// not recognise, ask which direction the silence fails in — a typo'd `ask:`
+/// yields a promptless deliberation, which is weaker, not louder).
 #[derive(Debug)]
 pub struct ReasonStep {
+    /// `chain_of_thought: enabled` and `strategy: <name>` both land here.
     pub strategy: String,
+    /// The pre-§119.f.8 positional form `reason <target>`. Empty for the
+    /// block form, which names its evidence in `given` instead.
     pub target: String,
+    /// `given:` — the evidence this deliberation reasons OVER. One reference,
+    /// a comma list (`given: Initialize.output, sessions`) or a bracketed list
+    /// (`given: [baseline.topology, current.topology]`); all three forms occur
+    /// in the published README. Resolved against the flow bindings at dispatch.
+    pub given: String,
+    /// `ask:` — the question. This is the deliberation's actual prompt; before
+    /// §119.f.8 it reached the model in exactly zero published programs.
+    pub ask: String,
+    /// `depth:` — the declared deliberation depth. Consumed by the dispatch
+    /// FRAMING (like `strategy`, the other declared-posture field), not by a
+    /// runtime iteration bound. Stated plainly so the field is not read as a
+    /// loop count it has never been.
+    pub depth: Option<u32>,
     pub loc: Loc,
 }
 #[derive(Debug)]

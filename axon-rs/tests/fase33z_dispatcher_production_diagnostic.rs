@@ -798,6 +798,9 @@ fn d1_catalog_totality_pin_45_variants() {
             source_column: 0,
             strategy: String::new(),
             target: String::new(),
+            given: String::new(),
+            ask: String::new(),
+            depth: None,
         }),
         IRFlowNode::Validate(IRValidateStep {
             node_type: "validate",

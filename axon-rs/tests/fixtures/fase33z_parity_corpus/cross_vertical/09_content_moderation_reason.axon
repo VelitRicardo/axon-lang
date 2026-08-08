@@ -2,7 +2,7 @@
 
 flow ContentModerationReason() -> Unit {
     step IngestContent { ask: "Ingest user-submitted content" output: Stream<Token> }
-    reason about_policy { target: "category_severity" }
+    reason { target: "category_severity" }
     step IssueAction { ask: "Issue moderation action" output: Stream<Token> }
 }
 

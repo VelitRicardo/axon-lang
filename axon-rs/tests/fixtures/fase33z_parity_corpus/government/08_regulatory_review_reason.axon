@@ -2,7 +2,7 @@
 
 flow RegulatoryReviewReason() -> Unit {
     step IngestRule { ask: "Ingest proposed regulation text" output: Stream<Token> }
-    reason about_impact { target: "stakeholder_burden" }
+    reason { target: "stakeholder_burden" }
     step DraftRecommendation { ask: "Draft review recommendation" output: Stream<Token> }
 }
 

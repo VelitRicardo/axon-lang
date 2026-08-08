@@ -195,6 +195,57 @@ pub async fn run_step(
         }
     }
 
+    // §Fase 119.f.7 — the step-body STATEMENTS, dispatched.
+    //
+    // §119.f gave the PIX verbs (`navigate` / `drill` / `trail` / `validate`)
+    // and the step-scoped invocations (`probe … for […]`, `use_tool … with …`,
+    // `par { … }`) a position inside a `step { }` body, an AST slot
+    // (`StepNode.pix_ops`), an IR field (`IRStep.pix_ops`) — and NO reader.
+    // `.pix_ops` had exactly one reader in the workspace: the frontend's own
+    // grammar test. Both doc comments asserted "dispatch runs them BEFORE the
+    // step generates"; that sentence was false for every one of them, and ten
+    // README rows left the §117 ledger on the strength of programs that
+    // compiled and then did nothing. Same shape as `warden`/`quant` in §111 —
+    // badge, registry entry, parser production, dispatch arm, no-op — one fase
+    // after the fase built to end it.
+    //
+    // The elevation IS the flow-level node run in the step's position: each op
+    // goes to the SAME handler the flow body would give it, so it keeps its own
+    // wire events and its own binding (D119.4's "one concept, two positions").
+    // No second implementation to drift. The routing is a CLOSED catalog
+    // (`dispatch_step_statement`) rather than the generic `dispatch_node`: a
+    // step body admits exactly the eight statements the parser can put there,
+    // and anything else is refused in writing instead of silently doing
+    // something the grammar never promised.
+    //
+    // Placed BEFORE the interpolation below, which is what makes it an
+    // elevation rather than a postscript: `navigate … as: guideline` must bind
+    // `guideline` before `ask: "… {guideline} …"` is rendered.
+    //
+    // Failure propagates. A step must not generate over evidence its own body
+    // said to gather and could not — the §112 kernel defect ("if the evidence
+    // is missing, substitute the belief") is the thing being refused here.
+    for op in &step.pix_ops {
+        match dispatch_step_statement(op, ctx).await? {
+            NodeOutcome::Completed { .. } => {}
+            // §Fase 119.d — suspending inside a nested construct has no defined
+            // continuation shape; the `par` handler refuses it in the same
+            // words, and guessing here would park a continuation nobody can
+            // resume into the middle of a step body.
+            NodeOutcome::Hibernated { .. } => {
+                return Err(DispatchError::BackendError {
+                    name: "hibernate".to_string(),
+                    message: "hibernate inside a step body has no defined continuation \
+                              shape yet; place it at top-level flow position"
+                        .to_string(),
+                })
+            }
+            // The loop/flow sentinels belong to the enclosing construct, which
+            // alone knows what they terminate. Propagate unchanged.
+            other => return Ok(other),
+        }
+    }
+
     let prompt =
         crate::exec_context::interpolate_vars(&step.ask, &ctx.let_bindings);
 
@@ -281,6 +332,57 @@ pub async fn run_step(
         now_tz: step.now_tz.clone(),
     };
     run_pure_shape(shape, ctx).await
+}
+
+/// §Fase 119.f.7 — the CLOSED catalog of statements a `step { }` body admits.
+///
+/// `IRStep.pix_ops` is filled by exactly eight parser productions (§119.f's
+/// `parse_step` arms): the PIX verbs `navigate` / `drill` / `trail` /
+/// `validate`, the step-scoped invocations `probe … for […]`,
+/// `use_tool … with …` and `reason { given ask depth }` (§119.f.8), and a
+/// nested `par { … }`. Each routes to the handler the FLOW-level position
+/// already uses — one concept, two positions, one implementation.
+///
+/// Deliberately not `super::dispatch_node`. Two reasons, and the second is the
+/// one that matters:
+///
+///   1. `dispatch_node` handles `IRFlowNode::Step`, so routing through it makes
+///      `run_step` mutually recursive with a future that is not `Send`, and
+///      `run_step` is awaited from a `Send` context (`runner::block_on_store`).
+///   2. A step body is not a flow body. Sending an unexpected variant to a
+///      generic dispatcher would execute grammar the parser cannot produce and
+///      the language never promised. A closed match makes the set legible and
+///      REFUSES the rest in writing — the §111 discipline (an open surface
+///      breeds a catalog nobody decided) applied to a dispatch table.
+///
+/// Adding an eighth step-body statement means adding its arm here. The refusal
+/// below names the variant, so the omission surfaces as a diagnostic rather
+/// than as silence.
+async fn dispatch_step_statement(
+    op: &crate::ir_nodes::IRFlowNode,
+    ctx: &mut DispatchCtx,
+) -> Result<NodeOutcome, DispatchError> {
+    use crate::ir_nodes::IRFlowNode as N;
+    match op {
+        N::Probe(n) => run_probe(n, ctx).await,
+        // §Fase 119.f.8 — the eighth statement: `reason { given ask depth }`.
+        N::Reason(n) => run_reason(n, ctx).await,
+        N::Validate(n) => run_validate(n, ctx).await,
+        N::Navigate(n) => super::cognitive::run_navigate(n, ctx).await,
+        N::Drill(n) => super::pix::run_drill(n, ctx).await,
+        N::Trail(n) => super::pix::run_trail(n, ctx).await,
+        N::UseTool(n) => super::lambda_tools::run_use_tool(n, ctx).await,
+        N::Par(n) => super::parallel::run_par(n, ctx).await,
+        other => Err(DispatchError::BackendError {
+            name: "step-body statement".to_string(),
+            message: format!(
+                "`{}` reached a step body, which admits only navigate, drill, trail, \
+                 validate, probe, use_tool, reason and par. This is a compiler bug — \
+                 the parser cannot produce it — reported rather than silently executed.",
+                crate::flow_plan::ir_flow_node_kind(other)
+            ),
+        }),
+    }
 }
 
 /// §Fase 34.d (v1.29.0) — Streaming-tool dispatch branch.
@@ -781,25 +883,32 @@ pub async fn run_probe(
 
 /// Reason entry — deliberative framing reflecting the declared
 /// strategy (`chain_of_thought`, `tree_of_thought`, `analogical`, …).
+///
+/// §Fase 119.f.8 — the BLOCK form's fields are now the prompt. Before this
+/// fase the handler could only build `"Reason about: <target>"`, because
+/// `given` / `ask` / `depth` had no home in the AST: the sixteen README blocks
+/// that write `reason { given: X ask: "…" depth: N }` lowered to an empty node
+/// and this function was reachable, in practice, from nothing an adopter had
+/// ever written. The engine was real; the cable was cut at the parser.
+///
+/// The prompt is assembled in the order a reader of the source would expect:
+/// the evidence named by `given:` (resolved against the flow bindings, so
+/// `given: Extract.output` carries the prior step's actual output), then the
+/// question in `ask:`. `depth:` and `strategy:` are declared POSTURE and ride
+/// the framing addendum — the same channel `strategy` has always used.
 pub async fn run_reason(
     reason: &IRReasonStep,
     ctx: &mut DispatchCtx,
 ) -> Result<NodeOutcome, DispatchError> {
-    let strategy_clause = if reason.strategy.is_empty() {
-        String::new()
-    } else {
-        format!(" using strategy `{}`", reason.strategy)
-    };
+    let (user_prompt, framing) = reason_prompt(reason, &ctx.let_bindings);
     let shape = PureShapeStep {
         name: if reason.target.is_empty() {
             "Reason".to_string()
         } else {
             reason.target.clone()
         },
-        user_prompt: format!("Reason about: {}{}", reason.target, strategy_clause),
-        framing_addendum: Some(
-            "You are reasoning deliberately. Show the steps of your reasoning where they bear on the answer.".into(),
-        ),
+        user_prompt,
+        framing_addendum: Some(framing),
         kind_slug: "reason",
         tools: Vec::new(),
         requires_context: None,
@@ -807,6 +916,72 @@ pub async fn run_reason(
         now_tz: None,
     };
     run_pure_shape(shape, ctx).await
+}
+
+/// §Fase 119.f.8 — assemble a `reason` node's prompt. Pure, so the assembly is
+/// testable without an LLM in the loop: the stub backend answers `"(stub)"`
+/// whatever it is asked, which means a prompt bug is invisible from the wire.
+/// The thing §119.f.8 repairs is exactly a prompt that never got built, so the
+/// prompt itself is what a gate has to be able to read.
+///
+/// Returns `(user_prompt, framing_addendum)`.
+pub fn reason_prompt(
+    reason: &IRReasonStep,
+    bindings: &std::collections::HashMap<String, String>,
+) -> (String, String) {
+    let strategy_clause = if reason.strategy.is_empty() {
+        String::new()
+    } else {
+        format!(" using strategy `{}`", reason.strategy)
+    };
+
+    // Resolve `given:` against the flow bindings. Each named reference
+    // contributes its VALUE; a name that is not bound contributes itself,
+    // matching how every other target-resolving handler in this dispatcher
+    // degrades (`transform_ots`, `run_step_mandated`).
+    let evidence: Vec<String> = reason
+        .given
+        .split(',')
+        .map(|r| r.trim().trim_matches(['[', ']']).trim())
+        .filter(|r| !r.is_empty())
+        .map(|r| {
+            let value = crate::exec_context::resolve_value_reference(r, bindings);
+            format!("{r}:\n{value}")
+        })
+        .collect();
+
+    // The `ask:` is the deliberation's actual question and interpolates like
+    // every other prompt on this path (§36.x.e's contract).
+    let question = crate::exec_context::interpolate_vars(&reason.ask, bindings);
+
+    let user_prompt = match (evidence.is_empty(), question.is_empty()) {
+        // The published block form: evidence, then the question.
+        (false, false) => format!("Given:\n{}\n\n{question}", evidence.join("\n\n")),
+        (true, false) => question,
+        (false, true) => format!("Given:\n{}\n\nReason over this.", evidence.join("\n\n")),
+        // The pre-§119.f.8 positional form `reason <target>`, unchanged.
+        (true, true) => format!("Reason about: {}{}", reason.target, strategy_clause),
+    };
+
+    let depth_clause = match reason.depth {
+        Some(d) => format!(
+            " Deliberate to depth {d}: carry the reasoning through {d} levels of \
+             consequence before answering."
+        ),
+        None => String::new(),
+    };
+
+    let framing = format!(
+        "You are reasoning deliberately. Show the steps of your reasoning where \
+         they bear on the answer.{}{}",
+        if reason.strategy.is_empty() {
+            String::new()
+        } else {
+            format!(" Reason{strategy_clause}.")
+        },
+        depth_clause
+    );
+    (user_prompt, framing)
 }
 
 /// Validate entry — verification framing. The target is checked
@@ -2109,6 +2284,9 @@ mod tests {
             source_column: 0,
             strategy: "chain_of_thought".into(),
             target: "claim".into(),
+            given: String::new(),
+            ask: String::new(),
+            depth: None,
         };
         let (mut ctx, mut rx) = fresh_ctx();
         let _ = run_reason(&reason, &mut ctx).await.expect("ok");

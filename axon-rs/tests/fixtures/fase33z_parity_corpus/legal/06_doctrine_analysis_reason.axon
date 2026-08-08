@@ -2,7 +2,7 @@
 
 flow DoctrineAnalysisReason() -> Unit {
     step LoadAuthorities { ask: "Load controlling authorities" output: Stream<Token> }
-    reason about_doctrine { target: "precedential_weight" }
+    reason { target: "precedential_weight" }
     step DraftAnalysis { ask: "Draft doctrinal analysis section" output: Stream<Token> }
 }
 

@@ -3197,7 +3197,10 @@ impl Parser {
 
             // ── Tier 2 flow steps (typed AST) ─────────────────────
             TokenType::Probe => self.parse_flow_step_simple("probe").map(|l| FlowStep::Probe(ProbeStep { target: l.1, fields: Vec::new(), loc: l.0 })),
-            TokenType::Reason => self.parse_flow_step_simple("reason").map(|l| FlowStep::Reason(ReasonStep { strategy: String::new(), target: l.1, loc: l.0 })),
+            // §Fase 119.f.8 — ONE implementation for both positions (the D119.4
+            // doctrine). `reason <target>` and `reason { given ask depth }` are
+            // the same node; the second is what the README publishes.
+            TokenType::Reason => self.parse_reason_step().map(FlowStep::Reason),
             TokenType::Validate => self.parse_flow_step_simple("validate").map(|l| FlowStep::Validate(ValidateStep { target: l.1, rule: String::new(), loc: l.0 })),
             TokenType::Refine => self.parse_flow_step_simple("refine").map(|l| FlowStep::Refine(RefineStep { target: l.1, strategy: String::new(), loc: l.0 })),
             TokenType::Weave => self.parse_weave_step(),
@@ -3604,19 +3607,69 @@ impl Parser {
                     let block = self.parse_par_block()?;
                     node.pix_ops.push(FlowStep::Par(block));
                 }
-                // Sub-constructs (reason, weave, stream) → skip structurally.
+                // §Fase 119.f.8 — `reason { given: … ask: "…" depth: N }` as a
+                // step-body statement. This is the README's single most-published
+                // cognitive form (16 blocks) and it was the most expensive
+                // resident of the silent-drop arm below: the block reached
+                // `skip_flow_step_structural`, which discarded it, so a step
+                // whose ONLY cognition was a `reason` lowered to an empty `ask`
+                // and generated over nothing. The elevation position and the
+                // flow position share `parse_reason_step` — one concept, two
+                // positions (D119.4).
+                // §Fase 119.f.8 — `reason` in a step body is TWO forms, told
+                // apart by the token after the keyword, exactly as §119.f did
+                // for `navigate`:
                 //
-                // ⚠️ §Fase 119.f — this arm is still the §111 silent-drop shape
-                // for the three that remain: a `reason { … }` / `weave [ … ]` /
-                // `stream { … }` written in a step body is PARSED AND THROWN
-                // AWAY. `probe` left it above; the other three need their own
-                // AST slots on the step, which is a wider change than the
-                // README ledger needs today. Named here so it is not
-                // rediscovered as a surprise.
-                TokenType::Probe
-                | TokenType::Reason
-                | TokenType::Weave
-                | TokenType::Stream => {
+                //   `reason: "…"`             the FIELD — a one-line deliberation
+                //   `reason { given ask … }`  the STATEMENT README publishes
+                //
+                // The field form was already written across this repo's own
+                // fixtures and it did NOTHING: `skip_flow_step_structural`
+                // swallowed the key AND its value. Reading it as a `reason`
+                // whose `ask:` is that value is not new semantics — it is the
+                // block form with one field, which is what the line says.
+                TokenType::Reason
+                    if self
+                        .tokens
+                        .get(self.pos + 1)
+                        .is_some_and(|t| t.ttype == TokenType::Colon) =>
+                {
+                    let tok = self.current().clone();
+                    self.advance();
+                    self.consume(TokenType::Colon)?;
+                    let mut r = ReasonStep {
+                        strategy: String::new(),
+                        target: String::new(),
+                        given: String::new(),
+                        ask: String::new(),
+                        depth: None,
+                        loc: self.loc_of(&tok),
+                    };
+                    if self.check(TokenType::StringLit) {
+                        r.ask = self.consume(TokenType::StringLit)?.value;
+                    } else {
+                        r.target = self.parse_dotted_identifier()?;
+                    }
+                    node.pix_ops.push(FlowStep::Reason(r));
+                }
+                TokenType::Reason => {
+                    let r = self.parse_reason_step()?;
+                    node.pix_ops.push(FlowStep::Reason(r));
+                }
+                // Sub-constructs (weave, stream) → skip structurally.
+                //
+                // ⚠️ §Fase 119.f.8 — this arm is STILL the §111 silent-drop
+                // shape for the two that remain: a `weave [ … ]` / `stream { … }`
+                // written in a step body is PARSED AND THROWN AWAY. Worse for
+                // `weave`: the skipper stops at the first `output` KEYWORD it
+                // meets, so `weave [A.output, B.output]` leaves the parser
+                // mid-list and the step then fails with a misleading
+                // "Expected Colon" pointing at the comma. `probe` left this arm
+                // in §119.f and `reason` in §119.f.8; `weave` is next and needs
+                // the same treatment (a real parse into `pix_ops`, plus the
+                // `format:` / `include:` fields the README writes beneath it).
+                // Named here so it is not rediscovered as a surprise.
+                TokenType::Probe | TokenType::Weave | TokenType::Stream => {
                     self.skip_flow_step_structural()?;
                 }
                 _ => {
@@ -4900,6 +4953,153 @@ impl Parser {
                 column: tok.column,
             },
         })
+    }
+
+    /// §Fase 119.f.8 — `reason [<target>] [{ given: … ask: "…" depth: N }]`.
+    ///
+    /// Replaces the `parse_flow_step_simple("reason")` call whose entire
+    /// treatment of the block was `skip_braced_block()`. Sixteen README blocks
+    /// write the braced form and every one of them lowered to an empty prompt.
+    ///
+    /// The field set is CLOSED. An unrecognised key is an ERROR that names the
+    /// key and lists what is accepted — the §119.h.2 discipline: a skipped
+    /// field in a deliberation removes the deliberation (a promptless `reason`
+    /// is silent, not loud), so the silent direction is the dangerous one.
+    fn parse_reason_step(&mut self) -> Result<ReasonStep, ParseError> {
+        let tok = self.current().clone();
+        let loc = self.loc_of(&tok);
+        self.advance(); // consume `reason`
+
+        // The pre-§119.f.8 positional form: `reason <target>`. Absent when the
+        // block follows immediately, which is how the README always writes it.
+        //
+        // The `Colon` lookahead matters: a bare `reason` on its own line inside
+        // a `step { }` body is followed by the step's NEXT FIELD, and without
+        // this guard the target would swallow that field's key (`output`) and
+        // the step would then fail on a stray `:` — an error pointing two
+        // tokens past the actual problem. `skip_flow_step_structural` used to
+        // absorb this shape silently; a wrong diagnostic is not an improvement
+        // on a silent drop.
+        let next_is_field_key = self
+            .tokens
+            .get(self.pos + 1)
+            .is_some_and(|t| t.ttype == TokenType::Colon);
+        let target = if self.check(TokenType::LBrace)
+            || self.at_declaration_start()
+            || self.check(TokenType::RBrace)
+            || self.check(TokenType::Eof)
+            || next_is_field_key
+        {
+            String::new()
+        } else {
+            self.parse_dotted_identifier()?
+        };
+
+        let mut node = ReasonStep {
+            strategy: String::new(),
+            target,
+            given: String::new(),
+            ask: String::new(),
+            depth: None,
+            loc,
+        };
+
+        if !self.check(TokenType::LBrace) {
+            return Ok(node);
+        }
+        self.advance();
+        while !self.check(TokenType::RBrace) && !self.check(TokenType::Eof) {
+            let key = self.current().clone();
+            self.advance();
+            self.consume(TokenType::Colon)?;
+            match key.value.as_str() {
+                // `given: A.output`, `given: A.output, sessions`,
+                // `given: [baseline.topology, current.topology]` — all three
+                // published shapes, normalised to one comma-joined string (the
+                // same carrier `StepNode.given` already uses).
+                "given" => {
+                    let mut parts = vec![self.parse_expression_string()?];
+                    while self.check(TokenType::Comma) {
+                        self.advance();
+                        parts.push(self.parse_expression_string()?);
+                    }
+                    node.given = parts.join(", ");
+                }
+                "ask" => node.ask = self.consume(TokenType::StringLit)?.value,
+                "depth" => {
+                    let n = self.current().clone();
+                    if n.ttype != TokenType::Integer {
+                        return Err(ParseError {
+                            message: format!(
+                                "`depth:` in a `reason` block is a deliberation depth — a \
+                                 positive integer (got '{}')",
+                                n.value
+                            ),
+                            line: n.line,
+                            column: n.column,
+                            ..Default::default()
+                        });
+                    }
+                    self.advance();
+                    node.depth = n.value.parse::<u32>().ok();
+                }
+                // `chain_of_thought: enabled` is the README's spelling of a
+                // named strategy; `strategy: <name>` is the general form. Both
+                // land in the same field because dispatch reads one posture.
+                "chain_of_thought" => {
+                    let v = self.consume_any_ident_or_kw()?.value;
+                    if v == "enabled" {
+                        node.strategy = "chain_of_thought".to_string();
+                    }
+                }
+                "strategy" => node.strategy = self.consume_any_ident_or_kw()?.value,
+                // `target:` is the SUBJECT — the same field the positional
+                // `reason <target>` form fills, spelled as a key. The parity
+                // corpus writes it (`reason about_policy { target: "…" }`) and
+                // the block was discarded whole, so the key has never meant
+                // anything. Giving it BOTH ways is refused rather than resolved
+                // by fiat: two spellings of one field with different values
+                // have no defined winner, and picking one silently is how a
+                // program comes to mean something its author did not write.
+                "target" => {
+                    let v = if self.check(TokenType::StringLit) {
+                        self.consume(TokenType::StringLit)?.value
+                    } else {
+                        self.parse_dotted_identifier()?
+                    };
+                    if !node.target.is_empty() {
+                        return Err(ParseError {
+                            message: format!(
+                                "`reason {} {{ target: … }}` declares the subject twice — \
+                                 once positionally as `{}` and once as `target: {}`. They \
+                                 are the same field. Write one of them.",
+                                node.target, node.target, v
+                            ),
+                            line: key.line,
+                            column: key.column,
+                            ..Default::default()
+                        });
+                    }
+                    node.target = v;
+                }
+                other => {
+                    return Err(ParseError {
+                        message: format!(
+                            "unknown field '{other}' in a `reason` block. Accepted: given, \
+                             ask, depth, strategy, chain_of_thought, target. A field this \
+                             block does not recognise is REFUSED rather than skipped — a \
+                             `reason` that silently loses its `ask:` deliberates over \
+                             nothing, and that failure is quiet."
+                        ),
+                        line: key.line,
+                        column: key.column,
+                        ..Default::default()
+                    })
+                }
+            }
+        }
+        self.consume(TokenType::RBrace)?;
+        Ok(node)
     }
 
     fn parse_weave_step(&mut self) -> Result<FlowStep, ParseError> {

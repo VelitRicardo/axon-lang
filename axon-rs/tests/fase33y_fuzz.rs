@@ -160,6 +160,17 @@ fn random_reason(lcg: &mut Lcg) -> IRFlowNode {
         source_column: 0,
         strategy: lcg.ascii_with_random_len(12),
         target: lcg.ascii_with_random_len(16),
+        // §Fase 119.f.8 — the block form's fields are fuzzed too, not pinned
+        // to empty: `run_reason` now SPLITS `given` on commas and trims
+        // brackets, and prompt assembly that only ever sees well-formed input
+        // is prompt assembly nobody fuzzed.
+        given: lcg.ascii_with_random_len(24),
+        ask: lcg.ascii_with_random_len(32),
+        depth: if lcg.bool() {
+            Some(lcg.range(8) as u32)
+        } else {
+            None
+        },
     })
 }
 
