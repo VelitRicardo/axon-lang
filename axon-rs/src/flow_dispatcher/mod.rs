@@ -79,6 +79,14 @@ use tokio::sync::{mpsc, Mutex};
 /// `use Tool(…)` path — the one `advertised.rs` cites as PROOF that `tool` is
 /// Real — had no budget at all.
 pub mod budget_gate;
+/// §Fase 119.m.1 — the `agent` executor: `strategy:` as a CONTROL policy.
+///
+/// `agent` was advertised, type-checked against two closed catalogs, lowered
+/// to `IRAgent` with eleven fields — and executed by nothing. This module is
+/// the loop and its termination proof, composed from machinery that already
+/// runs (`run_pure_shape`, `run_use_tool`, `run_forge`, the §72 budget gate,
+/// the Theorem 5.1 ceiling) rather than reimplemented beside it.
+pub mod agent_loop;
 pub mod pure_shape;
 
 /// §Fase 33.y.d — Orchestration variant handlers (Let / Conditional /

@@ -159,7 +159,27 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     ("deliberate", FailsClosed { diagnostic: "axon-T939 (§111) — the body is discarded at parse time; no budget was ever controlled" }),
     ("consensus", FailsClosed { diagnostic: "axon-T940 (§111) — no votes, no aggregation, no candidates" }),
     ("forge", Partial { gap: "§111 F17 — the Poincaré pipeline + NCD novelty gate are real, but `coherence` is hardcoded to 1.0, so a declared `constraints:` coherence floor is INERT" }),
-    ("agent", Unaudited),
+    // §Fase 119.m.1 — `Unaudited` → `Partial`. It was the worst state in this
+    // table: §111 never checked it, and when §119 finally did there was nothing
+    // to check — eleven declared `IRAgent` fields, and no executor anywhere in
+    // the dispatcher. It now RUNS, with `strategy:` as a control policy
+    // (D119.5) and a termination proof per strategy.
+    //
+    // `Partial`, not `Real`, and the gap is one specific thing rather than a
+    // hedge: `strategy: custom` means "the control policy is the `step` list
+    // written inside the agent block", and `AgentDefinition` has no body field,
+    // so the parser discards those steps. Dispatch REFUSES `custom` by name
+    // instead of substituting another policy. `on_stuck: hibernate` is refused
+    // for the same reason in the other direction — §119.d parks a flow walk's
+    // remaining nodes and an agent loop has no such list.
+    ("agent", Partial {
+        gap: "§119.m.1 — react / reflexion / plan_and_execute run with per-strategy \
+              termination proofs (gate: fase119_m1_agent_executor.rs). `strategy: custom` \
+              is REFUSED, not substituted: its policy is the `step` list inside the agent \
+              block and `AgentDefinition` has no body field, so the parser drops it. \
+              `on_stuck: hibernate` is refused likewise — an agent loop has no \
+              remaining-node list for §119.d to park.",
+    }),
     ("shield", Partial { gap: "§111 — the scanner registry IS consulted and a Reject really fails the step, but OSS ships ZERO registered scanners, so an OSS adopter's shield is an identity pass-through until one is mounted" }),
     // ── Security & autonomous analysis
     ("savant", Unaudited),

@@ -323,6 +323,12 @@ fn dispatcher_module_files_pinned_to_expected_set() {
     found.sort();
 
     let expected: Vec<&str> = vec![
+        // §Fase 119.m.1 — the `agent` executor. `strategy:` is a CONTROL
+        // policy (D119.5): three loops, three termination proofs. Composed
+        // from `pure_shape` / `lambda_tools` / `cognitive` rather than
+        // reimplemented beside them, which is why it belongs in this
+        // directory and under this pin.
+        "agent_loop.rs",
         "algebraic_handlers.rs",
         // §Fase 114.a — the budget gate, extracted to ONE place so every tool path
         // charges the same law (it was inlined in `pure_shape` and reachable only
