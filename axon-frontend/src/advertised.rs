@@ -133,7 +133,11 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     ("memory", Real { proof: "cognitive::run_remember / run_recall (PEM write-through)" }),
     ("tool", Real { proof: "lambda_tools::dispatch_use_tool_real (§58)" }),
     ("probe", Real { proof: "pure_shape::run_probe" }),
-    ("weave", Real { proof: "pure_shape::run_weave" }),
+    // §Fase 119.f.9 — see rule 4 above: this proof used to name the handler
+    // alone, and the handler was reachable only from a braced form no published
+    // block writes. Worse, it sent the model the source NAMES, so even when
+    // reached it synthesised over identifiers instead of outputs.
+    ("weave", Real { proof: "fase119_f9_weave_statement + fase119_f9_weave_prompt_is_built (grammar → IR → resolved prompt); engine pure_shape::run_weave" }),
     ("validate", Real { proof: "pure_shape::run_validate" }),
     ("context", Unaudited),
     // ── Epistemic scopes

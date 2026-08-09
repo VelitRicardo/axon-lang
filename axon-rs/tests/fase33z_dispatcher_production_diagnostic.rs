@@ -825,6 +825,7 @@ fn d1_catalog_totality_pin_45_variants() {
             format_type: String::new(),
             priority: Vec::new(),
             style: String::new(),
+            include: Vec::new(),
         }),
         IRFlowNode::UseTool(IRUseToolStep {
             node_type: "use_tool",

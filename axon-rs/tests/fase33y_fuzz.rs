@@ -204,6 +204,10 @@ fn random_weave(lcg: &mut Lcg) -> IRFlowNode {
         format_type: lcg.ascii_with_random_len(8),
         priority: Vec::new(),
         style: lcg.ascii_with_random_len(8),
+        // §Fase 119.f.9 — fuzzed, not pinned to empty: `weave_prompt` now
+        // joins and resolves these, and prompt assembly that only ever sees
+        // well-formed input is prompt assembly nobody fuzzed.
+        include: vec![lcg.ascii_with_random_len(10)],
     })
 }
 

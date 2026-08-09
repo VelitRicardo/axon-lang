@@ -1274,6 +1274,11 @@ pub struct IRWeaveStep {
     pub format_type: String,
     pub priority: Vec<String>,
     pub style: String,
+    /// §Fase 119.f.9 — the parts the synthesis must contain
+    /// (`include: [summary, risks, recommendations]`). Elided when empty so
+    /// every pre-§119.f.9 program's IR JSON is byte-identical (no IR-SHA drift).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub include: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]

@@ -3144,6 +3144,16 @@ pub struct RefineStep {
     pub strategy: String,
     pub loc: Loc,
 }
+/// §Fase 119.f.9 — `weave [a, b] format: T include: [x, y]`, the synthesis
+/// statement the README closes fourteen of its examples with.
+///
+/// **What was wrong.** The parser accepted only the BRACED field form
+/// (`weave { sources: [...] format: T }`), which the README never writes. The
+/// published bracket form fell into `skip_flow_step_structural` — and that
+/// skipper stops at the first `output` KEYWORD it meets, so
+/// `weave [A.output, B.output]` left the parser mid-list and the step then
+/// failed with `Expected Colon` pointing at the comma. A silent drop that also
+/// mislocated its own error.
 #[derive(Debug)]
 pub struct WeaveStep {
     pub sources: Vec<String>,
@@ -3151,6 +3161,11 @@ pub struct WeaveStep {
     pub format_type: String,
     pub priority: Vec<String>,
     pub style: String,
+    /// §Fase 119.f.9 — `include: [summary, risks, recommendations]`: the parts
+    /// the synthesis must contain. Published in twelve of the fourteen README
+    /// weaves and, until this fase, had no slot at any position. Consumed by
+    /// the dispatch framing, like `priority` and `style`.
+    pub include: Vec<String>,
     pub loc: Loc,
 }
 /// §Fase 58.b — the closed catalog of `use <Tool>` argument forms. The

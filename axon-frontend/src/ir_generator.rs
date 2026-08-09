@@ -955,6 +955,8 @@ impl IRGenerator {
                 format_type: s.format_type.clone(),
                 priority: s.priority.clone(),
                 style: s.style.clone(),
+                // §Fase 119.f.9 — elided when empty, so no IR-SHA drift.
+                include: s.include.clone(),
             }),
             FlowStep::UseTool(s) => IRFlowNode::UseTool(IRUseToolStep {
                 node_type: "use_tool",

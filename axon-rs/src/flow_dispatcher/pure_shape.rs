@@ -336,12 +336,13 @@ pub async fn run_step(
 
 /// §Fase 119.f.7 — the CLOSED catalog of statements a `step { }` body admits.
 ///
-/// `IRStep.pix_ops` is filled by exactly eight parser productions (§119.f's
+/// `IRStep.pix_ops` is filled by exactly nine parser productions (§119.f's
 /// `parse_step` arms): the PIX verbs `navigate` / `drill` / `trail` /
 /// `validate`, the step-scoped invocations `probe … for […]`,
-/// `use_tool … with …` and `reason { given ask depth }` (§119.f.8), and a
-/// nested `par { … }`. Each routes to the handler the FLOW-level position
-/// already uses — one concept, two positions, one implementation.
+/// `use_tool … with …`, `reason { given ask depth }` (§119.f.8) and
+/// `weave [a, b] format: … include: […]` (§119.f.9), and a nested `par { … }`.
+/// Each routes to the handler the FLOW-level position already uses — one
+/// concept, two positions, one implementation.
 ///
 /// Deliberately not `super::dispatch_node`. Two reasons, and the second is the
 /// one that matters:
@@ -367,6 +368,8 @@ async fn dispatch_step_statement(
         N::Probe(n) => run_probe(n, ctx).await,
         // §Fase 119.f.8 — the eighth statement: `reason { given ask depth }`.
         N::Reason(n) => run_reason(n, ctx).await,
+        // §Fase 119.f.9 — the ninth: `weave [a, b] format: T include: […]`.
+        N::Weave(n) => run_weave(n, ctx).await,
         N::Validate(n) => run_validate(n, ctx).await,
         N::Navigate(n) => super::cognitive::run_navigate(n, ctx).await,
         N::Drill(n) => super::pix::run_drill(n, ctx).await,
@@ -377,8 +380,9 @@ async fn dispatch_step_statement(
             name: "step-body statement".to_string(),
             message: format!(
                 "`{}` reached a step body, which admits only navigate, drill, trail, \
-                 validate, probe, use_tool, reason and par. This is a compiler bug — \
-                 the parser cannot produce it — reported rather than silently executed.",
+                 validate, probe, use_tool, reason, weave and par. This is a compiler \
+                 bug — the parser cannot produce it — reported rather than silently \
+                 executed.",
                 crate::flow_plan::ir_flow_node_kind(other)
             ),
         }),
@@ -1049,43 +1053,27 @@ pub async fn run_refine(
 /// Weave entry — synthesis framing. Sources are stitched into the
 /// target via `format_type`; `priority` orders the contribution
 /// weighting; `style` shapes the output voice.
+///
+/// §Fase 119.f.9 — the sources are now RESOLVED. Before this fase the handler
+/// sent `" from sources [Extract.output, Check.output]"` — the NAMES. `weave`'s
+/// entire job is to stitch prior outputs together, and it never had the
+/// outputs: the model was handed a list of identifiers it could not read and
+/// asked to synthesise them. Same defect as `reason`'s `given:` (§119.f.8), and
+/// the same fix: resolve against the flow bindings, exactly as every other
+/// target-resolving handler on this path does.
 pub async fn run_weave(
     weave: &IRWeaveStep,
     ctx: &mut DispatchCtx,
 ) -> Result<NodeOutcome, DispatchError> {
-    let sources_clause = if weave.sources.is_empty() {
-        String::new()
-    } else {
-        format!(" from sources [{}]", weave.sources.join(", "))
-    };
-    let format_clause = if weave.format_type.is_empty() {
-        String::new()
-    } else {
-        format!(" as {}", weave.format_type)
-    };
-    let style_clause = if weave.style.is_empty() {
-        String::new()
-    } else {
-        format!(" in {} style", weave.style)
-    };
-    let priority_clause = if weave.priority.is_empty() {
-        String::new()
-    } else {
-        format!(" with priority [{}]", weave.priority.join(", "))
-    };
+    let (user_prompt, framing) = weave_prompt(weave, &ctx.let_bindings);
     let shape = PureShapeStep {
         name: if weave.target.is_empty() {
             "Weave".to_string()
         } else {
             weave.target.clone()
         },
-        user_prompt: format!(
-            "Weave: {}{}{}{}{}",
-            weave.target, sources_clause, format_clause, style_clause, priority_clause
-        ),
-        framing_addendum: Some(
-            "You are weaving. Stitch the sources into the target output. Honor the declared priority + format + style.".into(),
-        ),
+        user_prompt,
+        framing_addendum: Some(framing),
         kind_slug: "weave",
         tools: Vec::new(),
         requires_context: None,
@@ -1093,6 +1081,81 @@ pub async fn run_weave(
         now_tz: None,
     };
     run_pure_shape(shape, ctx).await
+}
+
+/// §Fase 119.f.9 — assemble a `weave` node's prompt. Pure, for the same reason
+/// [`reason_prompt`] is: the stub backend answers `"(stub)"` whatever it is
+/// asked, so a prompt that was never built is invisible from the wire — and
+/// that is exactly the defect being repaired.
+///
+/// Returns `(user_prompt, framing_addendum)`.
+pub fn weave_prompt(
+    weave: &IRWeaveStep,
+    bindings: &std::collections::HashMap<String, String>,
+) -> (String, String) {
+    // The sources carry their VALUES. A name that is not bound contributes
+    // itself, matching how `reason_prompt` and `transform_ots` degrade.
+    let material: Vec<String> = weave
+        .sources
+        .iter()
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .map(|s| {
+            let value = crate::exec_context::resolve_value_reference(s, bindings);
+            format!("{s}:\n{value}")
+        })
+        .collect();
+
+    let format_clause = if weave.format_type.is_empty() {
+        String::new()
+    } else {
+        format!(" as {}", weave.format_type)
+    };
+    let target_clause = if weave.target.is_empty() {
+        String::new()
+    } else {
+        format!(" into {}", weave.target)
+    };
+
+    let user_prompt = if material.is_empty() {
+        // The pre-§119.f.9 shape, for a `weave` that named no sources.
+        format!("Weave:{target_clause}{format_clause}")
+    } else {
+        format!(
+            "Weave these into one output{target_clause}{format_clause}:\n\n{}",
+            material.join("\n\n")
+        )
+    };
+
+    let style_clause = if weave.style.is_empty() {
+        String::new()
+    } else {
+        format!(" Write it in {} style.", weave.style)
+    };
+    let priority_clause = if weave.priority.is_empty() {
+        String::new()
+    } else {
+        format!(
+            " Weight the contributions in this order: {}.",
+            weave.priority.join(", ")
+        )
+    };
+    // `include:` is a REQUIREMENT on the synthesis, not decoration — a field
+    // decided by nothing is the §111 defect this fase exists to end.
+    let include_clause = if weave.include.is_empty() {
+        String::new()
+    } else {
+        format!(
+            " The output must contain each of these: {}.",
+            weave.include.join(", ")
+        )
+    };
+
+    let framing = format!(
+        "You are weaving. Stitch the material into one coherent output; do not \
+         merely concatenate it.{style_clause}{priority_clause}{include_clause}"
+    );
+    (user_prompt, framing)
 }
 
 // ────────────────────────────────────────────────────────────────────
@@ -2357,6 +2420,7 @@ mod tests {
             format_type: "markdown".into(),
             priority: vec!["A".into()],
             style: "formal".into(),
+            include: Vec::new(),
         };
         let (mut ctx, mut rx) = fresh_ctx();
         let _ = run_weave(&weave, &mut ctx).await.expect("ok");

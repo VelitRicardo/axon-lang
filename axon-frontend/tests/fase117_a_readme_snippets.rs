@@ -47,8 +47,13 @@ const KNOWN_UNCOMPILABLE: &[(u64, &str)] = &[
     // regressed or the docs were written against a design that never landed;
     // deciding which is language work, not packaging work. Owner: §118.
     (0xe5a730f995babb86, "block 1: flow AnalyzeContract — `for` in step body"),
-    (0x3d0ab268c3d7c4f1, "block 3: know { } — `know` block form"),
-    (0x53eaaaef6cb38ffb, "block 4: flow MarketIntelligence — `for` in step body"),
+    // §Fase 119.f.9 — blocks 3 and 4 LEFT this ledger on 2026-08-08, and their
+    // recorded reasons were BOTH WRONG. They were filed as "`know` block form"
+    // and "`for` in step body"; the actual first error in each was
+    // `weave [A, B] into Report { format: T }` at FLOW level, a form the parser
+    // never took (it accepted only the braced `weave { sources: … }`, which no
+    // published block writes). The reasons in this table are §117's, and the
+    // compiler has moved six times since — re-diagnose before trusting a row.
     (0xb8d965c219532f56, "block 16: flow ProcessOrder — `use_tool` in step body"),
     (0x6b75a9d52ad1965c, "block 50: daemon PriceMonitor — leading `.` in flow body"),
     (0xcd74a5c09700b22c, "block 52: daemon TransactionIngester — flow-body drift"),

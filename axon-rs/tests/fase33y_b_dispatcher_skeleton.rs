@@ -139,6 +139,7 @@ fn weave_node() -> IRFlowNode {
         format_type: String::new(),
         priority: Vec::new(),
         style: String::new(),
+        include: Vec::new(),
     })
 }
 

@@ -359,6 +359,7 @@ async fn pure_shape_variants_no_tool_call_event() {
             format_type: "".into(),
             priority: Vec::new(),
             style: "".into(),
+            include: Vec::new(),
         }),
     ];
 

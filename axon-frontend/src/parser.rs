@@ -1932,6 +1932,44 @@ impl Parser {
         Ok(parts.join("."))
     }
 
+    /// §Fase 119.f.10 — a **SUBJECT**: the thing a statement acts ON.
+    ///
+    /// Every statement in the language has two kinds of operand, and they had
+    /// been parsed by the same function:
+    ///
+    ///   - a **NAME** — the declaration being applied (`compute CalculatePremium`,
+    ///     `mandate SECFormat`, `use_tool WebSearch`). Always a bare identifier;
+    ///     a dotted name would refer to nothing.
+    ///   - a **SUBJECT** — what it acts on (`validate Assess.output`,
+    ///     `compute X on Analyze.risk_factor, 1.2`). A reference, and a
+    ///     reference in Axon is DOTTED: `Assess.output` is the canonical way one
+    ///     step names another's result, and it already parses inside `given:`,
+    ///     inside `use_tool … with k: v`, and in `navigate_ref`.
+    ///
+    /// Subject positions called `consume_any_ident_or_kw`, which stops at the
+    /// dot. So the reference form the whole language is built on was rejected in
+    /// exactly the position that most needs it — five README blocks fail on it
+    /// as their FIRST error and three more need it further in.
+    ///
+    /// Literals are subjects too (`compute X on Profile.tenure, 1.2, "USD"`).
+    /// A string literal keeps its quotes here so the runtime can tell a literal
+    /// from a binding name — the §60 classification, preserved instead of
+    /// flattened.
+    fn parse_subject(&mut self) -> Result<String, ParseError> {
+        let t = self.current().clone();
+        match t.ttype {
+            TokenType::StringLit => {
+                self.advance();
+                Ok(format!("\"{}\"", t.value))
+            }
+            TokenType::Integer | TokenType::Float => {
+                self.advance();
+                Ok(t.value)
+            }
+            _ => self.parse_dotted_identifier(),
+        }
+    }
+
     fn parse_expression_string(&mut self) -> Result<String, ParseError> {
         if self.check(TokenType::LBracket) {
             let items = self.parse_bracketed_dot_identifiers()?;
@@ -3381,7 +3419,8 @@ impl Parser {
                 TokenType::Validate => {
                     let tok = self.current().clone();
                     self.advance();
-                    let target = self.consume_any_ident_or_kw()?.value.clone();
+                    // §Fase 119.f.10 — SUBJECT: `validate Assess.output against: X`.
+                    let target = self.parse_subject()?;
                     let mut rule = String::new();
                     if self.current().value == "against" {
                         self.advance();
@@ -3536,7 +3575,9 @@ impl Parser {
                 {
                     let tok = self.current().clone();
                     self.advance();
-                    let target = self.consume_any_ident_or_kw()?.value.clone();
+                    // §Fase 119.f.10 — SUBJECT: README §psyche writes
+                    // `probe student.recent_interactions for [...]`.
+                    let target = self.parse_subject()?;
                     let mut fields = Vec::new();
                     if self.check(TokenType::For) {
                         self.advance();
@@ -3656,20 +3697,28 @@ impl Parser {
                     let r = self.parse_reason_step()?;
                     node.pix_ops.push(FlowStep::Reason(r));
                 }
-                // Sub-constructs (weave, stream) → skip structurally.
+                // §Fase 119.f.9 — `weave [a, b] format: T include: […]` as a
+                // step-body statement: the shape fourteen README blocks close
+                // with. It was the worst resident of the silent-drop arm below,
+                // because it did not merely lose the node — the skipper stops
+                // at the first `output` KEYWORD it meets, so
+                // `weave [A.output, B.output]` left the parser mid-list and the
+                // step then failed with `Expected Colon` pointing at the comma.
+                // A dropped construct AND a mislocated error.
+                TokenType::Weave => {
+                    let w = self.parse_weave_step()?;
+                    node.pix_ops.push(w);
+                }
+                // Sub-construct (stream) → skip structurally.
                 //
-                // ⚠️ §Fase 119.f.8 — this arm is STILL the §111 silent-drop
-                // shape for the two that remain: a `weave [ … ]` / `stream { … }`
-                // written in a step body is PARSED AND THROWN AWAY. Worse for
-                // `weave`: the skipper stops at the first `output` KEYWORD it
-                // meets, so `weave [A.output, B.output]` leaves the parser
-                // mid-list and the step then fails with a misleading
-                // "Expected Colon" pointing at the comma. `probe` left this arm
-                // in §119.f and `reason` in §119.f.8; `weave` is next and needs
-                // the same treatment (a real parse into `pix_ops`, plus the
-                // `format:` / `include:` fields the README writes beneath it).
-                // Named here so it is not rediscovered as a surprise.
-                TokenType::Probe | TokenType::Weave | TokenType::Stream => {
+                // ⚠️ §Fase 119.f.9 — this arm is STILL the §111 silent-drop
+                // shape for the ONE that remains: a `stream { … }` written in a
+                // step body is PARSED AND THROWN AWAY. `probe` left this arm in
+                // §119.f, `reason` in §119.f.8, `weave` in §119.f.9. `stream`
+                // needs a real parse into `pix_ops` (its `StreamBlock` body
+                // already exists since §111.e) — named here so it is not
+                // rediscovered as a surprise.
+                TokenType::Probe | TokenType::Stream => {
                     self.skip_flow_step_structural()?;
                 }
                 _ => {
@@ -4834,7 +4883,12 @@ impl Parser {
         if self.current().value == "on" {
             self.advance();
             loop {
-                arguments.push(self.consume_any_ident_or_kw()?.value.clone());
+                // §Fase 119.f.10 — SUBJECT position. README writes
+                // `compute EligibilityScore on Profile.tenure, Profile.spend,
+                // Profile.incidents -> score`; the bare-identifier read stopped
+                // at the first dot, which is why every published `compute`
+                // application failed on its own argument list.
+                arguments.push(self.parse_subject()?);
                 if self.check(TokenType::Comma) {
                     self.advance();
                 } else {
@@ -4868,7 +4922,9 @@ impl Parser {
             let next = self.current().clone();
             if next.value == "on" {
                 self.advance();
-                target = self.consume_any_ident_or_kw()?.value.clone();
+                // §Fase 119.f.10 — SUBJECT position (the name before `on` is a
+                // NAME and stays bare).
+                target = self.parse_subject()?;
             }
         }
         // -> output_type
@@ -4909,7 +4965,9 @@ impl Parser {
         let mut binding = String::new();
         if self.current().value == "on" {
             self.advance();
-            target = self.consume_any_ident_or_kw()?.value.clone();
+            // §Fase 119.f.10 — SUBJECT position. `shield S on vital_event -> safe`
+            // already worked; `shield S on Charge.output -> x` did not.
+            target = self.parse_subject()?;
             // `ContractDrafter(terms)` — capture the balanced argument list
             // verbatim into the target string.
             if self.check(TokenType::LParen) {
@@ -5102,6 +5160,27 @@ impl Parser {
         Ok(node)
     }
 
+    /// §Fase 119.f.9 — the CLOSED braceless catalog for `weave`.
+    ///
+    /// `output` is deliberately ABSENT, for the reason `at_navigate_field`
+    /// already records: in step-body position `output:` is the STEP's own
+    /// field, and a shared name makes the terminator ambiguous. This is not
+    /// hypothetical here — it is the exact bug the old skipper had, from the
+    /// other side: `skip_flow_step_structural` STOPPED at `output`, mid-list,
+    /// and the step then failed on a stray comma.
+    fn at_weave_field(&self) -> bool {
+        const FIELDS: &[&str] = &["format", "include", "priority", "style"];
+        self.field_ahead(FIELDS)
+    }
+
+    /// §Fase 119.f.9 — `weave [a, b] [into <T>] [format: … include: […]]`.
+    ///
+    /// Three published surfaces, one implementation (D119.4):
+    ///   - the step-body statement — `weave [A.output, B.output]` followed by a
+    ///     braceless `format:` / `include:` list (14 README blocks);
+    ///   - the flow-body statement — `weave [A, B] into Report { format: T }`;
+    ///   - the braced field form `weave { sources: […] … }`, which no published
+    ///     block writes but which predates this fase and keeps working.
     fn parse_weave_step(&mut self) -> Result<FlowStep, ParseError> {
         let tok = self.current().clone();
         self.advance();
@@ -5111,11 +5190,66 @@ impl Parser {
             format_type: String::new(),
             priority: Vec::new(),
             style: String::new(),
+            include: Vec::new(),
             loc: Loc {
                 line: tok.line,
                 column: tok.column,
             },
         };
+        // `weave [A.output, B.output]` — the sources are REFERENCES, so they
+        // are dotted. `parse_bracketed_dot_identifiers` is the same helper
+        // `given:` uses; the pre-§119.f.9 braced form's `sources:` used the
+        // non-dotted one, which is why a dotted source never had a spelling
+        // that reached the AST.
+        if self.check(TokenType::LBracket) {
+            node.sources = self.parse_bracketed_dot_identifiers()?;
+        } else if self.current().ttype == TokenType::Identifier
+            && !self
+                .tokens
+                .get(self.pos + 1)
+                .is_some_and(|t| t.ttype == TokenType::Colon)
+        {
+            // `weave Baz` — the bare positional subject every other statement
+            // in the language takes (`probe X`, `reason X`, `validate X`), read
+            // here as a one-element source list. It is the uniform rule, not a
+            // special case, and it keeps parsing the shape that used to vanish
+            // into `skip_flow_step_structural`.
+            //
+            // The Colon lookahead is the same guard `parse_reason_step` needs:
+            // without it a bare `weave` would swallow the enclosing step's next
+            // field KEY as its source.
+            node.sources = vec![self.parse_dotted_identifier()?];
+        }
+        // `into <Target>` — the flow-level form's destination binding.
+        if self.check(TokenType::Into) || self.current().value == "into" {
+            self.advance();
+            node.target = self.parse_dotted_identifier()?;
+        }
+        // The braceless continuation, terminated by the closed field catalog.
+        while self.at_weave_field() {
+            let f = self.current().value.clone();
+            self.advance();
+            self.consume(TokenType::Colon)?;
+            match f.as_str() {
+                "format" => node.format_type = self.consume_any_ident_or_kw()?.value.clone(),
+                "include" => node.include = self.parse_bracketed_dot_identifiers()?,
+                "priority" => node.priority = self.parse_bracketed_dot_identifiers()?,
+                "style" => node.style = self.consume_any_ident_or_kw()?.value.clone(),
+                // `at_weave_field` is the gate above; this arm is unreachable
+                // unless the two catalogs drift apart.
+                other => {
+                    return Err(ParseError {
+                        message: format!(
+                            "`{other}` passed the `weave` field test but has no handler — \
+                             the braceless catalog and its parser have drifted apart."
+                        ),
+                        line: tok.line,
+                        column: tok.column,
+                        ..Default::default()
+                    })
+                }
+            }
+        }
         if self.check(TokenType::LBrace) {
             self.advance();
             while !self.check(TokenType::RBrace) && !self.check(TokenType::Eof) {
@@ -5124,13 +5258,17 @@ impl Parser {
                 if self.check(TokenType::Colon) {
                     self.advance();
                     match f.as_str() {
-                        "sources" => node.sources = self.parse_bracketed_identifiers()?,
+                        "sources" => node.sources = self.parse_bracketed_dot_identifiers()?,
                         "target" => node.target = self.consume_any_ident_or_kw()?.value.clone(),
                         "format" => {
                             node.format_type = self.consume_any_ident_or_kw()?.value.clone()
                         }
-                        "priority" => node.priority = self.parse_bracketed_identifiers()?,
+                        "priority" => node.priority = self.parse_bracketed_dot_identifiers()?,
                         "style" => node.style = self.consume_any_ident_or_kw()?.value.clone(),
+                        // §Fase 119.f.9 — the braced form takes `include:` too,
+                        // so the two spellings of one construct cannot disagree
+                        // about which fields exist.
+                        "include" => node.include = self.parse_bracketed_dot_identifiers()?,
                         _ => self.skip_value(),
                     }
                 }

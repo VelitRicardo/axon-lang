@@ -660,7 +660,17 @@ pub async fn run_compute_apply(
     //     the compute and shadow the caller's own binding.
     let mut saved: Vec<(String, Option<String>)> = Vec::new();
     for (param, arg) in spec.parameters.iter().zip(&node.arguments) {
-        let value = crate::exec_context::resolve_value_reference(arg, &ctx.let_bindings);
+        // §Fase 119.f.10 — a QUOTED argument is a literal, not a name to look
+        // up. §119.f.10 let `compute X on a.b, "USD"` parse; the parser keeps
+        // the quotes so this distinction survives to dispatch, because
+        // `resolve_value_reference` would otherwise treat `USD` as a binding
+        // name and silently return whatever a binding of that name held. That
+        // is the §60 literal/reference classification, and flattening it here
+        // would reintroduce exactly the ambiguity §60 exists to remove.
+        let value = match arg.strip_prefix('"').and_then(|s| s.strip_suffix('"')) {
+            Some(literal) => literal.to_string(),
+            None => crate::exec_context::resolve_value_reference(arg, &ctx.let_bindings),
+        };
         saved.push((param.name.clone(), ctx.let_bindings.get(&param.name).cloned()));
         ctx.let_bindings.insert(param.name.clone(), value);
     }

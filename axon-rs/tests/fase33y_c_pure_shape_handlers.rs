@@ -139,6 +139,9 @@ fn weave(target: &str, sources: Vec<&str>, format_type: &str, style: &str) -> IR
         format_type: format_type.into(),
         priority: Vec::new(),
         style: style.into(),
+        // §Fase 119.f.9 — `include:` (the parts the synthesis must contain);
+        // this helper builds the pre-§119.f.9 shape, so it stays empty.
+        include: Vec::new(),
     }
 }
 

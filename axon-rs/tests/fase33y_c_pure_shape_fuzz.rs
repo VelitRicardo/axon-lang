@@ -335,6 +335,7 @@ async fn fuzz_run_weave_never_panics_random_input() {
             format_type,
             priority,
             style,
+            include: Vec::new(),
         };
         let (mut ctx, _rx) = fresh_ctx();
         let outcome = run_weave(&w, &mut ctx).await;
@@ -436,6 +437,7 @@ async fn fuzz_random_cancel_timing_across_all_handlers() {
                     format_type: "f".into(),
                     priority: Vec::new(),
                     style: "s".into(),
+                    include: Vec::new(),
                 };
                 run_weave(&w, &mut ctx).await
             }
@@ -561,6 +563,7 @@ async fn fuzz_random_policy_pairings_across_handlers() {
                     format_type: "".into(),
                     priority: Vec::new(),
                     style: "".into(),
+                    include: Vec::new(),
                 },
                 &mut ctx,
             )
