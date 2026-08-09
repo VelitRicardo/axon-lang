@@ -3709,6 +3709,19 @@ impl Parser {
                     let w = self.parse_weave_step()?;
                     node.pix_ops.push(w);
                 }
+                // §Fase 119.f.11 — `retrieve from <Store> where "…"` as a
+                // step-body statement. README §axonstore writes the store read
+                // INSIDE the step that consumes it, which is the elevation
+                // position: the rows must be bound before the step generates.
+                //
+                // Unlike the three before it, this one needed no engine work —
+                // `FlowStep::Retrieve` and `wire_integrations::run_retrieve`
+                // are among the most-exercised paths in the system (§35–38, the
+                // pg integration suites). Only the position was missing.
+                TokenType::Retrieve => {
+                    let r = self.parse_retrieve_step()?;
+                    node.pix_ops.push(r);
+                }
                 // Sub-construct (stream) → skip structurally.
                 //
                 // ⚠️ §Fase 119.f.9 — this arm is STILL the §111 silent-drop
@@ -6118,9 +6131,20 @@ impl Parser {
         Ok(body)
     }
 
+    /// §Fase 119.f.11 — `retrieve [from] <Store> [where "<expr>"] [as <alias>]`
+    /// alongside the pre-existing braced `retrieve <Store> { where: … as: … }`.
+    ///
+    /// README §axonstore writes the braceless form with `from` and with `where`
+    /// taking its argument DIRECTLY — no colon. Neither spelling parsed, so the
+    /// only published `retrieve` failed on its own first line.
     fn parse_retrieve_step(&mut self) -> Result<FlowStep, ParseError> {
         let tok = self.current().clone();
         self.advance();
+        // `from` is optional noise-with-meaning: it reads as English and the
+        // store name carries the content either way.
+        if self.check(TokenType::From) || self.current().value == "from" {
+            self.advance();
+        }
         let store = self.consume_any_ident_or_kw()?.value.clone();
         let mut where_expr = String::new();
         let mut alias = String::new();
@@ -6129,6 +6153,25 @@ impl Parser {
         let mut aggregate = String::new();
         let mut group_by = String::new();
         let mut cache = String::new();
+        // §Fase 119.f.11 — the BRACELESS clauses README publishes. Note they
+        // take their argument with NO colon (`where "…"`, `as record`), which
+        // is why the closed-catalog `field_ahead` test used elsewhere does not
+        // apply: the terminator here is the clause keyword itself. Both names
+        // are absent from the step-body field set, so a `retrieve` written
+        // inside a step cannot swallow the step's own fields.
+        loop {
+            match self.current().value.as_str() {
+                "where" if !self.check(TokenType::LBrace) => {
+                    self.advance();
+                    where_expr = self.consume(TokenType::StringLit)?.value.clone();
+                }
+                "as" => {
+                    self.advance();
+                    alias = self.consume_any_ident_or_kw()?.value.clone();
+                }
+                _ => break,
+            }
+        }
         if self.check(TokenType::LBrace) {
             self.advance();
             while !self.check(TokenType::RBrace) && !self.check(TokenType::Eof) {

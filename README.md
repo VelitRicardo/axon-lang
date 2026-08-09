@@ -4483,7 +4483,7 @@ without downtime, while agents continue running:
 
 ```axon
 axonstore Users {
-    backend: sqlite  // local dev
+    backend: in_memory  // local dev
     connection: env:DB_PATH
     confidence_floor: 0.90
     schema {
@@ -4509,12 +4509,10 @@ know {
 }
 
 flow OnboardUser(email: String, name: String, tier: String) -> UserRecord {
-    transact Users {
-        persist into Users {
-            email: email
-            name: name
-            subscription_tier: tier
-        }
+    persist into Users {
+        email: email
+        name: name
+        subscription_tier: tier
     }
 }
 ```
@@ -4526,6 +4524,12 @@ flow OnboardUser(email: String, name: String, tier: String) -> UserRecord {
 - `know` block on the lookup ensures zero speculation about data that's in the DB
 - The entire schema evolution is **declarative** — the developer changes the
   `axonstore` block, not a migration file
+- **Scope note.** This example used to wrap the write in `transact Users { … }`.
+  That construct was **retracted** (`axon-T938`): it never opened a transaction,
+  took no lock and rolled nothing back, so the guarantee its name implied was
+  never delivered. A single `persist` is atomic on its own; multi-statement
+  atomicity is not something Axon offers today, and saying otherwise in an
+  example is the kind of promise this project removes rather than decorates.
 
 **Use Case 3 — Autonomous Research Agent with Cited Knowledge Persistence**
 

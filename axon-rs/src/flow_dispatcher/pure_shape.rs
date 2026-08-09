@@ -336,7 +336,7 @@ pub async fn run_step(
 
 /// §Fase 119.f.7 — the CLOSED catalog of statements a `step { }` body admits.
 ///
-/// `IRStep.pix_ops` is filled by exactly nine parser productions (§119.f's
+/// `IRStep.pix_ops` is filled by exactly ten parser productions (§119.f's
 /// `parse_step` arms): the PIX verbs `navigate` / `drill` / `trail` /
 /// `validate`, the step-scoped invocations `probe … for […]`,
 /// `use_tool … with …`, `reason { given ask depth }` (§119.f.8) and
@@ -370,6 +370,9 @@ async fn dispatch_step_statement(
         N::Reason(n) => run_reason(n, ctx).await,
         // §Fase 119.f.9 — the ninth: `weave [a, b] format: T include: […]`.
         N::Weave(n) => run_weave(n, ctx).await,
+        // §Fase 119.f.11 — the tenth: `retrieve from <Store> where "…"`. The
+        // only one of the four whose engine was already wired end to end.
+        N::Retrieve(n) => super::wire_integrations::run_retrieve(n, ctx).await,
         N::Validate(n) => run_validate(n, ctx).await,
         N::Navigate(n) => super::cognitive::run_navigate(n, ctx).await,
         N::Drill(n) => super::pix::run_drill(n, ctx).await,
@@ -380,7 +383,7 @@ async fn dispatch_step_statement(
             name: "step-body statement".to_string(),
             message: format!(
                 "`{}` reached a step body, which admits only navigate, drill, trail, \
-                 validate, probe, use_tool, reason, weave and par. This is a compiler \
+                 validate, probe, use_tool, reason, weave, retrieve and par. This is a compiler \
                  bug — the parser cannot produce it — reported rather than silently \
                  executed.",
                 crate::flow_plan::ir_flow_node_kind(other)

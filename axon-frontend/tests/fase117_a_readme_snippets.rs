@@ -93,7 +93,21 @@ const KNOWN_UNCOMPILABLE: &[(u64, &str)] = &[
     (0x56a2865ca114d657, "block 47: compute CalculatePremium — `logic { let … return }` is a LET-CHAIN; §70's Expr has no Let variant (§111.f made compute ONE pure expression). Needs Expr::Let in the engine + eval_expr, not a parser patch"),
     (0xdb657847c1fa995a, "block 48: compute NormalizeMetrics — same: `logic { }` let-chain body"),
     (0xc10bd6bb3dbd6226, "block 49: compute EligibilityScore — same: `logic { }` let-chain body"),
-    (0x8ec59ea78ba27d50, "block 54: axonstore Users — `env` unquoted in field"),
+    // §Fase 119.f.11 — the `axonstore Users` block LEFT this ledger on
+    // 2026-08-08. Its recorded reason ("`env` unquoted in field") was fixed
+    // back in §119.f.4 and the row survived on three LATER walls, none of them
+    // named here — a third demonstration that a row's reason is a fossil:
+    //   1. `retrieve from Users where "…"` had no step-body position, and the
+    //      flow-level parser demanded the braced `retrieve X { where: … }`
+    //      form the README never writes (§119.f.11 gave it both);
+    //   2. `transact Users { … }`, which §111 RETRACTED (`axon-T938`: it never
+    //      opened a transaction, took no lock, rolled nothing back). Removed
+    //      from the README with the scope note §119.f.5 set the precedent for
+    //      on block 54 — the construct is GONE, not "on the roadmap";
+    //   3. `backend: sqlite`, which is not in the closed backend catalog
+    //      (`in_memory` | `postgresql` | `secrets`). Inventing a sqlite backend
+    //      to satisfy a doc comment would fabricate an engine; `in_memory` is
+    //      what the catalog offers for the local-dev case the line describes.
     (0xf8c2160c210922da, "block 55: axonstore KnowledgeBase — `env` unquoted in field"),
 
     // §Fase 119.f — the pix/corpus family (10 rows) LEFT this ledger on
