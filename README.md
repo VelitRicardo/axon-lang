@@ -805,12 +805,12 @@ persona ResearchAnalyst {
 }
 
 tool WebSearch {
-    provider: serper
+    provider: http
     timeout: 10s
 }
 
 tool DataAnalyzer {
-    provider: internal
+    provider: native
     timeout: 30s
 }
 
@@ -906,6 +906,11 @@ A BI platform chains two agents: one gathers data, the other analyzes it.
 Both execute within the same compiled flow:
 
 ```axon
+tool WebSearch { provider: http timeout: 10s }
+tool FileReader { provider: native timeout: 5s }
+tool Calculator { provider: native }
+tool DataAnalyzer { provider: native timeout: 30s }
+
 agent DataGatherer {
     goal: "Collect quarterly revenue data from public filings"
     tools: [WebSearch, FileReader]
@@ -1043,13 +1048,16 @@ at compile time:
 **Usage example — LLM Input Shield:**
 
 ```axon
+tool WebSearch { provider: http timeout: 10s }
+tool Calculator { provider: native }
+
 shield InputGuard {
     scan: [prompt_injection, jailbreak, pii_leak]
     strategy: dual_llm
     on_breach: halt
     severity: critical
-    allow: [web_search, calculator]
-    deny: [code_executor]
+    allow_tools: [WebSearch, Calculator]
+    deny_tools: [code_executor]
     sandbox: true
     redact: [email, phone]
     confidence_threshold: 0.85
@@ -1057,13 +1065,13 @@ shield InputGuard {
 
 persona SecureAssistant {
     domain: ["customer support"]
-    tone: professional
+    tone: formal
     confidence_threshold: 0.80
 }
 
 agent SecureBot {
     goal: "Answer customer queries safely"
-    tools: [web_search, calculator]
+    tools: [WebSearch, Calculator]
     shield: InputGuard
     strategy: react
     max_iterations: 10
@@ -1334,19 +1342,19 @@ something fails, the system identifies exactly who broke the contract:
 
 ```axon
 tool WebSearch {
-    provider: serper
+    provider: http
     timeout: 10s
     effects: <network, epistemic:speculate>
 }
 
 tool DatabaseQuery {
-    provider: internal
+    provider: native
     timeout: 30s
     effects: <io, epistemic:believe>
 }
 
 tool Calculator {
-    provider: stdlib
+    provider: native
     effects: <pure, epistemic:know>
 }
 
@@ -4559,6 +4567,9 @@ anchor CitationRequired {
     enforce: "Every persisted claim must include a verifiable source URL."
 }
 
+tool WebSearch { provider: http timeout: 10s }
+tool PDFExtractor { provider: native timeout: 30s }
+
 agent ResearchScout {
     goal: "Discover and persist verified facts about the target topic
            with source citations and confidence scores above 0.85"
@@ -4576,13 +4587,11 @@ know {
             ResearchScout(topic)
             output: DiscoveredFacts
         }
-        transact KnowledgeBase {
-            persist into KnowledgeBase {
-                claim:      DiscoveredFacts.claim
-                source_url: DiscoveredFacts.source
-                confidence: DiscoveredFacts.confidence
-                claim_type: "CitedFact"
-            }
+        persist into KnowledgeBase {
+            claim:      DiscoveredFacts.claim
+            source_url: DiscoveredFacts.source
+            confidence: DiscoveredFacts.confidence
+            claim_type: "CitedFact"
         }
         step Synthesize {
             retrieve from KnowledgeBase where "confidence > 0.90"

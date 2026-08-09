@@ -607,7 +607,13 @@ pub async fn run_streaming_via_dispatcher(
         .with_computes(std::sync::Arc::new(ir.compute_specs.clone()))
         .with_mandates(std::sync::Arc::new(ir.mandate_specs.clone()))
         .with_lambdas(std::sync::Arc::new(ir.lambda_data_specs.clone()))
-        .with_ots(std::sync::Arc::new(ir.ots_specs.clone()));
+        .with_ots(std::sync::Arc::new(ir.ots_specs.clone()))
+        // §Fase 119.m.3 — the STREAMING twin. `feedback_ask_where_production_calls_it`
+        // records that a feature with two dispatch entries (sync + SSE) must be
+        // wired in BOTH, and that the streaming one is the forgotten half
+        // because it builds its own ctx — §114's channel governance shipped
+        // inert on this exact path for the same reason.
+        .with_agents(std::sync::Arc::new(ir.agents.clone()));
 
     // §Fase 37.b (D1, D4) — The Request Binding Contract. Seed the
     // flow's declared parameters from the parsed request body BEFORE
@@ -764,6 +770,11 @@ pub async fn run_streaming_via_dispatcher(
                     lambda_data_specs: ctx.lambda_data_specs.clone(),
                     ots_specs: ctx.ots_specs.clone(),
                     compute_specs: ctx.compute_specs.clone(),
+                    // §Fase 119.m.3 — carried across the suspension, for the
+                    // §119.b/c reason: a resumed flow whose agent catalog was
+                    // lost would fail closed on every agent call after the
+                    // sleep, turning a nap into a broken run.
+                    agent_specs: ctx.agent_specs.clone(),
                 });
                 tracing::info!(
                     continuation = cid.as_str(),

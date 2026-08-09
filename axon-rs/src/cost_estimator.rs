@@ -143,6 +143,14 @@ fn classify_node(node: &IRFlowNode) -> StepKind {
         | IRFlowNode::Break(_) | IRFlowNode::Continue(_) => StepKind::Control,
         IRFlowNode::Par(_) | IRFlowNode::Stream(_) => StepKind::Parallel,
         IRFlowNode::Deliberate(_) | IRFlowNode::Consensus(_)
+        // §Fase 119.m.3 — an `<Agent>(args)` call is a BOUNDED LOOP of
+        // deliberations, so `MultiAgent` (the most expensive class) is the
+        // honest classification: it is the only one that does not price a
+        // whole agent run as a single ask. The estimate is still a floor —
+        // this classifier has no access to the declaration's
+        // `max_iterations` — and calling it anything cheaper would understate
+        // the one construct in the language that spends in a loop.
+        | IRFlowNode::AgentCall(_)
         | IRFlowNode::Forge(_) => StepKind::MultiAgent,
         IRFlowNode::Focus(_) | IRFlowNode::Associate(_)
         | IRFlowNode::Aggregate(_) | IRFlowNode::Explore(_)

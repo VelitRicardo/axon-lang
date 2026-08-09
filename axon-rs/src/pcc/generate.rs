@@ -632,6 +632,12 @@ fn collect_store_accesses(steps: &[crate::ir_nodes::IRFlowNode], out: &mut Vec<S
             | N::OtsApply(_)
             | N::MandateApply(_)
             | N::ComputeApply(_)
+            // §Fase 119.m.3 — an agent call touches no store and dispatches no
+            // keyword-arg tool DIRECTLY; the tools its loop reaches go through
+            // un_use_tool, which is where those obligations are already
+            // collected. If an agent ever gains a direct store surface, this is
+            // the arm that must reopen.
+            | N::AgentCall(_)
             | N::DaemonStep(_)
             | N::Emit(_)
             | N::Publish(_)
@@ -852,6 +858,12 @@ fn collect_named_use_tool_calls<'a>(
             | N::OtsApply(_)
             | N::MandateApply(_)
             | N::ComputeApply(_)
+            // §Fase 119.m.3 — an agent call touches no store and dispatches no
+            // keyword-arg tool DIRECTLY; the tools its loop reaches go through
+            // un_use_tool, which is where those obligations are already
+            // collected. If an agent ever gains a direct store surface, this is
+            // the arm that must reopen.
+            | N::AgentCall(_)
             | N::DaemonStep(_)
             | N::Emit(_)
             | N::Publish(_)

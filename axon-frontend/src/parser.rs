@@ -1846,6 +1846,15 @@ impl Parser {
     }
 
     fn check_run_modifier(&self) -> bool {
+        // §Fase 119.m.3 — `with <Persona>` is the spelling README uses on every
+        // `run` it publishes; `as <Persona>` is the one the parser took. Same
+        // position, same meaning, and the two cannot be confused: `with` is not
+        // a keyword token, and the only OTHER `with` in the language sits after
+        // a tool name inside a step body (`use_tool T with k: v`), which this
+        // predicate is never consulted at.
+        if self.current().value == "with" {
+            return true;
+        }
         matches!(
             self.current().ttype,
             TokenType::As
@@ -3709,6 +3718,38 @@ impl Parser {
                     let w = self.parse_weave_step()?;
                     node.pix_ops.push(w);
                 }
+                // §Fase 119.m.3 — `<Agent>(arg, …)` as a step-body statement:
+                // the form every agent example in the README uses, and the one
+                // that makes §119.m.1's executor reachable from source.
+                //
+                // Told apart from the field arms above by the `(` — those all
+                // match on a specific field NAME, so a call can never shadow
+                // one. The name is a NAME (never dotted: an agent declaration
+                // has no path), the arguments are §119.f.10 SUBJECTS, because
+                // README writes `TrendAnalyzer(Gather.output)`.
+                TokenType::Identifier
+                    if self
+                        .tokens
+                        .get(self.pos + 1)
+                        .is_some_and(|t| t.ttype == TokenType::LParen) =>
+                {
+                    let tok = self.current().clone();
+                    let agent_name = self.consume_any_ident_or_kw()?.value.clone();
+                    self.consume(TokenType::LParen)?;
+                    let mut arguments = Vec::new();
+                    while !self.check(TokenType::RParen) && !self.check(TokenType::Eof) {
+                        arguments.push(self.parse_subject()?);
+                        if self.check(TokenType::Comma) {
+                            self.advance();
+                        }
+                    }
+                    self.consume(TokenType::RParen)?;
+                    node.pix_ops.push(FlowStep::AgentCall(AgentCallStep {
+                        agent_name,
+                        arguments,
+                        loc: self.loc_of(&tok),
+                    }));
+                }
                 // §Fase 119.f.11 — `retrieve from <Store> where "…"` as a
                 // step-body statement. README §axonstore writes the store read
                 // INSIDE the step that consumes it, which is the elevation
@@ -3859,6 +3900,12 @@ impl Parser {
 
         while self.check_run_modifier() {
             let mod_tok = self.current().clone();
+            // §Fase 119.m.3 — `with <Persona>`, README's spelling of `as`.
+            if mod_tok.value == "with" && mod_tok.ttype != TokenType::As {
+                self.advance();
+                node.persona = self.consume(TokenType::Identifier)?.value;
+                continue;
+            }
             match mod_tok.ttype {
                 TokenType::As => {
                     self.advance();

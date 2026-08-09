@@ -181,6 +181,62 @@ impl Spend {
     }
 }
 
+/// §Fase 119.m.3 — dispatch an `<Agent>(arg, …)` call.
+///
+/// Resolves the declaration from `ctx.agent_specs` and FAILS CLOSED when it is
+/// absent. That is not politeness: the declaration is where `max_iterations`
+/// lives, so an unresolved agent is an unbounded one, and a runtime that ran it
+/// anyway would spend against a ceiling nobody wrote.
+///
+/// The arguments are §119.f.10 subjects, resolved against the flow bindings —
+/// `TrendAnalyzer(Gather.output)` hands the agent the prior step's VALUE, not
+/// the string `"Gather.output"`. Quoted literals keep §60's classification.
+pub async fn run_agent_call(
+    node: &crate::ir_nodes::IRAgentCall,
+    ctx: &mut DispatchCtx,
+) -> Result<NodeOutcome, DispatchError> {
+    // D3 — cancel is checked at handler ENTRY, before anything else including
+    // catalog resolution. Caught by §33.y.n's cancel-propagation fuzz, which
+    // drives every variant pre-cancelled and demands `UpstreamCancelled`
+    // uniformly: resolving first meant a cancelled run reported a MISSING AGENT
+    // instead of a cancellation, which is a wrong diagnosis for the operator
+    // and a broken invariant for the dispatcher.
+    if ctx.cancel.is_cancelled() {
+        return Err(DispatchError::UpstreamCancelled);
+    }
+    let Some(agent) = ctx
+        .agent_specs
+        .iter()
+        .find(|a| a.name == node.agent_name)
+        .cloned()
+    else {
+        return Err(DispatchError::BackendError {
+            name: format!("agent:{}", node.agent_name),
+            message: format!(
+                "no `agent {}` is declared in this program, so its bounds — including \
+                 `max_iterations` — cannot be resolved. Refused rather than run \
+                 unbounded. ({} agent(s) in this catalog.)",
+                node.agent_name,
+                ctx.agent_specs.len()
+            ),
+        });
+    };
+
+    let input = node
+        .arguments
+        .iter()
+        .map(|a| match a.strip_prefix('"').and_then(|s| s.strip_suffix('"')) {
+            // A quoted argument is a literal, not a name to look up — §60's
+            // classification, preserved by §119.f.10's parser.
+            Some(literal) => literal.to_string(),
+            None => crate::exec_context::resolve_value_reference(a, &ctx.let_bindings),
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    run_agent(&agent, &input, ctx).await
+}
+
 /// Run one agent to a terminal state.
 ///
 /// Returns the agent's output bound under its own name (the binding discipline

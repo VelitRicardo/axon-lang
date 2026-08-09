@@ -63,9 +63,26 @@ const KNOWN_UNCOMPILABLE: &[(u64, &str)] = &[
     // "Expected Colon, found Identifier(...)", "Expected StringLit, found
     // Identifier('env')", "Expected identifier or keyword value, found ','".
     // Owner: §118, per primitive.
-    (0xb291368d4a4f07b6, "block 7: persona ResearchAnalyst — field grammar drift"),
-    (0x4dac1337eb78dbea, "block 11: shield InputGuard — bare agent name in step body"),
-    (0x425cfaac8362e16a, "block 15: tool WebSearch — field grammar drift"),
+    // §Fase 119.m.3 — FIVE rows left this ledger on 2026-08-08 (blocks 7, 9,
+    // 11, 15 and the old block 55/56 pair), on the sub-fase that gave
+    // `<Agent>(args)` a step-body position and §119.m.1's executor something
+    // to be reached by. Not one of their recorded reasons named the real
+    // blocker; each fell after two or three walls:
+    //
+    //   * the bare agent call itself (§119.m.3's grammar);
+    //   * `run <Flow>(…) with <Persona>` — README's spelling of the persona
+    //     binder on EVERY run it publishes, where the parser took only `as`;
+    //   * tools the examples used and never declared (the block-42 shape from
+    //     §119.c: an incomplete example, not a grammar gap);
+    //   * providers outside T948's closed catalog (`serper` → `http`,
+    //     `internal`/`stdlib` → `native` — §119.f.3's precedent, where
+    //     inventing the slug would fabricate a provider nothing dispatches);
+    //   * `tone: professional`, outside the closed tone catalog — `formal` IS
+    //     that tone, and inventing `professional` would fabricate one nothing
+    //     distinguishes (§119.f.3 made the same call on `warm`);
+    //   * `allow:`/`deny:` on a shield, which axon-W010 says the runtime
+    //     IGNORES — a published example carrying a line with NO effect is the
+    //     §111 shape in documentation. Now `allow_tools:`/`deny_tools:`.
     (0xa635a0be5887ff2b, "block 38: tool MarketData — field grammar drift"),
     (0xbbe28e149cb95e78, "block 51: shield ClinicalShield — field grammar drift"),
     // §Fase 119.f — DIAGNOSED 2026-08-08, and the reason above ("`,` in field
@@ -108,7 +125,15 @@ const KNOWN_UNCOMPILABLE: &[(u64, &str)] = &[
     //      (`in_memory` | `postgresql` | `secrets`). Inventing a sqlite backend
     //      to satisfy a doc comment would fabricate an engine; `in_memory` is
     //      what the catalog offers for the local-dev case the line describes.
-    (0xf8c2160c210922da, "block 55: axonstore KnowledgeBase — `env` unquoted in field"),
+    // §Fase 119.m.3 — this block was REWRITTEN (tools declared, `transact`
+    // removed per §111's axon-T938 retraction and §119.f.5's precedent), so it
+    // carries a new digest. What remains is NOT grammar: it is the SAME
+    // `axon-T802` engine defect block 54 records — a bare identifier in a
+    // `persist into … { }` field block is classed as a TEXT LITERAL instead of
+    // a reference, so `confidence: DiscoveredFacts.confidence` is rejected
+    // against a `Float` column. §60's literal/reference classification never
+    // reached field blocks. Owner: the store type-checker.
+    (0x2355c31bc9610888, "block 56: axonstore KnowledgeBase — axon-T802 field-block literal-vs-reference (same engine defect as block 54); `confidence: DiscoveredFacts.confidence` classed as a Text literal against a Float column"),
 
     // §Fase 119.f — the pix/corpus family (10 rows) LEFT this ledger on
     // 2026-08-08. §117 predicted it: "ONE header-grammar decision for
@@ -197,7 +222,6 @@ const KNOWN_UNCOMPILABLE: &[(u64, &str)] = &[
     // extended to the fourth member of the apply family).
 
     // ── Family G — undefined references ────────────────────────────────────
-    (0x6261cff9f54df359, "block 9: agent DataGatherer — references undeclared symbols"),
 ];
 
 /// FNV-1a over the block's normalized text. Not a security primitive — a

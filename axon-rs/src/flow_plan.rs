@@ -173,6 +173,9 @@ pub fn ir_flow_node_kind(node: &IRFlowNode) -> &'static str {
         IRFlowNode::OtsApply(_) => "ots_apply",
         IRFlowNode::MandateApply(_) => "mandate_apply",
         IRFlowNode::ComputeApply(_) => "compute_apply",
+        // §Fase 119.m.3 — a NEW wire slug. Additive: no pre-§119.m program can
+        // emit it, so every existing flow's wire shape is byte-identical (D4).
+        IRFlowNode::AgentCall(_) => "agent_call",
         IRFlowNode::Listen(_) => "listen",
         IRFlowNode::DaemonStep(_) => "daemon_step",
         IRFlowNode::Emit(_) => "emit",

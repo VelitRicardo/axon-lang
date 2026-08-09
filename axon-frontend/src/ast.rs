@@ -2614,6 +2614,9 @@ pub enum FlowStep {
     OtsApply(OtsApplyStep),
     MandateApply(MandateApplyStep),
     ComputeApply(ComputeApplyStep),
+    /// §Fase 119.m.3 — `<Agent>(arg, …)`, the step-body invocation of a
+    /// declared agent. Dispatches §119.m.1's bounded control loop.
+    AgentCall(AgentCallStep),
     Listen(ListenStep),
     DaemonStep(DaemonStepNode),
     /// §λ-L-E Fase 13 — π-calculus output prefix `c⟨v⟩.P` (Chan-Output / Chan-Mobility).
@@ -3438,6 +3441,24 @@ pub struct MandateApplyStep {
     pub mandate_name: String,
     pub target: String,
     pub output_type: String,
+    pub loc: Loc,
+}
+/// §Fase 119.m.3 — `<Agent>(arg, …)` written as a step-body statement: the
+/// form the README uses in every one of its agent examples, and the last piece
+/// that makes §119.m.1's executor reachable from source.
+///
+/// It is a distinct node rather than a reuse of [`ComputeApplyStep`] because
+/// the two are opposites: a `compute` is a PURE function with no model in the
+/// loop and no budget, and an agent is a bounded deliberation that spends. A
+/// shared node would invite a shared handler, and the first person to add a
+/// field would have to decide which of the two it meant.
+#[derive(Debug)]
+pub struct AgentCallStep {
+    /// The declared `agent` being invoked. A NAME — never dotted.
+    pub agent_name: String,
+    /// Positional arguments, each a §119.f.10 SUBJECT (a dotted reference or a
+    /// literal). README writes `TrendAnalyzer(Gather.output)`.
+    pub arguments: Vec<String>,
     pub loc: Loc,
 }
 #[derive(Debug)]

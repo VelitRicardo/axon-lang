@@ -672,6 +672,10 @@ fn extract_step_info(node: &IRFlowNode) -> (String, String, String) {
         IRFlowNode::Refine(s) => (s.target.clone(), "refine".to_string(), format!("Refine: {}", s.target)),
         IRFlowNode::Weave(s) => ("weave".to_string(), "weave".to_string(), format!("Weave {} sources into {}", s.sources.len(), s.target)),
         IRFlowNode::UseTool(s) => (s.tool_name.clone(), "use_tool".to_string(), format!("Use tool: {}", s.tool_name)),
+        // §Fase 119.m.3 — the audit row names the AGENT, because that is the
+        // unit an adopter reasons about; the loop's own iterations already
+        // appear as their own `agent`-slug rows beneath it.
+        IRFlowNode::AgentCall(s) => (s.agent_name.clone(), "agent_call".to_string(), format!("Run agent: {}({})", s.agent_name, s.arguments.join(", "))),
         // §Fase 92.b — ephemeral-credential minting (dispatcher-routed).
         IRFlowNode::Mint(s) => (s.credential_ref.clone(), "mint".to_string(), format!("Mint credential: {} as {}", s.credential_ref, s.binding)),
         // §Fase 94.b — mediated secret renewal (dispatcher-routed; the
@@ -1516,6 +1520,10 @@ struct NavDispatch {
     /// §Fase 119.c — the compiled ΛD + ots declarations (same doctrine).
     lambda_data_specs: std::sync::Arc<Vec<crate::ir_nodes::IRLambdaData>>,
     ots_specs: std::sync::Arc<Vec<crate::ir_nodes::IROts>>,
+    /// §Fase 119.m.3 — the compiled `agent` declarations. Empty ⇒ an
+    /// `<Agent>(args)` call fails CLOSED, because the declaration is where
+    /// `max_iterations` lives and an unresolved agent is an unbounded one.
+    agent_specs: std::sync::Arc<Vec<crate::ir_nodes::IRAgent>>,
 }
 
 /// §Fase 65.A — kill-switch for the structural-dispatch bridge. ON by default:
@@ -1669,6 +1677,9 @@ async fn dispatch_structural(
     // §Fase 119.c — attach the ΛD + ots catalogs.
     dctx = dctx.with_lambdas(nd.lambda_data_specs.clone());
     dctx = dctx.with_ots(nd.ots_specs.clone());
+    // §Fase 119.m.3 — attach the agent catalog so `<Agent>(args)` can resolve
+    // its bounds. This is THE production seam for the CLI/sync path.
+    dctx = dctx.with_agents(nd.agent_specs.clone());
     // Share the flow's MDN interaction history across all of its navigate nodes
     // so adaptive ω reinforcement sees cross-navigation variance (SSE parity).
     dctx.mdn_histories = histories.clone();
@@ -4156,6 +4167,8 @@ pub fn execute_server_flow(
             observables: std::sync::Arc::new(ir.observables.clone()),
             // §Fase 111.f — the deterministic muscle finally has something to flex.
             compute_specs: std::sync::Arc::new(ir.compute_specs.clone()),
+            // §Fase 119.m.3 — the agent catalog, from the SAME IR the flow came from.
+            agent_specs: std::sync::Arc::new(ir.agents.clone()),
             // §Fase 119.b — the mandate declarations reach dispatch: the cage
             // stops being a name the handler discards.
             mandate_specs: std::sync::Arc::new(ir.mandate_specs.clone()),
@@ -5553,6 +5566,7 @@ flow Recall(q: Text) -> Text {
             scopes: std::sync::Arc::new(Vec::new()),
             observables: std::sync::Arc::new(Vec::new()),
             compute_specs: std::sync::Arc::new(Vec::new()),
+            agent_specs: std::sync::Arc::new(Vec::new()),
             mandate_specs: std::sync::Arc::new(Vec::new()),
             lambda_data_specs: std::sync::Arc::new(Vec::new()),
             ots_specs: std::sync::Arc::new(Vec::new()),
@@ -5817,6 +5831,7 @@ flow Producer(tenant_id: Text) -> Text {
             scopes: std::sync::Arc::new(Vec::new()),
             observables: std::sync::Arc::new(Vec::new()),
             compute_specs: std::sync::Arc::new(Vec::new()),
+            agent_specs: std::sync::Arc::new(Vec::new()),
             mandate_specs: std::sync::Arc::new(Vec::new()),
             lambda_data_specs: std::sync::Arc::new(Vec::new()),
             ots_specs: std::sync::Arc::new(Vec::new()),

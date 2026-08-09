@@ -12,12 +12,12 @@
 //! This file covers **cross-cutting cycle-level properties** that fall
 //! between the per-group fuzz packs:
 //!
-//! 1. **Handler totality stress** — drive ALL 45 IRFlowNode variants
+//! 1. **Handler totality stress** — drive ALL 46 IRFlowNode variants
 //!    through `dispatch_node` in random-permuted order × many iters.
 //!    Asserts the closed-catalog match never panics for any variant,
 //!    no matter the dispatch order or surrounding ctx state.
 //!
-//! 2. **Cancel propagation across all 45** — pre-cancel × every
+//! 2. **Cancel propagation across all 46** — pre-cancel × every
 //!    variant × many iters. Asserts D3 contract holds uniformly.
 //!
 //! 3. **Orchestration composition** — synthesize random `Conditional` /
@@ -37,7 +37,7 @@
 //!
 //! 6. **Wire-stable kind slug round-trip (D11 cross-stack anchor)** —
 //!    every random IRFlowNode discriminant returns a kind slug from
-//!    `flow_plan::ir_flow_node_kind` that matches the 45-entry
+//!    `flow_plan::ir_flow_node_kind` that matches the 46-entry
 //!    closed-catalog list (mirrored by Python `axon.runtime.flow_plan`).
 //!
 //! # Methodology
@@ -51,13 +51,13 @@
 //!
 //! | Surface | Iters | Cumulative |
 //! |---|---|---|
-//! | §1 handler totality stress (45 variants × 50 iters each) | 2 250 | 2 250 |
-//! | §2 cancel propagation across all 45 (45 × 30 iters) | 1 350 | 3 600 |
+//! | §1 handler totality stress (46 variants × 50 iters each) | 2 300 | 2 300 |
+//! | §2 cancel propagation across all 46 (46 × 30 iters) | 1 380 | 3 680 |
 //! | §3 orchestration composition (deep-nest × 200 iters) | 200 | 3 800 |
 //! | §4 algebraic-semantics parity (D10, 300 iters) | 300 | 4 100 |
 //! | §5 tool-call interleaving (D8 + D3, 250 iters) | 250 | 4 350 |
-//! | §6 kind slug round-trip (D11 anchor, 45 × 20 iters) | 900 | 5 250 |
-//! | **Total**                                       | — | **5 250** |
+//! | §6 kind slug round-trip (D11 anchor, 46 × 20 iters) | 920 | 5 350 |
+//! | **Total**                                       | — | **5 350** |
 //!
 //! Runtime <2s on a stock GitHub Actions runner.
 
@@ -107,7 +107,7 @@ impl Lcg {
 }
 
 // ────────────────────────────────────────────────────────────────────
-//  Synthetic factory — 45 variants ordered by `ir_flow_node_kind` slug
+//  Synthetic factory — 46 variants ordered by `ir_flow_node_kind` slug
 // ────────────────────────────────────────────────────────────────────
 //
 // One factory per variant. Each takes an LCG so the synthesized payload
@@ -526,6 +526,24 @@ fn random_compute_apply(lcg: &mut Lcg) -> IRFlowNode {
     })
 }
 
+/// §Fase 119.m.3 — the 46th variant.
+///
+/// ⚠️ This factory table is HAND-MAINTAINED, and adding an `IRFlowNode`
+/// variant does NOT break it — `dispatch_node`'s exhaustive match does (it
+/// caught this one four times), but a table of 45 literals keeps passing while
+/// silently covering 45 of 46. The tests are named `…all_45`, so leaving it
+/// would have made the suite CLAIM coverage it no longer had. Counts updated
+/// to 46 along with this entry.
+fn random_agent_call(lcg: &mut Lcg) -> IRFlowNode {
+    IRFlowNode::AgentCall(IRAgentCall {
+        node_type: "agent_call",
+        source_line: 0,
+        source_column: 0,
+        agent_name: lcg.ascii_with_random_len(12),
+        arguments: vec![lcg.ascii_with_random_len(8)],
+    })
+}
+
 fn random_listen(lcg: &mut Lcg) -> IRFlowNode {
     IRFlowNode::Listen(IRListenStep {
         node_type: "listen",
@@ -638,7 +656,7 @@ fn random_transact(_lcg: &mut Lcg) -> IRFlowNode {
 }
 
 /// Dispatch table: (kind slug, factory). One row per IRFlowNode variant.
-/// Iteration over this table = exhaustive iteration over the 45-variant
+/// Iteration over this table = exhaustive iteration over the 46-variant
 /// catalog. The order is the same as `flow_dispatcher/mod.rs::dispatch_node`
 /// match arms for cache-locality during the totality-stress test.
 type Factory = fn(&mut Lcg) -> IRFlowNode;
@@ -680,6 +698,7 @@ fn factories() -> Vec<(&'static str, Factory)> {
         ("ots_apply", random_ots_apply),
         ("mandate_apply", random_mandate_apply),
         ("compute_apply", random_compute_apply),
+        ("agent_call", random_agent_call),
         ("listen", random_listen),
         ("daemon_step", random_daemon_step),
         ("emit", random_emit),
@@ -751,11 +770,16 @@ fn assert_clean_outcome(
         //   lambda  — §119.c: the placeholder string "lambda:<name>(<target>)"
         //             a downstream step consumed as if it were ψ
         //   ots     — §119.c: the identity under a transformation's name
+        //   agent   — §119.m.3: the fuzz ctx has an EMPTY agent catalog, and an
+        //             unresolvable agent is an UNBOUNDED one (`max_iterations`
+        //             lives in the declaration). Refusing is the correct total
+        //             outcome here, exactly as it is for mandate/lambda/ots.
         Err(DispatchError::BackendError { ref name, .. })
             if matches!(name.as_str(), "compute" | "yield" | "warden" | "quant" | "grad")
                 || name.starts_with("mandate:")
                 || name.starts_with("lambda:")
-                || name.starts_with("ots:") => {}
+                || name.starts_with("ots:")
+                || name.starts_with("agent:") => {}
         Err(DispatchError::BackendError { name, message }) => panic!(
             "33.y.n fuzz: unexpected BackendError for {kind} iter {iter}: name={name} msg={message}"
         ),
@@ -792,12 +816,12 @@ fn assert_clean_outcome(
 //  §1 — Handler totality stress
 // ────────────────────────────────────────────────────────────────────
 //
-// Drive EVERY one of the 45 IRFlowNode variants through `dispatch_node`
+// Drive EVERY one of the 46 IRFlowNode variants through `dispatch_node`
 // in random-permuted order × 50 iters/variant. Asserts the closed-
 // catalog match never panics for any variant, no matter the order or
 // surrounding ctx state.
 //
-// Total: 45 × 50 = 2 250 iters.
+// Total: 46 × 50 = 2 300 iters.
 
 #[tokio::test]
 async fn fase33y_n_handler_totality_stress() {
@@ -823,17 +847,17 @@ async fn fase33y_n_handler_totality_stress() {
 }
 
 // ────────────────────────────────────────────────────────────────────
-//  §2 — Cancel propagation across all 45
+//  §2 — Cancel propagation across all 46
 // ────────────────────────────────────────────────────────────────────
 //
 // For every variant: pre-cancel the flag + dispatch + assert
 // `Err(UpstreamCancelled)`. D3 invariant must hold uniformly across
 // the entire catalog.
 //
-// Total: 45 × 30 = 1 350 iters.
+// Total: 46 × 30 = 1 380 iters.
 
 #[tokio::test]
-async fn fase33y_n_cancel_propagation_across_all_45() {
+async fn fase33y_n_cancel_propagation_across_all_46() {
     const ITERS_PER_VARIANT: usize = 30;
     let mut lcg = Lcg::new(0xCAACE1_AC_055_4_5_4_5);
     let factories = factories();
@@ -1094,11 +1118,11 @@ async fn fase33y_n_tool_call_interleaving_d8_d3() {
 //
 // For every variant × 20 iters: synthesize random IR, call
 // `ir_flow_node_kind` + assert the returned slug matches the
-// 45-entry expected catalog AND is non-empty AND is the same slug
+// 46-entry expected catalog AND is non-empty AND is the same slug
 // across all iters for the same variant (kind is a function of the
 // discriminant, not the payload).
 //
-// Total: 45 × 20 = 900 iters.
+// Total: 46 × 20 = 920 iters.
 
 #[test]
 fn fase33y_n_kind_slug_round_trip_d11_anchor() {
@@ -1123,7 +1147,7 @@ fn fase33y_n_kind_slug_round_trip_d11_anchor() {
             assert!(
                 expected_kinds.contains(&actual_kind),
                 "§6 33.y.n iter {i}: kind slug {actual_kind:?} not in the \
-                 expected 45-entry closed catalog"
+                 expected 46-entry closed catalog"
             );
         }
     }
@@ -1134,12 +1158,12 @@ fn fase33y_n_kind_slug_round_trip_d11_anchor() {
 // ────────────────────────────────────────────────────────────────────
 
 #[test]
-fn fase33y_n_factory_table_has_exactly_45_entries() {
+fn fase33y_n_factory_table_has_exactly_46_entries() {
     let factories = factories();
     assert_eq!(
         factories.len(),
-        45,
-        "33.y.n: consolidated fuzz factory table must mirror the 45-variant \
+        46,
+        "33.y.n: consolidated fuzz factory table must mirror the 46-variant \
          IRFlowNode closed catalog. A 46th variant in a future axon-lang \
          minor fails this assertion + the dispatch_node compile."
     );
@@ -1147,19 +1171,19 @@ fn fase33y_n_factory_table_has_exactly_45_entries() {
 
 #[test]
 fn fase33y_n_total_iter_count_pinned() {
-    // Sum the per-test iter counts so the documented "5 250 total"
+    // Sum the per-test iter counts so the documented "5 350 total"
     // is enforced. Drift surfaces at PR time.
-    const SECT_1_TOTALITY: usize = 45 * 50;
-    const SECT_2_CANCEL: usize = 45 * 30;
+    const SECT_1_TOTALITY: usize = 46 * 50;
+    const SECT_2_CANCEL: usize = 46 * 30;
     const SECT_3_NESTED: usize = 200;
     const SECT_4_PARITY: usize = 300;
     const SECT_5_TOOL: usize = 250;
-    const SECT_6_SLUG: usize = 45 * 20;
+    const SECT_6_SLUG: usize = 46 * 20;
     let total =
         SECT_1_TOTALITY + SECT_2_CANCEL + SECT_3_NESTED + SECT_4_PARITY + SECT_5_TOOL + SECT_6_SLUG;
     assert_eq!(
-        total, 5250,
-        "33.y.n consolidated fuzz pack must run exactly 5 250 deterministic \
+        total, 5350,
+        "33.y.n consolidated fuzz pack must run exactly 5 350 deterministic \
          LCG iters across 6 cross-cutting surfaces."
     );
 }

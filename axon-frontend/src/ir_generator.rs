@@ -1276,6 +1276,14 @@ impl IRGenerator {
                 arguments: s.arguments.clone(),
                 output_name: s.output_name.clone(),
             }),
+            // §Fase 119.m.3 — `<Agent>(arg, …)`.
+            FlowStep::AgentCall(s) => IRFlowNode::AgentCall(crate::ir_nodes::IRAgentCall {
+                node_type: "agent_call",
+                source_line: s.loc.line,
+                source_column: s.loc.column,
+                agent_name: s.agent_name.clone(),
+                arguments: s.arguments.clone(),
+            }),
             FlowStep::Listen(s) => IRFlowNode::Listen(self.lower_listen(s)),
             // §λ-L-E Fase 13 — Mobile typed channel reductions.
             FlowStep::Emit(s) => {

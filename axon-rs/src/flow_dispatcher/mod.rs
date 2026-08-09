@@ -408,6 +408,14 @@ pub struct DispatchCtx {
     /// Empty ⇒ `compute … on …` fails CLOSED (axon-T941 catches it at compile
     /// time; this is the runtime's belt).
     pub compute_specs: Arc<Vec<crate::ir_nodes::IRCompute>>,
+    /// §Fase 119.m.3 — the compiled `agent` declarations, so an `<Agent>(args)`
+    /// call can resolve its bounds, strategy and tool grant at dispatch.
+    ///
+    /// Empty ⇒ every agent call fails CLOSED. That is not a nicety here: the
+    /// declaration is where `max_iterations` lives, so an unresolved agent is
+    /// an unbounded one, and running it would spend without a ceiling anybody
+    /// wrote. The §111.f compute doctrine, applied to the loop.
+    pub agent_specs: Arc<Vec<crate::ir_nodes::IRAgent>>,
     /// §Fase 119.b — the compiled `mandate` declarations, so a `mandate X on Y`
     /// (flow-level node or step-scoped guard) can build its enforcement loop at
     /// dispatch. Empty ⇒ every mandate application fails CLOSED — a mandate
@@ -677,6 +685,7 @@ impl DispatchCtx {
             quant_frame: None,
             // §Fase 111.f — no compute catalog by default: an apply fails CLOSED.
             compute_specs: Arc::new(Vec::new()),
+            agent_specs: Arc::new(Vec::new()),
             // §Fase 119.b — no mandate catalog by default: an apply fails CLOSED.
             mandate_specs: Arc::new(Vec::new()),
             // §Fase 119.c — no ΛD / ots catalogs by default: fail CLOSED.
@@ -790,6 +799,17 @@ impl DispatchCtx {
     /// of binding a placeholder string.
     pub fn with_computes(mut self, specs: Arc<Vec<crate::ir_nodes::IRCompute>>) -> Self {
         self.compute_specs = specs;
+        self
+    }
+
+    /// §Fase 119.m.3 — Builder: attach the compiled `agent` declarations, so
+    /// `<Agent>(args)` resolves its bounds and tool grant at dispatch.
+    ///
+    /// Every production seam that builds a `DispatchCtx` must call this. That
+    /// is the whole lesson of §119.f.7: a catalog the executor reads and no
+    /// entry point fills is an executor that never runs.
+    pub fn with_agents(mut self, specs: Arc<Vec<crate::ir_nodes::IRAgent>>) -> Self {
+        self.agent_specs = specs;
         self
     }
 
@@ -1414,6 +1434,9 @@ pub async fn dispatch_node(
         IRFlowNode::OtsApply(node) => algebraic_handlers::run_ots_apply(node, ctx).await,
         IRFlowNode::MandateApply(node) => algebraic_handlers::run_mandate_apply(node, ctx).await,
         IRFlowNode::ComputeApply(node) => algebraic_handlers::run_compute_apply(node, ctx).await,
+        // §Fase 119.m.3 — `<Agent>(args)`: §119.m.1's bounded control loop,
+        // reachable from source at last.
+        IRFlowNode::AgentCall(node) => agent_loop::run_agent_call(node, ctx).await,
         IRFlowNode::Listen(node) => algebraic_handlers::run_listen(node, ctx).await,
         IRFlowNode::DaemonStep(node) => algebraic_handlers::run_daemon_step(node, ctx).await,
         // §Fase 92.c — ephemeral-credential minting (attenuated, fail-closed).
@@ -1669,6 +1692,7 @@ async fn resume_parked_flow_inner(
         .insert(parked.event_name.clone(), wake_payload);
     ctx = ctx
         .with_computes(parked.compute_specs.clone())
+        .with_agents(parked.agent_specs.clone())
         .with_mandates(parked.mandate_specs.clone())
         .with_lambdas(parked.lambda_data_specs.clone())
         .with_ots(parked.ots_specs.clone());

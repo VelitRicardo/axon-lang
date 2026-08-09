@@ -92,6 +92,11 @@ pub struct ParkedFlow {
     pub ots_specs: Arc<Vec<crate::ir_nodes::IROts>>,
     #[serde(skip)]
     pub compute_specs: Arc<Vec<crate::ir_nodes::IRCompute>>,
+    /// §Fase 119.m.3 — the agent catalog, carried across the suspension for the
+    /// same reason as the four above: losing it on resume would fail-close
+    /// every agent call after the sleep.
+    #[serde(skip)]
+    pub agent_specs: Arc<Vec<crate::ir_nodes::IRAgent>>,
 }
 
 /// Why a continuation could not be claimed.
@@ -270,6 +275,7 @@ mod tests {
             lambda_data_specs: Arc::new(Vec::new()),
             ots_specs: Arc::new(Vec::new()),
             compute_specs: Arc::new(Vec::new()),
+            agent_specs: Arc::new(Vec::new()),
         }
     }
 

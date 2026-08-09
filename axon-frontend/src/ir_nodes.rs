@@ -1187,6 +1187,9 @@ pub enum IRFlowNode {
     OtsApply(IROtsApplyStep),
     MandateApply(IRMandateApplyStep),
     ComputeApply(IRComputeApplyStep),
+    /// §Fase 119.m.3 — `<Agent>(arg, …)`. The 46th variant, and the one that
+    /// makes §119.m.1's bounded control loop reachable from source.
+    AgentCall(IRAgentCall),
     Listen(IRListenStep),
     DaemonStep(IRDaemonStepNode),
     /// §λ-L-E Fase 13 — π-calc output prefix (Chan-Output / Chan-Mobility).
@@ -1724,6 +1727,22 @@ pub struct IRMandateApplyStep {
     pub mandate_name: String,
     pub target: String,
     pub output_type: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct IRAgentCall {
+    pub node_type: &'static str,
+    pub source_line: u32,
+    pub source_column: u32,
+    /// The declared `agent` this call invokes. Resolved against
+    /// `DispatchCtx::agent_specs` at dispatch; an unresolved name fails CLOSED
+    /// (the §111.f compute doctrine — an empty catalog runs nothing).
+    pub agent_name: String,
+    /// Positional §119.f.10 subjects. Resolved against the flow bindings at
+    /// dispatch, so `TrendAnalyzer(Gather.output)` hands the agent the prior
+    /// step's VALUE.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub arguments: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]

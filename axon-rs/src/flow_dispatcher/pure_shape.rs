@@ -373,6 +373,10 @@ async fn dispatch_step_statement(
         // §Fase 119.f.11 — the tenth: `retrieve from <Store> where "…"`. The
         // only one of the four whose engine was already wired end to end.
         N::Retrieve(n) => super::wire_integrations::run_retrieve(n, ctx).await,
+        // §Fase 119.m.3 — the eleventh: `<Agent>(arg, …)`. An ELEVATION like
+        // the rest — the agent's answer binds under its own name BEFORE the
+        // step generates, so the step's `ask:` can interpolate it.
+        N::AgentCall(n) => super::agent_loop::run_agent_call(n, ctx).await,
         N::Validate(n) => run_validate(n, ctx).await,
         N::Navigate(n) => super::cognitive::run_navigate(n, ctx).await,
         N::Drill(n) => super::pix::run_drill(n, ctx).await,
