@@ -102,9 +102,11 @@ async fn the_walk_halts_at_hibernate_and_parks_the_continuation() {
 async fn a_resumed_continuation_runs_the_remaining_steps_and_records_the_outcome() {
     // Independent flow name so the deterministic id does not collide with
     // the other tests in this file.
-    let source = SOURCE.replace("SleepyFlow", "ResumableFlow");
+    let source = SOURCE
+        .replace("SleepyFlow", "ResumableFlow")
+        .replace("quarterly_data", "resumable_event");
     run_flow(&source, "ResumableFlow").await;
-    let cid = axon::hibernation::continuation_id("ResumableFlow", "quarterly_data", 4, 5);
+    let cid = axon::hibernation::continuation_id("ResumableFlow", "resumable_event", 4, 5);
     let parked = axon::hibernation::parking_lot()
         .claim(&cid, 0)
         .expect("parked");
@@ -119,13 +121,22 @@ async fn a_resumed_continuation_runs_the_remaining_steps_and_records_the_outcome
 
 #[tokio::test]
 async fn emit_wakes_a_parked_continuation_end_to_end() {
-    let source = SOURCE.replace("SleepyFlow", "EmitWokenFlow");
+    let source = SOURCE
+        .replace("SleepyFlow", "EmitWokenFlow")
+        .replace("quarterly_data", "emit_woken_event");
     run_flow(&source, "EmitWokenFlow").await;
-    let cid = axon::hibernation::continuation_id("EmitWokenFlow", "quarterly_data", 4, 5);
+    let cid = axon::hibernation::continuation_id("EmitWokenFlow", "emit_woken_event", 4, 5);
     assert!(axon::hibernation::parking_lot().is_parked(&cid));
 
-    // Drive an `emit quarterly_data(...)` through the real dispatcher (the
+    // Drive an `emit emit_woken_event(...)` through the real dispatcher (the
     // legacy in-process route — no bus attached — which also wakes).
+    //
+    // §Fase 119.i — the event name is UNIQUE to this test. The four cases in
+    // this file used to share `quarterly_data`, and the wake claims by event
+    // name against a PROCESS-GLOBAL lot, so whichever test emitted first
+    // consumed the others' parked continuations. That race is what made
+    // `the_walk_halts_at_hibernate…` fail roughly one run in three — and it is
+    // what exposed the cross-tenant defect §119.m.4 fixes.
     let (tx, _rx) = mpsc::unbounded_channel();
     let mut ctx = axon::flow_dispatcher::DispatchCtx::new(
         "Emitter",
@@ -138,7 +149,7 @@ async fn emit_wakes_a_parked_continuation_end_to_end() {
         node_type: "emit",
         source_line: 0,
         source_column: 0,
-        channel_ref: "quarterly_data".into(),
+        channel_ref: "emit_woken_event".into(),
         value_ref: "fresh data".into(),
         value_is_channel: false,
         shield_ref: String::new(),

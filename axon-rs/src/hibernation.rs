@@ -201,12 +201,54 @@ impl ParkingLot {
         Ok(p)
     }
 
-    /// Claim every unexpired continuation awaiting `event_name`. Expired
-    /// entries encountered on the way are reaped (the lazy timeout firing).
-    pub fn take_resumable(&self, event_name: &str, now_ms: i64) -> Vec<ParkedFlow> {
+    /// Claim every unexpired continuation **of `tenant_id`** awaiting
+    /// `event_name`. Expired entries of that tenant are reaped on the way (the
+    /// lazy timeout firing).
+    ///
+    /// # §Fase 119.m.4 — why the tenant is a REQUIRED parameter
+    ///
+    /// It used to key on `event_name` alone, and `by_event` is a process-global
+    /// index, so an emit claimed every continuation under that name across
+    /// every tenant in the process — and `resume_parked_flow` restores
+    /// `ctx.tenant_id` from the parked flow, so the other tenant's flow really
+    /// did resume, as itself, with the emitter's payload bound under the event
+    /// name. `ParkedFlow` has carried `tenant_id` since §119.d; the wake path
+    /// simply never looked at it.
+    ///
+    /// The parameter is required rather than optional so the compiler names
+    /// every call site. An `Option<&str>` defaulting to "all tenants" would
+    /// have let the one seam that matters keep its old behaviour silently,
+    /// which is the §119.f.7 defect in the shape of an API.
+    ///
+    /// **A foreign candidate is SKIPPED, never an error.** Failing the emit
+    /// would let any tenant deny another by choosing a channel name. And the
+    /// skip is counted, not itemised: logging "tenant X also waits here" would
+    /// leak tenancy structure into the emitter's logs.
+    ///
+    /// Matching is strict string equality, which makes the untenanted OSS case
+    /// (`"" == ""`) byte-identical to pre-§119.m.4, and refuses to let a
+    /// tenanted emit adopt an orphaned park.
+    pub fn take_resumable(
+        &self,
+        tenant_id: &str,
+        event_name: &str,
+        now_ms: i64,
+    ) -> Vec<ParkedFlow> {
         let ids: Vec<String> = {
             let g = self.inner.lock().expect("parking lot poisoned");
-            g.by_event.get(event_name).cloned().unwrap_or_default()
+            g.by_event
+                .get(event_name)
+                .map(|ids| {
+                    ids.iter()
+                        .filter(|id| {
+                            g.parked
+                                .get(*id)
+                                .is_some_and(|p| p.tenant_id == tenant_id)
+                        })
+                        .cloned()
+                        .collect()
+                })
+                .unwrap_or_default()
         };
         let mut out = Vec::new();
         for id in ids {
@@ -323,11 +365,36 @@ mod tests {
         lot.park(parked("live", "quarterly", Some(10_000)));
         lot.park(parked("stale", "quarterly", Some(1_000)));
         lot.park(parked("other", "different_event", None));
-        let got = lot.take_resumable("quarterly", 5_000);
+        // §Fase 119.m.4 — the fixture parks with an empty `tenant_id`, so the
+        // untenanted emit is the matching one. That equality IS the OSS
+        // back-compat path, exercised here by construction.
+        let got = lot.take_resumable("", "quarterly", 5_000);
         assert_eq!(got.len(), 1, "only the unexpired matching one");
         assert_eq!(got[0].continuation_id, "live");
         assert!(!lot.is_parked("stale"), "expired entry reaped in passing");
         assert!(lot.is_parked("other"), "unrelated event untouched");
+    }
+
+    /// §Fase 119.m.4 — the isolation, at the unit level and on a LOCAL lot (no
+    /// process-global state, so this one cannot race another test).
+    #[test]
+    fn take_resumable_is_scoped_to_the_emitting_tenant() {
+        let lot = ParkingLot { inner: Mutex::new(LotInner::default()) };
+        let mut a = parked("acme", "quarterly", None);
+        a.tenant_id = "tenant-acme".into();
+        let mut b = parked("globex", "quarterly", None);
+        b.tenant_id = "tenant-globex".into();
+        lot.park(a);
+        lot.park(b);
+
+        let got = lot.take_resumable("tenant-acme", "quarterly", 0);
+        assert_eq!(got.len(), 1, "one tenant's emit claims one tenant's park");
+        assert_eq!(got[0].continuation_id, "acme");
+        assert!(
+            lot.is_parked("globex"),
+            "the other tenant's continuation is untouched — waking it would \
+             resume THEIR flow with OUR payload"
+        );
     }
 
     #[test]

@@ -549,10 +549,17 @@ pub async fn run_emit(
     // unexpired continuation hibernating on C. Fire-and-forget: the resumed
     // run has no attached client, its result lands in the parking lot's
     // outcome record. Expired entries are reaped here (lazy timeout).
+    //
+    // §Fase 119.m.4 — scoped to THIS RUN'S TENANT. The parking lot is a process
+    // singleton indexed by event name, so before this the wake crossed tenants:
+    // A's emit on `C` resumed B's parked flow — as B, since `resume_parked_flow`
+    // restores the parked `tenant_id` — with A's payload bound under the event
+    // name. `ParkedFlow` has carried the tenant since §119.d; nothing read it.
+    // The §66 cross-tenant class, inside a primitive that shipped in 2.83.0.
     {
         let now = crate::flow_execution_event::now_ms() as i64;
         let woken = crate::hibernation::parking_lot()
-            .take_resumable(&node.channel_ref, now);
+            .take_resumable(&ctx.tenant_id, &node.channel_ref, now);
         for parked in woken {
             let payload = emitted.clone();
             tokio::spawn(crate::flow_dispatcher::resume_parked_flow(parked, payload));
