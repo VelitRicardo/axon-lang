@@ -397,6 +397,243 @@ async fn s5_readme_block_15_verbatim_runs_with_the_feed_mounted() {
     );
 }
 
+// ── §6 — `on_error`: a failing SOURCE, and only a failing source ─────────────
+
+/// A `provider: "http"` tool with an unparseable runtime falls back to the
+/// honest `SyncFallbackTool`, which emits an error TERMINATOR — a source that
+/// fails for real, not a mock.
+fn failing_tool(name: &str) -> ToolEntry {
+    let mut e = tool_entry(name, "http", vec!["stream:drop_oldest"], true);
+    e.runtime = "not a url".to_string();
+    e.timeout = "1s".to_string();
+    e
+}
+
+const WITH_ON_ERROR: &str = r#"
+flow F(x: String) -> Text {
+    step Quotes {
+        apply: MarketFeed
+        ask: "start the feed"
+        stream<QuoteData> {
+            on_chunk: { output: QuoteSnapshot }
+            on_complete: { output: VerifiedQuote }
+            on_error: {
+                probe error for [reason]
+                output: Text
+            }
+        }
+        output: Text
+    }
+}
+"#;
+
+#[tokio::test]
+async fn s6_on_error_runs_when_the_source_fails_and_binds_the_failure() {
+    let (mut c, mut rx) = ctx_with(vec![failing_tool("MarketFeed")]);
+    let step = step_from_source(WITH_ON_ERROR);
+
+    run_step(&step, &mut c)
+        .await
+        .expect("with an `on_error` arm the step recovers rather than failing");
+
+    assert!(
+        c.let_bindings.contains_key("error"),
+        "the failure must bind as `error` — the arm writes `probe error for [...]`. \
+         Bindings: {:?}",
+        c.let_bindings.keys().collect::<Vec<_>>()
+    );
+    let slugs = step_start_slugs(&mut rx);
+    assert!(
+        slugs.iter().any(|s| s == "probe"),
+        "the `on_error` body must actually run. Slugs: {slugs:?}"
+    );
+}
+
+/// Without the arm, the failure PROPAGATES — §119.n's behaviour is unchanged for
+/// every program that does not opt in.
+#[tokio::test]
+async fn s6b_without_on_error_a_failing_source_still_propagates() {
+    let (mut c, _rx) = ctx_with(vec![failing_tool("MarketFeed")]);
+    let step = step_from_source(TOOL_SOURCED); // same program, no `on_error`
+
+    run_step(&step, &mut c)
+        .await
+        .expect_err("a failing source with no handler must still fail the step");
+}
+
+/// `on_complete` is for a stream that CLOSED. A stream that broke did not close,
+/// so running the completion handler would report a successful finish over a
+/// failure.
+#[tokio::test]
+async fn s6c_on_complete_does_not_run_when_the_source_failed() {
+    let (mut c, mut rx) = ctx_with(vec![failing_tool("MarketFeed")]);
+    let step = step_from_source(WITH_ON_ERROR);
+
+    run_step(&step, &mut c).await.expect("recovers");
+
+    assert!(
+        !c.let_bindings.contains_key("complete"),
+        "`complete` binds only when the source closed normally; it is bound here, \
+         so `on_complete` ran over a stream that broke. Bindings: {:?}",
+        c.let_bindings.keys().collect::<Vec<_>>()
+    );
+    let _ = step_start_slugs(&mut rx);
+}
+
+/// **The distinction that makes `on_error` honest.** A failure raised by the
+/// author's OWN `on_chunk` must NOT be caught here: a broken handler that
+/// silently catches itself and reports the stream as healthy is worse than one
+/// that crashes, because the program then looks fine.
+///
+/// `on_chunk` fails by declaring a nested `stream<T>` with no source — a
+/// deterministic dispatch error that is unmistakably not a producer fault.
+#[tokio::test]
+async fn s6d_a_failure_in_on_chunk_is_not_caught_by_on_error() {
+    let src = r#"
+flow F(x: String) -> Text {
+    step Quotes {
+        apply: MarketFeed
+        ask: "start the feed"
+        stream<QuoteData> {
+            on_chunk: {
+                stream<Inner> {
+                    on_chunk: { output: Text }
+                }
+                output: Text
+            }
+            on_error: { output: Text }
+        }
+        output: Text
+    }
+}
+"#;
+    let (mut c, _rx) = ctx_with(vec![tool_entry(
+        "MarketFeed",
+        "stub_stream",
+        vec!["stream:drop_oldest"],
+        true,
+    )]);
+    let step = step_from_source(src);
+
+    let err = run_step(&step, &mut c)
+        .await
+        .expect_err("a broken `on_chunk` must NOT be swallowed by `on_error`");
+    let msg = format!("{err:?}");
+    assert!(
+        msg.contains("on_chunk"),
+        "the surfaced error must name the handler that broke, not be recovered \
+         into a healthy-looking stream: {msg}"
+    );
+}
+
+// ── §7 — `on_chunk` runs DURING the stream, sequentially ─────────────────────
+
+/// Every event in emission order, tagged `"token:<step_name>"` /
+/// `"start:<slug>"`.
+///
+/// The step NAME matters and is easy to get wrong: an `on_chunk` arm is itself a
+/// step, so it emits its OWN `StepToken`s while handling a chunk. Counting bare
+/// tokens conflates the stream's chunks with the handler's output — measured,
+/// three chunks produced ten token events. The stream's own chunks are the ones
+/// carrying the enclosing step's name.
+fn event_trace(rx: &mut mpsc::UnboundedReceiver<FlowExecutionEvent>) -> Vec<String> {
+    let mut out = Vec::new();
+    while let Ok(ev) = rx.try_recv() {
+        match ev {
+            FlowExecutionEvent::StepToken { step_name, .. } => {
+                out.push(format!("token:{step_name}"))
+            }
+            FlowExecutionEvent::StepStart { step_type, .. } => {
+                out.push(format!("start:{step_type}"))
+            }
+            _ => {}
+        }
+    }
+    out
+}
+
+/// **The property the word "stream" is making a claim about.**
+///
+/// `on_chunk` must run INTERLEAVED with the source — handler for chunk *i*
+/// before the token for chunk *i+1* — not buffered up and replayed after the
+/// stream closes. A buffered implementation passes every other test in this
+/// file: same handler count, same bindings, same final output. The only thing
+/// that distinguishes them is the ORDER events reach the wire, so that is what
+/// this asserts.
+#[tokio::test]
+async fn s7_on_chunk_is_interleaved_with_the_source_not_buffered() {
+    let (mut c, mut rx) = ctx_with(vec![tool_entry(
+        "MarketFeed",
+        "stub_stream",
+        vec!["stream:drop_oldest"],
+        true,
+    )]);
+    let step = step_from_source(TOOL_SOURCED);
+
+    run_step(&step, &mut c).await.expect("run_step");
+
+    let trace = event_trace(&mut rx);
+    // `probe` occurs ONLY inside the `on_chunk` arm, so it marks a handler run
+    // unambiguously.
+    let first_handler = trace
+        .iter()
+        .position(|e| e == "start:probe")
+        .unwrap_or_else(|| panic!("`on_chunk` never ran. Trace: {trace:?}"));
+    let chunks_before = trace[..first_handler]
+        .iter()
+        .filter(|e| e.as_str() == "token:Quotes")
+        .count();
+
+    assert_eq!(
+        chunks_before, 1,
+        "the FIRST `on_chunk` dispatch must follow the FIRST chunk, not the last. \
+         {chunks_before} of the stream's chunks reached the wire before any handler \
+         ran — meaning the chunks were buffered and the handlers replayed after the \
+         stream closed, which is a stream in name only. Trace: {trace:?}"
+    );
+}
+
+/// Sequential, and exactly once per chunk: no chunk is skipped, none is handled
+/// twice. The stub yields three non-empty chunks.
+#[tokio::test]
+async fn s7b_on_chunk_runs_exactly_once_per_chunk_in_order() {
+    let (mut c, mut rx) = ctx_with(vec![tool_entry(
+        "MarketFeed",
+        "stub_stream",
+        vec!["stream:drop_oldest"],
+        true,
+    )]);
+    let step = step_from_source(TOOL_SOURCED);
+
+    run_step(&step, &mut c).await.expect("run_step");
+
+    let trace = event_trace(&mut rx);
+    let chunks = trace.iter().filter(|e| e.as_str() == "token:Quotes").count();
+    let probes = trace.iter().filter(|e| e.as_str() == "start:probe").count();
+    assert_eq!(chunks, 3, "the stub yields three non-empty chunks: {trace:?}");
+    assert_eq!(
+        probes, chunks,
+        "one handler run per chunk — no skips, no doubles. Trace: {trace:?}"
+    );
+
+    // NOT asserted here: that `chunk` still holds the LAST chunk afterwards.
+    //
+    // It does not, and the reason is a real property of README block 15's own
+    // body rather than a defect. `probe chunk for [...]` binds its RESULT under
+    // its target name — the same rule that makes `probe sessions for [...]` bind
+    // `sessions` — so the arm overwrites `chunk` with the probe's output on every
+    // iteration. Measured: `Some("(stub)")`, the probe's answer, not `")"`.
+    //
+    // So the binding cannot witness ordering, and asserting on it would have been
+    // asserting on the stub backend's reply text. Ordering is witnessed by s7
+    // instead, where it is observable for real: the interleaving of the handler
+    // dispatches with the source's own chunks on the wire.
+    assert!(
+        c.let_bindings.contains_key("chunk"),
+        "the chunk is still bound for the arm to read"
+    );
+}
+
 /// The §119.n position claim, stated negatively: the block must never again be
 /// silently dropped. If a future refactor sends `stream` back to
 /// `skip_flow_step_structural`, `IRStep.stream` goes `None` and the step runs as

@@ -4687,6 +4687,7 @@ impl Parser {
             chunk_type,
             on_chunk: None,
             on_complete: None,
+            on_error: None,
             body: Vec::new(),
             loc,
         };
@@ -4700,7 +4701,7 @@ impl Parser {
                 // this landed it was a hard parse error at flow level and a
                 // silent discard in a step body.
                 let name = self.current().value.clone();
-                let is_arm = matches!(name.as_str(), "on_chunk" | "on_complete")
+                let is_arm = matches!(name.as_str(), "on_chunk" | "on_complete" | "on_error")
                     && self
                         .tokens
                         .get(self.pos + 1)
@@ -4710,10 +4711,10 @@ impl Parser {
                     self.advance(); // the handler name
                     self.advance(); // `:`
                     let arm = self.parse_stream_handler_arm(&name, &arm_tok)?;
-                    let slot = if name == "on_chunk" {
-                        &mut block.on_chunk
-                    } else {
-                        &mut block.on_complete
+                    let slot = match name.as_str() {
+                        "on_chunk" => &mut block.on_chunk,
+                        "on_complete" => &mut block.on_complete,
+                        _ => &mut block.on_error,
                     };
                     if slot.is_some() {
                         return Err(ParseError {
@@ -4751,12 +4752,13 @@ impl Parser {
                     return Err(ParseError {
                         message: format!(
                             "unknown `stream` handler `{name}` — this block accepts only \
-                             `on_chunk:` (run once per chunk, with the chunk bound as `chunk`) \
-                             and `on_complete:` (run once, after the source closes). An \
-                             unrecognised handler is refused rather than skipped: a skipped \
-                             handler removes the processing the author wrote, and silence in \
-                             that direction is indistinguishable from a stream that had nothing \
-                             to do."
+                             `on_chunk:` (run once per chunk, with the chunk bound as `chunk`), \
+                             `on_complete:` (run once, after the source closes, with the \
+                             accumulation bound as `complete`) and `on_error:` (run when the \
+                             SOURCE fails, with the failure bound as `error`). An unrecognised \
+                             handler is refused rather than skipped: a skipped handler removes \
+                             the processing the author wrote, and silence in that direction is \
+                             indistinguishable from a stream that had nothing to do."
                         ),
                         line: bad.line,
                         column: bad.column,

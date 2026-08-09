@@ -123,7 +123,7 @@ pub async fn run_stream(
     // so accepting the grammar and ignoring the arms would install a BRAND NEW
     // silent drop of exactly the kind §119.n exists to remove. Refuse, and name
     // the position that does work.
-    if node.on_chunk.is_some() || node.on_complete.is_some() {
+    if node.on_chunk.is_some() || node.on_complete.is_some() || node.on_error.is_some() {
         return Err(DispatchError::BackendError {
             name: "stream".to_string(),
             message: format!(
@@ -654,6 +654,7 @@ mod tests {
             chunk_type: String::new(),
             on_chunk: None,
             on_complete: None,
+            on_error: None,
         };
         let outcome = run_stream(&node, &mut ctx).await.unwrap();
         match outcome {

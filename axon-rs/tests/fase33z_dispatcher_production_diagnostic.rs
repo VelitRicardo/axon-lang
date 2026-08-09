@@ -998,6 +998,7 @@ fn d1_catalog_totality_pin_45_variants() {
             chunk_type: String::new(),
             on_chunk: None,
             on_complete: None,
+            on_error: None,
         }),
         IRFlowNode::Navigate(IRNavigateStep {
             depth: None,

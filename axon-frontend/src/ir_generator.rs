@@ -924,6 +924,7 @@ impl IRGenerator {
                 .on_complete
                 .as_ref()
                 .map(|a| Box::new(self.lower_step(a))),
+            on_error: s.on_error.as_ref().map(|a| Box::new(self.lower_step(a))),
         }
     }
 

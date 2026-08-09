@@ -3434,6 +3434,19 @@ pub struct StreamBlock {
     /// `on_complete: { … }` — run ONCE, after the source closes, with the
     /// accumulated stream bound under `complete`. `None` when absent.
     pub on_complete: Option<StepNode>,
+    /// §Fase 119.n.3 — `on_error: { … }` — run when the SOURCE fails, with the
+    /// failure bound under `error`.
+    ///
+    /// It handles a failure of the **producer**, never a failure of the author's
+    /// own handlers. If `on_chunk` panics its way to a dispatch error, that is a
+    /// bug in the program, and routing it here would let a broken handler
+    /// silently catch itself and report the stream as healthy. Cancellation is
+    /// not a failure either — a cancelled stream propagates as cancelled.
+    ///
+    /// When present and the source fails, the step COMPLETES with this arm's
+    /// output: the author declared what to do, so the recovery is explicit
+    /// rather than a swallowed error. When absent, the failure propagates.
+    pub on_error: Option<StepNode>,
     /// §Fase 111.e's body form: `stream { <steps> }`. Executed in order; each
     /// one's fragments are emitted on the flow's event channel as produced.
     /// Retained for compatibility — see the type-level note above.

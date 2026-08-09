@@ -1669,6 +1669,11 @@ pub struct IRStreamBlock {
     /// closes, with the accumulated stream bound as `complete`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub on_complete: Option<Box<IRStep>>,
+    /// §Fase 119.n.3 — `on_error: { … }`, lowered. Run when the SOURCE fails,
+    /// with the failure bound as `error`. Never fires for a failure of the
+    /// author's own handlers, nor for cancellation.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub on_error: Option<Box<IRStep>>,
 }
 
 #[derive(Debug, Clone, Serialize)]

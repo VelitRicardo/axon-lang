@@ -435,9 +435,13 @@ async fn run_step_stream(
             Some(e) if e.is_streaming => {
                 // The tool path, with `on_chunk` hooked into the drain that
                 // already enforces this tool's declared backpressure policy.
-                let outcome =
-                    run_step_streaming_tool(step, e, prompt, block.on_chunk.as_deref(), ctx).await?;
-                finish_stream_step(block, outcome, &step_name, ctx).await
+                match run_step_streaming_tool(step, e, prompt, block.on_chunk.as_deref(), ctx).await
+                {
+                    Ok(outcome) => finish_stream_step(block, outcome, &step_name, ctx).await,
+                    // §Fase 119.n.3 — the SOURCE failed (an error terminator, a
+                    // dead upstream). `on_error` decides, if the author wrote one.
+                    Err(e) => recover_stream_step(block, e, &step_name, ctx).await,
+                }
             }
             Some(_) => Err(DispatchError::BackendError {
                 name: format!("step:{step_name}"),
@@ -490,8 +494,66 @@ async fn run_step_stream(
         now_tz: step.now_tz.clone(),
         stream_on_chunk: block.on_chunk.clone(),
     };
-    let outcome = run_pure_shape(shape, ctx).await?;
-    finish_stream_step(block, outcome, &step_name, ctx).await
+    match run_pure_shape(shape, ctx).await {
+        Ok(outcome) => finish_stream_step(block, outcome, &step_name, ctx).await,
+        // §Fase 119.n.3 — the generation itself failed (a dead upstream, a chunk
+        // error mid-drain). Same `on_error` semantics as the tool source: one
+        // arm, one meaning, whichever producer broke.
+        Err(e) => recover_stream_step(block, e, &step_name, ctx).await,
+    }
+}
+
+/// §Fase 119.n.3 — did the SOURCE fail, or did the author's own handler fail?
+///
+/// `on_error` handles a failing PRODUCER. It must never catch a dispatch error
+/// raised by `on_chunk` itself: a broken handler that silently catches itself
+/// and reports the stream as healthy is strictly worse than one that crashes,
+/// because the program then looks fine. Cancellation is not a failure either —
+/// a cancelled stream stays cancelled.
+fn is_source_failure(e: &DispatchError) -> bool {
+    match e {
+        DispatchError::UpstreamCancelled => false,
+        DispatchError::BackendError { name, .. } => !name.starts_with("stream:on_"),
+        _ => true,
+    }
+}
+
+/// §Fase 119.n.3 — run `on_error` over a failed source, if the author wrote one.
+///
+/// The failure binds under `error`. The step then COMPLETES with the arm's
+/// output: the author declared what to do about the failure, so this is an
+/// explicit recovery, not a swallowed error. `on_complete` does NOT run — the
+/// stream did not close, it broke.
+async fn recover_stream_step(
+    block: &crate::ir_nodes::IRStreamBlock,
+    err: DispatchError,
+    step_name: &str,
+    ctx: &mut DispatchCtx,
+) -> Result<NodeOutcome, DispatchError> {
+    let arm = match &block.on_error {
+        Some(a) if is_source_failure(&err) => a,
+        _ => return Err(err),
+    };
+    ctx.let_bindings
+        .insert("error".to_string(), format!("{err}"));
+    match Box::pin(run_step(arm, ctx)).await? {
+        NodeOutcome::Completed {
+            output,
+            tokens_emitted,
+            step_index,
+        } => {
+            if !output.is_empty() {
+                ctx.let_bindings
+                    .insert(step_name.to_string(), output.clone());
+            }
+            Ok(NodeOutcome::Completed {
+                output,
+                tokens_emitted,
+                step_index,
+            })
+        }
+        other => Ok(other),
+    }
 }
 
 /// §Fase 119.n — run `on_complete` and decide the stream step's output.
@@ -1822,7 +1884,19 @@ async fn drain_direct(
                     if let Some(arm) = &shape.stream_on_chunk {
                         ctx.let_bindings
                             .insert("chunk".to_string(), chunk.delta.clone());
-                        match Box::pin(run_step(arm, ctx)).await? {
+                        // §Fase 119.n.3 — tagged `stream:on_` so `on_error`
+                        // cannot catch the handler's OWN failure. See
+                        // `is_source_failure`.
+                        let outcome = Box::pin(run_step(arm, ctx)).await.map_err(|e| match e {
+                            DispatchError::UpstreamCancelled => DispatchError::UpstreamCancelled,
+                            other => DispatchError::BackendError {
+                                name: "stream:on_chunk".to_string(),
+                                message: format!(
+                                    "`on_chunk` failed while handling a chunk: {other}"
+                                ),
+                            },
+                        })?;
+                        match outcome {
                             NodeOutcome::Completed { .. } => {}
                             // §Fase 119.d discipline — suspending inside a
                             // per-chunk handler has no defined continuation

@@ -261,6 +261,53 @@ fn the_handlers_and_chunk_type_reach_the_ir() {
     );
 }
 
+// ── §119.n.3 — the third arm, `on_error` ─────────────────────────────────
+
+const WITH_ON_ERROR: &str = r#"
+flow F(x: String) -> Text {
+    step S {
+        ask: "go"
+        stream<Token> {
+            on_chunk: { output: Text }
+            on_error: {
+                probe error for [reason]
+                output: Text
+            }
+        }
+        output: Text
+    }
+}
+"#;
+
+#[test]
+fn on_error_parses_and_carries_its_body() {
+    let program = parse(WITH_ON_ERROR).expect("`on_error` is a handler arm");
+    let sb = step_stream(&program);
+    let arm = sb.on_error.as_ref().expect("on_error must reach the AST");
+    assert_eq!(arm.output_type, "Text");
+    assert!(
+        arm.pix_ops
+            .iter()
+            .any(|op| matches!(op, FlowStep::Probe(_))),
+        "the arm's statements must survive, like every other arm"
+    );
+}
+
+#[test]
+fn on_error_reaches_the_ir() {
+    let json = ir_json(WITH_ON_ERROR);
+    assert!(json.contains("on_error"), "{json}");
+}
+
+#[test]
+fn an_absent_on_error_is_elided_from_the_ir() {
+    let json = ir_json(README_BLOCK_15);
+    assert!(
+        !json.contains("on_error"),
+        "block 15 declares no `on_error`, so the key must not appear: {json}"
+    );
+}
+
 // ── The catalog is CLOSED ────────────────────────────────────────────────
 
 /// §119.h.2 — ask which direction the silence fails in. A skipped handler
@@ -285,8 +332,10 @@ flow F(x: String) -> Text {
         err.message
     );
     assert!(
-        err.message.contains("on_chunk") && err.message.contains("on_complete"),
-        "and list what IS accepted: {}",
+        err.message.contains("on_chunk")
+            && err.message.contains("on_complete")
+            && err.message.contains("on_error"),
+        "and list what IS accepted — all three arms: {}",
         err.message
     );
 }

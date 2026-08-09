@@ -445,6 +445,7 @@ fn random_stream(_lcg: &mut Lcg) -> IRFlowNode {
         chunk_type: String::new(),
         on_chunk: None,
         on_complete: None,
+        on_error: None,
     })
 }
 

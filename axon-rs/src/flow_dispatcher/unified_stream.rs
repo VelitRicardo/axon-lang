@@ -304,11 +304,24 @@ impl ChunkHook<'_> {
         self.ctx
             .let_bindings
             .insert("chunk".to_string(), delta.to_string());
-        match Box::pin(crate::flow_dispatcher::pure_shape::run_step(
+        // §Fase 119.n.3 — a failure raised BY THE HANDLER is tagged `stream:on_`
+        // so `on_error` cannot catch it. `on_error` handles a failing SOURCE; a
+        // broken handler that silently catches itself and reports the stream as
+        // healthy is worse than one that crashes, because the program looks fine.
+        // Without this tag the raw error would reach `is_source_failure` wearing
+        // the handler's own step name and be mistaken for a producer fault.
+        let outcome = Box::pin(crate::flow_dispatcher::pure_shape::run_step(
             self.arm, self.ctx,
         ))
-        .await?
-        {
+        .await
+        .map_err(|e| match e {
+            DispatchError::UpstreamCancelled => DispatchError::UpstreamCancelled,
+            other => DispatchError::BackendError {
+                name: "stream:on_chunk".to_string(),
+                message: format!("`on_chunk` failed while handling a chunk: {other}"),
+            },
+        })?;
+        match outcome {
             crate::flow_dispatcher::NodeOutcome::Completed { .. } => Ok(()),
             // §Fase 119.d discipline — a sentinel raised mid-drain has no defined
             // continuation shape (which chunk does it resume at?) and the upstream

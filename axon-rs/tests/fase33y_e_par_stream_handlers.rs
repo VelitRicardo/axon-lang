@@ -68,6 +68,7 @@ fn stream_node() -> IRFlowNode {
         chunk_type: String::new(),
         on_chunk: None,
         on_complete: None,
+        on_error: None,
     })
 }
 
@@ -370,6 +371,7 @@ async fn run_stream_directly_returns_completed() {
         chunk_type: String::new(),
         on_chunk: None,
         on_complete: None,
+        on_error: None,
     };
     let outcome = run_stream(&block, &mut ctx).await.unwrap();
     assert!(matches!(outcome, NodeOutcome::Completed { .. }));

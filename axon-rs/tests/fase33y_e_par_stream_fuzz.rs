@@ -173,6 +173,7 @@ async fn fuzz_stream_handler_never_panics() {
             chunk_type: String::new(),
             on_chunk: None,
             on_complete: None,
+            on_error: None,
 
         };
         let outcome = run_stream(&stream, &mut ctx).await;
@@ -346,6 +347,7 @@ async fn fuzz_par_stream_nested_inside_orchestration() {
                 chunk_type: String::new(),
                 on_chunk: None,
                 on_complete: None,
+                on_error: None,
 
             })
         };
