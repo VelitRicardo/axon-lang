@@ -116,6 +116,7 @@ fn step_with_apply(name: &str, ask: &str, apply_ref: &str) -> IRStep {
         navigate_ref: String::new(),
         apply_ref: apply_ref.into(),
         pix_ops: Vec::new(),
+        stream: None,
         guards: Vec::new(),
         requires_context: None,        now_tz: None,        body: Vec::new(),
     }

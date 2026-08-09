@@ -134,6 +134,21 @@ pub struct PureShapeStep {
     /// effective system prompt (`time_is_an_explicit_input`, §91). `None` on
     /// every pre-§91 shape → prompt byte-identical.
     pub now_tz: Option<String>,
+    /// §Fase 119.n — the `on_chunk:` arm of a `stream<T> { … }` written in this
+    /// step's body, run ONCE PER non-empty chunk with the chunk bound as
+    /// `chunk`.
+    ///
+    /// It rides the shape rather than getting its own drain loop on purpose.
+    /// The alternative — a private copy of the resolve-backend-build-request-
+    /// drain sequence — would drift from [`run_pure_shape`] the first time
+    /// anything changed there (history budget, model resolution, temporal
+    /// context), and a stream that silently stopped honouring `now:` or
+    /// `requires_context:` is precisely the class of defect this fase exists to
+    /// end. Hooking [`drain_direct`] means the handler sees the SAME chunks
+    /// every LLM step already produces.
+    ///
+    /// `None` on every other shape → `drain_direct` behaves byte-identically.
+    pub stream_on_chunk: Option<Box<crate::ir_nodes::IRStep>>,
 }
 
 // ────────────────────────────────────────────────────────────────────
@@ -249,6 +264,14 @@ pub async fn run_step(
     let prompt =
         crate::exec_context::interpolate_vars(&step.ask, &ctx.let_bindings);
 
+    // §Fase 119.n — a `stream<T> { … }` in this step's body makes the step a
+    // STREAM step: its output IS the stream, `on_chunk` runs per chunk and
+    // `on_complete` runs once the source closes. Placed before every generation
+    // branch below because those branches are the source.
+    if let Some(block) = &step.stream {
+        return run_step_stream(step, block, &prompt, ctx).await;
+    }
+
     // §Fase 34.d — Streaming-tool branch. When the step's
     // `apply_ref` resolves to a tool flagged `is_streaming` in the
     // attached registry, bypass the LLM upstream entirely + invoke
@@ -330,8 +353,130 @@ pub async fn run_step(
         requires_context: step.requires_context,
         temperature: None,
         now_tz: step.now_tz.clone(),
+        stream_on_chunk: None,
     };
     run_pure_shape(shape, ctx).await
+}
+
+/// §Fase 119.n — a step whose body declares `stream<T> { on_chunk … on_complete … }`.
+///
+/// # What this replaces
+///
+/// Nothing — and that is the point. Before §119.n the construct never reached
+/// the dispatcher at all: the step-body parser sent it to
+/// `skip_flow_step_structural`, so README block 15's `step Stream` arrived here
+/// with `pix_ops=0`, `ask=""`, `output=""`. An EMPTY step that `axon check`
+/// passed with `0 errors`, whose `Stream.output` the next step then reasoned
+/// over. §111.e's `stream` handler was real; the grammar reaching it was a shape
+/// (`body: Vec<FlowStep>`) that no published block writes.
+///
+/// # The chunk source, and why a missing one REFUSES
+///
+/// A stream handler is a consumer; it needs something producing chunks. This
+/// path takes the step's own generation as that producer — `fase_23` §3.7's
+/// desugaring, where `step gen { given: prompt stream<Token> { on_chunk … } }`
+/// handles the tokens the step itself emits — so `on_chunk` sees exactly the
+/// chunks [`drain_direct`] already produces for every LLM step.
+///
+/// When the step declares NO source (no `ask:` to generate from), this refuses
+/// in writing rather than running the handlers over nothing. The alternative was
+/// to complete with an empty output, which is indistinguishable from a stream
+/// that legitimately had no chunks — and manufacturing that silence is the §112
+/// kernel defect ("if the evidence is missing, substitute the belief") wearing a
+/// stream's clothes. README block 15 is in exactly this state: it declares
+/// `tool MarketFeed` and never binds it to the step, so it now FAILS CLOSED with
+/// a diagnostic naming the missing source instead of silently doing nothing.
+async fn run_step_stream(
+    step: &IRStep,
+    block: &crate::ir_nodes::IRStreamBlock,
+    prompt: &str,
+    ctx: &mut DispatchCtx,
+) -> Result<NodeOutcome, DispatchError> {
+    if ctx.cancel.is_cancelled() {
+        return Err(DispatchError::UpstreamCancelled);
+    }
+
+    let step_name = if step.name.is_empty() {
+        "Step".to_string()
+    } else {
+        step.name.clone()
+    };
+
+    // No producer ⇒ no stream. Refuse, and name what is missing.
+    if prompt.trim().is_empty() {
+        return Err(DispatchError::BackendError {
+            name: format!("step:{step_name}"),
+            message: format!(
+                "step '{step_name}' declares `stream<{}>` with no chunk SOURCE: the step has no \
+                 `ask:` to generate from, so there is nothing for `on_chunk` to run over. \
+                 Handlers over an absent source would complete with an empty output, which is \
+                 indistinguishable from a stream that genuinely had no chunks — so it is refused. \
+                 Give the step an `ask:` (its generation becomes the stream), or move the \
+                 handlers to a step that has one.",
+                if block.chunk_type.is_empty() {
+                    "_"
+                } else {
+                    &block.chunk_type
+                }
+            ),
+        });
+    }
+
+    // The generation, with `on_chunk` hooked into the REAL drain. Every chunk the
+    // step emits reaches the handler; nothing is synthesised for it.
+    let shape = PureShapeStep {
+        name: step_name.clone(),
+        user_prompt: prompt.to_string(),
+        framing_addendum: None,
+        kind_slug: "step",
+        tools: synthesize_tools_from_step(step),
+        requires_context: step.requires_context,
+        temperature: None,
+        now_tz: step.now_tz.clone(),
+        stream_on_chunk: block.on_chunk.clone(),
+    };
+    let (accumulated, tokens_emitted, step_index) = match run_pure_shape(shape, ctx).await? {
+        NodeOutcome::Completed {
+            output,
+            tokens_emitted,
+            step_index,
+        } => (output, tokens_emitted, step_index),
+        // A sentinel raised inside the generation belongs to the enclosing
+        // construct; `on_complete` is not run, because the stream did not close
+        // normally.
+        other => return Ok(other),
+    };
+
+    // `on_complete` — once, with the accumulated stream bound under `complete`.
+    if let Some(arm) = &block.on_complete {
+        ctx.let_bindings
+            .insert("complete".to_string(), accumulated.clone());
+        match Box::pin(run_step(arm, ctx)).await? {
+            NodeOutcome::Completed { output, .. } => {
+                // The arm's output is the STEP's output — block 15's
+                // `on_complete { … output: VerifiedQuote }` is what the next
+                // step's `Stream.output` refers to. `run_pure_shape` has already
+                // bound the step name to the RAW accumulation, so this overwrites
+                // it: a downstream reference must see what the author's completion
+                // handler produced, not the unprocessed stream it consumed.
+                if !output.is_empty() {
+                    ctx.let_bindings.insert(step_name.clone(), output.clone());
+                    return Ok(NodeOutcome::Completed {
+                        output,
+                        tokens_emitted,
+                        step_index,
+                    });
+                }
+            }
+            other => return Ok(other),
+        }
+    }
+
+    Ok(NodeOutcome::Completed {
+        output: accumulated,
+        tokens_emitted,
+        step_index,
+    })
 }
 
 /// §Fase 119.f.7 — the CLOSED catalog of statements a `step { }` body admits.
@@ -888,6 +1033,7 @@ pub async fn run_probe(
         requires_context: None,
         temperature: None,
         now_tz: None,
+        stream_on_chunk: None,
     };
     run_pure_shape(shape, ctx).await
 }
@@ -925,6 +1071,7 @@ pub async fn run_reason(
         requires_context: None,
         temperature: None,
         now_tz: None,
+        stream_on_chunk: None,
     };
     run_pure_shape(shape, ctx).await
 }
@@ -1022,6 +1169,7 @@ pub async fn run_validate(
         requires_context: None,
         temperature: None,
         now_tz: None,
+        stream_on_chunk: None,
     };
     run_pure_shape(shape, ctx).await
 }
@@ -1053,6 +1201,7 @@ pub async fn run_refine(
         requires_context: None,
         temperature: None,
         now_tz: None,
+        stream_on_chunk: None,
     };
     run_pure_shape(shape, ctx).await
 }
@@ -1086,6 +1235,7 @@ pub async fn run_weave(
         requires_context: None,
         temperature: None,
         now_tz: None,
+        stream_on_chunk: None,
     };
     run_pure_shape(shape, ctx).await
 }
@@ -1565,12 +1715,56 @@ async fn drain_direct(
                     ctx.tx
                         .send(FlowExecutionEvent::StepToken {
                             step_name: shape.name.clone(),
-                            content: chunk.delta,
+                            content: chunk.delta.clone(),
                             token_index: tokens_emitted,
                 branch_path: ctx.branch_path_string(),
                             timestamp_ms: now_ms(),
                         })
                         .map_err(|_| DispatchError::ChannelClosed)?;
+
+                    // §Fase 119.n — the `on_chunk:` arm, run over THIS chunk.
+                    //
+                    // The chunk binds under `chunk`, which is the name README
+                    // block 15 uses (`probe chunk for [symbol, price, volume]`).
+                    // Bound BEFORE the arm dispatches so the arm's own `ask:`
+                    // and statements can interpolate it.
+                    //
+                    // A failing handler propagates and kills the step. It must:
+                    // the arm is the author's processing of the stream, and a
+                    // stream whose processing silently failed still looks like a
+                    // successful stream from the outside.
+                    if let Some(arm) = &shape.stream_on_chunk {
+                        ctx.let_bindings
+                            .insert("chunk".to_string(), chunk.delta.clone());
+                        match Box::pin(run_step(arm, ctx)).await? {
+                            NodeOutcome::Completed { .. } => {}
+                            // §Fase 119.d discipline — suspending inside a
+                            // per-chunk handler has no defined continuation
+                            // shape (which chunk does it resume at?), and the
+                            // loop/flow sentinels belong to the enclosing
+                            // construct. Neither can be honoured mid-drain with
+                            // an upstream stream still open, so this refuses
+                            // rather than guessing.
+                            other => {
+                                return Err(DispatchError::BackendError {
+                                    name: "stream:on_chunk".to_string(),
+                                    message: format!(
+                                        "`on_chunk` raised {} mid-stream; a per-chunk handler has \
+                                         no defined continuation shape (there is no answer to \
+                                         'which chunk does it resume at?') and the upstream is \
+                                         still open. Refused rather than half-honoured.",
+                                        match other {
+                                            NodeOutcome::Hibernated { .. } => "hibernate",
+                                            NodeOutcome::Break => "break",
+                                            NodeOutcome::LoopContinue => "continue",
+                                            NodeOutcome::Return { .. } => "return",
+                                            NodeOutcome::Completed { .. } => "a completion",
+                                        }
+                                    ),
+                                });
+                            }
+                        }
+                    }
                 }
             }
             Err(e) => {
@@ -1869,6 +2063,7 @@ mod tests {
             navigate_ref: String::new(),
             apply_ref: String::new(),
             pix_ops: Vec::new(),
+            stream: None,
             guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: Vec::new(),
         };
@@ -1923,6 +2118,7 @@ mod tests {
             now_tz: None,
 
             pix_ops: Vec::new(),
+            stream: None,
             guards: Vec::new(),
             body: Vec::new(),
         };
@@ -1960,6 +2156,7 @@ mod tests {
             now_tz: None,
 
             pix_ops: Vec::new(),
+            stream: None,
             guards: Vec::new(),
             body: Vec::new(),
         };
@@ -1998,6 +2195,7 @@ mod tests {
             navigate_ref: String::new(),
             apply_ref: String::new(),
             pix_ops: Vec::new(),
+            stream: None,
             guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: Vec::new(),
         };
@@ -2041,6 +2239,7 @@ mod tests {
             navigate_ref: String::new(),
             apply_ref: String::new(),
             pix_ops: Vec::new(),
+            stream: None,
             guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: Vec::new(),
         };
@@ -2076,6 +2275,7 @@ mod tests {
             navigate_ref: String::new(),
             apply_ref: String::new(),
             pix_ops: Vec::new(),
+            stream: None,
             guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: Vec::new(),
         }
@@ -2189,6 +2389,7 @@ mod tests {
             navigate_ref: String::new(),
             apply_ref: String::new(),
             pix_ops: Vec::new(),
+            stream: None,
             guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: Vec::new(),
         };
@@ -2222,6 +2423,7 @@ mod tests {
             navigate_ref: String::new(),
             apply_ref: String::new(),
             pix_ops: Vec::new(),
+            stream: None,
             guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: Vec::new(),
         };
@@ -2265,6 +2467,7 @@ mod tests {
             navigate_ref: String::new(),
             apply_ref: String::new(),
             pix_ops: Vec::new(),
+            stream: None,
             guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: Vec::new(),
         };
@@ -2304,6 +2507,7 @@ mod tests {
             navigate_ref: String::new(),
             apply_ref: String::new(),
             pix_ops: Vec::new(),
+            stream: None,
             guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: Vec::new(),
         };

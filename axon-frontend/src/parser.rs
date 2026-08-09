@@ -3365,9 +3365,28 @@ impl Parser {
             now_tz: None,
             guards: Vec::new(),
             pix_ops: Vec::new(),
+            stream: None,
             loc,
         };
 
+        self.parse_step_body_into(&mut node)?;
+        self.consume(TokenType::RBrace)?;
+        Ok(node)
+    }
+
+    /// §Fase 119.n — the step-body field/statement loop, extracted from
+    /// [`Self::parse_step`] so a `stream<T>` handler arm can reuse it VERBATIM.
+    ///
+    /// The caller has already consumed the opening `{` and owns the closing `}`.
+    ///
+    /// Extracting it is what keeps `on_chunk: { … }` honest. The published arm
+    /// body is a STEP body — `probe chunk for […]` followed by
+    /// `output: QuoteSnapshot` — and `output:` has no flow-level position, so
+    /// parsing the arm as a flow body would have rejected the README's own
+    /// example. Re-implementing the loop instead would fork the grammar: every
+    /// future step-body statement would have to be added twice, and the second
+    /// copy is the one that rots.
+    fn parse_step_body_into(&mut self, node: &mut StepNode) -> Result<(), ParseError> {
         while !self.check(TokenType::RBrace) {
             let inner = self.current().clone();
 
@@ -3763,16 +3782,43 @@ impl Parser {
                     let r = self.parse_retrieve_step()?;
                     node.pix_ops.push(r);
                 }
-                // Sub-construct (stream) → skip structurally.
+                // §Fase 119.n — `stream<T> { on_chunk: … on_complete: … }` in a
+                // step body. THE LAST RESIDENT of the silent-drop arm leaves
+                // here: `probe` left in §119.f, `reason` in §119.f.8, `weave` in
+                // §119.f.9, `retrieve` in §119.f.11.
                 //
-                // ⚠️ §Fase 119.f.9 — this arm is STILL the §111 silent-drop
-                // shape for the ONE that remains: a `stream { … }` written in a
-                // step body is PARSED AND THROWN AWAY. `probe` left this arm in
-                // §119.f, `reason` in §119.f.8, `weave` in §119.f.9. `stream`
-                // needs a real parse into `pix_ops` (its `StreamBlock` body
-                // already exists since §111.e) — named here so it is not
-                // rediscovered as a surprise.
-                TokenType::Probe | TokenType::Stream => {
+                // What it cost, measured on README block 15 before this landed:
+                // the whole block — a `probe`, a `validate`, and BOTH `output:`
+                // declarations — went to `skip_flow_step_structural`, so
+                // `step Stream` reached the dispatcher with `pix_ops=0`,
+                // `ask=""`, `output=""`. An entirely EMPTY step, that `axon
+                // check` passed with 0 errors, and whose `Stream.output` the
+                // next step then reasoned over. The block had left the §117
+                // ledger on the strength of compiling.
+                //
+                // NOT a `pix_ops` push — see `StepNode::stream`. The other ten
+                // statements are elevations that run BEFORE generation; a stream
+                // handler runs DURING it, and this step's output IS the stream.
+                TokenType::Stream => {
+                    let sb = self.parse_stream_block()?;
+                    if node.stream.is_some() {
+                        return Err(ParseError {
+                            message:
+                                "step declares two `stream` blocks; a step has one output stream, \
+                                 and composing two has no defined meaning (which one is the \
+                                 step's output?). Refused rather than silently keeping the last."
+                                    .to_string(),
+                            line: inner.line,
+                            column: inner.column,
+                            ..Default::default()
+                        });
+                    }
+                    node.stream = Some(Box::new(sb));
+                }
+                // Sub-construct (probe, non-statement form) → skip structurally.
+                // The REAL `probe … for […]` statement is taken by the guarded
+                // arm above; this catches only the bare legacy shape.
+                TokenType::Probe => {
                     self.skip_flow_step_structural()?;
                 }
                 _ => {
@@ -3790,8 +3836,7 @@ impl Parser {
                 }
             }
         }
-        self.consume(TokenType::RBrace)?;
-        Ok(node)
+        Ok(())
     }
 
     /// Skip a flow-level sub-construct structurally (consume keyword + args + optional block).
@@ -4610,6 +4655,23 @@ impl Parser {
         let loc = self.loc_of(&tok);
         self.advance(); // consume `stream`
 
+        // §Fase 119.n — `<T>`: the CHUNK type, and the reason this is not just a
+        // cosmetic capture. The skip loop below used to eat it: `stream<QuoteData>`
+        // advanced straight past `<QuoteData>` looking for `{`, so the one piece of
+        // type information the author wrote about the stream was discarded before
+        // anything could check it.
+        let mut chunk_type = String::new();
+        if self.check(TokenType::Lt) {
+            self.advance();
+            let inner = self.parse_type_expr()?;
+            chunk_type = if inner.generic_param.is_empty() {
+                inner.name
+            } else {
+                format!("{}<{}>", inner.name, inner.generic_param)
+            };
+            self.consume(TokenType::Gt)?;
+        }
+
         // Tolerate the pre-111 form `stream <effect-ish tokens> { … }`: skip any
         // argument tokens ahead of the brace, exactly as `parse_block_step` did,
         // so an existing program keeps parsing. Only the BODY changes.
@@ -4621,16 +4683,129 @@ impl Parser {
             self.advance();
         }
 
-        let mut body = Vec::new();
+        let mut block = StreamBlock {
+            chunk_type,
+            on_chunk: None,
+            on_complete: None,
+            body: Vec::new(),
+            loc,
+        };
+
         if self.check(TokenType::LBrace) {
             self.advance();
             while !self.check(TokenType::RBrace) && !self.check(TokenType::Eof) {
-                body.push(self.parse_flow_step()?);
+                // §Fase 119.n — the two SPECIFIED handler arms. `fase_23`'s D8
+                // promises `stream<τ> { on_chunk: … on_complete: … }` compiles
+                // with "cero cambios en `.axon` source files de adopters"; before
+                // this landed it was a hard parse error at flow level and a
+                // silent discard in a step body.
+                let name = self.current().value.clone();
+                let is_arm = matches!(name.as_str(), "on_chunk" | "on_complete")
+                    && self
+                        .tokens
+                        .get(self.pos + 1)
+                        .is_some_and(|t| t.ttype == TokenType::Colon);
+                if is_arm {
+                    let arm_tok = self.current().clone();
+                    self.advance(); // the handler name
+                    self.advance(); // `:`
+                    let arm = self.parse_stream_handler_arm(&name, &arm_tok)?;
+                    let slot = if name == "on_chunk" {
+                        &mut block.on_chunk
+                    } else {
+                        &mut block.on_complete
+                    };
+                    if slot.is_some() {
+                        return Err(ParseError {
+                            message: format!(
+                                "`{name}` is declared twice in this `stream` block. Two handlers \
+                                 for one edge have no defined composition (whose output is the \
+                                 stream's?), so the duplicate is refused rather than silently \
+                                 overwriting the first."
+                            ),
+                            line: arm_tok.line,
+                            column: arm_tok.column,
+                            ..Default::default()
+                        });
+                    }
+                    *slot = Some(arm);
+                    continue;
+                }
+
+                // A `<ident>: {` that is NOT one of the two arms is a TYPO in a
+                // closed catalog, and the §119.h.2 discipline says to ask which
+                // direction the silence fails in: a mis-spelled `on_chunk` would
+                // fall through to `parse_flow_step` and be reported against the
+                // brace, pointing the author at the wrong token entirely. Name
+                // the key and the catalog instead.
+                let next_two_are_block = self
+                    .tokens
+                    .get(self.pos + 1)
+                    .is_some_and(|t| t.ttype == TokenType::Colon)
+                    && self
+                        .tokens
+                        .get(self.pos + 2)
+                        .is_some_and(|t| t.ttype == TokenType::LBrace);
+                if next_two_are_block {
+                    let bad = self.current().clone();
+                    return Err(ParseError {
+                        message: format!(
+                            "unknown `stream` handler `{name}` — this block accepts only \
+                             `on_chunk:` (run once per chunk, with the chunk bound as `chunk`) \
+                             and `on_complete:` (run once, after the source closes). An \
+                             unrecognised handler is refused rather than skipped: a skipped \
+                             handler removes the processing the author wrote, and silence in \
+                             that direction is indistinguishable from a stream that had nothing \
+                             to do."
+                        ),
+                        line: bad.line,
+                        column: bad.column,
+                        ..Default::default()
+                    });
+                }
+
+                // §Fase 111.e's body form, kept: `stream { <flow steps> }`.
+                block.body.push(self.parse_flow_step()?);
             }
             self.consume(TokenType::RBrace)?;
         }
 
-        Ok(StreamBlock { body, loc })
+        Ok(block)
+    }
+
+    /// §Fase 119.n — one `on_chunk:` / `on_complete:` arm, parsed as a STEP body.
+    ///
+    /// The arm carries `output:` (README block 15 writes `output: QuoteSnapshot`
+    /// in `on_chunk` and `output: VerifiedQuote` in `on_complete`), and `output:`
+    /// is a step field with no flow-level position. Reusing
+    /// [`Self::parse_step_body_into`] is therefore not a convenience — it is the
+    /// only shape that accepts what the README publishes, and it means the arm
+    /// dispatches through `run_step` like any other step.
+    fn parse_stream_handler_arm(
+        &mut self,
+        name: &str,
+        at: &Token,
+    ) -> Result<StepNode, ParseError> {
+        self.consume(TokenType::LBrace)?;
+        let mut node = StepNode {
+            name: name.to_string(),
+            persona_ref: String::new(),
+            given: String::new(),
+            ask: String::new(),
+            output_type: String::new(),
+            confidence_floor: None,
+            navigate_ref: String::new(),
+            apply_ref: String::new(),
+            requires_context: None,
+            now_tz: None,
+            guards: Vec::new(),
+            pix_ops: Vec::new(),
+            stream: None,
+            loc: self.loc_of(at),
+        };
+        self.parse_step_body_into(&mut node)?;
+        self.consume(TokenType::RBrace)?;
+        Ok(node)
     }
 
     fn parse_block_step(&mut self, _kw: &str) -> Result<Loc, ParseError> {

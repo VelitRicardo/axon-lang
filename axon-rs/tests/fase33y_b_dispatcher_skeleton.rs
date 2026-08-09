@@ -67,6 +67,7 @@ fn step_node() -> IRFlowNode {
         navigate_ref: String::new(),
         apply_ref: String::new(),
         pix_ops: Vec::new(),
+        stream: None,
         guards: Vec::new(),
         requires_context: None,        now_tz: None,        body: Vec::new(),
     })
@@ -377,6 +378,9 @@ fn stream_node() -> IRFlowNode {
         source_column: 0,
         body: Vec::new(),
 
+        chunk_type: String::new(),
+        on_chunk: None,
+        on_complete: None,
     })
 }
 

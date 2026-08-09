@@ -861,39 +861,75 @@ impl IRGenerator {
         }
     }
 
+    /// §Fase 119.n — lower one `step { }` to its IR node.
+    ///
+    /// Extracted from [`Self::visit_flow_step`] because a `stream<T>` handler arm
+    /// IS a step (see `ast::StreamBlock::on_chunk`) and must lower through the
+    /// SAME path — an arm that lowered through a private copy would quietly stop
+    /// carrying whatever the next fase adds to a step.
+    fn lower_step(&self, s: &crate::ast::StepNode) -> IRStep {
+        IRStep {
+            node_type: "step",
+            source_line: s.loc.line,
+            source_column: s.loc.column,
+            name: s.name.clone(),
+            persona_ref: s.persona_ref.clone(),
+            given: s.given.clone(),
+            ask: s.ask.clone(),
+            use_tool: None,
+            probe: None,
+            reason: None,
+            weave: None,
+            output_type: s.output_type.clone(),
+            confidence_floor: s.confidence_floor,
+            navigate_ref: s.navigate_ref.clone(),
+            apply_ref: s.apply_ref.clone(),
+            requires_context: s.requires_context,
+            now_tz: s.now_tz.clone(),
+            pix_ops: s.pix_ops.iter().map(|op| self.visit_flow_step(op)).collect(),
+            // §Fase 119.n — the step-body `stream<T> { … }`. Before this fase the
+            // parser discarded it, so there was never anything here to lower.
+            stream: s
+                .stream
+                .as_ref()
+                .map(|sb| Box::new(self.lower_stream_block(sb))),
+            guards: s
+                .guards
+                .iter()
+                .map(|g| crate::ir_nodes::IRStepGuard {
+                    kind: g.kind.clone(),
+                    name: g.name.clone(),
+                    target: g.target.clone(),
+                    binding: g.binding.clone(),
+                })
+                .collect(),
+            body: Vec::new(),
+        }
+    }
+
+    /// §Fase 119.n — lower a `stream<T> { on_chunk: … on_complete: … }` block.
+    fn lower_stream_block(&self, s: &crate::ast::StreamBlock) -> IRStreamBlock {
+        IRStreamBlock {
+            node_type: "stream",
+            source_line: s.loc.line,
+            source_column: s.loc.column,
+            // §Fase 111.e — lower the body. It used to be discarded at parse
+            // time, which is why `run_stream` had nothing to run.
+            body: s.body.iter().map(|st| self.visit_flow_step(st)).collect(),
+            // §Fase 119.n — the published surface: the chunk type and the two
+            // handler arms, none of which reached the IR before.
+            chunk_type: s.chunk_type.clone(),
+            on_chunk: s.on_chunk.as_ref().map(|a| Box::new(self.lower_step(a))),
+            on_complete: s
+                .on_complete
+                .as_ref()
+                .map(|a| Box::new(self.lower_step(a))),
+        }
+    }
+
     fn visit_flow_step(&self, fs: &FlowStep) -> IRFlowNode {
         match fs {
-            FlowStep::Step(s) => IRFlowNode::Step(IRStep {
-                node_type: "step",
-                source_line: s.loc.line,
-                source_column: s.loc.column,
-                name: s.name.clone(),
-                persona_ref: s.persona_ref.clone(),
-                given: s.given.clone(),
-                ask: s.ask.clone(),
-                use_tool: None,
-                probe: None,
-                reason: None,
-                weave: None,
-                output_type: s.output_type.clone(),
-                confidence_floor: s.confidence_floor,
-                navigate_ref: s.navigate_ref.clone(),
-                apply_ref: s.apply_ref.clone(),
-                requires_context: s.requires_context,
-                now_tz: s.now_tz.clone(),
-                pix_ops: s.pix_ops.iter().map(|op| self.visit_flow_step(op)).collect(),
-                guards: s
-                    .guards
-                    .iter()
-                    .map(|g| crate::ir_nodes::IRStepGuard {
-                        kind: g.kind.clone(),
-                        name: g.name.clone(),
-                        target: g.target.clone(),
-                        binding: g.binding.clone(),
-                    })
-                    .collect(),
-                body: Vec::new(),
-            }),
+            FlowStep::Step(s) => IRFlowNode::Step(self.lower_step(s)),
             // §Fase 92.b — `mint <Credential> as <binding>`.
             FlowStep::Mint(s) => IRFlowNode::Mint(crate::ir_nodes::IRMintStep {
                 node_type: "mint",
@@ -1208,14 +1244,7 @@ impl IRGenerator {
                 // §Fase 114.w — the shield's breach policy rides the step.
                 breach_policy: self.shield_policies.get(&s.shield_name).cloned(),
             }),
-            FlowStep::Stream(s) => IRFlowNode::Stream(IRStreamBlock {
-                node_type: "stream",
-                source_line: s.loc.line,
-                source_column: s.loc.column,
-                // §Fase 111.e — lower the body. It used to be discarded at parse
-                // time, which is why `run_stream` had nothing to run.
-                body: s.body.iter().map(|st| self.visit_flow_step(st)).collect(),
-            }),
+            FlowStep::Stream(s) => IRFlowNode::Stream(self.lower_stream_block(s)),
             FlowStep::Navigate(s) => IRFlowNode::Navigate(IRNavigateStep {
                 depth: s.depth,
                 node_type: "navigate",
@@ -1435,6 +1464,7 @@ impl IRGenerator {
                     requires_context: None,
                     now_tz: None,
                     pix_ops: Vec::new(),
+                    stream: None,
                     guards: Vec::new(),
                     body: Vec::new(),
                 })

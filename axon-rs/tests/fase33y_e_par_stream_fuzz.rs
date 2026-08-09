@@ -112,6 +112,7 @@ fn make_step(name: &str) -> IRFlowNode {
         navigate_ref: String::new(),
         apply_ref: String::new(),
         pix_ops: Vec::new(),
+        stream: None,
         guards: Vec::new(),
         requires_context: None,        now_tz: None,        body: Vec::new(),
     })
@@ -169,6 +170,9 @@ async fn fuzz_stream_handler_never_panics() {
             source_line: 0,
             source_column: 0,
         body: Vec::new(),
+            chunk_type: String::new(),
+            on_chunk: None,
+            on_complete: None,
 
         };
         let outcome = run_stream(&stream, &mut ctx).await;
@@ -339,6 +343,9 @@ async fn fuzz_par_stream_nested_inside_orchestration() {
                 source_line: 0,
                 source_column: 0,
         body: Vec::new(),
+                chunk_type: String::new(),
+                on_chunk: None,
+                on_complete: None,
 
             })
         };

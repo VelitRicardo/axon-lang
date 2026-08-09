@@ -139,6 +139,7 @@ fn random_step(lcg: &mut Lcg) -> IRFlowNode {
         requires_context: None,
         now_tz: None,
         pix_ops: Vec::new(),
+        stream: None,
         guards: Vec::new(),
         body: Vec::new(),
     })
@@ -441,7 +442,9 @@ fn random_stream(_lcg: &mut Lcg) -> IRFlowNode {
         source_line: 0,
         source_column: 0,
         body: Vec::new(),
-
+        chunk_type: String::new(),
+        on_chunk: None,
+        on_complete: None,
     })
 }
 
@@ -1068,6 +1071,7 @@ async fn fase33y_n_tool_call_interleaving_d8_d3() {
             requires_context: None,
             now_tz: None,
             pix_ops: Vec::new(),
+            stream: None,
             guards: Vec::new(),
             body: Vec::new(),
         });

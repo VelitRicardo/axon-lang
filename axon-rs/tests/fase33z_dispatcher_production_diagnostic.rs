@@ -783,6 +783,7 @@ fn d1_catalog_totality_pin_45_variants() {
             navigate_ref: String::new(),
             apply_ref: String::new(),
             pix_ops: Vec::new(),
+            stream: None,
             guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: Vec::new(),
         }),
@@ -994,6 +995,9 @@ fn d1_catalog_totality_pin_45_variants() {
             source_column: 0,
         body: Vec::new(),
 
+            chunk_type: String::new(),
+            on_chunk: None,
+            on_complete: None,
         }),
         IRFlowNode::Navigate(IRNavigateStep {
             depth: None,

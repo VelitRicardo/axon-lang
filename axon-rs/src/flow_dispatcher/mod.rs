@@ -1622,6 +1622,7 @@ mod tests {
             navigate_ref: String::new(),
             apply_ref: String::new(),
             pix_ops: Vec::new(),
+            stream: None,
             guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: Vec::new(),
         };

@@ -187,7 +187,21 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     ("warden", Real { proof: "tests/fase111_c_warden_wired.rs (§111.c — real attested findings, verify()-gated, body runs, fail-closed at 6 joints)" }),
     ("scope", Real { proof: "tests/fase111_c_warden_wired.rs — the scope catalog is resolved at dispatch and the allowlist enforced (the check §88.c deferred)" }),
     // ── Effects & streaming
-    ("stream", Real { proof: "tests/fase111_e_stream_runs.rs (§111.e — the body is parsed, lowered and EXECUTED; it used to be discarded at parse time)" }),
+    // §Fase 119.n — `Real` → `Partial`, and the DOWNGRADE is the honest move.
+    //
+    // The old proof read `tests/fase111_e_stream_runs.rs (§111.e — the body is
+    // parsed, lowered and EXECUTED)`. Every word of it was true, and it violated
+    // law 4 above: §111.e gave `StreamBlock` a `body: Vec<FlowStep>` and proved
+    // THAT runs — but no published block and no paper writes that shape. The
+    // specified surface (`fase_23` §3.7, whose D8 promises "backward compat 100%,
+    // cero cambios en `.axon` source files") is `stream<T> { on_chunk on_complete }`,
+    // and README block 15 publishes exactly it. Measured: at flow level the
+    // published body was a hard parse error; in a step body the whole block was
+    // discarded, so block 15's `step Stream` dispatched with `pix_ops=0`,
+    // `ask=""`, `output=""` — an EMPTY step whose `Stream.output` the next step
+    // reasoned over, and which had left the §117 ledger on the strength of
+    // compiling. The `reason` defect one fase later, in the table that recorded it.
+    ("stream", Partial { gap: "§119.n made the PUBLISHED surface real: `stream<T> { on_chunk: … on_complete: … }` parses at both the step-body and flow positions (it was a hard parse error at flow level and a SILENT DISCARD in a step body), the `<T>` chunk type reaches the IR instead of being eaten by the argument-skip loop, each arm is a step body so its `output:` lands, and dispatch runs `on_chunk` over the REAL chunks `drain_direct` produces — the same loop every LLM step already uses, so the handler cannot drift from the stream it handles. `on_complete` binds the accumulation as `complete` and its output becomes the step's. Gates: axon-frontend/tests/fase119_n_stream_handlers.rs (9, source→AST→IR) + axon-rs/tests/fase119_n_stream_dispatch.rs (source→dispatch). THE GAP: the only chunk SOURCE wired is the step's own generation (fase_23 §3.7's `stream<Token>` case), so a step with no `ask:` FAILS CLOSED naming the missing source rather than completing empty — which is where README block 15 now sits, since it declares `tool MarketFeed` and never binds it. A streaming TOOL as the source (`apply:` + `is_streaming`, the shape block 15 implies) is not yet routed through the handlers, and the algebraic `perform Stream.Yield` bridge remains orthogonal: `stream<τ>` is NOT yet desugared to `effect _StreamBuiltin<T>` + `handle … in …`, so fase_23's D8 claim of one-shot delimited continuations under this primitive is still future work" }),
     ("effects", Real { proof: "parse_effect_row + type_checker; §85 `cache` derives cacheability from the `effects: pure` proof" }),
     ("@contract_tool", Unaudited),
     ("@csp_tool", Unaudited),

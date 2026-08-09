@@ -61,6 +61,7 @@ fn bare_step(name: &str, ask: &str) -> IRStep {
         navigate_ref: String::new(),
         apply_ref: String::new(),
         pix_ops: Vec::new(),
+        stream: None,
         guards: Vec::new(),
         requires_context: None,
         now_tz: None,

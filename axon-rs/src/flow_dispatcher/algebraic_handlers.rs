@@ -1650,6 +1650,7 @@ mod tests {
             requires_context: None,
             now_tz: None,
             pix_ops: Vec::new(),
+            stream: None,
             guards: vec![crate::ir_nodes::IRStepGuard {
                 kind: "mandate".into(),
                 name: guard_name.into(),

@@ -1059,6 +1059,13 @@ pub struct IRStep {
     /// every pre-§119.f program's IR JSON is byte-identical.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub pix_ops: Vec<IRFlowNode>,
+    /// §Fase 119.n — a `stream<T> { … }` written in this step's body. NOT a
+    /// `pix_ops` entry: those are elevations that run BEFORE generation, while a
+    /// stream handler runs DURING it and this step's output IS the stream.
+    /// Elided when absent, so every pre-§119.n program's IR JSON is
+    /// byte-identical and a legacy IR still deserialises.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stream: Option<Box<IRStreamBlock>>,
     pub body: Vec<serde_json::Value>,
 }
 
@@ -1650,6 +1657,18 @@ pub struct IRStreamBlock {
     /// an artifact compiled by an older frontend).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub body: Vec<IRFlowNode>,
+    /// §Fase 119.n — the `<T>` in `stream<T>`: the CHUNK type. Elided when the
+    /// block was written without one.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub chunk_type: String,
+    /// §Fase 119.n — `on_chunk: { … }`, lowered. Run once per chunk with the
+    /// chunk bound as `chunk`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub on_chunk: Option<Box<IRStep>>,
+    /// §Fase 119.n — `on_complete: { … }`, lowered. Run once, after the source
+    /// closes, with the accumulated stream bound as `complete`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub on_complete: Option<Box<IRStep>>,
 }
 
 #[derive(Debug, Clone, Serialize)]

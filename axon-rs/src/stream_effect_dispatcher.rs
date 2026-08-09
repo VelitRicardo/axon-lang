@@ -370,6 +370,7 @@ mod tests {
             now_tz: None,
             guards: Vec::new(),
             pix_ops: Vec::new(),
+            stream: None,
             loc: loc(),
         })
     }

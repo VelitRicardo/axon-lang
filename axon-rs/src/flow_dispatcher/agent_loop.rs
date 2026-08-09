@@ -340,6 +340,7 @@ async fn deliberate(
         requires_context: None,
         temperature: None,
         now_tz: None,
+        stream_on_chunk: None,
     };
     let outcome = super::pure_shape::run_pure_shape(shape, ctx).await?;
     spend.iterations += 1;

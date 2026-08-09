@@ -34,6 +34,15 @@ fn stream_node(body: Vec<IRFlowNode>) -> IRFlowNode {
         source_line: 0,
         source_column: 0,
         body,
+        // §Fase 119.n — this file pins §111.e's `body` form, which stays real.
+        // The PUBLISHED surface (`stream<T> { on_chunk … on_complete … }`) is
+        // gated separately, from SOURCE, in `fase119_n_stream_dispatch.rs`:
+        // this harness builds IR by hand, so it proves the engine and says
+        // nothing about whether any published program reaches it — the law-4
+        // distinction that made `stream`'s old `Real` attestation worthless.
+        chunk_type: String::new(),
+        on_chunk: None,
+        on_complete: None,
     })
 }
 

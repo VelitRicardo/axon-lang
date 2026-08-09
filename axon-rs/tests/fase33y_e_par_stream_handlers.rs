@@ -65,6 +65,9 @@ fn stream_node() -> IRFlowNode {
         source_column: 0,
         body: Vec::new(),
 
+        chunk_type: String::new(),
+        on_chunk: None,
+        on_complete: None,
     })
 }
 
@@ -98,6 +101,7 @@ fn step_branch(name: &str) -> Vec<IRFlowNode> {
         navigate_ref: String::new(),
         apply_ref: String::new(),
         pix_ops: Vec::new(),
+        stream: None,
         guards: Vec::new(),
         requires_context: None,        now_tz: None,        body: Vec::new(),
     })]
@@ -363,6 +367,9 @@ async fn run_stream_directly_returns_completed() {
         source_column: 0,
         body: Vec::new(),
 
+        chunk_type: String::new(),
+        on_chunk: None,
+        on_complete: None,
     };
     let outcome = run_stream(&block, &mut ctx).await.unwrap();
     assert!(matches!(outcome, NodeOutcome::Completed { .. }));

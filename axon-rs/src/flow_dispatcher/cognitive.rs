@@ -308,6 +308,7 @@ async fn forge_phase(
         requires_context: None,
         temperature: Some(temperature),
         now_tz: None,
+        stream_on_chunk: None,
     };
     match run_pure_shape(shape, ctx).await? {
         NodeOutcome::Completed { output, .. } => Ok(output),
@@ -1239,6 +1240,7 @@ pub async fn run_navigate(
         requires_context: None,
         temperature: None,
         now_tz: None,
+        stream_on_chunk: None,
     };
     run_pure_shape(shape, ctx).await
 }
@@ -1264,6 +1266,7 @@ pub async fn run_corroborate(
         requires_context: None,
         temperature: None,
         now_tz: None,
+        stream_on_chunk: None,
     };
     run_pure_shape(shape, ctx).await
 }

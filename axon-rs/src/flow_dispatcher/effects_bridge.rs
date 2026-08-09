@@ -117,6 +117,29 @@ pub async fn run_stream(
         return Err(DispatchError::UpstreamCancelled);
     }
 
+    // §Fase 119.n — the handler arms parse at FLOW level too (they used to be a
+    // hard error: `Unexpected token in flow body: 'on_chunk'`). At this position
+    // there is no generation to source chunks from — a flow body is not a step —
+    // so accepting the grammar and ignoring the arms would install a BRAND NEW
+    // silent drop of exactly the kind §119.n exists to remove. Refuse, and name
+    // the position that does work.
+    if node.on_chunk.is_some() || node.on_complete.is_some() {
+        return Err(DispatchError::BackendError {
+            name: "stream".to_string(),
+            message: format!(
+                "`stream<{}>` declares handlers at FLOW level, where nothing produces chunks — a \
+                 flow body has no generation for `on_chunk` to run over. Put the block in a \
+                 `step {{ }}` body whose `ask:` is the source: `step S {{ ask: \"…\" \
+                 stream<T> {{ on_chunk: {{ … }} }} }}`. Refused rather than accepted and ignored.",
+                if node.chunk_type.is_empty() {
+                    "_"
+                } else {
+                    &node.chunk_type
+                }
+            ),
+        });
+    }
+
     let step_index = ctx.step_counter;
     ctx.step_counter += 1;
 
@@ -627,8 +650,10 @@ mod tests {
             node_type: "stream_block",
             source_line: 0,
             source_column: 0,
-        body: Vec::new(),
-
+            body: Vec::new(),
+            chunk_type: String::new(),
+            on_chunk: None,
+            on_complete: None,
         };
         let outcome = run_stream(&node, &mut ctx).await.unwrap();
         match outcome {

@@ -2735,6 +2735,21 @@ pub struct StepNode {
     /// generation. Reusing the flow-level node types (no new AST shapes) is
     /// the D119.4 doctrine — one concept, two positions.
     pub pix_ops: Vec<FlowStep>,
+    /// §Fase 119.n — a `stream<T> { … }` written in THIS step's body.
+    ///
+    /// Deliberately NOT a [`Self::pix_ops`] entry, and the distinction is the
+    /// whole design. Every `pix_ops` statement is an ELEVATION: dispatch runs it
+    /// BEFORE the step generates, so its binding is available to the step's
+    /// `ask:`. A stream handler is the opposite — `on_chunk` runs DURING the
+    /// step's own output, once per chunk, and there is nothing to elevate.
+    ///
+    /// Filing it under `pix_ops` would also have produced a specific, silent
+    /// bug: README block 15's `step Stream` declares no `ask:` at all, so
+    /// `run_step` would have run the handlers as an elevation and then fallen
+    /// through to the LLM path with an EMPTY prompt — a real upstream call, made
+    /// on nothing, once per run. The field is what tells the dispatcher this
+    /// step's output IS the stream.
+    pub stream: Option<Box<StreamBlock>>,
     pub loc: Loc,
 }
 
@@ -3369,7 +3384,7 @@ pub struct ShieldApplyStep {
     pub output_type: String,
     pub loc: Loc,
 }
-/// §Fase 34 / **§Fase 111.e** — `stream { <steps> }`.
+/// §Fase 34 / §Fase 111.e / **§Fase 119.n** — `stream<T> { on_chunk … on_complete … }`.
 ///
 /// The body used to NOT EXIST. `parse_block_step` — shared with `deliberate`,
 /// `consensus` and (pre-retraction) `transact` — called `skip_braced_block()`
@@ -3377,10 +3392,51 @@ pub struct ShieldApplyStep {
 /// no-op because someone forgot to implement it; it was a no-op because the
 /// body never reached the AST for anything to execute. Four advertised
 /// primitives died in that one function.
+///
+/// **§119.n — and §111.e closed that with the WRONG SHAPE.** It gave the block a
+/// `body: Vec<FlowStep>`, which no published block and no paper writes. The
+/// specified surface — [`fase_23_algebraic_effects_runtime.md`] §3.7, whose D8
+/// promises *"backward compat for `stream<τ>` 100%, cero cambios en `.axon`
+/// source files de adopters"* — is `stream<T> { on_chunk: B₁ on_complete: B₂ }`,
+/// and README block 15 publishes exactly that. Measured before this landed:
+///
+///   * at FLOW level the published body was a hard parse error
+///     (`Unexpected token in flow body: 'on_chunk'`);
+///   * in a STEP body the whole block was silently discarded by
+///     `skip_flow_step_structural`, so block 15's `step Stream` reached the
+///     dispatcher with `pix_ops=0`, `ask=""`, `output=""` — an EMPTY step, whose
+///     `Stream.output` the next step then reasoned over.
+///
+/// So §111.e's attestation was the §119.f.8 `reason` defect one more time: a real
+/// engine behind a grammar no adopter could write. `body` is KEPT (it parses, it
+/// lowers, it runs, and removing it would break any program written against
+/// §111.e), but it is no longer the primitive's published face.
 #[derive(Debug)]
 pub struct StreamBlock {
-    /// The steps inside the block. Executed in order; each one's fragments are
-    /// emitted on the flow's event channel as they are produced.
+    /// The `<T>` in `stream<T>` — the CHUNK type. Empty when the block is
+    /// written without one.
+    ///
+    /// It used to be discarded silently: `parse_stream_block`'s "tolerate the
+    /// pre-111 form" loop advanced to the first `{`, eating `<QuoteData>` on the
+    /// way. A type parameter consumed by nothing is the §111 defect, so it is
+    /// captured here and type-checked at the handler boundary.
+    pub chunk_type: String,
+    /// `on_chunk: { … }` — run ONCE PER CHUNK, with the chunk bound under
+    /// `chunk`. `None` when the handler is absent.
+    ///
+    /// It is a [`StepNode`], not a `Vec<FlowStep>`, because the published arm
+    /// body is a STEP body and not a flow body: block 15 writes
+    /// `on_chunk: { probe chunk for […] output: QuoteSnapshot }`, and `output:`
+    /// is a step field that has no flow-level position at all. Sharing the shape
+    /// means the arm reuses `run_step` — D119.4's "one concept, two positions",
+    /// so there is no second dispatch implementation to drift.
+    pub on_chunk: Option<StepNode>,
+    /// `on_complete: { … }` — run ONCE, after the source closes, with the
+    /// accumulated stream bound under `complete`. `None` when absent.
+    pub on_complete: Option<StepNode>,
+    /// §Fase 111.e's body form: `stream { <steps> }`. Executed in order; each
+    /// one's fragments are emitted on the flow's event channel as produced.
+    /// Retained for compatibility — see the type-level note above.
     pub body: Vec<FlowStep>,
     pub loc: Loc,
 }
