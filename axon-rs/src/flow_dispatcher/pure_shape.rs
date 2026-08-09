@@ -290,7 +290,9 @@ pub async fn run_step(
         if let Some(registry) = ctx.tool_registry.clone() {
             if let Some(entry) = registry.get(&step.apply_ref) {
                 if entry.is_streaming {
-                    return run_step_streaming_tool(step, entry.clone(), &prompt, ctx).await;
+                    // §Fase 119.n — no `on_chunk` here: a step with a `stream<T>`
+                    // block never reaches this branch, it returned above.
+                    return run_step_streaming_tool(step, entry.clone(), &prompt, None, ctx).await;
                 }
             }
         }
@@ -402,22 +404,75 @@ async fn run_step_stream(
         step.name.clone()
     };
 
-    // No producer ⇒ no stream. Refuse, and name what is missing.
+    let declared = if block.chunk_type.is_empty() {
+        "_"
+    } else {
+        block.chunk_type.as_str()
+    };
+
+    // ── The chunk SOURCE ────────────────────────────────────────────────────
+    //
+    // Two producers, in the order the author's own declaration implies:
+    //
+    //   1. `apply: <Tool>` where the tool is a REGISTERED STREAMING tool — the
+    //      shape README block 15 writes (`tool MarketFeed` feeding
+    //      `stream<QuoteData>`). The tool's chunks ARE the stream.
+    //   2. otherwise the step's own generation — `fase_23` §3.7's
+    //      `stream<Token>` case, where the step's tokens are the stream.
+    //
+    // An `apply:` that does NOT resolve to a streaming tool is REFUSED, never
+    // quietly demoted to (2). Falling back would substitute a different producer
+    // than the one the author named: the step would stream the model's words
+    // while the program says it is streaming the feed. That is the §112 kernel
+    // defect ("if the evidence is missing, substitute the belief") applied to an
+    // entire data source, and it is the one direction that fails silently.
+    if !step.apply_ref.is_empty() {
+        let entry = ctx
+            .tool_registry
+            .clone()
+            .and_then(|r| r.get(&step.apply_ref).cloned());
+        return match entry {
+            Some(e) if e.is_streaming => {
+                // The tool path, with `on_chunk` hooked into the drain that
+                // already enforces this tool's declared backpressure policy.
+                let outcome =
+                    run_step_streaming_tool(step, e, prompt, block.on_chunk.as_deref(), ctx).await?;
+                finish_stream_step(block, outcome, &step_name, ctx).await
+            }
+            Some(_) => Err(DispatchError::BackendError {
+                name: format!("step:{step_name}"),
+                message: format!(
+                    "step '{step_name}' declares `stream<{declared}>` and `apply: {}`, but that \
+                     tool is not a STREAMING tool (no `<stream:…>` in its `effects:` row). It \
+                     produces one value, not a sequence, so there is nothing for `on_chunk` to \
+                     run over. Refused rather than falling back to the step's own generation, \
+                     which would stream something the author never named.",
+                    step.apply_ref
+                ),
+            }),
+            None => Err(DispatchError::BackendError {
+                name: format!("step:{step_name}"),
+                message: format!(
+                    "step '{step_name}' declares `stream<{declared}>` sourced from `apply: {}`, \
+                     and no such tool is registered on this runtime — so nothing produces chunks. \
+                     Mount the tool, or drop the `apply:` and let the step's own `ask:` be the \
+                     source. Refused rather than run handlers over a source that is not there.",
+                    step.apply_ref
+                ),
+            }),
+        };
+    }
+
+    // No tool named, and nothing to generate from ⇒ no producer at all.
     if prompt.trim().is_empty() {
         return Err(DispatchError::BackendError {
             name: format!("step:{step_name}"),
             message: format!(
-                "step '{step_name}' declares `stream<{}>` with no chunk SOURCE: the step has no \
-                 `ask:` to generate from, so there is nothing for `on_chunk` to run over. \
-                 Handlers over an absent source would complete with an empty output, which is \
-                 indistinguishable from a stream that genuinely had no chunks — so it is refused. \
-                 Give the step an `ask:` (its generation becomes the stream), or move the \
-                 handlers to a step that has one.",
-                if block.chunk_type.is_empty() {
-                    "_"
-                } else {
-                    &block.chunk_type
-                }
+                "step '{step_name}' declares `stream<{declared}>` with no chunk SOURCE: the step \
+                 has neither an `apply:` naming a streaming tool nor an `ask:` to generate from, \
+                 so there is nothing for `on_chunk` to run over. Handlers over an absent source \
+                 would complete with an empty output, which is indistinguishable from a stream \
+                 that genuinely had no chunks — so it is refused."
             ),
         });
     }
@@ -435,7 +490,23 @@ async fn run_step_stream(
         now_tz: step.now_tz.clone(),
         stream_on_chunk: block.on_chunk.clone(),
     };
-    let (accumulated, tokens_emitted, step_index) = match run_pure_shape(shape, ctx).await? {
+    let outcome = run_pure_shape(shape, ctx).await?;
+    finish_stream_step(block, outcome, &step_name, ctx).await
+}
+
+/// §Fase 119.n — run `on_complete` and decide the stream step's output.
+///
+/// Shared by BOTH chunk sources so the completion semantics cannot drift between
+/// "streamed from a tool" and "streamed from the step's own generation". The
+/// author wrote one `on_complete`; it has to mean one thing.
+async fn finish_stream_step(
+    block: &crate::ir_nodes::IRStreamBlock,
+    outcome: NodeOutcome,
+    step_name: &str,
+    ctx: &mut DispatchCtx,
+) -> Result<NodeOutcome, DispatchError> {
+    let step_name = step_name.to_string();
+    let (accumulated, tokens_emitted, step_index) = match outcome {
         NodeOutcome::Completed {
             output,
             tokens_emitted,
@@ -591,6 +662,12 @@ async fn run_step_streaming_tool(
     // `run_step` against `ctx.let_bindings`. Used as the tool's
     // streaming argument so a `${retrieve_alias}` reaches the tool.
     prompt: &str,
+    // §Fase 119.n — the `on_chunk:` arm when this step also declares
+    // `stream<T> { … }`. `None` on every pre-§119.n path, which is then
+    // byte-identical. Threaded through THIS function rather than given its own
+    // drain so the handler inherits the budget gate, the channel permit, the
+    // policy enforcement and the audit row unchanged.
+    on_chunk: Option<&IRStep>,
     ctx: &mut DispatchCtx,
 ) -> Result<NodeOutcome, DispatchError> {
     // §Fase 34.g convergence — the per-chunk drain loop now lives
@@ -774,13 +851,22 @@ async fn run_step_streaming_tool(
     // argument (not the raw `step.ask`), so a `${retrieve_alias}`
     // resolved upstream reaches the streaming tool.
     let source = tool.stream(prompt.to_string(), tool_ctx).await;
-    let summary = crate::flow_dispatcher::unified_stream::unified_stream_handler(
+    // §Fase 119.n — `cancel`, `tx` and the branch path are CLONED out of `ctx`
+    // before the drain, because the `on_chunk` hook needs `&mut ctx` and
+    // borrowing all four out of the same value at once does not compose. With
+    // no hook this is the same three values the pre-§119.n call passed by
+    // reference.
+    let drain_cancel = ctx.cancel.clone();
+    let drain_tx = ctx.tx.clone();
+    let drain_branch = ctx.branch_path_string();
+    let summary = crate::flow_dispatcher::unified_stream::unified_stream_handler_with_hook(
         source,
         policy,
-        &ctx.cancel,
-        &ctx.tx,
+        &drain_cancel,
+        &drain_tx,
         &step_name,
-        &ctx.branch_path_string(),
+        &drain_branch,
+        on_chunk.map(|arm| crate::flow_dispatcher::unified_stream::ChunkHook { arm, ctx }),
     )
     .await?;
 

@@ -80,7 +80,7 @@ use tokio::sync::mpsc;
 
 use crate::backends::{ChatChunk, FinishReason};
 use crate::cancel_token::CancellationFlag;
-use crate::flow_dispatcher::DispatchError;
+use crate::flow_dispatcher::{DispatchCtx, DispatchError};
 use crate::flow_execution_event::FlowExecutionEvent;
 use crate::stream_effect::BackpressurePolicy;
 use crate::stream_runtime::{Stream as PolicyStream, StreamError};
@@ -282,6 +282,48 @@ pub fn unified_stream_from_chunks(chunks: Vec<ToolChunk>) -> ToolStream {
 ///   tick (chunks_dropped = chunks_degraded = 0). Mirrors the
 ///   pre-34.g `run_step_streaming_tool` shape byte-equal (D9
 ///   backwards-compat for tools that don't declare a stream policy).
+/// §Fase 119.n — the `on_chunk:` arm of a `stream<T> { … }`, plus the context it
+/// needs, handed to the drain so the handler runs **per chunk, during the
+/// stream**.
+///
+/// `tx` and `cancel` are passed to the drain as separate owned CLONES rather
+/// than borrowed out of this `ctx` — otherwise the mutable borrow the handler
+/// needs would alias them. That is the whole reason this is a struct and not two
+/// more parameters.
+pub struct ChunkHook<'a> {
+    /// The handler arm, dispatched through `run_step` like any other step.
+    pub arm: &'a crate::ir_nodes::IRStep,
+    pub ctx: &'a mut DispatchCtx,
+}
+
+impl ChunkHook<'_> {
+    /// Bind the chunk and run the arm. Errors propagate: the arm is the author's
+    /// processing of the stream, and a stream whose processing silently failed
+    /// still looks like a successful stream from the outside.
+    async fn fire(&mut self, delta: &str) -> Result<(), DispatchError> {
+        self.ctx
+            .let_bindings
+            .insert("chunk".to_string(), delta.to_string());
+        match Box::pin(crate::flow_dispatcher::pure_shape::run_step(
+            self.arm, self.ctx,
+        ))
+        .await?
+        {
+            crate::flow_dispatcher::NodeOutcome::Completed { .. } => Ok(()),
+            // §Fase 119.d discipline — a sentinel raised mid-drain has no defined
+            // continuation shape (which chunk does it resume at?) and the upstream
+            // is still open. Refused rather than half-honoured.
+            _ => Err(DispatchError::BackendError {
+                name: "stream:on_chunk".to_string(),
+                message: "`on_chunk` raised a control sentinel (hibernate / break / \
+                          continue / return) mid-stream; a per-chunk handler has no \
+                          defined continuation shape and the upstream is still open."
+                    .to_string(),
+            }),
+        }
+    }
+}
+
 pub async fn unified_stream_handler(
     source: ToolStream,
     policy: Option<BackpressurePolicy>,
@@ -293,6 +335,28 @@ pub async fn unified_stream_handler(
     // inside a `par` branch so an SSE consumer demuxes a tool-stream nested
     // in a concurrent branch by the same key as every other handler event.
     branch_path: &str,
+) -> Result<ToolStreamSummary, DispatchError> {
+    unified_stream_handler_with_hook(source, policy, cancel, tx, step_name, branch_path, None).await
+}
+
+/// §Fase 119.n — [`unified_stream_handler`] with an optional per-chunk handler.
+///
+/// Additive: the hookless entry point above delegates here with `None`, so every
+/// pre-§119.n caller is byte-identical.
+///
+/// The hook goes HERE, in the one drain that enforces the declared
+/// `BackpressurePolicy`, rather than in a private loop inside the stream step.
+/// A second drain would have silently stopped honouring a declared
+/// `backpressure:` the moment the two copies diverged — a dropped policy being
+/// exactly the class of defect §119 exists to end.
+pub async fn unified_stream_handler_with_hook(
+    source: ToolStream,
+    policy: Option<BackpressurePolicy>,
+    cancel: &CancellationFlag,
+    tx: &mpsc::UnboundedSender<FlowExecutionEvent>,
+    step_name: &str,
+    branch_path: &str,
+    hook: Option<ChunkHook<'_>>,
 ) -> Result<ToolStreamSummary, DispatchError> {
     // Pre-flight cancel check. An already-cancelled flag MUST
     // short-circuit with a `cancelled` summary even when the source
@@ -311,9 +375,9 @@ pub async fn unified_stream_handler(
         });
     }
     if let Some(p) = policy {
-        unified_drain_with_policy(source, p, cancel, tx, step_name, branch_path).await
+        unified_drain_with_policy(source, p, cancel, tx, step_name, branch_path, hook).await
     } else {
-        unified_drain_direct(source, cancel, tx, step_name, branch_path).await
+        unified_drain_direct(source, cancel, tx, step_name, branch_path, hook).await
     }
 }
 
@@ -327,6 +391,7 @@ async fn unified_drain_direct(
     tx: &mpsc::UnboundedSender<FlowExecutionEvent>,
     step_name: &str,
     branch_path: &str,
+    mut hook: Option<ChunkHook<'_>>,
 ) -> Result<ToolStreamSummary, DispatchError> {
     let mut summary = ToolStreamSummary {
         success: true,
@@ -355,6 +420,10 @@ async fn unified_drain_direct(
                 timestamp_ms: crate::flow_execution_event::now_ms(),
             })
             .map_err(|_| DispatchError::ChannelClosed)?;
+            // §Fase 119.n — `on_chunk`, over the chunk that just reached the wire.
+            if let Some(h) = hook.as_mut() {
+                h.fire(&chunk.delta).await?;
+            }
         }
         if let Some(reason) = chunk.finish_reason {
             handle_terminator(reason, &mut summary);
@@ -375,6 +444,7 @@ async fn unified_drain_with_policy(
     tx: &mpsc::UnboundedSender<FlowExecutionEvent>,
     step_name: &str,
     branch_path: &str,
+    mut hook: Option<ChunkHook<'_>>,
 ) -> Result<ToolStreamSummary, DispatchError> {
     use crate::stream_effect::BackpressureAnnotation;
     use crate::stream_effect_dispatcher::DEFAULT_STREAM_BUFFER_CAPACITY;
@@ -444,6 +514,13 @@ async fn unified_drain_with_policy(
                 timestamp_ms: crate::flow_execution_event::now_ms(),
             })
             .map_err(|_| DispatchError::ChannelClosed)?;
+            // §Fase 119.n — `on_chunk` runs on the chunks the POLICY let through,
+            // not on the raw source: a `drop_oldest` chunk that never reached the
+            // wire must not reach the handler either, or the author's processing
+            // would see a stream the consumer never got.
+            if let Some(h) = hook.as_mut() {
+                h.fire(&chunk.delta).await?;
+            }
         }
         if let Some(reason) = chunk.finish_reason {
             handle_terminator(reason, &mut summary);

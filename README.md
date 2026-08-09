@@ -1300,11 +1300,12 @@ real-time quotes (speculative) and confirmed trades (factual):
 ```axon
 tool MarketFeed {
     timeout: 5s
-    effects: <io, network, epistemic:speculate>
+    effects: <io, network, epistemic:speculate, stream:drop_oldest>
 }
 
 flow MonitorMarket(sector: String) -> MarketReport {
     step Stream {
+        apply: MarketFeed
         stream<QuoteData> {
             on_chunk: {
                 probe chunk for [symbol, price, volume]

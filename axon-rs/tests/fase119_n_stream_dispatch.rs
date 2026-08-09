@@ -27,6 +27,8 @@ use axon::flow_dispatcher::pure_shape::run_step;
 use axon::flow_dispatcher::DispatchCtx;
 use axon::flow_execution_event::FlowExecutionEvent;
 use axon::ir_nodes::{IRFlowNode, IRStep};
+use axon::tool_registry::{ToolEntry, ToolRegistry, ToolSource};
+use std::sync::Arc;
 use tokio::sync::mpsc;
 
 /// SOURCE → AST → IR → the first `step` node. The whole point of this file.
@@ -194,6 +196,204 @@ flow MonitorMarket(sector: String) -> MarketReport {
     assert!(
         msg.contains("ask:"),
         "and must name the source the author has to supply: {msg}"
+    );
+}
+
+// ── §4 — the chunk source can be a streaming TOOL ────────────────────────────
+//
+// README block 15's own shape: `tool MarketFeed` feeding `stream<QuoteData>`.
+// The tool's chunks are the stream; `on_chunk` runs once per TOOL chunk, and the
+// handler rides the drain that already enforces the tool's declared
+// `backpressure:` policy rather than a private copy of it.
+
+fn tool_entry(name: &str, provider: &str, effect_row: Vec<&str>, is_streaming: bool) -> ToolEntry {
+    ToolEntry {
+        name: name.into(),
+        provider: provider.into(),
+        timeout: String::new(),
+        runtime: String::new(),
+        resource_ref: String::new(),
+        substrate: None,
+        capacity: None,
+        sandbox: None,
+        max_results: None,
+        output_schema: String::new(),
+        effect_row: effect_row.into_iter().map(String::from).collect(),
+        parameters: Vec::new(),
+        secret: String::new(),
+        secret_partition: String::new(),
+        source: ToolSource::Program,
+        is_streaming,
+        scrape: None,
+    }
+}
+
+fn ctx_with(entries: Vec<ToolEntry>) -> (DispatchCtx, mpsc::UnboundedReceiver<FlowExecutionEvent>) {
+    let mut reg = ToolRegistry::new();
+    for e in entries {
+        reg.register(e);
+    }
+    let (tx, rx) = mpsc::unbounded_channel();
+    (
+        DispatchCtx::new("F", "stub", "", CancellationFlag::new(), tx)
+            .with_tool_registry(Arc::new(reg)),
+        rx,
+    )
+}
+
+/// Block 15's shape, completed: the feed is BOUND to the step with `apply:`.
+const TOOL_SOURCED: &str = r#"
+flow MonitorMarket(sector: String) -> MarketReport {
+    step Quotes {
+        apply: MarketFeed
+        ask: "start the quote feed"
+        stream<QuoteData> {
+            on_chunk: {
+                probe chunk for [symbol, price, volume]
+                output: QuoteSnapshot
+            }
+            on_complete: {
+                output: VerifiedQuote
+            }
+        }
+        output: MarketReport
+    }
+}
+"#;
+
+/// The `stub_stream` provider yields 3 non-empty chunks + a terminator, so
+/// `on_chunk` must dispatch exactly 3 times — once per TOOL chunk.
+#[tokio::test]
+async fn s4_on_chunk_runs_once_per_tool_chunk() {
+    let (mut c, mut rx) = ctx_with(vec![tool_entry(
+        "MarketFeed",
+        "stub_stream",
+        vec!["stream:drop_oldest"],
+        true,
+    )]);
+    let step = step_from_source(TOOL_SOURCED);
+
+    run_step(&step, &mut c).await.expect("run_step");
+
+    let slugs = step_start_slugs(&mut rx);
+    let probes = slugs.iter().filter(|s| s.as_str() == "probe").count();
+    assert_eq!(
+        probes, 3,
+        "the tool yields 3 non-empty chunks, so the `probe` inside `on_chunk` must \
+         run 3 times — once per chunk, during the stream. Slugs: {slugs:?}"
+    );
+}
+
+/// An `apply:` that resolves to a NON-streaming tool must refuse, not fall back
+/// to the step's own generation. Falling back would stream the model's words
+/// while the program says it is streaming the feed.
+#[tokio::test]
+async fn s4b_a_non_streaming_apply_is_refused_not_demoted() {
+    let (mut c, _rx) = ctx_with(vec![tool_entry("MarketFeed", "http", vec!["io"], false)]);
+    let step = step_from_source(TOOL_SOURCED);
+
+    let err = run_step(&step, &mut c)
+        .await
+        .expect_err("a non-streaming tool produces one value, not a sequence");
+    let msg = format!("{err:?}");
+    assert!(
+        msg.contains("MarketFeed"),
+        "the diagnostic must name the tool: {msg}"
+    );
+    assert!(
+        msg.contains("not a STREAMING tool"),
+        "and say why it cannot be the source: {msg}"
+    );
+}
+
+/// A source named but not mounted. Refuses rather than running handlers over a
+/// producer that is not there.
+#[tokio::test]
+async fn s4c_an_unregistered_apply_is_refused() {
+    let (mut c, _rx) = ctx_with(vec![]);
+    let step = step_from_source(TOOL_SOURCED);
+
+    let err = run_step(&step, &mut c)
+        .await
+        .expect_err("nothing produces chunks when the tool is not registered");
+    let msg = format!("{err:?}");
+    assert!(
+        msg.contains("MarketFeed") && msg.contains("no such tool is registered"),
+        "the diagnostic must name the missing source: {msg}"
+    );
+}
+
+// ── §5 — README block 15, VERBATIM, RUNS ─────────────────────────────────────
+
+/// The whole point, end to end. This is the published block character-for-
+/// character, and before §119.n it reached the dispatcher as an EMPTY step.
+///
+/// §119.n also completed the example: it declared `tool MarketFeed` and never
+/// bound it, so the block named no source. `apply: MarketFeed` (plus the
+/// `stream:` effect that makes the feed a streaming tool) is the §119.m.3
+/// repair — an incomplete example, not a grammar gap.
+const README_BLOCK_15_VERBATIM: &str = r#"
+tool MarketFeed {
+    timeout: 5s
+    effects: <io, network, epistemic:speculate, stream:drop_oldest>
+}
+
+flow MonitorMarket(sector: String) -> MarketReport {
+    step Stream {
+        apply: MarketFeed
+        stream<QuoteData> {
+            on_chunk: {
+                probe chunk for [symbol, price, volume]
+                output: QuoteSnapshot
+            }
+            on_complete: {
+                validate QuoteSnapshot against: MarketSchema
+                output: VerifiedQuote
+            }
+        }
+    }
+    step Analyze {
+        reason {
+            given: Stream.output
+            ask: "Identify anomalous price movements"
+            depth: 2
+        }
+        output: MarketReport
+    }
+}
+"#;
+
+#[tokio::test]
+async fn s5_readme_block_15_verbatim_runs_with_the_feed_mounted() {
+    let (mut c, mut rx) = ctx_with(vec![tool_entry(
+        "MarketFeed",
+        "stub_stream",
+        vec!["io", "network", "epistemic:speculate", "stream:drop_oldest"],
+        true,
+    )]);
+    let step = step_from_source(README_BLOCK_15_VERBATIM);
+
+    run_step(&step, &mut c)
+        .await
+        .expect("README block 15's first step must RUN, not arrive empty");
+
+    let slugs = step_start_slugs(&mut rx);
+    assert!(
+        slugs.iter().any(|s| s == "probe"),
+        "block 15's `probe chunk for [...]` must reach the wire. Before §119.n this \
+         step dispatched with pix_ops=0, ask=\"\", output=\"\" and `axon check` said \
+         0 errors. Slugs: {slugs:?}"
+    );
+    assert!(
+        slugs.iter().any(|s| s == "validate"),
+        "and its `validate ... against:` in `on_complete` must run when the stream \
+         closes. Slugs: {slugs:?}"
+    );
+    assert!(
+        c.let_bindings.contains_key("Stream"),
+        "`step Analyze` reasons over `Stream.output`, so the stream step must bind \
+         its name. Bindings: {:?}",
+        c.let_bindings.keys().collect::<Vec<_>>()
     );
 }
 

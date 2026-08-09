@@ -82,11 +82,12 @@ fn step_stream(program: &Program) -> &StreamBlock {
 const README_BLOCK_15: &str = r#"
 tool MarketFeed {
     timeout: 5s
-    effects: <io, network, epistemic:speculate>
+    effects: <io, network, epistemic:speculate, stream:drop_oldest>
 }
 
 flow MonitorMarket(sector: String) -> MarketReport {
     step Stream {
+        apply: MarketFeed
         stream<QuoteData> {
             on_chunk: {
                 probe chunk for [symbol, price, volume]
