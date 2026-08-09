@@ -292,12 +292,21 @@ fn no_credential_fails_closed_without_touching_the_network() {
 
 #[test]
 fn a_dead_endpoint_is_a_transport_error() {
-    // Bind-then-drop: the port is closed by the time the connector dials.
-    let dead = {
-        let l = TcpListener::bind("127.0.0.1:0").unwrap();
-        format!("http://{}", l.local_addr().unwrap())
-    };
-    let c = connector_for(&dead, Some("test-token"));
+    // §Fase 119.i — a PRIVILEGED port, not bind-then-drop.
+    //
+    // This test used to bind an ephemeral port, drop the listener, and dial the
+    // now-closed address. Between the drop and the dial the OS is free to hand
+    // that same port to another test's fixture server in this binary — and it
+    // did, roughly one run in nine: the "dead" endpoint answered with real
+    // comments and `unwrap_err()` panicked on an `Ok`. The failure looked like
+    // a connector bug and was a port race.
+    //
+    // Port 1 cannot be bound without privilege, so no sibling test can occupy
+    // it, and connecting is unprivileged — the dial refuses immediately. The
+    // property under test (a dead endpoint is a Transport error, not a
+    // fabricated success) is unchanged; only its determinism is.
+    let dead = "http://127.0.0.1:1";
+    let c = connector_for(dead, Some("test-token"));
     let err = c.read_comments(&CallContext::none(), "post1").unwrap_err();
     assert!(matches!(err, ConnectorError::Transport(_)), "got: {err}");
 }

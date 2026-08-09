@@ -315,9 +315,24 @@ impl JwtVerifier {
 mod tests {
     use super::*;
 
+    /// §Fase 119.i — serialises the two env-reading tests.
+    ///
+    /// The environment is PROCESS-GLOBAL and these two tests write opposite
+    /// values into the same variable: one removes `AXON_JWT_JWKS_URL` to prove
+    /// the config refuses without it, the other sets it to prove the config
+    /// reads it. Run concurrently — which `cargo test` does by default — each
+    /// can observe the other's write, and `config_from_env_reads_values`
+    /// failed intermittently in exactly that way.
+    ///
+    /// The comment "Safety: isolate from other tests that may set the env var"
+    /// was already on the first test, and save/restore does not isolate
+    /// anything: it protects the value ACROSS the test, not DURING it. A lock
+    /// is what makes the two mutually exclusive.
+    static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
     #[test]
     fn config_from_env_requires_jwks_url() {
-        // Safety: isolate from other tests that may set the env var.
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|p| p.into_inner());
         let prev = std::env::var("AXON_JWT_JWKS_URL").ok();
         std::env::remove_var("AXON_JWT_JWKS_URL");
         assert!(JwtVerifierConfig::from_env().is_none());
@@ -328,6 +343,7 @@ mod tests {
 
     #[test]
     fn config_from_env_reads_values() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|p| p.into_inner());
         std::env::set_var("AXON_JWT_JWKS_URL", "https://x/jwks.json");
         std::env::set_var("AXON_JWT_ISSUER", "https://x");
         std::env::set_var("AXON_JWT_AUDIENCE", "x-api");
