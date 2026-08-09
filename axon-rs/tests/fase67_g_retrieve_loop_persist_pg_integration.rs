@@ -46,20 +46,46 @@ const LTM_STORE: &str = "fase67g_ltm";
 const TENANT_A: &str = "11111111-1111-1111-1111-111111111111";
 const TENANT_B: &str = "22222222-2222-2222-2222-222222222222";
 
-async fn test_backend() -> Option<PostgresStoreBackend> {
-    let dsn = match std::env::var("AXON_TEST_DATABASE_URL") {
-        Ok(d) if !d.trim().is_empty() => d,
-        _ => {
-            eprintln!("fase67.g: AXON_TEST_DATABASE_URL unset — skipping retrieve-loop E2E");
-            return None;
-        }
-    };
-    let backend = PostgresStoreBackend::connect(&dsn).ok()?;
-    if backend.ping().await.is_err() {
-        eprintln!("fase67.g: Postgres unreachable — skipping");
-        return None;
+/// §Fase 119.i.2 — this suite REFUSES to skip.
+///
+/// It used to return `None` when `AXON_TEST_DATABASE_URL` was unset, and every
+/// test returned early. Combined with the file-level `#![cfg(feature = "postgres")]`
+/// that is TWO stacked doors, both shut by default: `cargo test` printed
+/// `ok. 0 passed` and the suite had not executed a line in months. That is the
+/// exact shape in which the §66 cross-tenant isolation bug survived — a green
+/// report from a test that never ran.
+///
+/// Reaching this function means the caller already opted in with
+/// `--features postgres`. Asking for the Postgres suite and silently getting
+/// nothing is the failure mode; so a missing or unreachable database is now a
+/// LOUD panic that says exactly how to provide one.
+async fn test_backend() -> PostgresStoreBackend {
+    let dsn = std::env::var("AXON_TEST_DATABASE_URL")
+        .ok()
+        .filter(|d| !d.trim().is_empty())
+        .unwrap_or_else(|| panic!("{}", refusal("AXON_TEST_DATABASE_URL is unset")));
+    let backend = PostgresStoreBackend::connect(&dsn)
+        .unwrap_or_else(|e| panic!("{}", refusal(&format!("backend connect failed: {e}"))));
+    if let Err(e) = backend.ping().await {
+        panic!("{}", refusal(&format!("Postgres unreachable: {e}")));
     }
-    Some(backend)
+    backend
+}
+
+/// The one refusal message, so all five pg suites say the same thing.
+fn refusal(why: &str) -> String {
+    format!(
+        "fase67.g: {why} — and this suite REFUSES to skip.\n\n\
+         You asked for the Postgres suite (`--features postgres`). A silent skip \
+         here is how a suite reports `ok` for months without executing: it is the \
+         shape in which the §66 cross-tenant isolation bug survived.\n\n\
+         Start a THROWAWAY Postgres and point the variable at it:\n\
+         \x20 docker run -d -e POSTGRES_PASSWORD=axon -e POSTGRES_DB=axon \
+         -p 55433:5432 postgres:16-alpine\n\
+         \x20 AXON_TEST_DATABASE_URL=postgres://postgres:axon@127.0.0.1:55433/axon\n\n\
+         NEVER point it at a database you care about: these fixtures DROP TABLE and \
+         CREATE ROLE."
+    )
 }
 
 async fn exec(backend: &PostgresStoreBackend, sql: &str) {
@@ -134,10 +160,7 @@ fn for_in_persist_ltm() -> IRForIn {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn loop_over_retrieve_envelope_persists_resolved_row_columns() {
-    let backend = match test_backend().await {
-        Some(b) => b,
-        None => return,
-    };
+    let backend = test_backend().await;
 
     exec(&backend, &format!("DROP TABLE IF EXISTS {SESSION_STORE}")).await;
     exec(&backend, &format!("DROP TABLE IF EXISTS {LTM_STORE}")).await;

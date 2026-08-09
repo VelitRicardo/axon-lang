@@ -31,10 +31,16 @@
 //!
 //! # RLS fidelity
 //!
-//! NOTE: run single-threaded — `cargo test --test fase65_navigate_pg_integration
-//! -- --test-threads=1`. The suite shares fixture tables + the RLS role by design
-//! (it models the SAME corpus seen by DIFFERENT tenants), so parallel DROP/CREATE
-//! fixtures would race. The CI lane passes the flag.
+//! §Fase 119.i.2 — **no longer single-threaded.** This paragraph used to require
+//! `-- --test-threads=1`, because the four tests shared fixture tables. They now
+//! carry per-test names (see below), so the suite is correct under cargo's
+//! default parallelism and needs no flag. Run it with:
+//!
+//! ```text
+//! cargo test --features postgres --test fase65_navigate_pg_integration
+//! ```
+//!
+//! with `AXON_TEST_DATABASE_URL` pointing at a THROWAWAY Postgres.
 //!
 //! The fixture tables enable **and FORCE** row-level security (so the table
 //! OWNER — the role the tests run as — is ALSO subject to the policy; without
@@ -51,44 +57,84 @@ use axon::ir_nodes::{IRAxonStore, IRCorpusStoreSource, IRNavigateStep};
 use axon::store::postgres_backend::PostgresStoreBackend;
 use axon::store::registry::{StoreHandle, StoreRegistry};
 
-const DOC_STORE: &str = "fase65_ltm_summaries";
-const EDGE_STORE: &str = "fase65_ltm_edges";
+// §Fase 119.i.2 — the table + role names are PER TEST, not shared constants.
+//
+// **This was not a latent bug.** The names used to be `const DOC_STORE =
+// "fase65_ltm_summaries"` etc., shared by all four tests, and the module header
+// above said so plainly: *run single-threaded, the suite shares fixture tables
+// by design*. Under `--test-threads=1` it was correct.
+//
+// What it was, is a REQUIREMENT NOBODY COULD SEE. The suite sits behind two
+// stacked doors — `#![cfg(feature = "postgres")]` deletes the file without
+// `--features postgres`, and `AXON_TEST_DATABASE_URL` skips every test when
+// unset — so `cargo test` reported `ok. 0 passed` and no one ever met the
+// precondition. Run the obvious way (`--features postgres` + a DSN, no flag),
+// three of the four die with `relation "fase65_ltm_summaries" already exists`:
+// one test drops a table another just created. A gate whose correctness depends
+// on a flag the default invocation omits will be met exactly as often as someone
+// reads the header.
+//
+// So the fix removes the precondition instead of documenting it harder. Distinct
+// names per test make the suite correct under cargo's DEFAULT parallelism; the
+// ROLE is namespaced too, because `DO $$ IF NOT EXISTS … CREATE ROLE $$` is
+// itself a check-then-act race between concurrent sessions.
+//
+// A mutex would have been the wrong repair: the tests would still share one
+// table, and `t4` — the load-bearing concurrent-tenant leak test — would be
+// asserting isolation over state its siblings mutate.
+fn doc_store(ns: &str) -> String {
+    format!("fase65_{ns}_ltm_summaries")
+}
+fn edge_store(ns: &str) -> String {
+    format!("fase65_{ns}_ltm_edges")
+}
+fn app_role(ns: &str) -> String {
+    format!("fase65_{ns}_app")
+}
 const CORPUS: &str = "LtmGraph";
 
 // ── Harness ─────────────────────────────────────────────────────────
 
-async fn test_backend() -> Option<PostgresStoreBackend> {
-    let dsn = match std::env::var("AXON_TEST_DATABASE_URL") {
-        Ok(d) if !d.trim().is_empty() => d,
-        _ => {
-            eprintln!(
-                "fase65: AXON_TEST_DATABASE_URL unset — skipping real-Postgres \
-                 navigate integration (set it to run; CI always does)"
-            );
-            return None;
-        }
-    };
-    let backend = match PostgresStoreBackend::connect(&dsn) {
-        Ok(b) => b,
-        Err(e) => {
-            eprintln!("fase65: backend connect failed ({e}) — skipping");
-            return None;
-        }
-    };
+/// §Fase 119.i.2 — this suite REFUSES to skip.
+///
+/// It used to return `None` when `AXON_TEST_DATABASE_URL` was unset, and every
+/// test returned early. Combined with the file-level `#![cfg(feature = "postgres")]`
+/// that is TWO stacked doors, both shut by default: `cargo test` printed
+/// `ok. 0 passed` and the suite had not executed a line in months. That is the
+/// exact shape in which the §66 cross-tenant isolation bug survived — a green
+/// report from a test that never ran.
+///
+/// Reaching this function means the caller already opted in with
+/// `--features postgres`. Asking for the Postgres suite and silently getting
+/// nothing is the failure mode; so a missing or unreachable database is now a
+/// LOUD panic that says exactly how to provide one.
+async fn test_backend() -> PostgresStoreBackend {
+    let dsn = std::env::var("AXON_TEST_DATABASE_URL")
+        .ok()
+        .filter(|d| !d.trim().is_empty())
+        .unwrap_or_else(|| panic!("{}", refusal("AXON_TEST_DATABASE_URL is unset")));
+    let backend = PostgresStoreBackend::connect(&dsn)
+        .unwrap_or_else(|e| panic!("{}", refusal(&format!("backend connect failed: {e}"))));
     if let Err(e) = backend.ping().await {
-        eprintln!("fase65: Postgres unreachable ({e}) — skipping");
-        return None;
+        panic!("{}", refusal(&format!("Postgres unreachable: {e}")));
     }
-    Some(backend)
+    backend
 }
 
-macro_rules! pg_or_skip {
-    () => {
-        match test_backend().await {
-            Some(b) => b,
-            None => return,
-        }
-    };
+/// The one refusal message, so all five pg suites say the same thing.
+fn refusal(why: &str) -> String {
+    format!(
+        "fase65: {why} — and this suite REFUSES to skip.\n\n\
+         You asked for the Postgres suite (`--features postgres`). A silent skip \
+         here is how a suite reports `ok` for months without executing: it is the \
+         shape in which the §66 cross-tenant isolation bug survived.\n\n\
+         Start a THROWAWAY Postgres and point the variable at it:\n\
+         \x20 docker run -d -e POSTGRES_PASSWORD=axon -e POSTGRES_DB=axon \
+         -p 55433:5432 postgres:16-alpine\n\
+         \x20 AXON_TEST_DATABASE_URL=postgres://postgres:axon@127.0.0.1:55433/axon\n\n\
+         NEVER point it at a database you care about: these fixtures DROP TABLE and \
+         CREATE ROLE."
+    )
 }
 
 async fn exec(backend: &PostgresStoreBackend, sql: &str) {
@@ -104,16 +150,18 @@ async fn exec(backend: &PostgresStoreBackend, sql: &str) {
 /// isolation is RLS, not separate tables.
 async fn seed(
     backend: &PostgresStoreBackend,
+    ns: &str,
     docs: &[(&str, &str, &str)],
     edges: &[(&str, &str, &str, &str, f64)],
 ) {
+    let (doc, edge) = (doc_store(ns), edge_store(ns));
     // Fresh tables, RLS off while seeding.
-    exec(backend, &format!("DROP TABLE IF EXISTS {DOC_STORE}")).await;
-    exec(backend, &format!("DROP TABLE IF EXISTS {EDGE_STORE}")).await;
+    exec(backend, &format!("DROP TABLE IF EXISTS {doc}")).await;
+    exec(backend, &format!("DROP TABLE IF EXISTS {edge}")).await;
     exec(
         backend,
         &format!(
-            "CREATE TABLE {DOC_STORE} \
+            "CREATE TABLE {doc} \
              (id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL, summary TEXT NOT NULL)"
         ),
     )
@@ -121,7 +169,7 @@ async fn seed(
     exec(
         backend,
         &format!(
-            "CREATE TABLE {EDGE_STORE} \
+            "CREATE TABLE {edge} \
              (from_id TEXT NOT NULL, to_id TEXT NOT NULL, tenant_id TEXT NOT NULL, \
               etype TEXT NOT NULL, weight DOUBLE PRECISION NOT NULL)"
         ),
@@ -132,7 +180,7 @@ async fn seed(
         exec(
             backend,
             &format!(
-                "INSERT INTO {DOC_STORE} (id, tenant_id, summary) \
+                "INSERT INTO {doc} (id, tenant_id, summary) \
                  VALUES ('{id}', '{tenant}', '{summary}')"
             ),
         )
@@ -142,7 +190,7 @@ async fn seed(
         exec(
             backend,
             &format!(
-                "INSERT INTO {EDGE_STORE} (from_id, to_id, tenant_id, etype, weight) \
+                "INSERT INTO {edge} (from_id, to_id, tenant_id, etype, weight) \
                  VALUES ('{from}', '{to}', '{tenant}', '{etype}', {weight})"
             ),
         )
@@ -151,7 +199,7 @@ async fn seed(
 
     // Enable + FORCE RLS, scope each table by the §40 GUC. FORCE makes the
     // owner subject to the policy too — without it the isolation is untested.
-    for table in [DOC_STORE, EDGE_STORE] {
+    for table in [&doc, &edge] {
         exec(backend, &format!("ALTER TABLE {table} ENABLE ROW LEVEL SECURITY")).await;
         exec(backend, &format!("ALTER TABLE {table} FORCE ROW LEVEL SECURITY")).await;
         exec(backend, &format!("DROP POLICY IF EXISTS {table}_rls ON {table}")).await;
@@ -170,29 +218,64 @@ async fn seed(
     // (even with FORCE) — so the reads must `SET ROLE` to this role for the
     // policy to actually apply. This models production, where the runtime
     // connects as an unprivileged, RLS-bound application role.
-    exec(
-        backend,
-        "DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'fase65_app') \
-         THEN CREATE ROLE fase65_app NOLOGIN NOBYPASSRLS; END IF; END $$;",
-    )
-    .await;
-    exec(backend, "GRANT USAGE ON SCHEMA public TO fase65_app").await;
-    for table in [DOC_STORE, EDGE_STORE] {
-        exec(backend, &format!("GRANT SELECT ON {table} TO fase65_app")).await;
+    // §Fase 119.i.2 — the role is namespaced too. `IF NOT EXISTS … CREATE ROLE`
+    // is check-then-act: two concurrent sessions can both see it missing and
+    // both try to create it, and the loser gets `role already exists`.
+    //
+    // Namespacing the role is NOT sufficient, and this is the part that only a
+    // repeated run under real concurrency surfaces: `GRANT USAGE ON SCHEMA
+    // public` writes the ACL of ONE catalog row — `pg_namespace` for `public` —
+    // no matter which role it grants to. Four tests granting concurrently hit
+    // `ERROR: tuple concurrently updated`, roughly one run in three. The shared
+    // name that remained was never a table; it was the SCHEMA.
+    //
+    // So the lock covers exactly the shared catalog object and nothing else. The
+    // per-test tables, the seeding, the RLS policies and every read stay fully
+    // concurrent — which matters, because `t4` exists to prove two tenants can
+    // navigate AT THE SAME TIME without leaking. Serialising the whole test
+    // would have made that assertion vacuous while turning the suite green: the
+    // §119.i trap of hiding a defect by removing the concurrency that reveals it.
+    {
+        static CATALOG_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+        let _guard = CATALOG_LOCK.lock().await;
+        let role = app_role(ns);
+        exec(
+            backend,
+            &format!(
+                "DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '{role}') \
+                 THEN CREATE ROLE {role} NOLOGIN NOBYPASSRLS; END IF; END $$;"
+            ),
+        )
+        .await;
+        exec(backend, &format!("GRANT USAGE ON SCHEMA public TO {role}")).await;
+    }
+
+    // Per-table grants touch only THIS test's tables — no shared row, no lock.
+    let role = app_role(ns);
+    for table in [&doc, &edge] {
+        exec(backend, &format!("GRANT SELECT ON {table} TO {role}")).await;
     }
 }
 
-async fn drop_all(backend: &PostgresStoreBackend) {
-    exec(backend, &format!("DROP TABLE IF EXISTS {DOC_STORE}")).await;
-    exec(backend, &format!("DROP TABLE IF EXISTS {EDGE_STORE}")).await;
+async fn drop_all(backend: &PostgresStoreBackend, ns: &str) {
+    exec(
+        backend,
+        &format!("DROP TABLE IF EXISTS {}", doc_store(ns)),
+    )
+    .await;
+    exec(
+        backend,
+        &format!("DROP TABLE IF EXISTS {}", edge_store(ns)),
+    )
+    .await;
 }
 
-fn corpus_source() -> IRCorpusStoreSource {
+fn corpus_source(ns: &str) -> IRCorpusStoreSource {
     IRCorpusStoreSource {
-        doc_store: DOC_STORE.to_string(),
+        doc_store: doc_store(ns),
         doc_id: "id".to_string(),
         doc_title: "summary".to_string(),
-        edge_store: EDGE_STORE.to_string(),
+        edge_store: edge_store(ns),
         edge_from: "from_id".to_string(),
         edge_to: "to_id".to_string(),
         edge_type: "etype".to_string(),
@@ -200,8 +283,8 @@ fn corpus_source() -> IRCorpusStoreSource {
     }
 }
 
-fn store_specs() -> Vec<IRAxonStore> {
-    [DOC_STORE, EDGE_STORE]
+fn store_specs(ns: &str) -> Vec<IRAxonStore> {
+    [doc_store(ns), edge_store(ns)]
         .iter()
         .map(|name| IRAxonStore {
             node_type: "axonstore",
@@ -245,6 +328,7 @@ fn navigate_node() -> IRNavigateStep {
 async fn ctx_for_tenant(
     registry: &Arc<StoreRegistry>,
     tenant: &str,
+    ns: &str,
 ) -> (
     DispatchCtx,
     tokio::sync::mpsc::UnboundedReceiver<axon::flow_execution_event::FlowExecutionEvent>,
@@ -252,7 +336,8 @@ async fn ctx_for_tenant(
     // §Fase 118.a / D118.2 — keyed on the PORT, not the driver type.
     let pins: Arc<Mutex<HashMap<String, axon::pinned_conn::PinnedConn>>> =
         Arc::new(Mutex::new(HashMap::new()));
-    for store in [DOC_STORE, EDGE_STORE] {
+    for store in [doc_store(ns), edge_store(ns)] {
+        let store = store.as_str();
         let backend = match registry.resolve(store).expect("resolve store") {
             StoreHandle::Postgres(b) => b,
             StoreHandle::InMemory | StoreHandle::Secrets { .. } => {
@@ -278,7 +363,7 @@ async fn ctx_for_tenant(
             )
             .await
             .expect("set tenant GUC");
-            conn.execute(sqlx::query("SET ROLE fase65_app"))
+            conn.execute(sqlx::query(&format!("SET ROLE {}", app_role(ns))))
                 .await
                 .expect("set rls role");
         }
@@ -286,7 +371,7 @@ async fn ctx_for_tenant(
     }
 
     let mut sources: HashMap<String, IRCorpusStoreSource> = HashMap::new();
-    sources.insert(CORPUS.to_string(), corpus_source());
+    sources.insert(CORPUS.to_string(), corpus_source(ns));
 
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
     let ctx = DispatchCtx::new("RecallLTM", "kimi", "", CancellationFlag::new(), tx)
@@ -298,12 +383,12 @@ async fn ctx_for_tenant(
     (ctx, rx)
 }
 
-async fn navigate_for(registry: &Arc<StoreRegistry>, tenant: &str) -> String {
+async fn navigate_for(registry: &Arc<StoreRegistry>, tenant: &str, ns: &str) -> String {
     // Keep `_rx` alive across the navigate: the handler emits step events on the
     // channel, and a dropped receiver closes it → `ChannelClosed`. (The §65.A/B
     // bridge keeps its own `_rx` binding alive in `dispatch_structural` exactly
     // for this reason.)
-    let (mut ctx, _rx) = ctx_for_tenant(registry, tenant).await;
+    let (mut ctx, _rx) = ctx_for_tenant(registry, tenant, ns).await;
     match run_navigate(&navigate_node(), &mut ctx).await.expect("navigate ok") {
         NodeOutcome::Completed { output, .. } => output,
         other => panic!("expected Completed, got {other:?}"),
@@ -319,9 +404,11 @@ async fn navigate_for(registry: &Arc<StoreRegistry>, tenant: &str) -> String {
 /// fallthrough that invented ids/titles.
 #[tokio::test]
 async fn t1_navigate_returns_real_hits_from_real_rows() {
-    let backend = pg_or_skip!();
+    const NS: &str = "t1";
+    let backend = test_backend().await;
     seed(
         &backend,
+        NS,
         &[
             ("acme", "a1", "ACME consultative selling playbook"),
             ("acme", "a2", "ACME discovery-call methodology"),
@@ -329,9 +416,9 @@ async fn t1_navigate_returns_real_hits_from_real_rows() {
         &[("acme", "a1", "a2", "elaborate", 0.9)],
     )
     .await;
-    let registry = Arc::new(StoreRegistry::build(&store_specs()).expect("registry"));
+    let registry = Arc::new(StoreRegistry::build(&store_specs(NS)).expect("registry"));
 
-    let out = navigate_for(&registry, "acme").await;
+    let out = navigate_for(&registry, "acme", NS).await;
 
     assert!(out.contains("ACME"), "real seeded summaries returned: {out:?}");
     // Every line is one of the two REAL summaries — nothing invented.
@@ -342,27 +429,29 @@ async fn t1_navigate_returns_real_hits_from_real_rows() {
             "line is a real seeded doc, not fabricated: {line:?}"
         );
     }
-    drop_all(&backend).await;
+    drop_all(&backend, NS).await;
 }
 
 /// §Fase 65.A — the anti-hallucination guarantee against a REAL empty corpus:
 /// zero rows visible to the tenant ⇒ empty result, never invented hits.
 #[tokio::test]
 async fn t2_empty_corpus_binds_empty_not_hallucinated() {
-    let backend = pg_or_skip!();
+    const NS: &str = "t2";
+    let backend = test_backend().await;
     // Seed ONLY for `other`; tenant `ghost` sees nothing under RLS.
     seed(
         &backend,
+        NS,
         &[("other", "o1", "OTHER tenant private note")],
         &[],
     )
     .await;
-    let registry = Arc::new(StoreRegistry::build(&store_specs()).expect("registry"));
+    let registry = Arc::new(StoreRegistry::build(&store_specs(NS)).expect("registry"));
 
-    let out = navigate_for(&registry, "ghost").await;
+    let out = navigate_for(&registry, "ghost", NS).await;
 
     assert_eq!(out, "", "an empty (RLS-scoped) corpus binds empty, never fabricates");
-    drop_all(&backend).await;
+    drop_all(&backend, NS).await;
 }
 
 /// §Fase 64.B / §65.A — tenant isolation: `navigate` reads with an EMPTY where
@@ -371,9 +460,11 @@ async fn t2_empty_corpus_binds_empty_not_hallucinated() {
 /// shared tables.
 #[tokio::test]
 async fn t3_navigate_is_tenant_scoped_sequentially() {
-    let backend = pg_or_skip!();
+    const NS: &str = "t3";
+    let backend = test_backend().await;
     seed(
         &backend,
+        NS,
         &[
             ("alpha", "x1", "ALPHA secret revenue figures"),
             ("beta", "y1", "BETA confidential roadmap"),
@@ -381,17 +472,17 @@ async fn t3_navigate_is_tenant_scoped_sequentially() {
         &[],
     )
     .await;
-    let registry = Arc::new(StoreRegistry::build(&store_specs()).expect("registry"));
+    let registry = Arc::new(StoreRegistry::build(&store_specs(NS)).expect("registry"));
 
-    let a = navigate_for(&registry, "alpha").await;
+    let a = navigate_for(&registry, "alpha", NS).await;
     assert!(a.contains("ALPHA"), "alpha sees its own row: {a:?}");
     assert!(!a.contains("BETA"), "alpha must NOT see beta's row: {a:?}");
 
-    let b = navigate_for(&registry, "beta").await;
+    let b = navigate_for(&registry, "beta", NS).await;
     assert!(b.contains("BETA"), "beta sees its own row: {b:?}");
     assert!(!b.contains("ALPHA"), "beta must NOT see alpha's row: {b:?}");
 
-    drop_all(&backend).await;
+    drop_all(&backend, NS).await;
 }
 
 /// §Fase 65.A/B — THE load-bearing test: two tenants navigating CONCURRENTLY,
@@ -400,9 +491,11 @@ async fn t3_navigate_is_tenant_scoped_sequentially() {
 /// HIGH — a fresh pool acquire or a mis-shared GUC would surface here.
 #[tokio::test]
 async fn t4_navigate_concurrent_two_tenants_no_leak() {
-    let backend = pg_or_skip!();
+    const NS: &str = "t4";
+    let backend = test_backend().await;
     seed(
         &backend,
+        NS,
         &[
             ("alpha", "x1", "ALPHA secret revenue figures"),
             ("alpha", "x2", "ALPHA growth strategy"),
@@ -415,12 +508,12 @@ async fn t4_navigate_concurrent_two_tenants_no_leak() {
         ],
     )
     .await;
-    let registry = Arc::new(StoreRegistry::build(&store_specs()).expect("registry"));
+    let registry = Arc::new(StoreRegistry::build(&store_specs(NS)).expect("registry"));
 
     // Drive both concurrently — each gets its own GUC-scoped pinned conns.
     let (a, b) = tokio::join!(
-        navigate_for(&registry, "alpha"),
-        navigate_for(&registry, "beta"),
+        navigate_for(&registry, "alpha", NS),
+        navigate_for(&registry, "beta", NS),
     );
 
     assert!(a.contains("ALPHA"), "alpha sees its own rows: {a:?}");
@@ -428,5 +521,5 @@ async fn t4_navigate_concurrent_two_tenants_no_leak() {
     assert!(b.contains("BETA"), "beta sees its own rows: {b:?}");
     assert!(!b.contains("ALPHA"), "NO leak: beta never sees alpha: {b:?}");
 
-    drop_all(&backend).await;
+    drop_all(&backend, NS).await;
 }
