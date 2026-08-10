@@ -52,7 +52,7 @@
 //! event kinds require an explicit plan-vivo sub-fase to extend
 //! the table. This prevents drift between producers + consumers.
 
-use crate::wire_envelope::{BlameContext, BlameKind};
+use crate::wire_envelope::{BlameContext, BlameKind, BlameParty};
 
 // ════════════════════════════════════════════════════════════════════
 // Provenance event taxonomy
@@ -114,6 +114,11 @@ pub fn blame_for_anchor_breach(
 ) -> BlameContext {
     BlameContext {
         kind: BlameKind::AnchorBreach,
+        // §Fase 119.m.2 — the paper assigns this one BY NAME: negative blame,
+        // "la activación de un fallo por anchor_breach, el cual ocurre cuando el
+        // sub-agente intenta modificar recursos fuera de su ámbito de contención
+        // concedido" (paper_agent.md, Eje 2).
+        party: Some(BlameParty::Server),
         location: format!("step:{}", step_name),
         message: format!(
             "anchor '{}' breached (severity={}, confidence={:.2}) — \
@@ -136,6 +141,11 @@ pub fn blame_for_shield_rejection(
 ) -> BlameContext {
     BlameContext {
         kind: BlameKind::ShieldRejection,
+        // §Fase 119.m.2 — not named in the paper, but it follows from the
+        // definition rather than from taste: the shield IS the contract guard,
+        // and the content it flagged was produced by the invoked party. That is
+        // negative blame — a postcondition violated by the callee.
+        party: Some(BlameParty::Server),
         location: format!("step:{}", step_name),
         message: format!(
             "shield '{}' flagged pattern '{}' — flow proceeded on \
@@ -150,12 +160,27 @@ pub fn blame_for_shield_rejection(
 /// verification failure where the flow proceeded with a prior-
 /// state read. The location identifies which store + which
 /// chain segment failed verification.
+/// §Fase 119.m.2 — `party` is a PARAMETER here, and that is the point.
+///
+/// A broken mutation chain has two possible authors: the invoked party wrote a
+/// malformed segment (`Server`), or the storage layer corrupted one
+/// (`Environment`). The KIND cannot tell them apart; the call site can.
+///
+/// This is the evidence that the two axes are genuinely orthogonal. If every
+/// `BlameKind` determined a `BlameParty`, `party` would not be a second axis —
+/// it would be a function of the first, and shipping it as a field would be
+/// storing a derivation. Two of the five kinds do not determine it, so it is a
+/// real axis, and the honest default for those two is `None` rather than a
+/// guess. Attributing responsibility to the wrong component is worse than
+/// attributing it to nobody.
 pub fn blame_for_store_breach(
     store_name: &str,
     chain_segment: &str,
+    party: Option<BlameParty>,
 ) -> BlameContext {
     BlameContext {
         kind: BlameKind::StoreBreach,
+        party,
         location: format!("store:{}", store_name),
         message: format!(
             "mutation chain verification failed at segment '{}' — \
@@ -169,12 +194,20 @@ pub fn blame_for_store_breach(
 /// §Fase 39.c.z — blame producer for a backend soft-fail
 /// (truncated response, partial completion, downgraded
 /// throughput). The backend_name + reason identifies the source.
+/// §Fase 119.m.2 — `party` is a PARAMETER, for the same reason as
+/// [`blame_for_store_breach`]. A truncated or non-conforming completion is the
+/// backend violating a postcondition (`Server`); a soft rate-limit or a
+/// throughput downgrade is infrastructure (`Environment`). One kind, two
+/// parties — so the kind does not decide it, and inventing one here would
+/// fabricate an attribution the runtime never established.
 pub fn blame_for_backend_soft_fail(
     backend_name: &str,
     reason: &str,
+    party: Option<BlameParty>,
 ) -> BlameContext {
     BlameContext {
         kind: BlameKind::BackendSoftFail,
+        party,
         location: format!("backend:{}", backend_name),
         message: format!("backend '{}' soft-fail: {}", backend_name, reason),
         d_letter: Some("39.c.z".to_string()),
@@ -192,6 +225,9 @@ pub fn blame_for_type_mismatch(
 ) -> BlameContext {
     BlameContext {
         kind: BlameKind::TypeMismatch,
+        // §Fase 119.m.2 — the paper's negative blame, named: "el retorno de
+        // tipos no conformes" (paper_agent.md, Eje 2).
+        party: Some(BlameParty::Server),
         location: format!("field:{}", field_path),
         message: format!(
             "recoverable type mismatch at '{}' (expected {}, got {})",
@@ -404,7 +440,7 @@ mod tests {
 
     #[test]
     fn fase39cz_store_breach_producer() {
-        let b = blame_for_store_breach("transactions", "segment_42");
+        let b = blame_for_store_breach("transactions", "segment_42", None);
         assert_eq!(b.kind, BlameKind::StoreBreach);
         assert_eq!(b.location, "store:transactions");
         assert!(b.message.contains("segment_42"));
@@ -412,7 +448,7 @@ mod tests {
 
     #[test]
     fn fase39cz_backend_soft_fail_producer() {
-        let b = blame_for_backend_soft_fail("anthropic", "truncated_response");
+        let b = blame_for_backend_soft_fail("anthropic", "truncated_response", None);
         assert_eq!(b.kind, BlameKind::BackendSoftFail);
         assert_eq!(b.location, "backend:anthropic");
         assert!(b.message.contains("truncated_response"));
@@ -444,22 +480,22 @@ mod tests {
     #[test]
     fn fase39cz_priority_shield_beats_store() {
         let shield = blame_for_shield_rejection("Sh", "S", "p");
-        let store = blame_for_store_breach("st", "seg");
+        let store = blame_for_store_breach("st", "seg", None);
         let winner = merge_blame(Some(store), Some(shield.clone()));
         assert_eq!(winner.unwrap().kind, BlameKind::ShieldRejection);
     }
 
     #[test]
     fn fase39cz_priority_store_beats_backend() {
-        let store = blame_for_store_breach("st", "seg");
-        let backend = blame_for_backend_soft_fail("be", "r");
+        let store = blame_for_store_breach("st", "seg", None);
+        let backend = blame_for_backend_soft_fail("be", "r", None);
         let winner = merge_blame(Some(backend), Some(store.clone()));
         assert_eq!(winner.unwrap().kind, BlameKind::StoreBreach);
     }
 
     #[test]
     fn fase39cz_priority_backend_beats_typemismatch() {
-        let backend = blame_for_backend_soft_fail("be", "r");
+        let backend = blame_for_backend_soft_fail("be", "r", None);
         let mismatch = blame_for_type_mismatch("f", "I", "S");
         let winner = merge_blame(Some(mismatch), Some(backend.clone()));
         assert_eq!(winner.unwrap().kind, BlameKind::BackendSoftFail);
@@ -570,6 +606,12 @@ pub fn derive_blame_from_report(
                 // names the step + the breach count.
                 let blame = BlameContext {
                     kind: BlameKind::AnchorBreach,
+                    // §Fase 119.m.2 — same attribution as the dispatcher path in
+                    // `runner.rs`, and it has to be: `merge_blame`'s
+                    // first-emitted-wins discipline means the two engines must
+                    // agree on the whole shape, party included, or the reported
+                    // responsibility would depend on which engine ran.
+                    party: Some(BlameParty::Server),
                     location: format!("step:{}", step.name),
                     message: format!(
                         "{} anchor breach(es) on step '{}' — flow \

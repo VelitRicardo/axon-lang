@@ -286,8 +286,8 @@ fn fase39c_s6_merge_blame_respects_priority_chain() {
     // wins through chained merges.
     let blames = [
         blame_for_type_mismatch("f", "I", "S"),
-        blame_for_backend_soft_fail("be", "r"),
-        blame_for_store_breach("st", "seg"),
+        blame_for_backend_soft_fail("be", "r", None),
+        blame_for_store_breach("st", "seg", None),
         blame_for_shield_rejection("sh", "S", "p"),
         blame_for_anchor_breach("S", "A", "warn", 0.5),
     ];

@@ -234,6 +234,7 @@ fn fase39b_s5_theorem_5_1_bounds_derived_certainty() {
 fn fase39b_s5_blame_kind_serializes_snake_case() {
     let blame = BlameContext {
         kind: BlameKind::AnchorBreach,
+        party: None,
         location: "step:Triage".to_string(),
         message: "confidence below threshold".to_string(),
         d_letter: Some("39.b".to_string()),
@@ -255,6 +256,10 @@ fn fase39b_s5_blame_kind_serializes_snake_case() {
     for (kind, slug) in cases {
         let b = BlameContext {
             kind: kind.clone(),
+            // §Fase 119.m.2 — this case pins the KIND's wire slug; leaving the
+            // party absent is also what proves it stays elided, keeping §39's
+            // D11 wire byte-identical for a consumer that knows only `kind`.
+            party: None,
             location: String::new(),
             message: String::new(),
             d_letter: None,

@@ -222,6 +222,14 @@ pub struct ExecutionMetrics {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct BlameContext {
     pub kind: BlameKind,
+    /// §Fase 119.m.2 — WHO is responsible, orthogonal to [`BlameKind`]'s WHAT
+    /// degraded. `None` when this degradation does not determine a party.
+    ///
+    /// Elided from the wire when absent (`skip_serializing_if`), so every
+    /// pre-§119.m.2 envelope serialises byte-identically and §39's D11 wire
+    /// contract is untouched.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub party: Option<BlameParty>,
     /// `file:line:col` (compile-time origin) OR `step:name`
     /// (runtime origin). Empty string when the origin cannot be
     /// pinpointed.
@@ -233,6 +241,52 @@ pub struct BlameContext {
     /// "33.x.d") for forward correlation when the blame ties to a
     /// specific architectural commitment.
     pub d_letter: Option<String>,
+}
+
+/// §Fase 119.m.2 — the RESPONSIBILITY axis of the Findler-Felleisen blame
+/// calculus: **who** is answerable for a degradation, as opposed to
+/// [`BlameKind`]'s **what** degraded.
+///
+/// # Why these names and not the paper's
+///
+/// `paper_agent.md` (Eje 2) writes this axis as
+/// `{Orchestrator, SubAgent, Environment}`. The runtime already had it, under
+/// different names: [`crate::emcp::Blame`] `{Caller, Server, Network}`, whose own
+/// doc cites *"the contract-based blame calculus from ℰMCP spec (CT-2/CT-3)"* —
+/// the same Findler-Felleisen calculus, specified twice.
+///
+/// The code's vocabulary wins because it is **already on a wire an adopter
+/// reads**: a failed ℰMCP call surfaces literally as `"… [blame=server]"`, and
+/// `Blame` derives `Serialize`. Renaming it to match a paper would break a live
+/// contract to buy nothing. `Caller`/`Server` are also the more general pair —
+/// many blame sites are tools or stores, and calling those a "SubAgent"
+/// presupposes an agent that is not there.
+///
+/// `Network` generalises to `Environment` because the paper's environmental
+/// blame covers timeouts, FFI boundary breaks and memory corruption, not only
+/// the network. `emcp::Blame::Network` maps onto it and keeps its own
+/// `as_str()` — see `crate::emcp::Blame::party`.
+///
+/// # Why there is no `None` variant
+///
+/// `emcp::Blame::None` means *"the call succeeded"*. A [`BlameContext`] only
+/// exists because something degraded, so that state is unrepresentable here by
+/// construction; "no party could be determined" is `Option::None` on the field,
+/// which is a different fact and must not share a spelling with it.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum BlameParty {
+    /// Positive blame — the CALLER violated a precondition before invoking:
+    /// arguments outside their domain, an insufficient cognitive budget.
+    Caller,
+    /// Negative blame — the INVOKED party (sub-agent, tool, backend) violated a
+    /// postcondition: a non-conforming return type, a confidence above the
+    /// Theorem 5.1 ceiling on derived knowledge, or an anchor breach.
+    Server,
+    /// Environmental blame — not attributable to the logic of any software
+    /// component: timeouts, FFI boundary breaks, memory corruption, transport
+    /// collapse.
+    Environment,
 }
 
 /// §Fase 39 (D11) — closed catalog of blame kinds. Adding a variant
@@ -820,6 +874,7 @@ mod tests {
         // Wire-shape contract: BlameKind serializes as snake_case.
         let blame = BlameContext {
             kind: BlameKind::AnchorBreach,
+            party: None,
             location: "step:Triage".to_string(),
             message: "Confidence below threshold".to_string(),
             d_letter: Some("39.c".to_string()),
@@ -829,6 +884,7 @@ mod tests {
 
         let blame2 = BlameContext {
             kind: BlameKind::BackendSoftFail,
+            party: None,
             location: String::new(),
             message: "Truncated".to_string(),
             d_letter: None,

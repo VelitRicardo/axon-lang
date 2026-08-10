@@ -46,6 +46,33 @@ impl Blame {
             Blame::Network => "network",
         }
     }
+
+    /// §Fase 119.m.2 — this value, on the runtime's ONE responsibility axis.
+    ///
+    /// `Blame` and [`crate::wire_envelope::BlameParty`] are the same
+    /// Findler-Felleisen calculus: this enum's own doc cites ℰMCP spec
+    /// CT-2/CT-3, and `paper_agent.md` Eje 2 writes it as
+    /// `{Orchestrator, SubAgent, Environment}`. Two specifications, one concept.
+    /// Rather than let a third catalog grow, ℰMCP keeps its wire spelling
+    /// (`as_str()` above is untouched — a failed call still reads
+    /// `"… [blame=server]"`) and projects onto the shared axis here.
+    ///
+    /// `None` maps to `Option::None`, and the two do NOT mean the same thing:
+    /// here it means *the call succeeded*, and on a `BlameContext` it would mean
+    /// *no party could be determined*. A `BlameContext` only exists because
+    /// something degraded, so the first is unreachable there.
+    pub fn party(&self) -> Option<crate::wire_envelope::BlameParty> {
+        use crate::wire_envelope::BlameParty;
+        match self {
+            Blame::None => None,
+            Blame::Caller => Some(BlameParty::Caller),
+            Blame::Server => Some(BlameParty::Server),
+            // The paper's environmental blame is wider than the network:
+            // timeouts, FFI breaks, memory corruption. ℰMCP only ever raises
+            // the network case, which is one of them.
+            Blame::Network => Some(BlameParty::Environment),
+        }
+    }
 }
 
 // ── Epistemic taint ──────────────────────────────────────────────────────

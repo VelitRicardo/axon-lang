@@ -3811,6 +3811,12 @@ async fn collect_via_dispatcher(
         anchor_breaches += rec.anchor_breaches.len();
         let blame = crate::wire_envelope::BlameContext {
             kind: crate::wire_envelope::BlameKind::AnchorBreach,
+            // §Fase 119.m.2 — negative blame, assigned by the paper by name:
+            // an anchor breach is the sub-agent reaching outside its granted
+            // containment. This is one of only two sites in the workspace that
+            // production actually emits a `BlameContext` from, so the axis is
+            // live on the path adopters see, not just on the helpers.
+            party: Some(crate::wire_envelope::BlameParty::Server),
             location: format!("step:{}", rec.step_name),
             message: format!(
                 "{} anchor breach(es) on step '{}' — flow \
