@@ -3395,7 +3395,7 @@ pub struct ShieldApplyStep {
 ///
 /// **§119.n — and §111.e closed that with the WRONG SHAPE.** It gave the block a
 /// `body: Vec<FlowStep>`, which no published block and no paper writes. The
-/// specified surface — [`fase_23_algebraic_effects_runtime.md`] §3.7, whose D8
+/// specified surface — `docs/fase/fase_23_algebraic_effects_runtime.md` §3.7, whose D8
 /// promises *"backward compat for `stream<τ>` 100%, cero cambios en `.axon`
 /// source files de adopters"* — is `stream<T> { on_chunk: B₁ on_complete: B₂ }`,
 /// and README block 15 publishes exactly that. Measured before this landed:
