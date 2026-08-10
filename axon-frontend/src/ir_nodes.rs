@@ -1358,6 +1358,15 @@ pub enum IRExpr {
         base: Box<IRExpr>,
         index: Box<IRExpr>,
     },
+    /// §Fase 119.o — `let <name> = <value>` scoped over `<body>`. The lowered
+    /// form of a `logic { let … return … }` chain: one `Let` per binding,
+    /// nested, so each bound term is evaluated exactly once and shadowing falls
+    /// out of the nesting.
+    Let {
+        name: String,
+        value: Box<IRExpr>,
+        body: Box<IRExpr>,
+    },
 }
 
 /// §Fase 70.a — a literal inside an [`IRExpr`].

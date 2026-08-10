@@ -3852,6 +3852,16 @@ compute CalculatePremium {
     }
 }
 
+tool WebSearch {
+    timeout: 10s
+    effects: <io, network>
+}
+
+tool PDFExtractor {
+    timeout: 30s
+    effects: <io>
+}
+
 agent InsuranceAdvisor {
     goal: "Analyze policy and compute accurate premium"
     tools: [WebSearch, PDFExtractor]
@@ -3892,6 +3902,21 @@ compute NormalizeMetrics {
         let score = ratio * 100
         return score
     }
+}
+
+tool WebSearch {
+    timeout: 10s
+    effects: <io, network>
+}
+
+tool APICall {
+    timeout: 15s
+    effects: <io, network>
+}
+
+tool DataAnalyzer {
+    timeout: 20s
+    effects: <io>
 }
 
 agent DataCollector {
@@ -4110,6 +4135,15 @@ price anomaly is detected, the daemon triggers analysis immediately — not
 on the next polling interval:
 
 ```axon
+compute CalculateDeviation {
+    input: price (Float), avg_30d (Float)
+    output: Float
+    logic {
+        let delta = price - avg_30d
+        return delta / avg_30d
+    }
+}
+
 daemon PriceMonitor(event: MarketEvent) -> AlertReport {
     goal: "Monitor real-time price feeds and trigger anomaly alerts"
     tools: [MarketFeed, Calculator, NotificationService]

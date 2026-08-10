@@ -1157,6 +1157,12 @@ fn const_fold(e: &Expr) -> Option<ConstVal> {
             other => Some(ConstVal::Float(-const_as_num(&other)?)),
         },
         Expr::Binary(op, l, r) => const_binop(*op, &const_fold(l)?, &const_fold(r)?),
+        // §Fase 119.o — a `let` is never constant-folded. The body reaches the
+        // binding through a `Ref`, and `Ref` is runtime-dynamic here (the arm
+        // below), so folding the value would compute a constant nothing can
+        // read. Folding through the binding correctly means an environment,
+        // which this dead-branch analysis deliberately does not have.
+        Expr::Let { .. } => None,
         // References + structured access + calls are runtime-dynamic.
         Expr::Ref(_) | Expr::Field(..) | Expr::Index(..) | Expr::Call(..) => None,
     }
@@ -3703,6 +3709,18 @@ impl<'a> TypeChecker<'a> {
             Expr::Lit(ExprLit::Float(_)) => T::Float,
             Expr::Lit(ExprLit::Bool(_)) => T::Bool,
             Expr::Lit(ExprLit::Str(_)) => T::Str,
+            // §Fase 119.o — a `let` types as its BODY, under a scope extended
+            // with the binding. Inferring the value and then discarding it
+            // would leave every reference to the bound name `Unknown`, so a
+            // `logic { let ratio = a / b  return ratio * 100 }` would type-check
+            // its own result as unknown and every numeric law over it would go
+            // unchecked — silently, since `Unknown` never errors.
+            Expr::Let { name, value, body } => {
+                let bound = self.infer_expr(value, scope, loc);
+                let mut inner = scope.clone();
+                inner.insert(name.clone(), bound.label().to_string());
+                self.infer_expr(body, &inner, loc)
+            }
             Expr::Ref(p) => {
                 // §Fase 73.e — per §70.d a plain dotted path stays a FLAT
                 // `Ref` (`profile.age`, not a Field node). When its ROOT is a

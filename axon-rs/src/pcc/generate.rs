@@ -3142,6 +3142,17 @@ fn ir_diff(e: &crate::ir_nodes::IRExpr, wrt: &str) -> Result<crate::ir_nodes::IR
         E::Lit { lit: L::Int { .. } } | E::Lit { lit: L::Float { .. } } => Ok(zero()),
         E::Lit { .. } => Err("non-numeric literal".to_string()),
         E::Ref { path } => Ok(if path == wrt { one() } else { zero() }),
+        // §Fase 119.o — refused, and it MUST match the frontend's
+        // `expr_diff::diff_at`, which refuses the same term for the same reason:
+        // the `Ref` arm above answers 1 or 0 by NAME, so a reference to a
+        // let-bound name inside the body would differentiate to 0 as though it
+        // were a constant, and the gradient would be plausible and wrong.
+        //
+        // The two carriers agreeing is the point of this function existing
+        // twice. If the frontend refused and this verifier quietly produced a
+        // derivative, a proof-carrying artifact would attest a gradient the
+        // compiler declined to compute.
+        E::Let { .. } => Err("let binding".to_string()),
         E::Unary { op, operand } if op == "neg" => Ok(E::Unary {
             op: "neg".to_string(),
             operand: Box::new(ir_diff(operand, wrt)?),

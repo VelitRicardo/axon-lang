@@ -62,6 +62,22 @@ fn diff_at(e: &Expr, wrt: &str, path: String) -> Result<Expr, NonDifferentiable>
             path,
         }),
         Expr::Ref(name) => Ok(if name == wrt { lit_f(1.0) } else { lit_f(0.0) }),
+        // §Fase 119.o — `let` is REFUSED here, deliberately.
+        //
+        // Differentiating through a binding needs the chain rule applied to the
+        // bound term: ∂/∂w [let x = f in g] = ∂g/∂x · ∂f/∂w + ∂g/∂w. The `Ref`
+        // arm above cannot express that — it answers 1 or 0 by NAME, so a
+        // reference to `x` inside the body would differentiate to 0 as if `x`
+        // were a constant, and the gradient would come back plausible and
+        // WRONG. A wrong gradient does not fail; it converges somewhere else.
+        //
+        // Refusing names the construct and surfaces as axon-T931, which is the
+        // §108 posture: an adopter is told, not fooled. Landing it properly
+        // means teaching `diff_at` an environment, which is its own decision.
+        Expr::Let { .. } => Err(NonDifferentiable {
+            construct: "let binding".into(),
+            path,
+        }),
         Expr::Unary(UnOp::Neg, inner) => Ok(Expr::Unary(
             UnOp::Neg,
             Box::new(diff_at(inner, wrt, format!("{path}.arg"))?),

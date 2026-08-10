@@ -367,8 +367,46 @@ pub(crate) enum EVal {
 /// conditions), so it defines clean numeric-aware semantics with no obligation
 /// to reproduce the legacy `eval_triple` string quirks.
 pub(crate) fn eval_expr(e: &crate::ir_nodes::IRExpr, ctx: &DispatchCtx) -> Option<EVal> {
+    eval_expr_ov(e, ctx, &mut Vec::new())
+}
+
+/// §Fase 119.o — the evaluator, with a LEXICAL SCOPE stack for `let`.
+///
+/// `ov` ("overlay") is the chain of bindings introduced by enclosing `Let`
+/// terms, innermost LAST. `Ref` consults it before `ctx.let_bindings`, so an
+/// inner `let` shadows an outer one and both shadow the caller's frame — which
+/// is what nesting already means and therefore needs no separate rule.
+///
+/// It is a stack rather than a map extended by cloning because a `let` chain is
+/// linear: push on the way in, pop on the way out, one entry per binding, no
+/// allocation proportional to the caller's frame. Values are kept as `EVal`,
+/// not stringified — round-tripping a `Float` through its decimal form to reach
+/// `ctx.let_bindings`'s `String` values would quietly change what the next
+/// binding computes on.
+fn eval_expr_ov(
+    e: &crate::ir_nodes::IRExpr,
+    ctx: &DispatchCtx,
+    ov: &mut Vec<(String, EVal)>,
+) -> Option<EVal> {
     use crate::ir_nodes::{IRExpr, IRExprLit};
     match e {
+        // §Fase 119.o — `let <name> = <value>` scoped over `<body>`.
+        //
+        // The bound term is evaluated ONCE, here, and the result is what every
+        // reference in the body reads. Substituting the term into the body
+        // instead would re-evaluate it per mention.
+        //
+        // The pop is unconditional on the success path AND on the failure path
+        // (the `?` cannot escape before it, because the body's result is bound
+        // first), so a failing body cannot leave a stale binding visible to a
+        // sibling expression.
+        IRExpr::Let { name, value, body } => {
+            let bound = eval_expr_ov(value, ctx, ov)?;
+            ov.push((name.clone(), bound));
+            let out = eval_expr_ov(body, ctx, ov);
+            ov.pop();
+            out
+        }
         IRExpr::Lit { lit } => Some(match lit {
             IRExprLit::Int { value } => EVal::Int(*value),
             IRExprLit::Float { value } => EVal::Float(*value),
@@ -378,12 +416,23 @@ pub(crate) fn eval_expr(e: &crate::ir_nodes::IRExpr, ctx: &DispatchCtx) -> Optio
         // §Fase 70.d — resolve a reference walking nested JSON object fields
         // (`s.config.level` over a JSON binding), exact-key first. Falls back to
         // the literal path (matching `resolve_lhs`) when neither resolves.
-        IRExpr::Ref { path } => Some(eval_coerce_str(
-            crate::exec_context::resolve_dotted_var(&ctx.let_bindings, path)
-                .unwrap_or_else(|| path.clone()),
-        )),
+        IRExpr::Ref { path } => {
+            // §Fase 119.o — lexical scope FIRST, innermost binding wins. Searched
+            // from the end so an inner `let x` shadows an outer `let x`; only if
+            // no enclosing binding owns the name does the lookup fall through to
+            // the caller's frame. Reversing this order would let a stale
+            // caller-frame binding of the same name silently win over the value
+            // the author just bound two lines up.
+            if let Some((_, v)) = ov.iter().rev().find(|(n, _)| n == path) {
+                return Some(v.clone());
+            }
+            Some(eval_coerce_str(
+                crate::exec_context::resolve_dotted_var(&ctx.let_bindings, path)
+                    .unwrap_or_else(|| path.clone()),
+            ))
+        }
         IRExpr::Unary { op, operand } => {
-            let v = eval_expr(operand, ctx)?;
+            let v = eval_expr_ov(operand, ctx, ov)?;
             match op.as_str() {
                 "not" => Some(EVal::Bool(!eval_truthy(&v))),
                 "neg" => match v {
@@ -396,40 +445,42 @@ pub(crate) fn eval_expr(e: &crate::ir_nodes::IRExpr, ctx: &DispatchCtx) -> Optio
         IRExpr::Binary { op, lhs, rhs } => match op.as_str() {
             // Short-circuit boolean operators.
             "and" => {
-                let l = eval_expr(lhs, ctx)?;
+                let l = eval_expr_ov(lhs, ctx, ov)?;
                 if !eval_truthy(&l) {
                     return Some(EVal::Bool(false));
                 }
-                Some(EVal::Bool(eval_truthy(&eval_expr(rhs, ctx)?)))
+                Some(EVal::Bool(eval_truthy(&eval_expr_ov(rhs, ctx, ov)?)))
             }
             "or" => {
-                let l = eval_expr(lhs, ctx)?;
+                let l = eval_expr_ov(lhs, ctx, ov)?;
                 if eval_truthy(&l) {
                     return Some(EVal::Bool(true));
                 }
-                Some(EVal::Bool(eval_truthy(&eval_expr(rhs, ctx)?)))
+                Some(EVal::Bool(eval_truthy(&eval_expr_ov(rhs, ctx, ov)?)))
             }
             _ => {
-                let l = eval_expr(lhs, ctx)?;
-                let r = eval_expr(rhs, ctx)?;
+                let l = eval_expr_ov(lhs, ctx, ov)?;
+                let r = eval_expr_ov(rhs, ctx, ov)?;
                 eval_binop(op, &l, &r)
             }
         },
         // §Fase 70.c — closed-catalog builtin call.
-        IRExpr::Call { builtin, args } => eval_builtin(builtin, args, ctx),
+        IRExpr::Call { builtin, args } => eval_builtin(builtin, args, ctx, ov),
         // §Fase 70.d / §73.b — field access over a JSON value. TOTAL: a
         // non-object base, an absent field, or a null base resolve to JSON
         // null (null-as-a-value), so a chained `doc.a.b.c` keeps walking
         // and only the base sub-expression evaluating to `None` (a hard
         // domain error, e.g. division-by-zero in a sub-expr) fails closed.
-        IRExpr::Field { base, field } => Some(eval_json_field(&eval_expr(base, ctx)?, field)),
+        IRExpr::Field { base, field } => {
+            Some(eval_json_field(&eval_expr_ov(base, ctx, ov)?, field))
+        }
         // §Fase 70.d / §73.b — index access over a JSON array or string.
         // TOTAL: out-of-range / negative / non-array → JSON null. A
         // non-integer index (a type error the frontend rejects) also
         // degrades to null rather than diverging.
         IRExpr::Index { base, index } => {
-            let b = eval_expr(base, ctx)?;
-            let idx = eval_expr(index, ctx)?;
+            let b = eval_expr_ov(base, ctx, ov)?;
+            let idx = eval_expr_ov(index, ctx, ov)?;
             Some(match eval_as_int(&idx) {
                 Some(i) => eval_json_index(&b, i),
                 None => EVal::Json(serde_json::Value::Null),
@@ -505,10 +556,15 @@ fn eval_json_index(base: &EVal, i: i64) -> EVal {
 }
 
 /// §Fase 70.c — evaluate a pure builtin call. `args[0]` is the receiver.
-fn eval_builtin(name: &str, args: &[crate::ir_nodes::IRExpr], ctx: &DispatchCtx) -> Option<EVal> {
+fn eval_builtin(
+    name: &str,
+    args: &[crate::ir_nodes::IRExpr],
+    ctx: &DispatchCtx,
+    ov: &mut Vec<(String, EVal)>,
+) -> Option<EVal> {
     // Evaluate the receiver ONCE into an `EVal` — the honest coercion
     // accessors (§73.c) need the typed value, not its string form.
-    let rv = eval_expr(args.first()?, ctx)?;
+    let rv = eval_expr_ov(args.first()?, ctx, ov)?;
     // §Fase 73.c — the honest coercion accessors. Each is a TOTAL coercion
     // that fail-closes to JSON null on a type mismatch — never a panic.
     match name {
@@ -532,15 +588,15 @@ fn eval_builtin(name: &str, args: &[crate::ir_nodes::IRExpr], ctx: &DispatchCtx)
             Some(EVal::Bool(t.is_empty() || t == "null"))
         }
         "contains" => {
-            let needle = eval_to_str(&eval_expr(args.get(1)?, ctx)?);
+            let needle = eval_to_str(&eval_expr_ov(args.get(1)?, ctx, ov)?);
             Some(EVal::Bool(builtin_contains(&recv, &needle)))
         }
         "starts_with" => {
-            let p = eval_to_str(&eval_expr(args.get(1)?, ctx)?);
+            let p = eval_to_str(&eval_expr_ov(args.get(1)?, ctx, ov)?);
             Some(EVal::Bool(recv.starts_with(&p)))
         }
         "ends_with" => {
-            let s = eval_to_str(&eval_expr(args.get(1)?, ctx)?);
+            let s = eval_to_str(&eval_expr_ov(args.get(1)?, ctx, ov)?);
             Some(EVal::Bool(recv.ends_with(&s)))
         }
         _ => None,

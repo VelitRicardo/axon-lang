@@ -2840,6 +2840,27 @@ pub enum Expr {
     Field(Box<Expr>, String),
     /// §Fase 70.d — index access `base[index]` (array element / string char).
     Index(Box<Expr>, Box<Expr>),
+    /// §Fase 119.o — `let <name> = <value>` scoped over `<body>`: the classic
+    /// let-in term, `let x = e₁ in e₂`.
+    ///
+    /// **Why the expression engine and not a list of bindings on the compute.**
+    /// Every published `compute` writes a CHAIN —
+    /// `logic { let a = …  let b = …  return e }` — and the obvious shortcut is
+    /// to hang a `Vec<(String, Expr)>` off `ComputeDefinition` and substitute at
+    /// evaluation time. That is wrong twice over: substitution DUPLICATES the
+    /// bound term at every use site (so `let t = expensive()` evaluates once per
+    /// mention, changing cost and, for anything non-total, meaning), and it
+    /// confines `let` to computes when it is a property of expressions.
+    ///
+    /// As a `Let` term the chain nests — `Let(a, e₁, Let(b, e₂, e₃))` — which is
+    /// exactly one evaluation per binding, shadowing that falls out of the
+    /// nesting instead of being reimplemented, and a `let` usable anywhere an
+    /// expression is.
+    Let {
+        name: String,
+        value: Box<Expr>,
+        body: Box<Expr>,
+    },
 }
 
 /// The closed catalog of pure builtins (§Fase 70.c). All are total + pure.

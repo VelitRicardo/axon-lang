@@ -818,6 +818,14 @@ impl IRGenerator {
                 },
             },
             Expr::Ref(p) => IRExpr::Ref { path: p.clone() },
+            // §Fase 119.o — the `logic { let … return }` chain, lowered term for
+            // term. Structural: no substitution, so each bound value is one node
+            // and the evaluator runs it once.
+            Expr::Let { name, value, body } => IRExpr::Let {
+                name: name.clone(),
+                value: Box::new(Self::lower_expr(value)),
+                body: Box::new(Self::lower_expr(body)),
+            },
             Expr::Unary(op, operand) => IRExpr::Unary {
                 op: match op {
                     UnOp::Neg => "neg",

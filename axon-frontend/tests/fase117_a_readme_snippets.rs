@@ -55,7 +55,13 @@ const KNOWN_UNCOMPILABLE: &[(u64, &str)] = &[
     // published block writes). The reasons in this table are §117's, and the
     // compiler has moved six times since — re-diagnose before trusting a row.
     (0xb8d965c219532f56, "block 16: flow ProcessOrder — `use_tool` in step body"),
-    (0x6b75a9d52ad1965c, "block 50: daemon PriceMonitor — leading `.` in flow body"),
+    // §Fase 119.o — block 50 (`daemon PriceMonitor`) LEFT this ledger on
+    // 2026-08-10, and its recorded reason — "leading `.` in flow body" — named
+    // nothing that was ever wrong with it. The actual blocker was
+    // `Undefined compute 'CalculateDeviation'`: the block applied a compute it
+    // never declared, and declaring it required the published
+    // `input:/output:/logic { let … return }` form, which did not parse. A
+    // FIFTH row whose reason was a fossil.
     (0xcd74a5c09700b22c, "block 52: daemon TransactionIngester — flow-body drift"),
 
     // ── Family B — declaration FIELD grammar drift ─────────────────────────
@@ -98,18 +104,22 @@ const KNOWN_UNCOMPILABLE: &[(u64, &str)] = &[
     //               return total - total * 0.05 }
     //   }
     //
-    // `input:`/`output:` are cheap aliases for the parenthesised parameter
-    // list and `-> T` the parser already takes. `logic { … }` is NOT: it is a
-    // LET-CHAIN, and §111.f deliberately made `compute` a pure function over
-    // ONE §70 expression — `Expr` has no `Let` variant. Supporting the
-    // published body means adding `Expr::Let(name, bound, body)` to the §70
-    // engine AND its evaluator in axon-rs (`eval_expr`), which is a real
-    // language change with a PCC surface, not a grammar tweak. Inlining the
-    // bindings instead would duplicate evaluation and quietly change
-    // semantics. Owner: the §70 expression engine.
-    (0x56a2865ca114d657, "block 47: compute CalculatePremium — `logic { let … return }` is a LET-CHAIN; §70's Expr has no Let variant (§111.f made compute ONE pure expression). Needs Expr::Let in the engine + eval_expr, not a parser patch"),
-    (0xdb657847c1fa995a, "block 48: compute NormalizeMetrics — same: `logic { }` let-chain body"),
-    (0xc10bd6bb3dbd6226, "block 49: compute EligibilityScore — same: `logic { }` let-chain body"),
+    // §Fase 119.o — blocks 47, 48, 49 and 50 ALL LEFT this ledger on
+    // 2026-08-10. The analysis above was RIGHT, which is worth recording
+    // because most of the reasons in this table have not been: `logic { … }`
+    // really was a let-chain, `Expr` really had no `Let`, and inlining really
+    // would have duplicated evaluation (`let total = annual * years` is named
+    // three times in block 47 alone).
+    //
+    // §119.o added `Expr::Let` / `IRExpr::Let` and a lexical scope stack in
+    // `eval_expr`, so the chain evaluates once per binding and shadowing falls
+    // out of the nesting. `input:`/`output:` became real parameter/return
+    // spellings rather than reaching `skip_value()`.
+    //
+    // What the analysis did NOT predict: with the let-chain fixed, three of the
+    // four still failed — on tools the examples used and never declared, and on
+    // a compute block 50 applied without declaring. Those were completed in the
+    // README (the §119.m.3 incomplete-example repair), not worked around.
     // §Fase 119.f.11 — the `axonstore Users` block LEFT this ledger on
     // 2026-08-08. Its recorded reason ("`env` unquoted in field") was fixed
     // back in §119.f.4 and the row survived on three LATER walls, none of them

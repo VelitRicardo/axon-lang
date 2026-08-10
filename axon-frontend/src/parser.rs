@@ -4502,6 +4502,14 @@ impl Parser {
         match e {
             Expr::Lit(l) => Self::expr_lit_surface(l),
             Expr::Ref(p) => p.clone(),
+            // §Fase 119.o — surface form of a `logic { }` chain. This string is
+            // vestigial (the runtime evaluates `value_ast`), so it renders the
+            // shape rather than trying to reconstruct the author's layout.
+            Expr::Let { name, value, body } => format!(
+                "let {name} = {} in {}",
+                Self::render_expr(value),
+                Self::render_expr(body)
+            ),
             Expr::Unary(UnOp::Neg, x) => format!("-{}", Self::render_expr(x)),
             Expr::Unary(UnOp::Not, x) => format!("not {}", Self::render_expr(x)),
             Expr::Binary(op, l, r) => {
@@ -7689,19 +7697,176 @@ impl Parser {
                 .map(|t| t.ttype == TokenType::Colon)
                 .unwrap_or(false);
             if is_field {
+                let field_tok = self.current().clone();
                 let field_name = self.current().value.clone();
                 self.advance();
                 self.consume(TokenType::Colon)?;
                 match field_name.as_str() {
                     "shield" => node.shield_ref = self.consume_any_ident_or_kw()?.value.clone(),
+                    // §Fase 119.o — `input: a (Float), b (Float)`.
+                    //
+                    // This is the parameter list EVERY published compute writes,
+                    // and it was reaching `skip_value()` — silently discarded, so
+                    // a compute declared this way had no parameters at all and
+                    // `run_compute_apply` refused it on arity. The typed form
+                    // `(a: Float, b: Float)` above stays accepted; both fill the
+                    // same `parameters`, because they are one concept spelled two
+                    // ways and a second slot would let them disagree.
+                    "input" => self.parse_compute_input_list(&mut node)?,
+                    // §Fase 119.o — `output: Float` / `output: PremiumResult`,
+                    // the field spelling of `-> T`.
+                    "output" => {
+                        node.return_type = self.parse_output_type_string()?;
+                    }
                     _ => self.skip_value(),
                 }
+                let _ = field_tok;
+            } else if self.current().value == "logic"
+                && self
+                    .tokens
+                    .get(self.pos + 1)
+                    .is_some_and(|t| t.ttype == TokenType::LBrace)
+            {
+                // §Fase 119.o — `logic { let … return … }`, the body form all
+                // four published computes write. It used to fall to
+                // `parse_expr()`, which met the bare word `logic` and produced a
+                // diagnostic about an expression the author never wrote.
+                if node.body.is_some() {
+                    return Err(ParseError {
+                        message: "compute declares two bodies; a pure function has one result, \
+                                  and keeping the last silently would discard the first"
+                            .to_string(),
+                        line: self.current().line,
+                        column: self.current().column,
+                        ..Default::default()
+                    });
+                }
+                node.body = Some(self.parse_logic_block()?);
             } else {
                 node.body = Some(self.parse_expr()?);
             }
         }
         self.consume(TokenType::RBrace)?;
         Ok(node)
+    }
+
+    /// §Fase 119.o — `input: base_rate (Float), risk_factor (Float)`.
+    ///
+    /// The published spelling inverts the typed form's punctuation: the name
+    /// comes first and the type rides in parentheses. Both land in
+    /// `ComputeDefinition::parameters`.
+    fn parse_compute_input_list(&mut self, node: &mut ComputeDefinition) -> Result<(), ParseError> {
+        loop {
+            let ptok = self.current().clone();
+            let pname = self.consume_any_ident_or_kw()?.value.clone();
+            // The type is optional in principle; every published compute writes
+            // it, and a parameter with no declared type cannot be checked, so an
+            // absent one is recorded as empty rather than invented.
+            let type_expr = if self.check(TokenType::LParen) {
+                self.advance();
+                let t = self.parse_type_expr()?;
+                self.consume(TokenType::RParen)?;
+                t
+            } else {
+                TypeExpr {
+                    name: String::new(),
+                    generic_param: String::new(),
+                    optional: false,
+                    loc: self.loc_of(&ptok),
+                }
+            };
+            node.parameters.push(Parameter {
+                name: pname,
+                type_expr,
+                loc: self.loc_of(&ptok),
+            });
+            if self.check(TokenType::Comma) {
+                self.advance();
+            } else {
+                break;
+            }
+        }
+        Ok(())
+    }
+
+    /// §Fase 119.o — the `logic { }` body: a chain of `let`s closed by `return`.
+    ///
+    /// Lowered to nested [`Expr::Let`] terms, innermost-last, so
+    /// `let a = e₁  let b = e₂  return e₃` becomes `Let(a, e₁, Let(b, e₂, e₃))`.
+    /// That is one evaluation per binding — substituting the bindings into the
+    /// return expression instead would re-evaluate every bound term once per
+    /// mention.
+    ///
+    /// `return` is REQUIRED. A `logic` block whose last statement is a `let`
+    /// binds names and produces nothing; the compute would then have to invent a
+    /// result, and inventing the result of a deterministic function is the one
+    /// thing this primitive exists not to do.
+    fn parse_logic_block(&mut self) -> Result<Expr, ParseError> {
+        let open = self.current().clone();
+        self.advance(); // `logic`
+        self.consume(TokenType::LBrace)?;
+
+        let mut bindings: Vec<(String, Expr)> = Vec::new();
+        let mut result: Option<Expr> = None;
+
+        while !self.check(TokenType::RBrace) && !self.check(TokenType::Eof) {
+            if self.check(TokenType::Let) {
+                if result.is_some() {
+                    return Err(ParseError {
+                        message: "a `let` after the `return` in a `logic { }` block is \
+                                  unreachable — the block's value is already decided. Move it \
+                                  above the `return`."
+                            .to_string(),
+                        line: self.current().line,
+                        column: self.current().column,
+                        ..Default::default()
+                    });
+                }
+                self.advance(); // `let`
+                let name = self.consume_any_ident_or_kw()?.value.clone();
+                self.consume(TokenType::Assign)?;
+                bindings.push((name, self.parse_expr()?));
+            } else if self.check(TokenType::Return) {
+                self.advance();
+                result = Some(self.parse_expr()?);
+            } else {
+                let bad = self.current().clone();
+                return Err(ParseError {
+                    message: format!(
+                        "unexpected `{}` in a `logic {{ }}` block — it admits only `let <name> = \
+                         <expr>` bindings and a closing `return <expr>`. `compute` is a PURE \
+                         function (its own paper: \"pureza categórica de los morfismos \
+                         funcionales\"), so a statement that could have an effect is refused \
+                         rather than parsed and dropped.",
+                        bad.value
+                    ),
+                    line: bad.line,
+                    column: bad.column,
+                    ..Default::default()
+                });
+            }
+        }
+        self.consume(TokenType::RBrace)?;
+
+        let mut expr = result.ok_or_else(|| ParseError {
+            message: "a `logic { }` block must end in `return <expr>`. Without it the block binds \
+                      names and yields nothing, and the compute would have to invent a result — \
+                      which is precisely what a deterministic primitive must never do."
+                .to_string(),
+            line: open.line,
+            column: open.column,
+            ..Default::default()
+        })?;
+
+        // Fold innermost-last so the first `let` written is the outermost scope.
+        for (name, value) in bindings.into_iter().rev() {
+            expr = Expr::Let {
+                name,
+                value: Box::new(value),
+                body: Box::new(expr),
+            };
+        }
+        Ok(expr)
     }
 
     fn parse_daemon(&mut self) -> Result<DaemonDefinition, ParseError> {
