@@ -315,6 +315,31 @@ pub async fn run_branches_concurrently(
                 // Par has no loop semantics — sentinel observed but
                 // treated as completion-with-no-output.
             }
+            // §Fase 120 — an effect discharge ESCAPING a par branch is refused,
+            // for the same reason hibernation is: the branches run
+            // concurrently, so "which branch does the continuation resume at?"
+            // and "what happens to the siblings when one aborts the handle?"
+            // have no answers. Refused, not guessed.
+            //
+            // Note what this does NOT forbid: a `handle … in { … }` written
+            // wholly inside a branch is fine (frame pushed and popped within
+            // it), and a `perform` inside a branch handled by a frame OUTSIDE
+            // the `par` also works — `effect_frames` rides the per-branch ctx
+            // clone, so the clause runs in the branch that raised it. Only a
+            // sentinel crossing the boundary is undefined.
+            Ok(NodeOutcome::EffectResumed { .. })
+            | Ok(NodeOutcome::EffectAborted { .. })
+            | Ok(NodeOutcome::EffectForwarded { .. }) => {
+                return Err(DispatchError::BackendError {
+                    name: "algebraic_effects".to_string(),
+                    message: "an effect discharge (`resume` / `abort` / `forward`) crossed a \
+                              `par` branch boundary. Concurrent branches have no single \
+                              continuation to resume and no defined sibling behaviour on \
+                              abort, so this is refused rather than half-honoured. Keep the \
+                              enclosing `handle … in { … }` inside the branch."
+                        .to_string(),
+                });
+            }
             Ok(NodeOutcome::Return { value }) => {
                 // First Return wins (deterministic by branch order
                 // for documentation purposes; in practice
@@ -380,6 +405,12 @@ async fn dispatch_branch_body(
             NodeOutcome::Return { value } => {
                 return Ok(NodeOutcome::Return { value });
             }
+            // §Fase 120 — propagate to the branch boundary, where the merge
+            // above refuses it by name. Swallowing it here would make the
+            // branch complete quietly with a stranded continuation.
+            other @ (NodeOutcome::EffectResumed { .. }
+            | NodeOutcome::EffectAborted { .. }
+            | NodeOutcome::EffectForwarded { .. }) => return Ok(other),
         }
     }
 
@@ -557,6 +588,7 @@ mod tests {
                 apply_ref: String::new(),
                 pix_ops: Vec::new(),
                 stream: None,
+                performs: Vec::new(),
                 guards: Vec::new(),
                 requires_context: None,                now_tz: None,                body: Vec::new(),
             })]
@@ -712,6 +744,7 @@ mod tests {
             apply_ref: String::new(),
             pix_ops: Vec::new(),
             stream: None,
+            performs: Vec::new(),
             guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: Vec::new(),
         }

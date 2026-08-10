@@ -919,6 +919,16 @@ pub async fn run_for_in(
             Ok(NodeOutcome::Return { value }) => {
                 return Ok(NodeOutcome::Return { value });
             }
+            // §Fase 120 — an effect sentinel crossing a loop boundary
+            // propagates UNCHANGED. It is not the loop's to interpret: the
+            // `perform` or `handle` that owns it is further out, and a
+            // `resume` swallowed here would strand the continuation while
+            // the loop quietly ran its next iteration.
+            Ok(
+                other @ (NodeOutcome::EffectResumed { .. }
+                | NodeOutcome::EffectAborted { .. }
+                | NodeOutcome::EffectForwarded { .. }),
+            ) => return Ok(other),
             Err(e) => return Err(e),
         }
     }
@@ -1048,6 +1058,20 @@ pub async fn run_return(
 /// back into this dispatcher (orchestration nested inside
 /// orchestration). The pinned boxed future breaks the otherwise-
 /// infinite type recursion the compiler would otherwise reject.
+/// §Fase 120 — the sequential body walk, exposed so the effect handlers can run
+/// a `handle`'s `in` block and a clause body through the SAME walk every other
+/// nested construct uses.
+///
+/// Reusing it is the point: a handler body that had its own walk would be a
+/// second implementation of sentinel propagation, and the first `NodeOutcome`
+/// variant added afterwards would be handled in one of them and not the other.
+pub async fn dispatch_body_public(
+    body: &[crate::ir_nodes::IRFlowNode],
+    ctx: &mut DispatchCtx,
+) -> Result<NodeOutcome, DispatchError> {
+    dispatch_body(body, ctx).await
+}
+
 async fn dispatch_body(
     body: &[crate::ir_nodes::IRFlowNode],
     ctx: &mut DispatchCtx,
@@ -1082,6 +1106,17 @@ async fn dispatch_body(
             NodeOutcome::Break => return Ok(NodeOutcome::Break),
             NodeOutcome::LoopContinue => return Ok(NodeOutcome::LoopContinue),
             NodeOutcome::Return { value } => return Ok(NodeOutcome::Return { value }),
+            // §Fase 120 — the effect sentinels propagate like `Return`: the
+            // walk STOPS and the outcome travels to whichever construct owns
+            // it. `EffectResumed` is caught by the dispatching `perform`,
+            // `EffectAborted` by the `handle` whose `frame_id` it names, and
+            // `EffectForwarded` by the `perform` that ran the forwarding
+            // clause. Continuing the body here would run the nodes AFTER a
+            // `resume` inside the clause — i.e. execute the handler's tail as
+            // if it were the continuation's.
+            other @ (NodeOutcome::EffectResumed { .. }
+            | NodeOutcome::EffectAborted { .. }
+            | NodeOutcome::EffectForwarded { .. }) => return Ok(other),
         }
     }
 

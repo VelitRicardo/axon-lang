@@ -117,6 +117,19 @@ pub mod parallel;
 /// the public bridge.
 pub mod effects_bridge;
 
+/// §Fase 120 — **the algebraic-effect machine**: `handle` / `perform` /
+/// `resume` / `abort` / `forward`, Plotkin/Pretnar handlers with one-shot
+/// delimited continuations, over `IRFlowNode`.
+///
+/// Distinct from [`effects_bridge`] above and from [`crate::effects`], and the
+/// distinction is the design (D120.1): `crate::effects::EffectRuntime` is an
+/// FSM over the JSON `Instruction` alphabet whose catch-all variant is INERT,
+/// so a handler body lowered onto it would execute nothing while compiling
+/// clean. This module's alphabet is the dispatcher's own, so a clause can
+/// `emit`, call a tool or `persist` like any other body — which is the
+/// compositional property the whole paradigm rests on.
+pub mod effect_handlers;
+
 /// §Fase 33.y.f — Cognitive primitives (Fase 11 neuro-symbolic).
 /// 10 variants: `Remember` / `Recall` are PEM-bound (write-through
 /// + read-back via the optional [`DispatchCtx::pem_backend`]);
@@ -479,6 +492,33 @@ pub struct DispatchCtx {
     /// cheap to clone for branch isolation when sub-fases 33.y.e
     /// introduce parallel branches with private scopes (Par block).
     pub let_bindings: std::collections::HashMap<String, String>,
+    /// §Fase 120 — the live algebraic-effect handler stack (D3: a handler scope
+    /// is DELIMITED). `handle E { … } in { … }` pushes a frame for the duration
+    /// of its `in` body; a `perform` walks the stack innermost-out for a frame
+    /// that names its effect.
+    ///
+    /// This field is D120.1 made concrete. The alternative — lowering handler
+    /// bodies onto `crate::effects::Instruction` and running
+    /// `crate::effects::EffectRuntime` — was measured and rejected: that
+    /// alphabet's catch-all variant is INERT, so every non-effect node in a
+    /// handler body would have executed as a no-op while the program compiled
+    /// clean. Keeping the stack on the dispatch context means a clause body is
+    /// an ordinary `Vec<IRFlowNode>` and composes with every primitive.
+    ///
+    /// Empty for every program that declares no effects, so nothing changes for
+    /// pre-§120 artifacts.
+    pub effect_frames: Vec<crate::flow_dispatcher::effect_handlers::EffectFrame>,
+    /// §Fase 120 — the `frame_id` of the handler clause currently executing, or
+    /// `None` outside one.
+    ///
+    /// An `abort` must terminate the frame whose clause raised it, and the
+    /// clause runs with that frame POPPED off `effect_frames` (the scope
+    /// discipline that makes `forward` reach outward). So the id cannot be read
+    /// off the stack and is threaded here instead. Without it, nested handlers
+    /// route an abort to the innermost enclosing `handle` rather than the owning
+    /// one — which is what `crate::effects::EffectRuntime` does today, against
+    /// its own documented semantics, invisibly, because nothing reaches it.
+    pub effect_clause_frame: Option<u32>,
     /// §Fase 33.y.c — Per-node declared `<stream:<policy>>` resolved
     /// by the caller BEFORE invoking `dispatch_node`. The pure-shape
     /// handlers read + consume this field (set back to `None` on
@@ -705,6 +745,8 @@ impl DispatchCtx {
             session_id,
             tenant_id: String::new(),
             let_bindings: std::collections::HashMap::new(),
+            effect_frames: Vec::new(),
+            effect_clause_frame: None,
             pending_effect_policy: None,
             tool_registry: None,
             mdn_corpora: None,
@@ -1205,6 +1247,31 @@ pub enum NodeOutcome {
         timeout: String,
         step_index: usize,
     },
+    /// §Fase 120 sentinel — a handler clause invoked `resume(v)`.
+    ///
+    /// Propagated up out of the clause body exactly like `Break` / `Return`,
+    /// and consumed by the `perform` that dispatched the clause: that site
+    /// receives `value` and its surrounding block continues. The captured
+    /// continuation IS the caller's remaining node list, so it is consumed
+    /// exactly once (D2) with nothing to clone and nothing to release.
+    EffectResumed { value: String },
+    /// §Fase 120 sentinel — a handler clause invoked `abort(v)`, or ran off its
+    /// end without resuming (which `fase_23` §3.1 publishes as an implicit
+    /// abort: `Done() -> { websocket.close() }`).
+    ///
+    /// `frame_id` names the `handle` this terminates. Every construct BUT that
+    /// handle propagates it unchanged — an inner handler must not swallow an
+    /// outer one's exit.
+    EffectAborted { frame_id: u32, value: String },
+    /// §Fase 120 sentinel — a handler clause invoked `forward E.Op(args)`
+    /// (D12). The `perform` that dispatched the clause resumes its search
+    /// strictly OUTSIDE the frame just left, which is what makes a handler a
+    /// decorator rather than a terminator.
+    EffectForwarded {
+        effect: String,
+        operation: String,
+        arguments: Vec<String>,
+    },
 }
 
 // ────────────────────────────────────────────────────────────────────
@@ -1427,6 +1494,16 @@ pub async fn dispatch_node(
         // `step_type: "stream"` wire shape; future IR extensions
         // delegate to `effects_bridge::bridge_effect_stream_yield`.
         IRFlowNode::Stream(stream) => effects_bridge::run_stream(stream, ctx).await,
+        // §Fase 120 — the algebraic-effect constructs. THE arms that make the
+        // subsystem reachable: before them the language had no grammar for
+        // effects at all, and `EffectRuntime` was constructible only from its
+        // own tests. See `effect_handlers` for why the machine lives here and
+        // not in `crate::effects` (D120.1).
+        IRFlowNode::Handle(node) => effect_handlers::run_handle(node, ctx).await,
+        IRFlowNode::Perform(node) => effect_handlers::run_perform(node, ctx).await,
+        IRFlowNode::Resume(node) => effect_handlers::run_resume(node, ctx).await,
+        IRFlowNode::Abort(node) => effect_handlers::run_abort(node, ctx).await,
+        IRFlowNode::Forward(node) => effect_handlers::run_forward(node, ctx).await,
         IRFlowNode::Navigate(node) => cognitive::run_navigate(node, ctx).await,
         IRFlowNode::Drill(node) => pix::run_drill(node, ctx).await,
         IRFlowNode::Trail(node) => pix::run_trail(node, ctx).await,
@@ -1623,6 +1700,7 @@ mod tests {
             apply_ref: String::new(),
             pix_ops: Vec::new(),
             stream: None,
+            performs: Vec::new(),
             guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: Vec::new(),
         };

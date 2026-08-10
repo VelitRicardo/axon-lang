@@ -726,6 +726,38 @@ pub async fn run_streaming_via_dispatcher(
             Ok(NodeOutcome::Break) | Ok(NodeOutcome::LoopContinue) => {
                 // Defensive: shouldn't reach top level. Treat as no-op.
             }
+            // §Fase 120 — an effect sentinel reaching the TOP of a flow means
+            // no `handle` claimed it: the `perform` had no frame, or an `abort`
+            // named a frame that is not on this path. The type-checker refuses
+            // that statically (axon-T966 / axon-T967), so reaching here means
+            // the IR did not come from `axon check`.
+            //
+            // It terminates the flow with `FlowError`, never absorbed as a
+            // no-op — absorbing it would put `FlowComplete` on the wire and
+            // report a healthy run while a discharge went nowhere.
+            Ok(NodeOutcome::EffectResumed { .. })
+            | Ok(NodeOutcome::EffectAborted { .. })
+            | Ok(NodeOutcome::EffectForwarded { .. }) => {
+                flow_success = false;
+                flow_errored = true;
+                let detail = format!(
+                    "flow '{flow_name}': an algebraic-effect discharge (`resume` / \
+                     `abort` / `forward`) reached the top of the flow with no enclosing \
+                     `handle` to claim it. The compiler refuses this statically \
+                     (axon-T966 / axon-T967)."
+                );
+                tracing::error!(
+                    flow = %flow_name,
+                    detail = %detail,
+                    "axon streaming flow failed — unclaimed effect discharge"
+                );
+                let _ = emit(FlowExecutionEvent::FlowError {
+                    flow_name: flow_name.clone(),
+                    error: detail,
+                    timestamp_ms: now_ms(),
+                });
+                break;
+            }
             Ok(NodeOutcome::Return { .. }) => {
                 // Explicit `return` in flow body — short-circuit.
                 steps_executed += 1;

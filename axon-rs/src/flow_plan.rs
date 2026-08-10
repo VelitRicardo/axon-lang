@@ -166,6 +166,14 @@ pub fn ir_flow_node_kind(node: &IRFlowNode) -> &'static str {
         IRFlowNode::Ingest(_) => "ingest",
         IRFlowNode::ShieldApply(_) => "shield_apply",
         IRFlowNode::Stream(_) => "stream_block",
+        // §Fase 120 — the algebraic-effect constructs. These slugs are the ones
+        // `effect_handlers` puts on the wire as `step_type`, so an adopter
+        // reading an SSE trace sees the same names their source uses.
+        IRFlowNode::Handle(_) => "handle",
+        IRFlowNode::Perform(_) => "perform",
+        IRFlowNode::Resume(_) => "resume",
+        IRFlowNode::Abort(_) => "abort",
+        IRFlowNode::Forward(_) => "forward",
         IRFlowNode::Navigate(_) => "navigate",
         IRFlowNode::Drill(_) => "drill",
         IRFlowNode::Trail(_) => "trail",
@@ -798,6 +806,7 @@ mod tests {
             apply_ref: String::new(),
             pix_ops: Vec::new(),
             stream: None,
+            performs: Vec::new(),
             guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: vec![],
         });
@@ -915,6 +924,7 @@ mod tests {
             apply_ref: String::new(),
             pix_ops: Vec::new(),
             stream: None,
+            performs: Vec::new(),
             guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: vec![],
         });

@@ -76,6 +76,9 @@ pub enum Declaration {
     Tool(ToolDefinition),
     Type(TypeDefinition),
     Flow(FlowDefinition),
+    /// §Fase 120 — `effect E { Op(p: T) -> R }`. A peer of `tool`, per
+    /// `fase_23` §3.1.
+    Effect(EffectDefinition),
     Intent(IntentNode),
     Run(RunStatement),
     Epistemic(EpistemicBlock),
@@ -239,6 +242,11 @@ pub fn declaration_surface(decl: &Declaration) -> Option<(String, String, Loc)> 
         Declaration::Tool(n) => Some((n.name.clone(), "tool".into(), n.loc.clone())),
         Declaration::Type(n) => Some((n.name.clone(), "type".into(), n.loc.clone())),
         Declaration::Flow(n) => Some((n.name.clone(), "flow".into(), n.loc.clone())),
+        // §Fase 120 — an `effect` IS exportable. A module that declares one and
+        // a flow in another module that handles it is the compositional case
+        // the whole paradigm rests on; hiding it from the module surface would
+        // make an effect usable only in the file that declares it.
+        Declaration::Effect(n) => Some((n.name.clone(), "effect".into(), n.loc.clone())),
         Declaration::Intent(n) => Some((n.name.clone(), "intent".into(), n.loc.clone())),
         Declaration::LambdaData(n) => Some((n.name.clone(), "lambda_data".into(), n.loc.clone())),
         Declaration::Agent(n) => Some((n.name.clone(), "agent".into(), n.loc.clone())),
@@ -2607,6 +2615,19 @@ pub enum FlowStep {
     Ingest(IngestStep),
     ShieldApply(ShieldApplyStep),
     Stream(StreamBlock),
+    /// §Fase 120 — `handle E { … } in { … }`, the delimited handler scope.
+    Handle(HandleBlock),
+    /// §Fase 120 — `perform Op(args)`. Legal at flow level and inside a step
+    /// body (where it lands on [`StepNode::performs`], NOT on `pix_ops`: a
+    /// `pix_op` is an ELEVATION that runs BEFORE generation, and a `perform`
+    /// whose argument is the step's own output must run AFTER it).
+    Perform(PerformStep),
+    /// §Fase 120 — `resume(v)`. Clause bodies only.
+    Resume(ResumeStep),
+    /// §Fase 120 — `abort(v)`. Clause bodies only.
+    Abort(AbortStep),
+    /// §Fase 120 — `forward Op(args)` (D12). Clause bodies only.
+    Forward(ForwardStep),
     Navigate(NavigateStep),
     Drill(DrillStep),
     Trail(TrailStep),
@@ -2750,6 +2771,28 @@ pub struct StepNode {
     /// on nothing, once per run. The field is what tells the dispatcher this
     /// step's output IS the stream.
     pub stream: Option<Box<StreamBlock>>,
+    /// §Fase 120 — the `perform Op(args)` statements written in THIS step's
+    /// body, in source order.
+    ///
+    /// A THIRD position, and for the same reason §119.n needed a second one.
+    /// `fase_23` §3.1 publishes:
+    ///
+    /// ```text
+    /// step generate {
+    ///     given: prompt
+    ///     let response = ask "Generate response"
+    ///     perform Emit(response.token)
+    ///     perform Done()
+    /// }
+    /// ```
+    ///
+    /// The performed argument IS the step's own output. Filing these under
+    /// [`Self::pix_ops`] would run them BEFORE generation, so `response.token`
+    /// would resolve against a binding that does not exist yet — the handler
+    /// would receive an unresolved symbol and the wire would carry a name where
+    /// the adopter expected a token. Dispatch runs `performs` AFTER the step
+    /// generates, with the step's output in scope.
+    pub performs: Vec<PerformStep>,
     pub loc: Loc,
 }
 
@@ -3474,6 +3517,125 @@ pub struct StreamBlock {
     pub body: Vec<FlowStep>,
     pub loc: Loc,
 }
+// ── §Fase 120 — algebraic effects (Plotkin/Pretnar) ─────────────────────────
+//
+// The four constructs `fase_23` §3.6/§3.7 fixes: a top-level `effect`
+// declaration, `perform` in a step or flow body, `handle … in …` in a flow
+// body, and `resume()` / `abort()` / `forward` inside a handler clause.
+//
+// ⚠️ These are NOT the `Instruction` types in `axon-rs/src/effects/ir.rs`.
+// That module is a self-contained FSM over a JSON instruction alphabet whose
+// catch-all variant (`Instruction::Passthrough`, `#[serde(other)]`) is INERT —
+// lowering a handler body onto it would make every non-effect node in the body
+// a no-op, which is precisely the §111 defect this fase exists not to repeat.
+// D120.1: the effect machine is the DISPATCHER, and the instruction alphabet is
+// `IRFlowNode`, so a handler clause can `emit`, `use` a tool or `persist` like
+// any other body. See `docs/fase/fase_120_the_effect_system.md`.
+
+/// `effect SSE { Emit(token: Token) -> Unit  Done() -> Never }` — a top-level
+/// declaration, a peer of `tool` / `persona` / `anchor` per `fase_23` §3.1.
+///
+/// The declaration is what makes the operation catalog CLOSED. D120.2 resolves
+/// a bare `perform Emit(x)` against exactly this set: one declarer ⇒ resolved,
+/// two ⇒ a compile error naming both, zero ⇒ a compile error. Without the
+/// declaration there is no catalog and `effect_name` would have to be guessed.
+#[derive(Debug)]
+pub struct EffectDefinition {
+    pub name: String,
+    pub operations: Vec<EffectOperation>,
+    pub loc: Loc,
+    /// Fase 14.b — leading comment trivia attached to this declaration.
+    pub leading_trivia: Vec<crate::tokens::Trivia>,
+    /// Fase 14.b — trailing comment trivia.
+    pub trailing_trivia: Vec<crate::tokens::Trivia>,
+}
+
+/// One operation inside an `effect` declaration: `Emit(token: Token) -> Unit`.
+#[derive(Debug)]
+pub struct EffectOperation {
+    pub name: String,
+    pub parameters: Vec<Parameter>,
+    /// The declared return type. `Never` is the bottom sentinel `fase_23` §3.1
+    /// writes on `Done() -> Never` — an operation whose handler is not expected
+    /// to `resume`. Empty when the source omits `-> T`.
+    pub return_type: String,
+    pub loc: Loc,
+}
+
+/// `handle SSE { Emit(token) -> { … } } in { … }` — the delimited handler
+/// scope (D3: an effect is interceptable only inside `body`).
+#[derive(Debug)]
+pub struct HandleBlock {
+    /// `handle E1, E2 { … }` — the effects this frame intercepts. More than one
+    /// is legal; `IRHandlerFrame.effect_names` in the Fase-23 IR is a `Vec` for
+    /// the same reason.
+    pub effect_names: Vec<String>,
+    pub clauses: Vec<HandlerClause>,
+    /// The `in { … }` block. Ordinary flow steps — this is what D120.1 buys.
+    pub body: Vec<FlowStep>,
+    pub loc: Loc,
+}
+
+/// One clause of a [`HandleBlock`]: `Emit(token) -> { … }`.
+#[derive(Debug)]
+pub struct HandlerClause {
+    pub operation_name: String,
+    /// The clause's binders. `perform Emit(x)`'s argument is bound under the
+    /// clause's parameter name for the duration of the clause body — the same
+    /// discipline `EffectRuntime::dispatch_clause_for` uses (save, bind,
+    /// restore), so a clause cannot leak a binding into its continuation.
+    pub parameter_names: Vec<String>,
+    pub body: Vec<FlowStep>,
+    pub loc: Loc,
+}
+
+/// `perform Emit(x)` (bare) or `perform SSE.Emit(x)` (qualified).
+///
+/// D120.2 accepts both. `effect_name` is `None` for the bare form as written;
+/// the IR generator resolves it against the declared catalog and the
+/// type-checker refuses an ambiguous or unknown operation with the offending
+/// location. The bare form is what `fase_23` §3.1 publishes, and under §119's
+/// doctrine the published surface is the promise.
+#[derive(Debug)]
+pub struct PerformStep {
+    pub effect_name: Option<String>,
+    pub operation_name: String,
+    /// Argument expressions, verbatim source text. The Fase-23 IR carries
+    /// `arguments: Vec<String>` for the same reason: resolution against the
+    /// live bindings is a RUNTIME act, and pre-resolving here would freeze a
+    /// value the enclosing step has not produced yet.
+    pub arguments: Vec<String>,
+    pub loc: Loc,
+}
+
+/// `resume()` / `resume(value)` — invoke the captured one-shot continuation.
+/// Legal only inside a handler clause body (D2, and the parser enforces it).
+#[derive(Debug)]
+pub struct ResumeStep {
+    /// The resumed value, verbatim. Empty ⇒ `resume()` ⇒ Unit.
+    pub value_expr: String,
+    pub loc: Loc,
+}
+
+/// `abort()` / `abort(value)` — terminate the enclosing `handle` without
+/// resuming. The continuation is dropped, never invoked.
+#[derive(Debug)]
+pub struct AbortStep {
+    pub value_expr: String,
+    pub loc: Loc,
+}
+
+/// `forward Emit(t)` / `forward SSE.Emit(t)` (D12) — propagate the operation to
+/// the next OUTER frame, bypassing this one. What makes a handler a decorator
+/// rather than a terminator.
+#[derive(Debug)]
+pub struct ForwardStep {
+    pub effect_name: Option<String>,
+    pub operation_name: String,
+    pub arguments: Vec<String>,
+    pub loc: Loc,
+}
+
 #[derive(Debug)]
 pub struct NavigateStep {
     /// §Fase 119.f — per-navigation `depth:` override (README's pix family

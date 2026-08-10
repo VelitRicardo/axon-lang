@@ -61,6 +61,18 @@ pub enum TokenType {
     Effects,
     Pure,
     Network,
+    // ── §Fase 120 — algebraic effects (Plotkin/Pretnar), the six keywords
+    //    `fase_23` §3.1 specifies. `Effects` above is a DIFFERENT thing: the
+    //    `effects: <io, network>` row on a `tool` declaration. `Effect`
+    //    (singular) opens a top-level effect DECLARATION. Keeping them as two
+    //    tokens is deliberate — collapsing them would make `effect` in a tool
+    //    body silently parse as a declaration opener.
+    Effect,
+    Handle,
+    Perform,
+    Resume,
+    Abort,
+    Forward,
     // Agent
     Agent,
     Goal,
@@ -605,6 +617,15 @@ pub fn keyword_type(word: &str) -> TokenType {
         "witness" => TokenType::Witness,
         // `yield` (§Fase 51.d.2) — quant measurement point.
         "yield" => TokenType::Yield,
+        // §Fase 120 — algebraic effects. `effect` (singular) is the top-level
+        // declaration; `effects` (plural, above) stays the tool effect-row
+        // field. The two are distinguished by the `match` arm, not by context.
+        "effect" => TokenType::Effect,
+        "handle" => TokenType::Handle,
+        "perform" => TokenType::Perform,
+        "resume" => TokenType::Resume,
+        "abort" => TokenType::Abort,
+        "forward" => TokenType::Forward,
         "emit" => TokenType::Emit,
         "publish" => TokenType::Publish,
         "discover" => TokenType::Discover,
@@ -669,6 +690,10 @@ pub fn is_declaration_keyword(tt: &TokenType) -> bool {
             | TokenType::Extension
             | TokenType::Import
             | TokenType::Run
+            // §Fase 120 — `effect E { Op(p: T) -> R }`, the algebraic-effect
+            // declaration. A peer of `tool` / `persona` / `anchor`, per
+            // `fase_23` §3.1's placement ("top-level, like tool/persona/anchor").
+            | TokenType::Effect
             // §λ-L-E Fase 1–5 — I/O cognitivo, control, topology, immune
             | TokenType::Resource
             | TokenType::Fabric

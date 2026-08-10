@@ -371,6 +371,7 @@ mod tests {
             guards: Vec::new(),
             pix_ops: Vec::new(),
             stream: None,
+            performs: Vec::new(),
             loc: loc(),
         })
     }

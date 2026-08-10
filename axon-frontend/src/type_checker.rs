@@ -1342,6 +1342,15 @@ impl<'a> TypeChecker<'a> {
         // coherence. Both are cross-declaration by nature: they count HOLDERS
         // of a resource, which no per-declaration visit can see.
         self.check_resource_module_laws(&self.program.declarations);
+        // §Fase 120 — the algebraic-effect discipline. Cross-declaration by
+        // NATURE, not by convenience: D9 exhaustiveness propagates each flow's
+        // effect row through the call graph, so the answer for `flow A` depends
+        // on `flow B` that A runs. A per-declaration visit cannot decide it, and
+        // an intra-flow approximation would refuse the composition the whole
+        // paradigm exists for (`handle E { … } in { run inner(…) }`).
+        for d in crate::effect_check::EffectChecker::new(self.program).check() {
+            self.emit(d.message, &d.loc);
+        }
         self.errors
     }
 
@@ -1631,6 +1640,17 @@ impl<'a> TypeChecker<'a> {
                     registrations.push((
                         n.name.clone(),
                         "budget".into(),
+                        n.loc.line,
+                        n.loc.clone(),
+                    ));
+                }
+                // §Fase 120 — an `effect` is a named symbol like any peer, so a
+                // program declaring `effect SSE` twice collides through the same
+                // duplicate-symbol law rather than silently keeping one.
+                Declaration::Effect(n) => {
+                    registrations.push((
+                        n.name.clone(),
+                        "effect".into(),
                         n.loc.line,
                         n.loc.clone(),
                     ));
@@ -2276,6 +2296,13 @@ impl<'a> TypeChecker<'a> {
                     let scope = format!("budget '{}'", n.name);
                     self.check_budget(n, &scope);
                 }
+                // §Fase 120 — every law about an `effect` declaration and its
+                // use sites lives in `crate::effect_check`, run once at the end
+                // of `check()`. It is deliberately NOT split across a
+                // per-declaration visit here: D9 is interprocedural, and half
+                // the laws living in one place with half in another is how two
+                // implementations of one rule start disagreeing.
+                Declaration::Effect(_) => {}
                 Declaration::Persona(n) => self.check_persona(n),
                 Declaration::Context(n) => self.check_context(n),
                 Declaration::Anchor(n) => self.check_anchor(n),

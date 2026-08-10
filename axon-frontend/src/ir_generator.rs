@@ -58,6 +58,20 @@ pub struct IRGenerator {
     /// read by the Grad arm of `visit_flow_step`). RefCell because the
     /// visitor is `&self` across 8 recursive call sites.
     grad_lets: std::cell::RefCell<HashMap<String, crate::ast::Expr>>,
+    /// §Fase 120 (Phase 0) — the CLOSED effect catalog, pre-resolved before any
+    /// flow lowers so a bare `perform Emit(x)` resolves regardless of whether
+    /// the `effect` declaration precedes or follows the flow in source. The
+    /// order-independence is the same discipline `shield_signs` needed.
+    ///
+    /// Sharing ONE catalog with the type-checker (`crate::effect_catalog`) is
+    /// what keeps the two from disagreeing about which effect owns an
+    /// operation — a disagreement that would let the checker pass a program the
+    /// generator then lowers against a different effect.
+    effect_catalog: crate::effect_catalog::EffectCatalog,
+    /// §Fase 120 — per-generation handler-frame counter. `Cell` because
+    /// `visit_flow_step` is `&self` across the recursive call sites (the
+    /// `grad_lets` precedent).
+    next_frame_id: std::cell::Cell<u32>,
     personas: HashMap<String, IRPersona>,
     contexts: HashMap<String, IRContext>,
     anchors: HashMap<String, IRAnchor>,
@@ -109,6 +123,8 @@ impl IRGenerator {
     pub fn new() -> Self {
         IRGenerator {
             grad_lets: std::cell::RefCell::new(HashMap::new()),
+            effect_catalog: crate::effect_catalog::EffectCatalog::default(),
+            next_frame_id: std::cell::Cell::new(0),
             personas: HashMap::new(),
             contexts: HashMap::new(),
             anchors: HashMap::new(),
@@ -278,6 +294,11 @@ impl IRGenerator {
         // §Fase 114.w — and shield breach policies, so `on_breach:` rides the
         // enforcement nodes on every dispatch path by construction.
         self.collect_shield_policies(&program.declarations);
+        // §Fase 120 — and the effect catalog, so D120.2's bare-name resolution
+        // is order-independent: `flow F { … perform Emit(x) … }` must resolve
+        // whether `effect SSE { Emit … }` was written above it or below.
+        self.effect_catalog =
+            crate::effect_catalog::EffectCatalog::from_program(program);
 
         // Phase 1: visit all declarations
         for decl in &program.declarations {
@@ -340,6 +361,49 @@ impl IRGenerator {
             // tools its quotas name, not just a daemon's.
             Declaration::Budget(n) => ir.budgets.push(Self::visit_budget(n)),
             Declaration::Import(n) => ir.imports.push(self.visit_import(n)),
+            // §Fase 120 — the declared effect catalog rides the artifact so the
+            // dispatcher can check an operation's arity at the perform site.
+            //
+            // This populates `IRProgram::effects`, the field §Fase 23 created as
+            // a Python-parity mirror and NOBODY ever wrote to. Reusing it rather
+            // than adding a parallel one is deliberate: two compiled catalogs of
+            // one concept in one artifact is the §119.m.2 defect, and the
+            // pre-existing shape is already what `axon-rs/src/effects/ir.rs`
+            // deserialises.
+            Declaration::Effect(n) => {
+                ir.effects.push(crate::ir_nodes::IREffectDeclaration {
+                    node_type: "effect_declaration",
+                    source_line: n.loc.line,
+                    source_column: n.loc.column,
+                    name: n.name.clone(),
+                    operations: n
+                        .operations
+                        .iter()
+                        .map(|op| crate::ir_nodes::IREffectOperation {
+                            node_type: "effect_operation",
+                            source_line: op.loc.line,
+                            source_column: op.loc.column,
+                            name: op.name.clone(),
+                            // D1 (operation polymorphism) is NOT in this fase's
+                            // scope; §120 lands monomorphic operations and the
+                            // field stays empty rather than being filled with a
+                            // guess. See the fase doc's de-scope note.
+                            type_parameters: Vec::new(),
+                            parameter_names: op
+                                .parameters
+                                .iter()
+                                .map(|p| p.name.clone())
+                                .collect(),
+                            parameter_types: op
+                                .parameters
+                                .iter()
+                                .map(|p| p.type_expr.name.clone())
+                                .collect(),
+                            return_type: op.return_type.clone(),
+                        })
+                        .collect(),
+                });
+            }
             Declaration::Persona(n) => {
                 let node = self.visit_persona(n);
                 self.personas.insert(node.name.clone(), node.clone());
@@ -901,6 +965,11 @@ impl IRGenerator {
                 .stream
                 .as_ref()
                 .map(|sb| Box::new(self.lower_stream_block(sb))),
+            // §Fase 120 — the step-body `perform`s, in source order. They lower
+            // through the SAME `lower_perform` the flow position uses, so a
+            // bare name can never resolve to one effect at flow level and
+            // another inside a step.
+            performs: s.performs.iter().map(|p| self.lower_perform(p)).collect(),
             guards: s
                 .guards
                 .iter()
@@ -933,6 +1002,38 @@ impl IRGenerator {
                 .as_ref()
                 .map(|a| Box::new(self.lower_step(a))),
             on_error: s.on_error.as_ref().map(|a| Box::new(self.lower_step(a))),
+        }
+    }
+
+    /// §Fase 120 (D120.2) — resolve a perform/forward site to its effect name.
+    ///
+    /// Returns the EMPTY string when the bare form is ambiguous or undeclared.
+    /// That is deliberate and it is not the diagnostic: the type-checker refuses
+    /// those programs with the offending location and every candidate named
+    /// (`axon-T1201` / `axon-T1202`). Lowering must still produce a node so a
+    /// single bad `perform` does not abort the whole IR — and an empty
+    /// `effect_name` FAILS CLOSED at dispatch rather than falling back to a
+    /// search by operation name, which would silently route the effect to a
+    /// frame the author never named.
+    fn resolve_effect_name(&self, explicit: Option<&str>, operation: &str) -> String {
+        use crate::effect_catalog::OpResolution;
+        match self.effect_catalog.resolve_site(explicit, operation) {
+            OpResolution::Resolved(name) => name,
+            OpResolution::Ambiguous(_) | OpResolution::Undeclared => String::new(),
+        }
+    }
+
+    /// §Fase 120 — lower one `perform`. Shared by the flow position and the
+    /// step-body position so the two can never resolve differently.
+    fn lower_perform(&self, p: &crate::ast::PerformStep) -> crate::ir_nodes::IREffectPerform {
+        crate::ir_nodes::IREffectPerform {
+            node_type: "perform",
+            source_line: p.loc.line,
+            source_column: p.loc.column,
+            effect_name: self.resolve_effect_name(p.effect_name.as_deref(), &p.operation_name),
+            operation_name: p.operation_name.clone(),
+            arguments: p.arguments.clone(),
+            resolved_from_bare: p.effect_name.is_none(),
         }
     }
 
@@ -1254,6 +1355,62 @@ impl IRGenerator {
                 breach_policy: self.shield_policies.get(&s.shield_name).cloned(),
             }),
             FlowStep::Stream(s) => IRFlowNode::Stream(self.lower_stream_block(s)),
+            // ── §Fase 120 — algebraic effects ────────────────────
+            FlowStep::Handle(h) => {
+                let frame_id = self.next_frame_id.get();
+                self.next_frame_id.set(frame_id + 1);
+                IRFlowNode::Handle(crate::ir_nodes::IREffectHandle {
+                    node_type: "handle",
+                    source_line: h.loc.line,
+                    source_column: h.loc.column,
+                    effect_names: h.effect_names.clone(),
+                    clauses: h
+                        .clauses
+                        .iter()
+                        .map(|c| crate::ir_nodes::IREffectClause {
+                            operation_name: c.operation_name.clone(),
+                            parameter_names: c.parameter_names.clone(),
+                            // The clause body lowers to ORDINARY flow nodes —
+                            // D120.1. This is the line that makes an effect
+                            // handler able to `emit`, call a tool or persist.
+                            body: c.body.iter().map(|s| self.visit_flow_step(s)).collect(),
+                            source_line: c.loc.line,
+                            source_column: c.loc.column,
+                        })
+                        .collect(),
+                    body: h.body.iter().map(|s| self.visit_flow_step(s)).collect(),
+                    frame_id,
+                })
+            }
+            FlowStep::Perform(p) => IRFlowNode::Perform(self.lower_perform(p)),
+            FlowStep::Resume(r) => IRFlowNode::Resume(crate::ir_nodes::IREffectResume {
+                node_type: "resume",
+                source_line: r.loc.line,
+                source_column: r.loc.column,
+                value_expr: r.value_expr.clone(),
+            }),
+            FlowStep::Abort(a) => IRFlowNode::Abort(crate::ir_nodes::IREffectAbort {
+                node_type: "abort",
+                source_line: a.loc.line,
+                source_column: a.loc.column,
+                value_expr: a.value_expr.clone(),
+            }),
+            FlowStep::Forward(f) => {
+                // D120.2 resolution, identical to `perform` — a `forward` names
+                // an operation the same way and must not resolve differently.
+                let effect_name = self.resolve_effect_name(
+                    f.effect_name.as_deref(),
+                    &f.operation_name,
+                );
+                IRFlowNode::Forward(crate::ir_nodes::IREffectForward {
+                    node_type: "forward",
+                    source_line: f.loc.line,
+                    source_column: f.loc.column,
+                    effect_name,
+                    operation_name: f.operation_name.clone(),
+                    arguments: f.arguments.clone(),
+                })
+            }
             FlowStep::Navigate(s) => IRFlowNode::Navigate(IRNavigateStep {
                 depth: s.depth,
                 node_type: "navigate",
@@ -1474,6 +1631,7 @@ impl IRGenerator {
                     now_tz: None,
                     pix_ops: Vec::new(),
                     stream: None,
+                    performs: Vec::new(),
                     guards: Vec::new(),
                     body: Vec::new(),
                 })

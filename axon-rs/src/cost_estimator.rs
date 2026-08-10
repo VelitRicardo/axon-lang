@@ -140,7 +140,15 @@ fn classify_node(node: &IRFlowNode) -> StepKind {
         | IRFlowNode::Let(_) | IRFlowNode::Return(_)
         // Fase 19.e — break/continue are pure control transfers, no
         // model call, no I/O. Classify as Control alongside Return.
-        | IRFlowNode::Break(_) | IRFlowNode::Continue(_) => StepKind::Control,
+        | IRFlowNode::Break(_) | IRFlowNode::Continue(_)
+        // §Fase 120 — the algebraic-effect constructs are pure CONTROL
+        // transfers: no model call, no I/O of their own. The COST lives in the
+        // nodes inside a handler clause, and those are classified on their own
+        // terms when the clause body is walked — pricing `handle` itself as an
+        // ask would double-count whatever the clause does.
+        | IRFlowNode::Handle(_) | IRFlowNode::Perform(_)
+        | IRFlowNode::Resume(_) | IRFlowNode::Abort(_)
+        | IRFlowNode::Forward(_) => StepKind::Control,
         IRFlowNode::Par(_) | IRFlowNode::Stream(_) => StepKind::Parallel,
         IRFlowNode::Deliberate(_) | IRFlowNode::Consensus(_)
         // §Fase 119.m.3 — an `<Agent>(args)` call is a BOUNDED LOOP of
@@ -448,6 +456,7 @@ mod tests {
             navigate_ref: "".into(), apply_ref: "".into(),
             pix_ops: Vec::new(),
             stream: None,
+            performs: Vec::new(),
             guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: vec![],
         });
@@ -484,6 +493,7 @@ mod tests {
                 navigate_ref: "".into(), apply_ref: "".into(),
                 pix_ops: Vec::new(),
                 stream: None,
+                performs: Vec::new(),
                 guards: Vec::new(),
                 requires_context: None,                now_tz: None,                body: vec![],
             }),
@@ -496,6 +506,7 @@ mod tests {
                 navigate_ref: "".into(), apply_ref: "".into(),
                 pix_ops: Vec::new(),
                 stream: None,
+                performs: Vec::new(),
                 guards: Vec::new(),
                 requires_context: None,                now_tz: None,                body: vec![],
             }),
@@ -526,6 +537,7 @@ mod tests {
             navigate_ref: "".into(), apply_ref: "".into(),
             pix_ops: Vec::new(),
             stream: None,
+            performs: Vec::new(),
             guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: vec![],
         });
@@ -622,6 +634,7 @@ mod tests {
                     navigate_ref: "".into(), apply_ref: "".into(),
                     pix_ops: Vec::new(),
                     stream: None,
+                    performs: Vec::new(),
                     guards: Vec::new(),
                     requires_context: None,                    now_tz: None,                    body: vec![],
                 }),
@@ -714,6 +727,7 @@ mod tests {
                     navigate_ref: "".into(), apply_ref: "".into(),
                     pix_ops: Vec::new(),
                     stream: None,
+                    performs: Vec::new(),
                     guards: Vec::new(),
                     requires_context: None,                    now_tz: None,                    body: vec![],
                 }),

@@ -26,6 +26,14 @@
 
 pub mod ast;
 pub mod checker;
+/// §Fase 120 — the closed catalog of declared `effect`s + D120.2's bare-name
+/// resolution. ONE derivation, shared by the IR generator and the type-checker,
+/// so the two can never disagree about which effect owns an operation.
+pub mod effect_catalog;
+/// §Fase 120 — the static effect discipline: D9 exhaustiveness (interprocedural,
+/// over the flow call graph), D120.2's resolution diagnostics, D10's structural
+/// one-shot law, and the clause-scope law for `resume`/`abort`/`forward`.
+pub mod effect_check;
 pub mod cron;
 pub mod epistemic;
 pub mod ir_generator;

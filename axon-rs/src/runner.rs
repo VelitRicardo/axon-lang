@@ -699,6 +699,26 @@ fn extract_step_info(node: &IRFlowNode) -> (String, String, String) {
         IRFlowNode::Ingest(s) => (s.source.clone(), "ingest".to_string(), format!("Ingest: {}", s.source)),
         IRFlowNode::ShieldApply(s) => (s.shield_name.clone(), "shield_apply".to_string(), format!("Apply shield: {}", s.shield_name)),
         IRFlowNode::Stream(_) => ("stream".to_string(), "stream".to_string(), "Stream block".to_string()),
+        // §Fase 120 — the algebraic-effect constructs. The slugs match
+        // `flow_plan::ir_flow_node_kind` (drift-gated) and the wire `step_type`
+        // the dispatcher emits, so one construct has one name everywhere.
+        IRFlowNode::Handle(s) => (
+            s.effect_names.join(","),
+            "handle".to_string(),
+            format!("Handle: {}", s.effect_names.join(", ")),
+        ),
+        IRFlowNode::Perform(s) => (
+            s.operation_name.clone(),
+            "perform".to_string(),
+            format!("Perform: {}.{}", s.effect_name, s.operation_name),
+        ),
+        IRFlowNode::Resume(_) => ("resume".to_string(), "resume".to_string(), "Resume the continuation".to_string()),
+        IRFlowNode::Abort(_) => ("abort".to_string(), "abort".to_string(), "Abort the handle".to_string()),
+        IRFlowNode::Forward(s) => (
+            s.operation_name.clone(),
+            "forward".to_string(),
+            format!("Forward: {}.{} to the outer handler", s.effect_name, s.operation_name),
+        ),
         IRFlowNode::Navigate(s) => (s.pix_ref.clone(), "navigate".to_string(), format!("Navigate: {}", s.pix_ref)),
         IRFlowNode::Drill(s) => (s.pix_ref.clone(), "drill".to_string(), format!("Drill: {} → {}", s.pix_ref, s.subtree_path)),
         IRFlowNode::Trail(s) => (s.navigate_ref.clone(), "trail".to_string(), format!("Trail: {}", s.navigate_ref)),

@@ -591,6 +591,22 @@ fn collect_store_accesses(steps: &[crate::ir_nodes::IRFlowNode], out: &mut Vec<S
             // daemon cleaner that `persist`s); descend so they're soundness-
             // checked, like the quant body above.
             N::Listen(l) => collect_store_accesses(&l.body, out),
+            // §Fase 120 — a `handle` carries TWO kinds of nested body, and BOTH
+            // must be descended or the proof omits a store the program reaches.
+            // The clause bodies are the subtle half: a handler that `persist`s
+            // what it intercepts is a natural shape (audit every emitted
+            // token), and a soundness check that only walked the `in` block
+            // would certify a program whose capability set it never saw.
+            N::Handle(h) => {
+                collect_store_accesses(&h.body, out);
+                for clause in &h.clauses {
+                    collect_store_accesses(&clause.body, out);
+                }
+            }
+            // §Fase 120 — `perform` / `resume` / `abort` / `forward` are pure
+            // control transfers: no store ref, no nested body. The store ops
+            // they may CAUSE live in the clause bodies descended above.
+            N::Perform(_) | N::Resume(_) | N::Abort(_) | N::Forward(_) => {}
             // §Fase 52.c — `run <Flow>` invokes a flow by NAME (no nested body),
             // so it touches no store DIRECTLY. Transitive store access through
             // the invoked flow is the cross-flow reachability this fn's header
@@ -821,6 +837,19 @@ fn collect_named_use_tool_calls<'a>(
             // §Fase 52.a — a `listen` handler body can contain a `use <Tool>`;
             // descend so it is soundness-checked.
             N::Listen(l) => collect_named_use_tool_calls(&l.body, out),
+            // §Fase 120 — descend BOTH of a `handle`'s bodies. A structured
+            // `use <Tool> with …` inside a handler clause is the natural shape
+            // for a handler that ships what it intercepts (send the token, hit
+            // the webhook), and it must not escape §58.i schema-soundness just
+            // because it sits behind an effect.
+            N::Handle(h) => {
+                collect_named_use_tool_calls(&h.body, out);
+                for clause in &h.clauses {
+                    collect_named_use_tool_calls(&clause.body, out);
+                }
+            }
+            // §Fase 120 — pure control transfers, no nested body.
+            N::Perform(_) | N::Resume(_) | N::Abort(_) | N::Forward(_) => {}
             // §Fase 52.c — `run <Flow>` invokes a flow by name (no nested body).
             N::Run(_) => {}
             // ── leaves — no nested body. Listed EXPLICITLY (no `_`

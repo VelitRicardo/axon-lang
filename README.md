@@ -31,6 +31,7 @@
   <code>deliberate</code> · <code>consensus</code> · <code>forge</code> · <code>agent</code> · <code>shield</code><br>
   <code>savant</code> · <code>synth</code> · <code>warden</code> · <code>scope</code><br>
   <code>stream</code> · <code>effects</code> · <code>@contract_tool</code> · <code>@csp_tool</code><br>
+  <code>effect</code> · <code>handle</code> · <code>perform</code><br>
   <code>pix</code> · <code>navigate</code> · <code>drill</code> · <code>trail</code> · <code>corpus</code><br>
   <code>psyche</code> · <code>ots</code><br>
   <code>mcp</code> · <code>mandate</code> · <code>lambda</code><br>

@@ -170,6 +170,48 @@ pub async fn run_step(
     step: &IRStep,
     ctx: &mut DispatchCtx,
 ) -> Result<NodeOutcome, DispatchError> {
+    let outcome = run_step_generation(step, ctx).await?;
+
+    // §Fase 120 — the step-body `perform`s, dispatched AFTER generation.
+    //
+    // The ORDER is the whole design. `fase_23` §3.1 publishes
+    // `perform Emit(response.token)` inside the step that produced `response`,
+    // so the performed argument is the step's OWN output — and every generation
+    // branch above binds that output under the step's name before returning.
+    // Running these as `pix_ops` elevations (before generation, like every
+    // other step-body statement) would hand the handler an unresolved symbol,
+    // and an unresolved name resolves to ITSELF: the handler would put the
+    // string `Gen.output` on the wire where the adopter expected a token. That
+    // failure produces plausible output and no error, which is the kind that
+    // survives a release.
+    //
+    // Empty for every pre-§120 program, so nothing above changes.
+    if step.performs.is_empty() {
+        return Ok(outcome);
+    }
+    // A step whose generation did not COMPLETE (it returned, broke, hibernated,
+    // or discharged an effect) does not then perform: the sentinel belongs to
+    // an enclosing construct and the step's output does not exist.
+    if !matches!(outcome, NodeOutcome::Completed { .. }) {
+        return Ok(outcome);
+    }
+    for p in &step.performs {
+        match crate::flow_dispatcher::effect_handlers::run_perform(p, ctx).await? {
+            NodeOutcome::Completed { .. } => {}
+            // An `abort` raised by a handler for one of THIS step's performs
+            // terminates the enclosing `handle`, not the step. Propagate it —
+            // and with it, abandon the remaining performs, because the handle
+            // whose scope they were written in is gone.
+            other => return Ok(other),
+        }
+    }
+    Ok(outcome)
+}
+
+async fn run_step_generation(
+    step: &IRStep,
+    ctx: &mut DispatchCtx,
+) -> Result<NodeOutcome, DispatchError> {
     // §Fase 36.x.e (D4) — interpolate `${name}` / `$name` in the
     // step's `ask` against the flow bindings BEFORE it becomes the
     // prompt (legacy LLM path) or the tool argument (streaming-tool
@@ -1919,6 +1961,13 @@ async fn drain_direct(
                                             NodeOutcome::LoopContinue => "continue",
                                             NodeOutcome::Return { .. } => "return",
                                             NodeOutcome::Completed { .. } => "a completion",
+                                            // §Fase 120 — same refusal, same
+                                            // reason: an effect discharged
+                                            // mid-stream has no answer to
+                                            // "which chunk does it resume at?".
+                                            NodeOutcome::EffectResumed { .. } => "resume",
+                                            NodeOutcome::EffectAborted { .. } => "abort",
+                                            NodeOutcome::EffectForwarded { .. } => "forward",
                                         }
                                     ),
                                 });
@@ -2224,6 +2273,7 @@ mod tests {
             apply_ref: String::new(),
             pix_ops: Vec::new(),
             stream: None,
+            performs: Vec::new(),
             guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: Vec::new(),
         };
@@ -2279,6 +2329,7 @@ mod tests {
 
             pix_ops: Vec::new(),
             stream: None,
+            performs: Vec::new(),
             guards: Vec::new(),
             body: Vec::new(),
         };
@@ -2317,6 +2368,7 @@ mod tests {
 
             pix_ops: Vec::new(),
             stream: None,
+            performs: Vec::new(),
             guards: Vec::new(),
             body: Vec::new(),
         };
@@ -2356,6 +2408,7 @@ mod tests {
             apply_ref: String::new(),
             pix_ops: Vec::new(),
             stream: None,
+            performs: Vec::new(),
             guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: Vec::new(),
         };
@@ -2400,6 +2453,7 @@ mod tests {
             apply_ref: String::new(),
             pix_ops: Vec::new(),
             stream: None,
+            performs: Vec::new(),
             guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: Vec::new(),
         };
@@ -2436,6 +2490,7 @@ mod tests {
             apply_ref: String::new(),
             pix_ops: Vec::new(),
             stream: None,
+            performs: Vec::new(),
             guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: Vec::new(),
         }
@@ -2550,6 +2605,7 @@ mod tests {
             apply_ref: String::new(),
             pix_ops: Vec::new(),
             stream: None,
+            performs: Vec::new(),
             guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: Vec::new(),
         };
@@ -2584,6 +2640,7 @@ mod tests {
             apply_ref: String::new(),
             pix_ops: Vec::new(),
             stream: None,
+            performs: Vec::new(),
             guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: Vec::new(),
         };
@@ -2628,6 +2685,7 @@ mod tests {
             apply_ref: String::new(),
             pix_ops: Vec::new(),
             stream: None,
+            performs: Vec::new(),
             guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: Vec::new(),
         };
@@ -2668,6 +2726,7 @@ mod tests {
             apply_ref: String::new(),
             pix_ops: Vec::new(),
             stream: None,
+            performs: Vec::new(),
             guards: Vec::new(),
             requires_context: None,            now_tz: None,            body: Vec::new(),
         };

@@ -140,6 +140,7 @@ fn random_step(lcg: &mut Lcg) -> IRFlowNode {
         now_tz: None,
         pix_ops: Vec::new(),
         stream: None,
+        performs: Vec::new(),
         guards: Vec::new(),
         body: Vec::new(),
     })
@@ -1073,6 +1074,7 @@ async fn fase33y_n_tool_call_interleaving_d8_d3() {
             now_tz: None,
             pix_ops: Vec::new(),
             stream: None,
+            performs: Vec::new(),
             guards: Vec::new(),
             body: Vec::new(),
         });

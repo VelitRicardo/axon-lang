@@ -76,6 +76,11 @@ fn attach_trivia_to_decl(decl: &mut Declaration, leading: Vec<Trivia>, trailing:
             n.leading_trivia = leading;
             n.trailing_trivia = trailing;
         }
+        // §Fase 120 — an `effect` declaration carries its comments like any peer.
+        Declaration::Effect(n) => {
+            n.leading_trivia = leading;
+            n.trailing_trivia = trailing;
+        }
         Declaration::Tool(n) => {
             n.leading_trivia = leading;
             n.trailing_trivia = trailing;
@@ -2139,6 +2144,9 @@ impl Parser {
             TokenType::Tool => self.parse_tool().map(Declaration::Tool),
             TokenType::Type => self.parse_type_def().map(Declaration::Type),
             TokenType::Flow => self.parse_flow().map(Declaration::Flow),
+            // §Fase 120 — `effect E { Op(p: T) -> R }`. A peer of `tool`, per
+            // `fase_23` §3.1 ("top-level, like tool/persona/anchor").
+            TokenType::Effect => self.parse_effect().map(Declaration::Effect),
             TokenType::Intent => self.parse_intent().map(Declaration::Intent),
             TokenType::Run => self.parse_run().map(Declaration::Run),
             TokenType::Let => self.parse_let().map(Declaration::Let),
@@ -3174,6 +3182,255 @@ impl Parser {
         })
     }
 
+    // ── §Fase 120 — algebraic effects (Plotkin/Pretnar) ─────────────
+    //
+    // Four constructs, in the shape `fase_23` §3.1 publishes verbatim.
+
+    /// `effect SSE { Emit(token: Token) -> Unit  Done() -> Never }`
+    ///
+    /// The declaration exists so the operation catalog is CLOSED. D120.2's bare
+    /// `perform Emit(x)` resolves against exactly this set, and an operation
+    /// two effects both declare is a compile error naming both — not a silent
+    /// pick. Without the declaration there would be nothing to resolve against
+    /// and `effect_name` would be a free string, which is the defect
+    /// `feedback_free_string_field_breeds_fake_catalog` names.
+    fn parse_effect(&mut self) -> Result<EffectDefinition, ParseError> {
+        let tok = self.consume(TokenType::Effect)?;
+        let loc = self.loc_of(&tok);
+        let name = self.consume_any_ident_or_kw()?.value;
+        self.consume(TokenType::LBrace)?;
+
+        let mut operations: Vec<EffectOperation> = Vec::new();
+        while !self.check(TokenType::RBrace) && !self.check(TokenType::Eof) {
+            let op_tok = self.current().clone();
+            let op_name = self.consume_any_ident_or_kw()?.value;
+
+            self.consume(TokenType::LParen)?;
+            let parameters = if self.check(TokenType::RParen) {
+                Vec::new()
+            } else {
+                self.parse_param_list()?
+            };
+            self.consume(TokenType::RParen)?;
+
+            // `-> T` is optional in the grammar; §3.1 always writes it, and a
+            // missing return type reads as Unit at the type-checker.
+            let mut return_type = String::new();
+            if self.check(TokenType::Arrow) {
+                self.advance();
+                return_type = self.parse_type_expr()?.name;
+            }
+
+            // A duplicate operation name inside ONE effect is refused: the
+            // handler-clause lookup is by operation name, so two declarations
+            // would make the arity check depend on which one the search found
+            // first — a defect nobody would ever see fire.
+            if let Some(prior) = operations.iter().find(|o| o.name == op_name) {
+                return Err(ParseError {
+                    message: format!(
+                        "effect `{name}` declares operation `{op_name}` twice (first at \
+                         line {}); handler dispatch is by operation NAME, so a second \
+                         declaration would silently shadow the first",
+                        prior.loc.line
+                    ),
+                    line: op_tok.line,
+                    column: op_tok.column,
+                    ..Default::default()
+                });
+            }
+
+            operations.push(EffectOperation {
+                name: op_name,
+                parameters,
+                return_type,
+                loc: self.loc_of(&op_tok),
+            });
+        }
+        self.consume(TokenType::RBrace)?;
+
+        Ok(EffectDefinition {
+            name,
+            operations,
+            loc,
+            leading_trivia: Vec::new(),
+            trailing_trivia: Vec::new(),
+        })
+    }
+
+    /// `handle SSE { Emit(token) -> { … } } in { … }` — the delimited handler
+    /// scope (D3).
+    ///
+    /// The `in { … }` body is parsed with [`Self::parse_flow_step`], and that is
+    /// the whole point of D120.1: the body is ORDINARY flow steps, so
+    /// `run generate(…)` inside a handler runs for real. Lowering it onto
+    /// `axon-rs`'s `Instruction` alphabet instead would have made every
+    /// non-effect node in it a `Passthrough` — inert — which is the §111 defect
+    /// this fase exists not to repeat.
+    fn parse_handle_block(&mut self) -> Result<HandleBlock, ParseError> {
+        let tok = self.consume(TokenType::Handle)?;
+        let loc = self.loc_of(&tok);
+
+        // `handle E1, E2 { … }` — one frame may intercept several effects.
+        let mut effect_names = vec![self.consume_any_ident_or_kw()?.value];
+        while self.check(TokenType::Comma) {
+            self.advance();
+            effect_names.push(self.consume_any_ident_or_kw()?.value);
+        }
+
+        self.consume(TokenType::LBrace)?;
+        let mut clauses: Vec<HandlerClause> = Vec::new();
+        while !self.check(TokenType::RBrace) && !self.check(TokenType::Eof) {
+            let clause_tok = self.current().clone();
+            let operation_name = self.consume_any_ident_or_kw()?.value;
+
+            // Clause binders are BARE names — `Emit(token) -> { … }`. The types
+            // live on the effect declaration; repeating them here would let the
+            // two disagree.
+            self.consume(TokenType::LParen)?;
+            let mut parameter_names = Vec::new();
+            while !self.check(TokenType::RParen) && !self.check(TokenType::Eof) {
+                parameter_names.push(self.consume_any_ident_or_kw()?.value);
+                if self.check(TokenType::Comma) {
+                    self.advance();
+                }
+            }
+            self.consume(TokenType::RParen)?;
+            self.consume(TokenType::Arrow)?;
+            self.consume(TokenType::LBrace)?;
+
+            let mut body = Vec::new();
+            while !self.check(TokenType::RBrace) && !self.check(TokenType::Eof) {
+                body.push(self.parse_flow_step()?);
+            }
+            self.consume(TokenType::RBrace)?;
+
+            if let Some(prior) = clauses.iter().find(|c| c.operation_name == operation_name) {
+                return Err(ParseError {
+                    message: format!(
+                        "handler declares clause `{operation_name}` twice (first at line {}); \
+                         dispatch finds a clause by operation NAME and would always run the \
+                         first, leaving the second dead",
+                        prior.loc.line
+                    ),
+                    line: clause_tok.line,
+                    column: clause_tok.column,
+                    ..Default::default()
+                });
+            }
+
+            clauses.push(HandlerClause {
+                operation_name,
+                parameter_names,
+                body,
+                loc: self.loc_of(&clause_tok),
+            });
+        }
+        self.consume(TokenType::RBrace)?;
+
+        // The `in { … }` delimiter is MANDATORY. A `handle` without it declares
+        // a scope with no extent — nothing could ever be intercepted by it, and
+        // accepting it would let an author believe an effect was handled when
+        // no `perform` is inside anything.
+        let in_tok = self.current().clone();
+        if !self.check(TokenType::In) {
+            return Err(ParseError {
+                message: format!(
+                    "`handle {}` must be followed by `in {{ … }}` — a handler scope is \
+                     DELIMITED (fase_23 D3). Without the `in` block the frame has no \
+                     extent, so no `perform` could ever reach these clauses (got '{}')",
+                    effect_names.join(", "),
+                    in_tok.value
+                ),
+                line: in_tok.line,
+                column: in_tok.column,
+                ..Default::default()
+            });
+        }
+        self.advance();
+        self.consume(TokenType::LBrace)?;
+        let mut body = Vec::new();
+        while !self.check(TokenType::RBrace) && !self.check(TokenType::Eof) {
+            body.push(self.parse_flow_step()?);
+        }
+        self.consume(TokenType::RBrace)?;
+
+        Ok(HandleBlock {
+            effect_names,
+            clauses,
+            body,
+            loc,
+        })
+    }
+
+    /// The shared head of `perform` and `forward` (D12): an optionally
+    /// qualified operation name plus a parenthesised argument list.
+    ///
+    /// D120.2 — BOTH spellings parse. `SSE.Emit(x)` fixes the effect here;
+    /// `Emit(x)` leaves `effect_name` `None` and the closed catalog resolves it
+    /// downstream, where an ambiguity can be reported with both candidates
+    /// named. The qualified form is told from the bare one by the `.`, which
+    /// cannot appear in an operation name.
+    fn parse_effect_op_ref(
+        &mut self,
+    ) -> Result<(Option<String>, String, Vec<String>), ParseError> {
+        let first = self.consume_any_ident_or_kw()?.value;
+        let (effect_name, operation_name) = if self.check(TokenType::Dot) {
+            self.advance();
+            (Some(first), self.consume_any_ident_or_kw()?.value)
+        } else {
+            (None, first)
+        };
+
+        self.consume(TokenType::LParen)?;
+        let mut arguments = Vec::new();
+        while !self.check(TokenType::RParen) && !self.check(TokenType::Eof) {
+            // §119.f.10 SUBJECTS: `fase_23` §3.1 writes `perform
+            // Emit(response.token)` — a dotted reference into a prior binding.
+            arguments.push(self.parse_subject()?);
+            if self.check(TokenType::Comma) {
+                self.advance();
+            }
+        }
+        self.consume(TokenType::RParen)?;
+        Ok((effect_name, operation_name, arguments))
+    }
+
+    /// `perform Emit(x)` / `perform SSE.Emit(x)`.
+    fn parse_perform_step(&mut self) -> Result<PerformStep, ParseError> {
+        let tok = self.consume(TokenType::Perform)?;
+        let (effect_name, operation_name, arguments) = self.parse_effect_op_ref()?;
+        Ok(PerformStep {
+            effect_name,
+            operation_name,
+            arguments,
+            loc: self.loc_of(&tok),
+        })
+    }
+
+    /// `forward Emit(t)` / `forward SSE.Emit(t)` (D12).
+    fn parse_forward_step(&mut self) -> Result<ForwardStep, ParseError> {
+        let tok = self.consume(TokenType::Forward)?;
+        let (effect_name, operation_name, arguments) = self.parse_effect_op_ref()?;
+        Ok(ForwardStep {
+            effect_name,
+            operation_name,
+            arguments,
+            loc: self.loc_of(&tok),
+        })
+    }
+
+    /// The shared body of `resume(…)` / `abort(…)`: an optional single value.
+    fn parse_discharge_value(&mut self) -> Result<String, ParseError> {
+        self.consume(TokenType::LParen)?;
+        let value = if self.check(TokenType::RParen) {
+            String::new()
+        } else {
+            self.parse_subject()?
+        };
+        self.consume(TokenType::RParen)?;
+        Ok(value)
+    }
+
     fn parse_param_list(&mut self) -> Result<Vec<Parameter>, ParseError> {
         let mut params = Vec::new();
 
@@ -3272,6 +3529,32 @@ impl Parser {
             // `run_stream` had nothing to run and "completed" with an empty
             // string while the README sold "Algebraic Effects and Free Monads".
             TokenType::Stream => self.parse_stream_block().map(FlowStep::Stream),
+            // ── §Fase 120 — algebraic effects ────────────────────
+            //
+            // All five constructs parse at flow level. `resume` / `abort` /
+            // `forward` are legal only inside a handler CLAUSE — that scope law
+            // is enforced by the type-checker (§120.d), not here, because the
+            // parser does not know whether an enclosing `handle` exists when it
+            // is re-entered through `parse_flow_step` from a clause body.
+            TokenType::Handle => self.parse_handle_block().map(FlowStep::Handle),
+            TokenType::Perform => self.parse_perform_step().map(FlowStep::Perform),
+            TokenType::Resume => {
+                let tok = self.consume(TokenType::Resume)?;
+                let value_expr = self.parse_discharge_value()?;
+                Ok(FlowStep::Resume(ResumeStep {
+                    value_expr,
+                    loc: self.loc_of(&tok),
+                }))
+            }
+            TokenType::Abort => {
+                let tok = self.consume(TokenType::Abort)?;
+                let value_expr = self.parse_discharge_value()?;
+                Ok(FlowStep::Abort(AbortStep {
+                    value_expr,
+                    loc: self.loc_of(&tok),
+                }))
+            }
+            TokenType::Forward => self.parse_forward_step().map(FlowStep::Forward),
             TokenType::Navigate => self.parse_navigate_step(),
             TokenType::Drill => self.parse_drill_step(),
             TokenType::Trail => self.parse_flow_step_simple("trail").map(|l| FlowStep::Trail(TrailStep { navigate_ref: l.1, loc: l.0 })),
@@ -3366,6 +3649,7 @@ impl Parser {
             guards: Vec::new(),
             pix_ops: Vec::new(),
             stream: None,
+            performs: Vec::new(),
             loc,
         };
 
@@ -3815,6 +4099,26 @@ impl Parser {
                     }
                     node.stream = Some(Box::new(sb));
                 }
+                // §Fase 120 — `perform Op(args)` in a step body, the position
+                // `fase_23` §3.1 publishes:
+                //
+                //     step generate {
+                //         given: prompt
+                //         perform Emit(response.token)
+                //         perform Done()
+                //     }
+                //
+                // NOT a `pix_ops` push, and this is the §119.n lesson applied a
+                // second time. Every `pix_ops` statement is an ELEVATION that
+                // runs BEFORE the step generates. The performed ARGUMENT here is
+                // the step's own output, so running it as an elevation would
+                // hand the handler an unresolved symbol and put a NAME on the
+                // wire where the adopter expected a token — a defect that shows
+                // up as garbage output, never as an error.
+                TokenType::Perform => {
+                    let p = self.parse_perform_step()?;
+                    node.performs.push(p);
+                }
                 // Sub-construct (probe, non-statement form) → skip structurally.
                 // The REAL `probe … for […]` statement is taken by the guarded
                 // arm above; this catches only the bare legacy shape.
@@ -3825,8 +4129,8 @@ impl Parser {
                     return Err(ParseError {
                         message: format!(
                             "Unexpected token in step body: '{}' — expected given, ask, \
-                             probe, reason, weave, stream, output, confidence_floor, navigate, \
-                             apply, requires_context, now",
+                             probe, reason, weave, stream, perform, output, confidence_floor, \
+                             navigate, apply, requires_context, now",
                             inner.value
                         ),
                         line: inner.line,
@@ -4811,6 +5115,7 @@ impl Parser {
             guards: Vec::new(),
             pix_ops: Vec::new(),
             stream: None,
+            performs: Vec::new(),
             loc: self.loc_of(at),
         };
         self.parse_step_body_into(&mut node)?;
@@ -10140,7 +10445,21 @@ impl Parser {
             // §Fase 79.b — `resume`: the handler's normal exit (hand control back to
             // the parked body). A bare step, no payload; only meaningful inside an
             // `interrupt` handler (enforced at type-check, §79.c).
-            TokenType::Identifier if tok.value == "resume" => {
+            //
+            // ⚠️ §Fase 120 — this guard used to require `TokenType::Identifier`,
+            // and `resume` became a HARD KEYWORD when the algebraic-effect
+            // constructs landed. The session `resume` is a DIFFERENT `resume`
+            // (§79.b's interrupt-handler exit, not §120's one-shot continuation
+            // invocation), and it broke the moment the lexer stopped handing it
+            // over as an identifier — `axon-frontend/src/voice_desugar.rs`'s own
+            // expansion source stopped parsing.
+            //
+            // Matching on the VALUE rather than the token type is what keeps a
+            // contextual keyword contextual. This was caught by the corpus gate
+            // (`fase120_a_effect_grammar::a7_…`), not by review: six new hard
+            // keywords across a 106-file `.axon` corpus is not a risk anyone
+            // eyeballs correctly.
+            _ if tok.value == "resume" => {
                 self.advance();
                 Ok(SessionStep { op: "resume".into(), loc, ..Default::default() })
             }

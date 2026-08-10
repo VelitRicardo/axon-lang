@@ -973,6 +973,42 @@ pub const PRIMITIVE_REGISTRY: &[PrimitiveInfo] = &[
         doc_status: DocStatus::Documented,
         is_advertised: true,
     },
+    // ── §Fase 120 — algebraic effects (Plotkin/Pretnar) ──────────────
+    //
+    // THREE entries, not six. `resume` / `abort` / `forward` are the discharge
+    // forms of a handler CLAUSE and are a compile error anywhere else
+    // (axon-T967) — they have no independent existence to register, unlike
+    // `emit`/`publish`/`discover`, which are legal in any flow body. Listing
+    // them would inflate the catalog with names an adopter cannot use on their
+    // own, and a catalog that overstates what is reachable is the defect this
+    // registry exists to prevent.
+    PrimitiveInfo {
+        name: "effect",
+        category: "operators",
+        top_level: true,
+        since: "Fase 120",
+        summary: "Algebraic effect declaration (Plotkin/Pretnar) — `effect E { Op(p: T) -> R }`. A CLOSED operation catalog: a bare `perform Op(x)` resolves against it, and an operation two effects both declare is refused naming both (axon-T964) rather than picked.",
+        doc_status: DocStatus::Documented,
+        is_advertised: true,
+    },
+    PrimitiveInfo {
+        name: "handle",
+        category: "operators",
+        top_level: false,
+        since: "Fase 120",
+        summary: "Delimited handler scope — `handle E { Op(p) -> { … } } in { … }`. The clause body is ORDINARY flow steps, so a handler composes with every primitive. Discharged inside a clause by `resume(v)` (one-shot, D2), `abort(v)`, `forward E.Op(args)` (D12), or by running off the end (an implicit abort, per fase_23 §3.1).",
+        doc_status: DocStatus::Documented,
+        is_advertised: true,
+    },
+    PrimitiveInfo {
+        name: "perform",
+        category: "operators",
+        top_level: false,
+        since: "Fase 120",
+        summary: "Raise an algebraic effect — `perform Emit(x)` or `perform SSE.Emit(x)`. Legal at flow level and in a step body (where it runs AFTER generation, so it can perform the step's own output). An undischarged perform is a COMPILE error (axon-T966, fase_23 D9): there is no runtime fallback.",
+        doc_status: DocStatus::Documented,
+        is_advertised: true,
+    },
     PrimitiveInfo {
         name: "grad",
         category: "operators",
@@ -1167,9 +1203,14 @@ mod tests {
         // whose dead runtime survived every green build because no table
         // knew it existed). All 25 enter as `Pending`; see the census
         // section's exclusion list for what deliberately stays out.
+        // §Fase 120 added `effect` / `handle` / `perform` → 91→94. The §23
+        // algebraic-effects runtime existed all along and was tracked NOWHERE
+        // for the same reason `budget` was not: no badge, no registry row,
+        // nothing to classify — so no gate could ask whether a program could
+        // reach it. The answer was no, totally: zero lexer tokens.
         assert_eq!(
             PRIMITIVE_REGISTRY.len(),
-            91,
+            94,
             "PRIMITIVE_REGISTRY count drift — add/remove the primitive intentionally + update this assertion"
         );
     }
@@ -1317,6 +1358,8 @@ mod tests {
             "par", "hibernate", "deliberate", "consensus", "stream",
             "grad", "navigate", "drill", "trail",
             "ingest", "focus", "associate", "aggregate", "explore",
+            // §Fase 120 — algebraic effects, reachable from source at last.
+            "effect", "handle", "perform",
         ]
         .into_iter()
         .collect();
@@ -1350,9 +1393,13 @@ mod tests {
         // landed (verified against the runtime audit), restoring 100%
         // coverage at the NEW, honest denominator. A future drop is a
         // regression the gate catches.
-        assert_eq!(s.total, 91);
+        // §Fase 120: 91 → 94 with `effect` / `handle` / `perform` — the
+        // algebraic-effect constructs. The §23 runtime existed and the language
+        // had no grammar for it at all, so `EffectRuntime` was constructible
+        // only from its own tests.
+        assert_eq!(s.total, 94);
         assert_eq!(s.documented + s.pending, s.total);
-        assert_eq!(s.documented, 91);
+        assert_eq!(s.documented, 94);
         assert_eq!(s.pending, 0);
     }
 
@@ -1384,7 +1431,10 @@ mod tests {
                        // §Fase 114.z census — flow-body cognitive verbs.
                        "par", "hibernate", "deliberate", "consensus", "stream",
                        "grad", "navigate", "drill", "trail", "ingest",
-                       "focus", "associate", "aggregate", "explore"] {
+                       "focus", "associate", "aggregate", "explore",
+                       // §Fase 120 — `handle` and `perform` live in a flow or
+                       // step body; only `effect` is a top-level declaration.
+                       "handle", "perform"] {
             let info = find(nested).expect("must be in registry");
             assert!(
                 !info.top_level,

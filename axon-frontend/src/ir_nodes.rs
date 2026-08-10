@@ -181,14 +181,25 @@ pub struct IRProgram {
     /// IRPerform / IRHandlerFrame carries its assigned state_id /
     /// frame_id).
     ///
-    /// This Rust port mirrors the Python-side
-    /// `IRProgram.effects: tuple[IREffectDeclaration, ...]` field so
-    /// the byte-identical structural-parity gate stays green. The Rust
-    /// frontend (axon-frontend) does not yet emit Fase 23 IR itself —
-    /// the field exists to preserve serialization shape; the actual
-    /// algebraic-effects compiler lives on the Python side, and the
-    /// Rust runtime (axon-rs/src/effects/) consumes the JSON IR
-    /// emitted by Python.
+    /// **§Fase 120 — THIS FIELD IS NOW POPULATED, from `.axon` source.**
+    ///
+    /// It used to be a mirror of the retired Python frontend's
+    /// `IRProgram.effects` field, kept only so a byte-identical structural
+    /// parity gate stayed green against an empty `effects: []`. The Python
+    /// frontend is gone (the 0-`.py` north star) and the field outlived it
+    /// carrying nothing — `axon-frontend` never emitted a single entry, which
+    /// is why `EffectRuntime` was constructible only from its own tests.
+    ///
+    /// §Fase 120 gives it its declarations, from `effect E { … }` in adopter
+    /// source. It is the CLOSED catalog the dispatcher validates a perform
+    /// site's arity against, and the set D120.2 resolves a bare
+    /// `perform Emit(x)` over.
+    ///
+    /// ⚠️ Reusing this field rather than adding one was a deliberate correction
+    /// mid-fase: a parallel `effect_specs` would have made TWO compiled
+    /// catalogs of one concept in one artifact — the §119.m.2 defect (a third
+    /// blame vocabulary) committed knowingly. Ask what already reads a concept
+    /// BEFORE giving it a new home.
     pub effects: Vec<IREffectDeclaration>,
     /// §Fase 115.e — per-module provenance of a LINKED program: for every
     /// module the linker merged, its path, origin file, both EMS hashes and
@@ -335,15 +346,18 @@ pub struct IRWitness {
     pub data: String,
 }
 
-// ── §Fase 23 — Algebraic effect declarations ─────────────────────────────────
+// ── §Fase 23 / §Fase 120 — Algebraic effect declarations ────────────────────
 //
-// Mirror of Python's `IREffectDeclaration` and `IREffectOperation`
-// dataclasses. The Rust frontend (axon-frontend) does not yet emit
-// Fase 23 IR itself — these structs exist so the byte-identical
-// structural-parity gate stays green when Python emits an empty
-// `effects: []` field. The actual algebraic-effects compiler lives on
-// the Python side; the Rust runtime (axon-rs/src/effects/) consumes
-// the JSON IR via its own deserialize structs.
+// §Fase 23 declared these as a MIRROR of the Python frontend's dataclasses,
+// emitted by nobody, so a structural-parity gate stayed green against an empty
+// `effects: []`. §Fase 120 makes `axon-frontend` emit them from `.axon` source:
+// `Declaration::Effect` → `IREffectDeclaration`, one per `effect E { … }`.
+//
+// The shape is unchanged on purpose. `axon-rs/src/effects/ir.rs` deserialises
+// exactly these field names (`name` / `operations` / `parameter_names` /
+// `parameter_types` / `return_type`), and keeping the wire identical means the
+// declaration an adopter writes today lands in the same table
+// `EffectRuntime::register_effect` has always read.
 
 #[derive(Debug, Serialize, Default, Clone)]
 pub struct IREffectDeclaration {
@@ -1066,6 +1080,14 @@ pub struct IRStep {
     /// byte-identical and a legacy IR still deserialises.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stream: Option<Box<IRStreamBlock>>,
+    /// §Fase 120 — the `perform Op(args)` statements written in this step's
+    /// body, in source order. Dispatch runs them AFTER the step generates, with
+    /// the step's output in scope — NOT as `pix_ops` elevations, because
+    /// `fase_23` §3.1's `perform Emit(response.token)` performs the step's own
+    /// result. Elided when empty, so every pre-§120 program's IR JSON stays
+    /// byte-identical (the §68.b/§91.a/§119.n discipline).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub performs: Vec<IREffectPerform>,
     pub body: Vec<serde_json::Value>,
 }
 
@@ -1187,6 +1209,19 @@ pub enum IRFlowNode {
     Ingest(IRIngestStep),
     ShieldApply(IRShieldApplyStep),
     Stream(IRStreamBlock),
+    /// §Fase 120 — `handle E { … } in { … }`. The frame that makes an outer
+    /// handler able to intercept an inner computation's effects without the
+    /// inner code knowing — the compositional property nothing in the language
+    /// could express before.
+    Handle(IREffectHandle),
+    /// §Fase 120 — `perform E.Op(args)`.
+    Perform(IREffectPerform),
+    /// §Fase 120 — `resume(v)`, the one-shot continuation invocation (D2).
+    Resume(IREffectResume),
+    /// §Fase 120 — `abort(v)`.
+    Abort(IREffectAbort),
+    /// §Fase 120 — `forward E.Op(args)` (D12).
+    Forward(IREffectForward),
     Navigate(IRNavigateStep),
     Drill(IRDrillStep),
     Trail(IRTrailStep),
@@ -1683,6 +1718,101 @@ pub struct IRStreamBlock {
     /// author's own handlers, nor for cancellation.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub on_error: Option<Box<IRStep>>,
+}
+
+// ── §Fase 120 — algebraic effects, lowered ──────────────────────────────────
+//
+// ⚠️ Names deliberately prefixed `IREffect*`. `axon-rs/src/effects/ir.rs`
+// already owns `IRPerform` / `IRHandlerFrame` / `IRHandlerClause` / `IRResume`
+// / `IRAbort` / `IRForward`, and `axon-rs` re-exports THIS module — an
+// unprefixed name would collide there and, worse, would read as the same type.
+// It is not: that module's `Instruction` alphabet has an INERT catch-all
+// (`Passthrough`), so a handler body lowered onto it would silently execute
+// nothing. D120.1 puts the effect machine in the DISPATCHER, whose alphabet is
+// `IRFlowNode`; these nodes are that alphabet's five new members.
+
+/// `handle E { clauses } in { body }`, lowered — one handler frame.
+#[derive(Debug, Clone, Serialize)]
+pub struct IREffectHandle {
+    pub node_type: &'static str,
+    pub source_line: u32,
+    pub source_column: u32,
+    pub effect_names: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub clauses: Vec<IREffectClause>,
+    /// The `in { … }` block — ORDINARY flow nodes. This field is D120.1.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub body: Vec<IRFlowNode>,
+    /// Per-flow frame identity, allocated in source order. Distinguishes two
+    /// frames over the same effect so `forward` can name which one it left.
+    pub frame_id: u32,
+}
+
+/// One clause of an [`IREffectHandle`]: `Op(params) -> { body }`.
+#[derive(Debug, Clone, Serialize)]
+pub struct IREffectClause {
+    pub operation_name: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub parameter_names: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub body: Vec<IRFlowNode>,
+    pub source_line: u32,
+    pub source_column: u32,
+}
+
+/// `perform E.Op(args)`, lowered.
+///
+/// `effect_name` is ALWAYS populated here even when the source wrote the bare
+/// form — the IR generator resolves it against the declared catalog (D120.2).
+/// A node that reached this point with an empty `effect_name` is a compiler
+/// bug, and the dispatcher fails closed on it rather than searching by
+/// operation name alone (which would let the handler stack pick a frame the
+/// author never named).
+#[derive(Debug, Clone, Serialize)]
+pub struct IREffectPerform {
+    pub node_type: &'static str,
+    pub source_line: u32,
+    pub source_column: u32,
+    pub effect_name: String,
+    pub operation_name: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub arguments: Vec<String>,
+    /// True when the SOURCE wrote `perform Op(x)` and the catalog supplied the
+    /// effect. Kept so a diagnostic can quote what the author actually typed.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub resolved_from_bare: bool,
+}
+
+/// `resume(v)`, lowered — invoke the captured one-shot continuation (D2).
+#[derive(Debug, Clone, Serialize)]
+pub struct IREffectResume {
+    pub node_type: &'static str,
+    pub source_line: u32,
+    pub source_column: u32,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub value_expr: String,
+}
+
+/// `abort(v)`, lowered — leave the enclosing `handle` without resuming.
+#[derive(Debug, Clone, Serialize)]
+pub struct IREffectAbort {
+    pub node_type: &'static str,
+    pub source_line: u32,
+    pub source_column: u32,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub value_expr: String,
+}
+
+/// `forward E.Op(args)`, lowered (D12) — propagate to the next OUTER frame.
+#[derive(Debug, Clone, Serialize)]
+pub struct IREffectForward {
+    pub node_type: &'static str,
+    pub source_line: u32,
+    pub source_column: u32,
+    pub effect_name: String,
+    pub operation_name: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub arguments: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]

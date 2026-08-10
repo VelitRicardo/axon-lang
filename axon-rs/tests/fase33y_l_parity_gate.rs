@@ -335,6 +335,15 @@ fn dispatcher_module_files_pinned_to_expected_set() {
         // by a streaming tool inside a daemon).
         "budget_gate.rs",
         "cognitive.rs",
+        // §Fase 120 — the algebraic-effect machine (`handle` / `perform` /
+        // `resume` / `abort` / `forward`). It belongs in THIS directory and
+        // not in `crate::effects` because its instruction alphabet is
+        // `IRFlowNode`: a handler clause is an ordinary flow body, which is
+        // what lets it compose with every other primitive. `crate::effects`
+        // stays the FSM over the JSON `Instruction` IR that
+        // `effects_bridge` drives — two machines, two alphabets, one
+        // documented relationship.
+        "effect_handlers.rs",
         "effects_bridge.rs",
         "lambda_tools.rs",
         "mod.rs",
@@ -360,7 +369,8 @@ fn dispatcher_module_files_pinned_to_expected_set() {
          Expected 12 files (10 per sub-fase 33.y.c–j plus mod.rs, \
          plus unified_stream.rs added by Fase 34.g for the \
          4-disjunction convergence, plus budget_gate.rs added by \
-         Fase 114.a); got {:?}. Adding a new sub-module requires \
+         Fase 114.a, plus agent_loop.rs added by Fase 119.m.1, plus \
+         effect_handlers.rs added by Fase 120); got {:?}. Adding a new sub-module requires \
          updating this expected list + adding the corresponding \
          `pub mod` in mod.rs.",
         found

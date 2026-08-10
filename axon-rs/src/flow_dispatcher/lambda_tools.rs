@@ -739,6 +739,7 @@ mod tests {
             now_tz: None,
             pix_ops: Vec::new(),
             stream: None,
+            performs: Vec::new(),
             guards: vec![crate::ir_nodes::IRStepGuard {
                 kind: "lambda".into(),
                 name: "RawQuote".into(),
