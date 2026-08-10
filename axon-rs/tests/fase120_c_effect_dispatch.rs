@@ -225,7 +225,7 @@ flow F() -> Text {
 /// Under §119's doctrine the published surface wins.
 #[tokio::test]
 async fn c5_a_clause_without_resume_aborts_the_handle() {
-    let (c, _) = run(
+    let flow = flow_from_source(
         r#"
 effect SSE { Done() -> Never }
 flow F() -> Text {
@@ -238,8 +238,10 @@ flow F() -> Text {
 }
 "#,
         "F",
-    )
-    .await;
+    );
+    let (mut c, _rx) = ctx();
+    let outcome = dispatch_node(&flow.steps[0], &mut c).await.expect("handle");
+
     assert_eq!(
         c.let_bindings.get("closed").map(String::as_str),
         Some("handler ran"),
@@ -251,6 +253,23 @@ flow F() -> Text {
          handle body must not run. Running it would resume a continuation the \
          handler declined to invoke"
     );
+
+    // Added after mutation testing: stamping the implicit abort with a frame id
+    // no handle owns SURVIVED the two assertions above. Both stayed true —
+    // nothing after the perform ran either way — while the sentinel escaped the
+    // handle entirely. On the real wire that turns `fase_23` §3.1's published
+    // `Done()` shape into a FLOW ERROR (the top-level walk refuses an unclaimed
+    // discharge, and rightly). The handle must CLAIM its own implicit abort.
+    match outcome {
+        NodeOutcome::Completed { output, .. } => assert_eq!(
+            output, "handler ran",
+            "the handle yields the clause's last output as its own"
+        ),
+        other => panic!(
+            "the implicit abort must be claimed BY THIS HANDLE and converted to \
+             a completion; it escaped as {other:?}"
+        ),
+    }
 }
 
 // ── §6 — abort reaches the frame that OWNS it ──────────────────────────────
@@ -553,6 +572,95 @@ flow F() -> Text {
         "the handler must see exactly what the step GENERATED — which is only \
          possible if the perform ran after generation, against the live bindings"
     );
+}
+
+/// …and it fires EXACTLY ONCE.
+///
+/// Added after mutation testing: the assertion above reads only the FINAL
+/// binding, so a defect that performed TWICE — once before generation with an
+/// unresolved argument, once after with the real one — would overwrite its own
+/// evidence and pass. On the wire that is a bogus token delivered to a real
+/// handler, which is worse than the elevation bug it hides. Counting the
+/// `perform` events is what makes the claim "runs after generation" mean "runs
+/// after generation, and only then".
+#[tokio::test]
+async fn c10b_a_step_body_perform_fires_exactly_once() {
+    let flow = flow_from_source(
+        r#"
+effect SSE { Emit(t: Text) -> Unit }
+flow F() -> Text {
+    handle SSE {
+        Emit(token) -> { resume() }
+    } in {
+        step Gen {
+            given: seed
+            perform Emit(Gen.output)
+            output: Text
+        }
+    }
+}
+"#,
+        "F",
+    );
+    let (mut c, mut rx) = ctx();
+    dispatch_node(&flow.steps[0], &mut c).await.expect("handle");
+
+    let mut performs = 0usize;
+    while let Ok(ev) = rx.try_recv() {
+        if let FlowExecutionEvent::StepStart { step_type, .. } = ev {
+            if step_type == "perform" {
+                performs += 1;
+            }
+        }
+    }
+    assert_eq!(
+        performs, 1,
+        "one `perform` in the source must produce exactly one dispatch. Two \
+         means the statement runs as an elevation AND as a postscript — the \
+         handler would receive the unresolved name first and the real value \
+         second, and the final binding would look correct"
+    );
+}
+
+// ── §12 — a clause does not dispatch ITSELF ────────────────────────────────
+
+/// A clause body runs with the frame stack truncated to its OWN frame's index —
+/// strictly OUTER frames. Without that truncation, a clause that performs the
+/// operation it is handling finds its own frame and dispatches itself forever.
+///
+/// Added after mutation testing: `split_off(frame_idx + 1)` (one off) SURVIVED
+/// every other assertion in this file. The type-checker refuses this program
+/// statically (`axon-T966`, gated in `fase120_a`), and law 4's own lesson is
+/// that a static refusal is not a dispatch proof — the runtime guard exists
+/// precisely for an IR that did not come from `axon check`.
+///
+/// The correct behaviour TERMINATES: the clause's `perform` sees an empty stack
+/// and fails closed. That is what makes this assertable at all.
+#[tokio::test]
+async fn c12_a_clause_performing_its_own_operation_does_not_self_dispatch() {
+    let err = run_expecting_error(
+        r#"
+effect SSE { Emit(t: Text) -> Unit }
+flow F() -> Text {
+    handle SSE {
+        Emit(token) -> { perform Emit(token) }
+    } in {
+        perform Emit("x")
+    }
+}
+"#,
+        "F",
+    )
+    .await;
+    match err {
+        DispatchError::BackendError { message, .. } => assert!(
+            message.contains("unhandled effect"),
+            "a clause must not see its own frame — it escapes OUTWARD, and with \
+             no outer handler it fails closed. Seeing itself would be an \
+             infinite self-dispatch: {message}"
+        ),
+        other => panic!("expected a refusal, got {other:?}"),
+    }
 }
 
 // ── §11 — nothing changed for programs without effects ─────────────────────

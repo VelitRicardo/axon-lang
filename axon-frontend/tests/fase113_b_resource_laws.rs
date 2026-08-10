@@ -150,6 +150,79 @@ fn t945_a_linear_resource_that_nothing_holds_is_a_breach_not_an_omission() {
     );
 }
 
+// ── §Fase 120 — what a `lease` is, and what a `manifest` is not ─────────────
+//
+// These four pin a distinction that cost a false diagnostic in four PUBLISHED
+// examples. `axon-T945` asks two questions and they need different answers:
+// *"is anything USING this?"* and *"how many things POOL a connection to it?"*
+//
+// The whole class was invisible because `axon check` never ran this law: the
+// CLI enters through `TypeChecker::check_with_warnings`, which had drifted into
+// a separate copy of the pass list that no longer carried it. Every test here
+// called `check` — the engine, not the path.
+
+/// **A `lease` CONSUMES the resource**, so it satisfies linearity's
+/// at-least-one half on its own.
+///
+/// `banking_reference.axon` shipped exactly this shape and the law called the
+/// ledger unused.
+#[test]
+fn t945_a_lease_is_a_consumer_so_a_linear_resource_it_holds_is_used() {
+    accepts(
+        r#"
+resource Ledger { kind: postgres  endpoint: ledger.main  lifetime: linear }
+lease WriteWindow { resource: Ledger  duration: 30s  on_expire: anchor_breach }
+"#,
+    );
+}
+
+/// **…but a `lease` is NOT a pool holder**, so it does not compete with one.
+///
+/// This is §114's canonical governed shape — a resourced tool whose use is
+/// bounded in time — and it is what the SSE lease-charging path is built on.
+/// Counting the lease as a second holder would make the law refuse the pattern
+/// the fase beneath it exists to deliver. Measured: it did, until §120.
+#[test]
+fn t945_a_lease_over_an_affine_resource_a_tool_holds_is_not_sharing() {
+    accepts(
+        r#"
+resource Api { kind: https  endpoint: vendor.base  lifetime: affine }
+tool Search { provider: stub  resource: Api  runtime: search }
+lease Gone { resource: Api  duration: 1h  on_expire: anchor_breach }
+"#,
+    );
+}
+
+/// **A `manifest` PROVISIONS; it does not use.** Listing a resource in a
+/// deployment must not satisfy linearity, or the law means nothing — every
+/// resource is listed somewhere.
+#[test]
+fn t945_a_manifest_listing_is_not_a_consumer() {
+    refutes(
+        r#"
+resource Gpu { kind: http  endpoint: gpu.pool  lifetime: linear }
+fabric Cloud { provider: aws  region: "us-east-1"  zones: 3 }
+manifest Prod { resources: [Gpu]  fabric: Cloud  region: "us-east-1"  zones: 3 }
+"#,
+        "axon-T945",
+    );
+}
+
+/// …and because a manifest is not a HOLDER either, the ordinary
+/// declare-in-manifest / hold-in-store pattern stays legal for `linear`.
+/// Counting it would have made this two holders.
+#[test]
+fn t945_manifest_plus_store_over_one_linear_resource_is_one_holder() {
+    accepts(
+        r#"
+resource Db { kind: postgres  endpoint: db.main  lifetime: linear }
+fabric Cloud { provider: aws  region: "us-east-1"  zones: 3 }
+manifest Prod { resources: [Db]  fabric: Cloud  region: "us-east-1"  zones: 3 }
+axonstore Records { backend: postgresql  resource: Db }
+"#,
+    );
+}
+
 #[test]
 fn t945_a_linear_resource_with_two_holders_is_a_breach() {
     refutes(

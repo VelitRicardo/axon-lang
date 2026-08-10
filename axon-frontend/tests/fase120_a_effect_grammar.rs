@@ -64,14 +64,83 @@ fn ir(src: &str) -> axon_frontend::ir_nodes::IRProgram {
 
 /// Every type error the program raises, joined — so an assertion can name the
 /// code it expects without depending on error ordering.
+///
+/// ⚠️ Deliberately goes through **`check_with_warnings`**, which is the entry
+/// point `axon check` takes (`crate::checker::run_check`). Calling `check`
+/// would exercise the ENGINE; this file's whole discipline is to exercise the
+/// PATH. That distinction was not academic — see
+/// [`two_type_check_entry_points_never_drift`].
 fn errors(src: &str) -> String {
     let prog = parse(src);
     TypeChecker::new(&prog)
-        .check()
+        .check_with_warnings()
+        .0
         .into_iter()
         .map(|e| format!("{} (line {})", e.message, e.line))
         .collect::<Vec<_>>()
         .join("\n---\n")
+}
+
+/// **The drift gate on the type-checker's own two doors.**
+///
+/// `TypeChecker` exposes `check` and `check_with_warnings`, and until §120 they
+/// were SEPARATE COPIES of the pass list that had already diverged: `check` ran
+/// §113's `check_resource_module_laws` (`axon-T945` / `axon-T947`) and
+/// `check_with_warnings` did not — and `check_with_warnings` is the one
+/// `axon check` calls. So the §113 resource laws had never once run for an
+/// adopter at the command line, while every test that proved them called
+/// `check`.
+///
+/// That is §119's law 4 inside the compiler: a proof that names a FUNCTION
+/// proves the engine, not the path. It was found by running the BUILT BINARY
+/// against a program this file refuses — `axon check` reported `0 errors`.
+///
+/// `check` is now a projection of `check_with_warnings`. This test fails if
+/// anyone re-forks them.
+#[test]
+fn two_type_check_entry_points_never_drift() {
+    // A program that trips laws from BOTH lists at once: §120's D9 (was only
+    // ever in one copy when it landed) and §113's resource discipline (the law
+    // that was actually missing from the adopter's door).
+    let src = "resource Pool { kind: database endpoint: \"env:DB\" lifetime: linear }\n\
+               effect SSE { Emit(t: Token) -> Unit }\n\
+               flow leaky(p: Text) -> Text { perform Emit(p) }\n\
+               run leaky(p: \"x\")\n";
+    let prog = parse(src);
+    let via_check: Vec<String> = TypeChecker::new(&prog)
+        .check()
+        .into_iter()
+        .map(|e| format!("{}:{}:{}", e.line, e.column, e.message))
+        .collect();
+    let prog2 = parse(src);
+    let via_warnings: Vec<String> = TypeChecker::new(&prog2)
+        .check_with_warnings()
+        .0
+        .into_iter()
+        .map(|e| format!("{}:{}:{}", e.line, e.column, e.message))
+        .collect();
+
+    assert_eq!(
+        via_check, via_warnings,
+        "`check` and `check_with_warnings` disagree. They are two doors into \
+         ONE type-checker and `axon check` takes the second one. When they were \
+         separate pass lists they drifted silently for entire fases — a law \
+         every test proved, that no adopter's command ever ran."
+    );
+    assert!(
+        !via_check.is_empty(),
+        "the fixture must actually trip a law, or this gate compares two empty \
+         lists and passes forever"
+    );
+    assert!(
+        via_check.iter().any(|e| e.contains("axon-T966")),
+        "§120's D9 must fire through BOTH doors: {via_check:?}"
+    );
+    assert!(
+        via_check.iter().any(|e| e.contains("axon-T945")),
+        "§113's resource law must fire through BOTH doors — this is the one \
+         that was missing from the adopter's: {via_check:?}"
+    );
 }
 
 /// The canonical program of `fase_23` §3.1, rendered in grammar AXON actually

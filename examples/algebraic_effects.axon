@@ -1,0 +1,88 @@
+// AXON — Algebraic effects (§Fase 120)
+//
+//  The point of this example is the ONE property nothing else in the language
+//  can express: `study` performs an effect it knows nothing about, and an
+//  outer handler decides what that effect MEANS — without `study` being
+//  changed, recompiled, or even aware a handler exists.
+//
+//  Plotkin/Pretnar handlers with one-shot delimited continuations. The theory
+//  is docs/papers/paper_algebraic_effects_streaming.md; the operational spec is
+//  docs/fase/fase_23_algebraic_effects_runtime.md §3.6/§3.7.
+
+// ── The effect declaration ────────────────────────────────────────────────────
+//
+// A CLOSED catalog of operations. It is what makes a bare `perform Emit(x)`
+// resolvable: exactly one declared effect owns `Emit`. If two did, the compiler
+// REFUSES the bare form and names both candidates (axon-T964) rather than
+// picking one — a token routed to the audit log instead of the wire is a bug
+// that produces plausible output, and those are the ones nobody finds.
+
+effect Delivery {
+    Emit(token: Text) -> Unit
+    Done() -> Never
+}
+
+// ── The pure half ─────────────────────────────────────────────────────────────
+//
+// This flow mentions no transport. It performs `Emit` and `Done` and has no
+// opinion about whether they reach a websocket, a log, or a test harness.
+//
+// Both `perform`s run AFTER the step generates, so `Analyze.output` is the
+// value the model actually produced — not the identifier. That ordering is the
+// whole reason `perform` is not filed with the step's other statements, which
+// run BEFORE generation.
+
+flow study(topic: Text) -> Text {
+    step Analyze {
+        given: topic
+        ask: "Analyse the topic and produce one paragraph of findings."
+        perform Emit(Analyze.output)
+        perform Done()
+        output: Text
+    }
+}
+
+// ── The impure half ───────────────────────────────────────────────────────────
+//
+// `handle … in { … }` is a DELIMITED scope: `Delivery` is interceptable inside
+// the `in` block and nowhere else. A clause body is an ordinary flow body, so a
+// handler can do anything a flow can.
+//
+// `resume()` hands control back to the `perform` site and the deliberation
+// continues. A clause that never resumes drops the continuation — which is why
+// `Done()` has no `resume`, and why nothing after `perform Done()` runs.
+
+flow stream_findings(topic: Text) -> Text {
+    handle Delivery {
+        Emit(token) -> {
+            step Ship {
+                given: token
+                ask: "Format this fragment for the client transport."
+                output: Text
+            }
+            resume()
+        }
+        Done() -> {
+            step Close {
+                ask: "Close the delivery channel."
+                output: Text
+            }
+        }
+    } in {
+        run study(topic: topic)
+    }
+}
+
+// ── Why the handler must be here ──────────────────────────────────────────────
+//
+// Deleting the `handle` above and calling `run study(...)` directly is a
+// COMPILE error (axon-T966), not a runtime surprise: `study`'s effect row
+// still carries `Delivery` at the entry point, and fase_23 D9 forbids a runtime
+// fallback. An effect with no handler has nowhere to yield to, so the program
+// that would discover it in production does not build.
+//
+// The check is interprocedural by necessity — `study` and its handler are
+// in different flows, which is the entire point.
+
+run stream_findings(topic: "the effect system")
+    output_to: "findings.txt"

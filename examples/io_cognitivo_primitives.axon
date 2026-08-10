@@ -59,6 +59,31 @@ fabric ProductionVPC {
   shield: NetworkShield
 }
 
+// ── Holder (the consumer that makes `linear` mean something) ───────
+//
+// §Fase 120 — this file is the showcase for `resource · fabric · manifest ·
+// observe`, and it was missing the half of linearity that costs something.
+// `PrimaryDatabase` is `lifetime: linear`: at most one holder, and AT LEAST
+// one. A manifest PROVISIONS a resource; it does not hold it. So the canonical
+// §λ-L-E example declared a linear database that nothing consumed — the exact
+// shape `axon-T945` exists to refuse, sitting in the file that teaches the law.
+//
+// It went unnoticed because `axon check` never ran the §113 laws: the CLI takes
+// `TypeChecker::check_with_warnings`, which had drifted from `check` and no
+// longer carried them. Every test that proved T945 called `check` — the engine,
+// not the path an adopter takes.
+//
+// Declaring the store is also what makes the resource GOVERNABLE: a store that
+// derives its DSN and pool size from a resource is eligible for `lease` /
+// `observe` / `reconcile`; one with a bare `connection:` is not.
+
+axonstore ClinicalRecords {
+  backend: postgresql
+  resource: PrimaryDatabase
+  isolation: serializable
+  on_breach: rollback
+}
+
 // ── Manifests (declarative belief about desired shape) ─────────────
 
 manifest ProductionCluster {

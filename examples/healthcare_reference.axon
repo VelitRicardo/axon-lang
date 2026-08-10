@@ -112,6 +112,25 @@ fabric ClinicalCloud {
 // to keep it in. The two obligations are not composable on ONE substrate; a
 // GDPR deployment needs its own EU-region fabric and manifest. The example
 // now declares what this substrate can actually honor.
+// §Fase 120 — the CONSUMER. `EHRDatabase` is `lifetime: linear`, and linearity
+// has two halves: at most one holder, and AT LEAST one. This example declared
+// the resource and then never held it, so the clinical database it teaches
+// about was a dangling declaration — provisioned by the manifest below, reached
+// by nothing.
+//
+// It went unnoticed because `axon check` never ran the §113 laws: the CLI takes
+// `TypeChecker::check_with_warnings`, which had drifted from `check` and no
+// longer carried them. Declaring the store is also what makes the resource
+// GOVERNABLE — a store that derives its DSN and pool size from a resource is
+// eligible for `lease` / `observe` / `reconcile`; one with a bare `connection:`
+// is not.
+axonstore PatientRecords {
+  backend:    postgresql
+  resource:   EHRDatabase
+  isolation:  serializable
+  on_breach:  rollback
+}
+
 manifest ProductionHealthcare {
   resources:   [EHRDatabase, TrialArchive, InferenceEngine]
   fabric:      ClinicalCloud

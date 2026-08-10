@@ -91,6 +91,20 @@ fabric GovCloudVPC {
   shield:     FederalGate
 }
 
+// §Fase 120 — the CONSUMER. `CaseVault` is `lifetime: linear`, and linearity
+// has two halves: at most one holder, and AT LEAST one. The manifest below
+// PROVISIONS the vault; it does not hold it. Without a store the example
+// declared a case database that nothing could ever read.
+//
+// It went unnoticed because `axon check` never ran the §113 laws — the CLI
+// takes `TypeChecker::check_with_warnings`, which had drifted from `check`.
+axonstore CaseRecords {
+  backend:    postgresql
+  resource:   CaseVault
+  isolation:  serializable
+  on_breach:  rollback
+}
+
 manifest ProductionGov {
   resources:   [CaseVault, DocumentStore]
   fabric:      GovCloudVPC

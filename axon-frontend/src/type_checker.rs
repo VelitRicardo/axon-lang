@@ -1315,43 +1315,15 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    pub fn check(mut self) -> Vec<TypeError> {
-        self.register_declarations(&self.program.declarations);
-        // §Fase 73.e — index every declared struct `type`'s fields so the
-        // `Json<T>` lens can field-check navigations against them.
-        self.index_type_fields(&self.program.declarations);
-        // §Fase 74.g — collect the program's channel producers so a daemon
-        // `listen`er with no `emit` producer is `axon-W009` (never fires).
-        self.collect_emitted_channels(&self.program.declarations);
-        // §Fase 73.a — validate every `Json<T>` shape lens AFTER
-        // registration (the symbol table must be complete to decide
-        // whether `T` is a declared struct `type`). Open `Json` (no
-        // shape) is never validated here — it is always well-formed.
-        self.check_json_lenses(&self.program.declarations);
-        // §Fase 53.c — validate + collect extensions BEFORE tool/shield
-        // validation so the augmented provenance catalogs are populated.
-        self.collect_and_validate_extensions(&self.program.declarations);
-        self.check_declarations(&self.program.declarations);
-        // §Fase 83.c — cross-declaration pass (needs every axonendpoint's
-        // final `path`/`cors_ref`, so it runs after the per-declaration walk).
-        self.check_cors_cross_method_consistency(&self.program.declarations);
-        // §Fase 85.c — cross-declaration cache laws (single default, effect
-        // widening), needs the full tool + cache set.
-        self.check_cache_module_laws(&self.program.declarations);
-        // §Fase 113 — the Linear-Logic sharing discipline + manifest/fabric
-        // coherence. Both are cross-declaration by nature: they count HOLDERS
-        // of a resource, which no per-declaration visit can see.
-        self.check_resource_module_laws(&self.program.declarations);
-        // §Fase 120 — the algebraic-effect discipline. Cross-declaration by
-        // NATURE, not by convenience: D9 exhaustiveness propagates each flow's
-        // effect row through the call graph, so the answer for `flow A` depends
-        // on `flow B` that A runs. A per-declaration visit cannot decide it, and
-        // an intra-flow approximation would refuse the composition the whole
-        // paradigm exists for (`handle E { … } in { run inner(…) }`).
-        for d in crate::effect_check::EffectChecker::new(self.program).check() {
-            self.emit(d.message, &d.loc);
-        }
-        self.errors
+    /// Errors only — a PROJECTION of [`Self::check_with_warnings`], which owns
+    /// the single pass list.
+    ///
+    /// It used to be a second copy of that list, and the two had drifted (see
+    /// the note on `check_with_warnings`). Delegating is what makes the drift
+    /// impossible rather than merely fixed: there is one list, and adding a
+    /// pass to it reaches both callers by construction.
+    pub fn check(self) -> Vec<TypeError> {
+        self.check_with_warnings().0
     }
 
     /// §Fase 113 — **axon-T945** (sharing discipline) and **axon-T947**
@@ -1398,6 +1370,13 @@ impl<'a> TypeChecker<'a> {
         // `deliver`/`document`/`notify` hold nothing, so they are NOT holders
         // and never appear here.
         let mut holders: BTreeMap<&str, Vec<(String, Loc)>> = BTreeMap::new();
+        // §Fase 120 — resources some declaration USES without POOLING a
+        // connection to. Today that is exactly `lease`. Kept apart from
+        // `holders` because the two halves of `axon-T945` ask different
+        // questions: "is anything using this?" (consumers count) and "how many
+        // things pool a connection?" (they must not).
+        let mut consumers: std::collections::BTreeSet<&str> =
+            std::collections::BTreeSet::new();
         for d in decls {
             match d {
                 Declaration::AxonStore(s) if !s.resource_ref.is_empty() => {
@@ -1429,26 +1408,65 @@ impl<'a> TypeChecker<'a> {
                         .or_default()
                         .push((format!("upstream '{}'", u.name), u.loc.clone()));
                 }
+                // §Fase 120 — a `lease` is a CONSUMER but NOT a pool holder, and
+                // the distinction is the whole of this arm.
+                //
+                // `axon-T945` asks two different questions and they need
+                // different answers here:
+                //
+                //   * "is anything using this?" — a
+                //     `lease W { resource: R  acquire: on_start }` acquires R
+                //     for a bounded window. That is a use. It satisfies the
+                //     at-least-one half of linearity.
+                //   * "how many things POOL a connection to this?" — a lease
+                //     opens nothing. It GOVERNS the holder's use of R in time.
+                //
+                // Counting a lease in `holders` was measured and REFUTED by
+                // §114's own governed shape: `tool Search { resource: Api }` +
+                // `lease Gone { resource: Api }` over one `affine` resource is
+                // the canonical form the SSE lease-charging path is built on,
+                // and it would have become a sharing breach — the law refusing
+                // the pattern the fase beneath it exists to deliver.
+                //
+                // ⚠️ A `manifest` that lists R is NEITHER. It PROVISIONS.
+                // Counting it as a holder would make `manifest` + `axonstore`
+                // over one resource two holders; counting it as a consumer
+                // would mean listing a resource in a deployment satisfies
+                // linearity, which erases the law.
+                //
+                // Found by running the BUILT BINARY: `axon check` had never run
+                // this law at all (it took `check_with_warnings`, a diverged
+                // copy of the pass list), so `banking_reference.axon` shipped a
+                // lease-consumed linear resource the law called unused and
+                // nobody could see.
+                Declaration::Lease(l) if !l.resource_ref.is_empty() => {
+                    consumers.insert(l.resource_ref.as_str());
+                }
                 _ => {}
             }
         }
 
         for (name, res) in &resources {
             let held_by = holders.get(name).map(Vec::as_slice).unwrap_or(&[]);
+            // §Fase 120 — a `lease` SATISFIES "at least one consumer" without
+            // COUNTING toward "at most one holder". See `consumers` above.
+            let consumed = held_by.is_empty() && consumers.contains(&**name);
 
             match res.lifetime.as_str() {
                 // `linear` — exactly one. Zero is a breach: a linear resource
                 // MUST be consumed. That is the whole content of linearity, and
                 // it is the half every "linear types" README quietly drops.
                 "linear" => {
-                    if held_by.is_empty() {
+                    if held_by.is_empty() && !consumed {
                         self.emit(
                             format!(
                                 "axon-T945 Resource '{name}' is `lifetime: linear` but NOTHING \
-                                 names it. A linear resource must be consumed exactly once — \
-                                 zero holders is a breach, not an omission. Either give it a \
-                                 holder (`axonstore X {{ resource: {name} }}`) or declare it \
-                                 `affine` (may go unused).",
+                                 uses it. A linear resource must be consumed exactly once — \
+                                 zero consumers is a breach, not an omission. Give it a holder \
+                                 (`axonstore X {{ resource: {name} }}`), or a `lease` over it, \
+                                 or declare it `affine` (may go unused). Listing it in a \
+                                 `manifest` does NOT count: a manifest PROVISIONS a resource, \
+                                 it does not use one.",
                             ),
                             &res.loc,
                         );
@@ -1536,21 +1554,62 @@ impl<'a> TypeChecker<'a> {
     /// Callers preferring strict mode promote warnings → errors at the
     /// rendering layer (CLI `--strict` flag).  Mirrors the Python
     /// `(TypeChecker.check(), .warnings)` pair.
+    /// **§Fase 120 — THE ONE PASS LIST.** `check` is a projection of this.
+    ///
+    /// # Why this note exists
+    ///
+    /// These two entry points were SEPARATE COPIES of the pass list, and they
+    /// had drifted. `check` ran `check_resource_module_laws` (§113's `axon-T945`
+    /// sharing discipline and `axon-T947` manifest/fabric coherence) and this
+    /// one did not — and **this one is the entry point `axon check` takes**
+    /// (`crate::checker::run_check`). So the §113 laws had never run for an
+    /// adopter at the command line. Every test that proved them called `check`,
+    /// which is the engine, not the path.
+    ///
+    /// That is §119's law 4 in the type-checker itself: *a proof that names a
+    /// FUNCTION proves the engine, not the path.* It was found by running the
+    /// BUILT BINARY against a program §120's own gate refuses — `axon check`
+    /// said `0 errors`, twice.
+    ///
+    /// ⚠️ **Never add a pass to one of these and not the other.** There is now
+    /// only one place to add it, and `two_type_check_entry_points_never_drift`
+    /// in `fase120_a_effect_grammar.rs` fails if the projection is ever
+    /// re-forked.
     pub fn check_with_warnings(mut self) -> (Vec<TypeError>, Vec<TypeError>) {
         self.register_declarations(&self.program.declarations);
-        // §Fase 73.e — see `check`.
+        // §Fase 73.e — index every declared struct `type`'s fields so the
+        // `Json<T>` lens can field-check navigations against them.
         self.index_type_fields(&self.program.declarations);
-        // §Fase 74.g — see `check`.
+        // §Fase 74.g — collect the program's channel producers so a daemon
+        // `listen`er with no `emit` producer is `axon-W009` (never fires).
         self.collect_emitted_channels(&self.program.declarations);
-        // §Fase 73.a — see `check`.
+        // §Fase 73.a — validate every `Json<T>` shape lens AFTER registration.
         self.check_json_lenses(&self.program.declarations);
-        // §Fase 53.c — see `check`.
+        // §Fase 53.c — validate + collect extensions BEFORE tool/shield
+        // validation so the augmented provenance catalogs are populated.
         self.collect_and_validate_extensions(&self.program.declarations);
         self.check_declarations(&self.program.declarations);
-        // §Fase 83.c — see `check`.
+        // §Fase 83.c — cross-declaration CORS pass (needs every axonendpoint's
+        // final `path`/`cors_ref`).
         self.check_cors_cross_method_consistency(&self.program.declarations);
-        // §Fase 85.c — see `check`.
+        // §Fase 85.c — cross-declaration cache laws (single default, effect
+        // widening); needs the full tool + cache set.
         self.check_cache_module_laws(&self.program.declarations);
+        // §Fase 113 — the Linear-Logic sharing discipline + manifest/fabric
+        // coherence. Cross-declaration by nature: it counts HOLDERS of a
+        // resource, which no per-declaration visit can see.
+        //
+        // ⚠️ This line is the fix. It was in `check` only, so `axon check`
+        // never ran it.
+        self.check_resource_module_laws(&self.program.declarations);
+        // §Fase 120 — the algebraic-effect discipline. Cross-declaration by
+        // NATURE: D9 exhaustiveness propagates each flow's effect row through
+        // the call graph, so the answer for `flow A` depends on `flow B` that A
+        // runs. An intra-flow approximation would refuse the composition the
+        // whole paradigm exists for (`handle E { … } in { run inner(…) }`).
+        for d in crate::effect_check::EffectChecker::new(self.program).check() {
+            self.emit(d.message, &d.loc);
+        }
         (self.errors, self.warnings)
     }
 
