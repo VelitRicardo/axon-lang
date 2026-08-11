@@ -2259,6 +2259,42 @@ fn default_execute_backend() -> String {
 // including `axon-enterprise`'s `axon::axon_server::ServerExecutionResult`.
 pub use crate::execution_result::{EnforcementSummaryWire, ServerExecutionResult};
 
+/// §Fase 120.f — a narrow, DEFAULTED seam onto [`server_execute`] so a gate can
+/// drive the real server path from source and observe whether anything ran.
+///
+/// It exists because the property that matters is not "the envelope carries a
+/// message" but **"not one step executed"**, and that is only observable from
+/// outside if the path is reachable from outside. The §120.e audit's whole
+/// lesson is that a law proved against an internal helper says nothing about
+/// the door the binary opens; a seam onto the door itself is the smallest thing
+/// that avoids repeating it.
+///
+/// Every optional dependency is `None` — the shape a bare `/v1/execute` call
+/// with no server state takes.
+#[doc(hidden)]
+pub fn server_execute_for_test(
+    source: &str,
+    source_file: &str,
+    flow_name: &str,
+) -> ServerExecutionResult {
+    let empty = std::collections::HashMap::new();
+    server_execute(
+        source,
+        source_file,
+        flow_name,
+        "stub",
+        None,
+        None,
+        &empty,
+        &empty,
+        None,
+        None,
+        None,
+        None,
+    )
+    .expect("server_execute must return an envelope, not an Err, for these fixtures")
+}
+
 /// Compile and execute a deployed flow server-side.
 ///
 /// Compiles the stored source for the named flow, builds an execution unit,
@@ -2309,8 +2345,71 @@ fn server_execute(
         .parse()
         .map_err(|e| format!("parse error: {e:?}"))?;
 
-    // Type check (non-fatal for execution — collect errors)
+    // §Fase 120.f — **the type check REFUSES here.** It used to be "non-fatal
+    // for execution", and the diagnostics were dropped one line later: the
+    // caller got `success: false` and a COUNT, with no way to learn what was
+    // wrong, while the flow ran to completion.
+    //
+    // Two things were wrong with that and only one of them was the silence.
+    //
+    // **A flow is not inert.** Its `persist` / `emit` / `deliver` / `notify`
+    // steps take real outward action, and a `success: false` returned
+    // afterwards does not unsend an email or un-write a row. Executing a
+    // program the type-checker has already refused means the side effects
+    // happen and the verdict arrives too late to matter.
+    //
+    // **And this was the only site that did it.** `axon check`, `axon compile`,
+    // `axon run`, `axon audit`, `axon pcc` and `POST /deploy` all refuse;
+    // `/execute/dry-run`, `flow_inspect` and the REPL report but do not
+    // execute. `server_execute` alone both proceeded and stayed quiet — and it
+    // is the path taken by `/v1/execute`, the MCP handlers, the warm handler
+    // and SCHEDULED DAEMON EXECUTIONS, where nobody is watching and the tick
+    // repeats.
+    //
+    // Found by the §120.e audit: *which subsystems have two doors, and which
+    // one does the shipped binary open?* The class does not repeat by SHAPE
+    // (`IRGenerator` has one door; all twelve production `TypeChecker` sites
+    // call `check`). It repeated by DISPOSITION, here.
     let type_errors = crate::type_checker::TypeChecker::new(&program).check();
+    if !type_errors.is_empty() {
+        let type_error_msgs: Vec<String> = type_errors
+            .iter()
+            .map(|e| {
+                if e.line > 0 {
+                    format!("line {}: {}", e.line, e.message)
+                } else {
+                    e.message.clone()
+                }
+            })
+            .collect();
+        return Ok(ServerExecutionResult {
+            success: false,
+            flow_name: flow_name.to_string(),
+            source_file: source_file.to_string(),
+            backend: backend.to_string(),
+            steps_executed: 0,
+            latency_ms: start.elapsed().as_millis() as u64,
+            tokens_input: 0,
+            tokens_output: 0,
+            anchor_checks: 0,
+            anchor_breaches: 0,
+            errors: type_errors.len(),
+            type_errors: type_error_msgs,
+            step_names: Vec::new(),
+            step_results: Vec::new(),
+            trace_id: 0,
+            effect_policies: Vec::new(),
+            enforcement_summaries: Vec::new(),
+            runtime_warnings: Vec::new(),
+            provenance_events: Vec::new(),
+            blame_attribution: None,
+            epistemic_envelopes: Vec::new(),
+            error: None,
+            temporal_context: None,
+        });
+    }
+    // Past this point the program type-checks: `type_errors` is empty and stays
+    // empty, which is why the tail below reports only the RUNTIME error slot.
 
     // Generate IR
     let ir = crate::ir_generator::IRGenerator::new().generate(&program);
@@ -2386,7 +2485,10 @@ fn server_execute(
     let latency_ms = start.elapsed().as_millis() as u64;
 
     Ok(ServerExecutionResult {
-        success: type_errors.is_empty() && run_res.success,
+        // §Fase 120.f — no `type_errors.is_empty()` conjunct: a type-invalid
+        // program returned above, before executing. Reaching here means it
+        // type-checked, so success is the RUN's verdict alone.
+        success: run_res.success,
         flow_name: flow_name.to_string(),
         source_file: source_file.to_string(),
         backend: backend.to_string(),
@@ -2401,7 +2503,10 @@ fn server_execute(
         // `FlowEnvelope`'s `derived_status`/certainty bound reflects the abort
         // (Theorem 5.1: `errors > 0 ⇒ certainty ≤ 0.99`) instead of a clean
         // `success:false` that read as a happy-path non-success.
-        errors: type_errors.len() + usize::from(run_res.error.is_some()),
+        errors: usize::from(run_res.error.is_some()),
+        // §Fase 120.f — empty by construction on this path; the type-invalid
+        // case returned above WITH its messages, before any step ran.
+        type_errors: Vec::new(),
         step_names: run_res.step_names,
         step_results: run_res.step_results,
         trace_id: 0, // set after recording

@@ -498,6 +498,19 @@ fn ir_flow_node_catalog_pin_45_variants() {
             // security-analysis block (a flow-body block like `quant`).
             IRFlowNode::Warden(_) => "warden",
             IRFlowNode::Yield(_) => "yield",
+            // §Fase 119.m.3 — `<Agent>(args)`. Missing since that fase landed,
+            // and invisible for the same reason as the §120 arms below: this
+            // file has not compiled in a default `cargo test` since §118.b.2
+            // moved the server behind an off-by-default feature.
+            IRFlowNode::AgentCall(_) => "agent_call",
+            // §Fase 120 — the algebraic-effect constructs. Slugs match
+            // `flow_plan::ir_flow_node_kind` and the wire `step_type`, so one
+            // construct has one name everywhere.
+            IRFlowNode::Handle(_) => "handle",
+            IRFlowNode::Perform(_) => "perform",
+            IRFlowNode::Resume(_) => "resume",
+            IRFlowNode::Abort(_) => "abort",
+            IRFlowNode::Forward(_) => "forward",
             IRFlowNode::Run(_) => "run",
         }
     }

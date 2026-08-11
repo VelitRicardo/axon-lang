@@ -97,6 +97,12 @@ fn crawl_entry(concurrency: i64) -> ToolEntry {
         timeout: "10s".to_string(),
         runtime: String::new(),
         resource_ref: String::new(),
+        // §Fase 119.e added `substrate` to `ToolEntry` and this fixture stopped
+        // compiling THEN — silently, because §118.b.2 had just moved the server
+        // behind an off-by-default feature, so `cargo test` no longer built the
+        // file. Found by the §120.f audit. `None` = the resource declares no
+        // `within:`, which is what this pre-§113 fixture means.
+        substrate: None,
         capacity: None,
         sandbox: None,
         max_results: None,

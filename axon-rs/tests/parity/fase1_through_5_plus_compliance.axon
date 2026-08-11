@@ -45,12 +45,22 @@ axonendpoint PatientAPI {
 resource Ehr { kind: postgres endpoint: ehr.main lifetime: affine }
 resource Cache { kind: redis endpoint: cache.main lifetime: affine }
 
-fabric ClinicalCloud { provider: aws region: "us-east-1" zones: 3 }
+// §Fase 120.f — the substrate moved to the EU. §119.e added `axon-E042`: a
+// manifest tagged GDPR deploying to `aws/us-east-1` would move regulated data
+// out of the jurisdiction the tag promises to keep it in. §119.e fixed the
+// PUBLISHED example (`healthcare_reference.axon`) and never saw this fixture,
+// because §118.b.2 had moved the whole `integration` target behind an
+// off-by-default feature and it had reported `ok. 0 passed` ever since.
+//
+// The substrate moves rather than the tag being dropped: this file is the
+// canonical compliance fixture, and a compliance fixture that quietly stops
+// claiming GDPR tests less than it did.
+fabric ClinicalCloud { provider: aws region: "eu-west-1" zones: 3 }
 
 manifest Prod {
   resources: [Ehr, Cache]
   fabric:    ClinicalCloud
-  region:    "us-east-1"
+  region:    "eu-west-1"
   zones:     3
   compliance: [HIPAA, GDPR, SOC2]
 }

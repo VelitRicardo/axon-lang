@@ -124,13 +124,13 @@
     },
     {
       "node_type": "flow",
-      "source_line": 131,
+      "source_line": 141,
       "source_column": 1,
       "name": "SummarizeRecordUI",
       "parameters": [
         {
           "node_type": "parameter",
-          "source_line": 131,
+          "source_line": 141,
           "source_column": 24,
           "name": "rec",
           "type_name": "PatientRecord",
@@ -144,7 +144,7 @@
       "steps": [
         {
           "node_type": "step",
-          "source_line": 132,
+          "source_line": 142,
           "source_column": 3,
           "name": "Review",
           "persona_ref": "",
@@ -264,11 +264,11 @@
   "fabrics": [
     {
       "node_type": "fabric",
-      "source_line": 48,
+      "source_line": 58,
       "source_column": 1,
       "name": "ClinicalCloud",
       "provider": "aws",
-      "region": "us-east-1",
+      "region": "eu-west-1",
       "zones": 3,
       "ephemeral": null,
       "shield_ref": ""
@@ -277,7 +277,7 @@
   "manifests": [
     {
       "node_type": "manifest",
-      "source_line": 50,
+      "source_line": 60,
       "source_column": 1,
       "name": "Prod",
       "resources": [
@@ -285,7 +285,7 @@
         "Cache"
       ],
       "fabric_ref": "ClinicalCloud",
-      "region": "us-east-1",
+      "region": "eu-west-1",
       "zones": 3,
       "compliance": [
         "HIPAA",
@@ -297,7 +297,7 @@
   "observations": [
     {
       "node_type": "observe",
-      "source_line": 58,
+      "source_line": 68,
       "source_column": 1,
       "name": "Health",
       "target": "Prod",
@@ -313,7 +313,7 @@
     },
     {
       "node_type": "observe",
-      "source_line": 81,
+      "source_line": 91,
       "source_column": 1,
       "name": "CacheHealth",
       "target": "Prod",
@@ -333,7 +333,7 @@
     "operations": [
       {
         "node_type": "manifest",
-        "source_line": 50,
+        "source_line": 60,
         "source_column": 1,
         "name": "Prod",
         "resources": [
@@ -341,7 +341,7 @@
           "Cache"
         ],
         "fabric_ref": "ClinicalCloud",
-        "region": "us-east-1",
+        "region": "eu-west-1",
         "zones": 3,
         "compliance": [
           "HIPAA",
@@ -351,7 +351,7 @@
       },
       {
         "node_type": "observe",
-        "source_line": 58,
+        "source_line": 68,
         "source_column": 1,
         "name": "Health",
         "target": "Prod",
@@ -367,7 +367,7 @@
       },
       {
         "node_type": "observe",
-        "source_line": 81,
+        "source_line": 91,
         "source_column": 1,
         "name": "CacheHealth",
         "target": "Prod",
@@ -384,7 +384,7 @@
   "reconciles": [
     {
       "node_type": "reconcile",
-      "source_line": 66,
+      "source_line": 76,
       "source_column": 1,
       "name": "Reconciler",
       "observe_ref": "Health",
@@ -399,7 +399,7 @@
   "leases": [
     {
       "node_type": "lease",
-      "source_line": 74,
+      "source_line": 84,
       "source_column": 1,
       "name": "EhrWrite",
       "resource_ref": "Ehr",
@@ -411,7 +411,7 @@
   "ensembles": [
     {
       "node_type": "ensemble",
-      "source_line": 86,
+      "source_line": 96,
       "source_column": 1,
       "name": "ClusterTruth",
       "observations": [
@@ -426,33 +426,33 @@
   "sessions": [
     {
       "node_type": "session",
-      "source_line": 93,
+      "source_line": 103,
       "source_column": 1,
       "name": "DbSession",
       "roles": [
         {
           "node_type": "session_role",
-          "source_line": 94,
+          "source_line": 104,
           "source_column": 3,
           "name": "client",
           "steps": [
             {
               "node_type": "session_step",
-              "source_line": 94,
+              "source_line": 104,
               "source_column": 12,
               "op": "send",
               "message_type": "Query"
             },
             {
               "node_type": "session_step",
-              "source_line": 94,
+              "source_line": 104,
               "source_column": 24,
               "op": "receive",
               "message_type": "Result"
             },
             {
               "node_type": "session_step",
-              "source_line": 94,
+              "source_line": 104,
               "source_column": 40,
               "op": "end",
               "message_type": ""
@@ -461,27 +461,27 @@
         },
         {
           "node_type": "session_role",
-          "source_line": 95,
+          "source_line": 105,
           "source_column": 3,
           "name": "server",
           "steps": [
             {
               "node_type": "session_step",
-              "source_line": 95,
+              "source_line": 105,
               "source_column": 12,
               "op": "receive",
               "message_type": "Query"
             },
             {
               "node_type": "session_step",
-              "source_line": 95,
+              "source_line": 105,
               "source_column": 27,
               "op": "send",
               "message_type": "Result"
             },
             {
               "node_type": "session_step",
-              "source_line": 95,
+              "source_line": 105,
               "source_column": 40,
               "op": "end",
               "message_type": ""
@@ -494,7 +494,7 @@
   "topologies": [
     {
       "node_type": "topology",
-      "source_line": 98,
+      "source_line": 108,
       "source_column": 1,
       "name": "ProdTopology",
       "nodes": [
@@ -507,7 +507,7 @@
       "edges": [
         {
           "node_type": "topology_edge",
-          "source_line": 100,
+          "source_line": 110,
           "source_column": 11,
           "source": "Health",
           "target": "Ehr",
@@ -519,7 +519,7 @@
   "immunes": [
     {
       "node_type": "immune",
-      "source_line": 103,
+      "source_line": 113,
       "source_column": 1,
       "name": "Vigil",
       "watch": [
@@ -536,7 +536,7 @@
   "reflexes": [
     {
       "node_type": "reflex",
-      "source_line": 110,
+      "source_line": 120,
       "source_column": 1,
       "name": "QuarantineBurst",
       "trigger": "Vigil",
@@ -549,7 +549,7 @@
   "heals": [
     {
       "node_type": "heal",
-      "source_line": 118,
+      "source_line": 128,
       "source_column": 1,
       "name": "AutoPatch",
       "source": "Vigil",
@@ -564,7 +564,7 @@
   "components": [
     {
       "node_type": "component",
-      "source_line": 138,
+      "source_line": 148,
       "source_column": 1,
       "name": "PatientCard",
       "renders": "PatientRecord",
@@ -576,7 +576,7 @@
   "views": [
     {
       "node_type": "view",
-      "source_line": 145,
+      "source_line": 155,
       "source_column": 1,
       "name": "ClinicianDashboard",
       "title": "Clinician Dashboard",

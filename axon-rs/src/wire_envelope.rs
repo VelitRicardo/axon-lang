@@ -587,6 +587,7 @@ mod tests {
             flow_name: "FetchTenants".to_string(),
             source_file: "tenants.axon".to_string(),
             backend: "stub".to_string(),
+            type_errors: Vec::new(),
             steps_executed: 1,
             latency_ms: 142,
             tokens_input: 0,

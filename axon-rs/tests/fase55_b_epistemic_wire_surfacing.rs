@@ -88,6 +88,7 @@ fn exec_result(epistemic: Vec<EpistemicEnvelope>) -> ServerExecutionResult {
         anchor_checks: 0,
         anchor_breaches: 0,
         errors: 0,
+        type_errors: Vec::new(),
         step_names: vec!["Summarize".into()],
         step_results: vec![r#"{"summary":"x"}"#.into()],
         trace_id: 0,

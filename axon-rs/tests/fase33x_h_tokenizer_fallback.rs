@@ -189,6 +189,24 @@ async fn flag_default_is_off() {
 
 // ─── §3 — Chunker correctness over canonical inputs ───────────────
 
+// §Fase 120.f — the two assertions below need the C TOKENISER KERNEL, and say
+// so instead of failing as if the chunker were broken.
+//
+// `bpe_chunk_text` returns `Vec::new()` when `axon_csys::tokens::cl100k_base()`
+// is unavailable, and §118.c made `axon-csys`'s native kernels opt-in
+// (`--features csys-native`) because `cc` panicked without a C compiler. From
+// that moment these two failed with *"BPE chunks (0) MUST be strictly finer
+// than 3-word groups"* — a message that reads like a broken chunker and is
+// actually a missing dependency. Measured: with `--features csys-native` this
+// file is **10/10**; the engine is fine.
+//
+// ⚠️ The silent empty is the part worth naming. A caller cannot tell "no text"
+// from "no kernel" — the §112 kernel defect shape (*if the evidence is missing,
+// substitute the belief*). It is left alone deliberately: §119 recorded
+// `runtime_flags` as NOT WIRED (nothing in the runtime calls `bpe_chunk_text`),
+// and changing the signature of a function with no reader is motion. When it
+// gains one, that return type is the first thing to fix.
+#[cfg(feature = "csys-native")]
 #[tokio::test]
 async fn bpe_chunker_round_trips_english_prose() {
     // Multi-paragraph English: round-trip must reconstruct.
@@ -199,6 +217,7 @@ async fn bpe_chunker_round_trips_english_prose() {
     assert_eq!(joined, text);
 }
 
+#[cfg(feature = "csys-native")]
 #[tokio::test]
 async fn bpe_chunker_finer_than_3_word_groups() {
     let text = "The quick brown fox jumps over the lazy dog repeatedly.";

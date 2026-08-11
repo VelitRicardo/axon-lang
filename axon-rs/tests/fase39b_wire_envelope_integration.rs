@@ -435,6 +435,7 @@ fn fase39b_s8_from_execution_result_e2e() {
         anchor_checks: 0,
         anchor_breaches: 0,
         errors: 0,
+        type_errors: Vec::new(),
         step_names: vec!["RetrieveAll".to_string()],
         step_results: vec![r#"[{"id":1}]"#.to_string()],
         trace_id: 0,

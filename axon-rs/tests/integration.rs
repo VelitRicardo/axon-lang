@@ -29661,7 +29661,19 @@ fn fase6_1_full_regulated_program_compiles_clean() {
             compliance: [HIPAA, GDPR, SOC2]
         }
         resource Ehr { kind: postgres  endpoint: ehr.main lifetime: affine }
-        fabric Vpc { provider: aws region: "us-east-1" zones: 2 }
+        // §Fase 120.f — the region moved to the EU. §119.e added `axon-E042`:
+        // a manifest tagged GDPR while its fabric deploys to `aws/us-east-1`
+        // would move regulated data out of the jurisdiction the tag promises to
+        // keep it in. §119.e fixed the PUBLISHED example and never saw this
+        // fixture, because §118.b.2 had put the whole `integration` target
+        // behind an off-by-default feature — it has reported `ok. 0 passed`
+        // ever since.
+        //
+        // Moving the substrate (rather than dropping the tag) is what keeps
+        // this test testing what it says it tests: overlapping κ propagating
+        // from FOUR declaration kinds into the IR. Every assertion below is
+        // unchanged.
+        fabric Vpc { provider: aws region: "eu-west-1" zones: 2 }
         manifest Prod {
             resources: [Ehr]
             fabric: Vpc

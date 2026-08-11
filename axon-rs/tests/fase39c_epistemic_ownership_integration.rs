@@ -175,6 +175,7 @@ fn fase39c_s4_provenance_chain_canonical_ordering() {
         anchor_checks: 0,
         anchor_breaches: 0,
         errors: 0,
+        type_errors: Vec::new(),
         step_names: vec!["Plan".to_string(), "Decide".to_string()],
         step_results: vec!["[]".to_string(), "[]".to_string()],
         trace_id: 0,
@@ -319,6 +320,7 @@ fn fase39c_s7_e2e_converter_with_anchor_breach() {
         anchor_checks: 2,
         anchor_breaches: 1,
         errors: 0,
+        type_errors: Vec::new(),
         step_names: vec![
             "Triage".to_string(),
             "Decide".to_string(),
@@ -401,6 +403,7 @@ fn fase39c_s7_e2e_clean_path_no_blame() {
         anchor_checks: 0,
         anchor_breaches: 0,
         errors: 0,
+        type_errors: Vec::new(),
         step_names: vec!["Ping".to_string()],
         step_results: vec![r#""ok""#.to_string()],
         trace_id: 0,

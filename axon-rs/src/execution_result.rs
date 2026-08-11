@@ -50,6 +50,25 @@ pub struct ServerExecutionResult {
     pub anchor_checks: usize,
     pub anchor_breaches: usize,
     pub errors: usize,
+    /// §Fase 120.f — **the type errors, in words.**
+    ///
+    /// `server_execute` type-checks and then executes anyway ("non-fatal for
+    /// execution"), and until this field existed it **collected the diagnostics
+    /// and threw them away**: the caller received `success: false` and
+    /// `errors: 1`, with no way to learn what the 1 was. Every other consumer of
+    /// the type-checker surfaces its messages — `axon check`, `axon compile`,
+    /// `axon run`, `/deploy`, `/execute/dry-run` and `flow_inspect` all do.
+    /// This one path was the exception, and it is the path an `/v1/execute`
+    /// caller, an MCP client and a SCHEDULED DAEMON take.
+    ///
+    /// A count is not a diagnostic. It tells an adopter that their program is
+    /// wrong and refuses to say how — while the flow runs to completion and its
+    /// `persist` / `emit` / `deliver` / `notify` steps take real outward action.
+    ///
+    /// Empty on the clean path, so the wire shape is unchanged for every
+    /// program that type-checks.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub type_errors: Vec<String>,
     pub step_names: Vec<String>,
     pub step_results: Vec<String>,
     pub trace_id: u64,
