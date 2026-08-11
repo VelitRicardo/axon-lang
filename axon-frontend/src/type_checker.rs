@@ -10376,6 +10376,30 @@ impl<'a> TypeChecker<'a> {
 
     // ── Flow-level reference checks ─────────────────────────────────
 
+    /// §Fase 121 — every statement position a STEP BODY can carry, walked
+    /// through the ONE law walk (`check_flow_steps`).
+    ///
+    /// The `stream` recursion is here because of a measured miss: README block
+    /// 14 writes `validate QuoteSnapshot against: MarketSchema` inside an
+    /// `on_complete:` arm, and the first draft of the §121 descent — which
+    /// walked only `pix_ops` — reported the block CLEAN while its schema was
+    /// undeclared. A stream arm is a full step body (§119.n made it a
+    /// `StepNode` for exactly that reason), so it recurses HERE, arms within
+    /// arms included. `axon_frontend::effect_check` walks the same shape for
+    /// D9; the two walks must keep agreeing about what "a step body" contains.
+    fn check_step_body_statements(&mut self, s: &crate::ast::StepNode, flow_name: &str) {
+        self.check_flow_steps(&s.pix_ops, flow_name);
+        if let Some(sb) = &s.stream {
+            for arm in [&sb.on_chunk, &sb.on_complete, &sb.on_error]
+                .into_iter()
+                .flatten()
+            {
+                self.check_step_body_statements(arm, flow_name);
+            }
+            self.check_flow_steps(&sb.body, flow_name);
+        }
+    }
+
     fn check_flow_steps(&mut self, steps: &[FlowStep], flow_name: &str) {
         // §Fase 109.a — rich `let` expressions seen SO FAR (the T932
         // "prior" discipline: grad differentiates what is already bound).
@@ -10398,6 +10422,87 @@ impl<'a> TypeChecker<'a> {
                                 &n.loc,
                             ),
                             _ => {}
+                        }
+                    }
+                }
+                // §Fase 121 — `validate <target> against: <Schema>` must RESOLVE.
+                //
+                // `IRValidateStep.rule` was a free string nobody looked at: it
+                // parsed, lowered into the IR, and no code in either repo read
+                // it. That is the `pix_ops` shape (§119.f.7) — a field written
+                // by the parser with no reader — and it stayed invisible
+                // because `validate` returned prose either way.
+                //
+                // It matters NOW because §121 makes the schema the source of the
+                // validation's CSR: the constraints a response is scored against
+                // ARE the schema's fields. A name that resolves to nothing has
+                // no constraints, and scoring against an empty set would either
+                // divide by zero or — worse — report a clean 1.0 for a
+                // validation that checked nothing. Refuse instead: an absent
+                // schema is missing EVIDENCE, and substituting a verdict for it
+                // is the §112 kernel defect.
+                FlowStep::Validate(n) => {
+                    if !n.rule.is_empty() {
+                        match self.symbols.lookup(&n.rule) {
+                            None => self.emit(
+                                format!(
+                                    "axon-T1210 `validate … against: {}` in flow '{}' names a \
+                                     schema that is not declared. The schema's fields ARE the \
+                                     constraints the response is scored against, so an \
+                                     unresolved name would score it against nothing and report \
+                                     a clean verdict for a check that never happened. Declare \
+                                     `type {} {{ … }}`.",
+                                    n.rule, flow_name, n.rule
+                                ),
+                                &n.loc,
+                            ),
+                            Some(sym) if sym.kind != "type" => self.emit(
+                                format!(
+                                    "axon-T1210 `validate … against: {}` names a {}, not a \
+                                     `type`. A validation is scored against a STRUCTURE — the \
+                                     declared fields of a type — and a {} declares none.",
+                                    n.rule, sym.kind, sym.kind
+                                ),
+                                &n.loc,
+                            ),
+                            _ => {}
+                        }
+                    }
+                    // §Fase 121 — the guard's VALUE laws. (Its structural laws
+                    // — a guard needs a schema-bearing validation, one guard
+                    // per validation — are unrepresentable or parse errors; see
+                    // `ast::ValidateStep::guard`.)
+                    if let Some(g) = &n.guard {
+                        // CSR ∈ [0,1] by construction (a ratio of satisfied
+                        // constraints), so a floor at 0 can never fire — dead
+                        // governance that READS as live, the §111 shape in one
+                        // number — and a floor above 1 always fires, a retry
+                        // loop wearing a conditional's clothes. Both lie about
+                        // what the program does; both are refused.
+                        if !(g.threshold > 0.0 && g.threshold <= 1.0) {
+                            self.emit(
+                                format!(
+                                    "axon-T1211 `if confidence < {}` can{} fire: the \
+                                     confidence is a constraint-satisfaction ratio in [0, 1], \
+                                     so the floor must satisfy 0 < θ ≤ 1. A guard that cannot \
+                                     fire is dead governance that reads as live; one that \
+                                     always fires is an unconditional retry loop disguised as \
+                                     a conditional.",
+                                    g.threshold,
+                                    if g.threshold <= 0.0 { " NEVER" } else { " ALWAYS" },
+                                ),
+                                &g.loc,
+                            );
+                        }
+                        if g.max_attempts == 0 {
+                            self.emit(
+                                "axon-T1212 `refine(max_attempts: 0)` promises a recovery and \
+                                 performs none — the guard would fire, refine nothing, and \
+                                 proceed below the floor it declared. Declare at least 1, or \
+                                 remove the guard."
+                                    .to_string(),
+                                &g.loc,
+                            );
                         }
                     }
                 }
@@ -11228,6 +11333,30 @@ impl<'a> TypeChecker<'a> {
                     // above this one, and the unreachable-pattern warning
                     // caught it silently disabling every §59/§68/§91 step
                     // check below.)
+                    //
+                    // ⚠️ §Fase 121 MADE THE SAME MISTAKE AGAIN — a second
+                    // `FlowStep::Step` arm above this one, in this same file,
+                    // with this warning already written here. `cargo build`
+                    // said `unreachable_patterns`; the frontend suite went from
+                    // 1678/0 to 1667/11, and the failures were tests expecting
+                    // errors that had SILENTLY STOPPED FIRING. A warning nobody
+                    // reads is indistinguishable from a disabled lint (§119's
+                    // own words about `cargo doc`). Add step-body work HERE.
+                    //
+                    // §Fase 121 — descend into the step's BODY STATEMENTS.
+                    // Measured: nothing did. The ten productions §119.f–§119.n
+                    // gave a step-body position (`probe`, `reason`, `weave`,
+                    // `navigate`, `drill`, `trail`, `validate`, `use_tool`,
+                    // `par`, `retrieve`, `<Agent>(args)`) all reach the
+                    // dispatcher, and NO law could see them. It surfaced
+                    // because §121's `against:` resolution fired at flow level
+                    // and stayed silent for the step-body form — the one every
+                    // README block publishes. Law 4, inside the type-checker.
+                    //
+                    // Recursing through the SAME walk is the D119.4 doctrine:
+                    // one concept, two positions, one implementation, so a
+                    // future law reaches both by construction.
+                    self.check_step_body_statements(s, flow_name);
                     for g in &s.guards {
                         if g.name.is_empty() {
                             continue;

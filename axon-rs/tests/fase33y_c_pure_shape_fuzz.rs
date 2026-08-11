@@ -283,6 +283,8 @@ async fn fuzz_run_validate_never_panics_random_input() {
         let rule = lcg.ascii_with_random_len_or_empty(25);
         let v = IRValidateStep {
             node_type: "validate",
+            resolved_schema: None,
+            guard: None,
             source_line: 0,
             source_column: 0,
             target,
@@ -414,6 +416,8 @@ async fn fuzz_random_cancel_timing_across_all_handlers() {
             3 => {
                 let v = IRValidateStep {
                     node_type: "validate",
+                    resolved_schema: None,
+                    guard: None,
                     source_line: 0,
                     source_column: 0,
                     target: "t".into(),
@@ -540,6 +544,8 @@ async fn fuzz_random_policy_pairings_across_handlers() {
             3 => run_validate(
                 &IRValidateStep {
                     node_type: "validate",
+                    resolved_schema: None,
+                    guard: None,
                     source_line: 0,
                     source_column: 0,
                     target: "t".into(),

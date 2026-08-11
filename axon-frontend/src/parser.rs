@@ -3505,7 +3505,7 @@ impl Parser {
             // doctrine). `reason <target>` and `reason { given ask depth }` are
             // the same node; the second is what the README publishes.
             TokenType::Reason => self.parse_reason_step().map(FlowStep::Reason),
-            TokenType::Validate => self.parse_flow_step_simple("validate").map(|l| FlowStep::Validate(ValidateStep { target: l.1, rule: String::new(), loc: l.0 })),
+            TokenType::Validate => self.parse_flow_step_simple("validate").map(|l| FlowStep::Validate(ValidateStep { target: l.1, rule: String::new(), guard: None, loc: l.0 })),
             TokenType::Refine => self.parse_flow_step_simple("refine").map(|l| FlowStep::Refine(RefineStep { target: l.1, strategy: String::new(), loc: l.0 })),
             TokenType::Weave => self.parse_weave_step(),
             TokenType::Use => self.parse_use_step(),
@@ -3742,8 +3742,159 @@ impl Parser {
                     node.pix_ops.push(FlowStep::Validate(ValidateStep {
                         target,
                         rule,
+                        guard: None,
                         loc: Loc { line: tok.line, column: tok.column },
                     }));
+                }
+                // §Fase 121 — `if confidence < 0.8 -> refine(max_attempts: 2)`,
+                // the self-correction guard blocks 1/16/18 publish immediately
+                // after a `validate … against:`.
+                //
+                // Every position in the form is a CLOSED catalog of one — the
+                // metric (`confidence`), the comparison (`<`), the action
+                // (`refine`), the argument (`max_attempts`) — and each refusal
+                // below names its catalog, because a free position here would
+                // breed the imaginary catalog three fases have now paid for.
+                // General branching (`if <cond> { … } else { … }`) stays a
+                // FLOW-level construct; a step body gets a guard or nothing.
+                TokenType::If => {
+                    let tok = self.current().clone();
+                    self.advance();
+
+                    let metric = self.consume_any_ident_or_kw()?;
+                    if metric.value != "confidence" {
+                        return Err(ParseError {
+                            message: format!(
+                                "step-body `if` is the confidence guard — `if confidence < \
+                                 <threshold> -> refine(max_attempts: <n>)` — and `confidence` \
+                                 is its only metric (the CSR the preceding `validate … \
+                                 against:` computes). Got '{}'. General branching belongs at \
+                                 flow level: `if <cond> {{ … }}`.",
+                                metric.value
+                            ),
+                            line: metric.line,
+                            column: metric.column,
+                            ..Default::default()
+                        });
+                    }
+
+                    let op = self.current().clone();
+                    if op.ttype != TokenType::Lt {
+                        return Err(ParseError {
+                            message: format!(
+                                "a confidence guard declares a FLOOR: `if confidence < \
+                                 <threshold>`. `<` is the only comparison — the guard fires on \
+                                 DEFICIENCY, and an inverted form would refine the outputs \
+                                 that already conform. Got '{}'.",
+                                op.value
+                            ),
+                            line: op.line,
+                            column: op.column,
+                            ..Default::default()
+                        });
+                    }
+                    self.advance();
+                    let threshold = self.consume_number()?;
+
+                    self.consume(TokenType::Arrow)?;
+
+                    if !self.check(TokenType::Refine) {
+                        let bad = self.current().clone();
+                        return Err(ParseError {
+                            message: format!(
+                                "the guard's action catalog is CLOSED and `refine` is its only \
+                                 member — the recovery the runtime actually performs (re-derive \
+                                 the validated value with the violations as feedback, then \
+                                 re-score). Got '{}'. An action name outside the catalog would \
+                                 advertise a recovery nothing dispatches.",
+                                bad.value
+                            ),
+                            line: bad.line,
+                            column: bad.column,
+                            ..Default::default()
+                        });
+                    }
+                    self.advance();
+                    self.consume(TokenType::LParen)?;
+                    let key = self.consume_any_ident_or_kw()?;
+                    if key.value != "max_attempts" {
+                        return Err(ParseError {
+                            message: format!(
+                                "`refine` takes exactly `max_attempts: <n>` — the bound that \
+                                 makes the recovery loop TERMINATE by construction. Got '{}'.",
+                                key.value
+                            ),
+                            line: key.line,
+                            column: key.column,
+                            ..Default::default()
+                        });
+                    }
+                    self.consume(TokenType::Colon)?;
+                    let attempts_tok = self.current().clone();
+                    if attempts_tok.ttype != TokenType::Integer {
+                        return Err(ParseError {
+                            message: format!(
+                                "`max_attempts:` must be a positive integer literal (got '{}')",
+                                attempts_tok.value
+                            ),
+                            line: attempts_tok.line,
+                            column: attempts_tok.column,
+                            ..Default::default()
+                        });
+                    }
+                    let max_attempts = attempts_tok.value.parse::<u32>().map_err(|_| ParseError {
+                        message: format!("Invalid attempt count '{}'", attempts_tok.value),
+                        line: attempts_tok.line,
+                        column: attempts_tok.column,
+                        ..Default::default()
+                    })?;
+                    self.advance();
+                    self.consume(TokenType::RParen)?;
+
+                    // ATTACH to the validation this guard governs: the nearest
+                    // preceding `validate … against:` in THIS step body. The
+                    // attachment is what makes `confidence` unambiguous by
+                    // construction — see `ast::ValidateStep::guard`. No such
+                    // validation ⇒ the guard has nothing to read, and a guard
+                    // over a score nobody computed is governance theatre.
+                    let attached = node.pix_ops.iter_mut().rev().find_map(|op| match op {
+                        FlowStep::Validate(v) if !v.rule.is_empty() => Some(v),
+                        _ => None,
+                    });
+                    match attached {
+                        Some(v) => {
+                            if v.guard.is_some() {
+                                return Err(ParseError {
+                                    message: "this validation already carries a confidence \
+                                              guard; a second one would race the first over \
+                                              the same score. One validation, one floor, one \
+                                              recovery."
+                                        .to_string(),
+                                    line: tok.line,
+                                    column: tok.column,
+                                    ..Default::default()
+                                });
+                            }
+                            v.guard = Some(ConfidenceGuard {
+                                threshold,
+                                max_attempts,
+                                loc: Loc { line: tok.line, column: tok.column },
+                            });
+                        }
+                        None => {
+                            return Err(ParseError {
+                                message: "`if confidence` reads the CSR of a preceding \
+                                          `validate … against: <Schema>` in this step body, \
+                                          and none exists. A `validate` without `against:` \
+                                          computes no score (there is no schema to score \
+                                          with), so it cannot carry a guard either."
+                                    .to_string(),
+                                line: tok.line,
+                                column: tok.column,
+                                ..Default::default()
+                            });
+                        }
+                    }
                 }
                 TokenType::Navigate => {
                     self.advance();

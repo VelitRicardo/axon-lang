@@ -46,7 +46,6 @@ const KNOWN_UNCOMPILABLE: &[(u64, &str)] = &[
     // probe, reason, weave, stream, output, confidence". Either the grammar
     // regressed or the docs were written against a design that never landed;
     // deciding which is language work, not packaging work. Owner: §118.
-    (0xe5a730f995babb86, "block 1: flow AnalyzeContract — `for` in step body"),
     // §Fase 119.f.9 — blocks 3 and 4 LEFT this ledger on 2026-08-08, and their
     // recorded reasons were BOTH WRONG. They were filed as "`know` block form"
     // and "`for` in step body"; the actual first error in each was
@@ -54,7 +53,6 @@ const KNOWN_UNCOMPILABLE: &[(u64, &str)] = &[
     // never took (it accepted only the braced `weave { sources: … }`, which no
     // published block writes). The reasons in this table are §117's, and the
     // compiler has moved six times since — re-diagnose before trusting a row.
-    (0xb8d965c219532f56, "block 16: flow ProcessOrder — `use_tool` in step body"),
     // §Fase 119.o — block 50 (`daemon PriceMonitor`) LEFT this ledger on
     // 2026-08-10, and its recorded reason — "leading `.` in flow body" — named
     // nothing that was ever wrong with it. The actual blocker was
@@ -193,7 +191,6 @@ const KNOWN_UNCOMPILABLE: &[(u64, &str)] = &[
     // Seven blocks, all "Expected Colon, found Identifier(<name>)": the
     // documented `pix <Name> { … }` header does not match the parser. Owner:
     // the fase that owns `pix` (§62 lineage).
-    (0xb24b02521e08ce86, "block 18: pix ClinicalProtocol — header grammar drift"),
 
     // ── Family D — `corpus` ────────────────────────────────────────────────
     // Same shape as `pix`: "Expected Colon, found Identifier(<name>)".

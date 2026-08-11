@@ -105,6 +105,29 @@ pub enum Predicate {
     /// statement outright; `Contains{Y}` demands the disclaimer even when
     /// nothing triggered it. Only the implication says what was meant.
     RequiredWith { trigger: String, required: String },
+    /// §Fase 121 — the response must parse as a JSON **object** carrying a
+    /// non-null member named `field`.
+    ///
+    /// # Why this is a seventh predicate and not `Contains`
+    ///
+    /// This variant exists to lower a declared `type` into constraints, and the
+    /// tempting shortcut — `Contains { needle: "\"amount\"" }` — is exactly the
+    /// error this arm avoids: it is a SUBSTRING TEST OVER PROSE. It passes on
+    /// the sentence *"I could not determine the amount"*, and it passes on a
+    /// response that merely mentions the word. A schema is a claim about
+    /// STRUCTURE, and structure is not evidenced by the presence of text.
+    ///
+    /// So the check parses, requires an object at the root, and looks up the
+    /// key. A missing key, a null value, a JSON array, a JSON scalar and
+    /// unparseable prose are all failures — each with its own reason, because
+    /// "the response is not an object" and "the object lacks `amount`" send an
+    /// author to different places.
+    ///
+    /// Adding a member to a CLOSED catalog is a deliberate act
+    /// (`feedback_free_string_field_breeds_fake_catalog`): the six variants
+    /// above are all predicates over TEXT, and none of them can express a
+    /// structural obligation without lying about what it measured.
+    JsonField { field: String },
 }
 
 impl Predicate {
@@ -167,6 +190,39 @@ impl Predicate {
                     Err(e) => Err(format!("the response is not valid JSON: {e}")),
                 }
             }
+            // §Fase 121 — structural, never substring. Each failure names its
+            // OWN cause: "not JSON", "not an object" and "no such member" send
+            // an author to three different places, and collapsing them into one
+            // message would make the CSR uninterpretable.
+            Predicate::JsonField { field } => {
+                let value: serde_json::Value = match serde_json::from_str(response.trim()) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        return Err(format!(
+                            "the response is not valid JSON, so field {field:?} cannot be \
+                             present: {e}"
+                        ))
+                    }
+                };
+                let Some(obj) = value.as_object() else {
+                    return Err(format!(
+                        "the response is valid JSON but not an OBJECT, so it cannot carry \
+                         field {field:?}"
+                    ));
+                };
+                match obj.get(field) {
+                    None => Err(format!("the response object has no member {field:?}")),
+                    // A declared field present as `null` is ABSENT for this
+                    // purpose. Counting it as satisfied would let a response
+                    // claim every field of a schema while carrying none of the
+                    // values — the §112 shape (substituting the belief for the
+                    // evidence) inside the very check that exists to measure it.
+                    Some(serde_json::Value::Null) => Err(format!(
+                        "the response object carries {field:?} but its value is null"
+                    )),
+                    Some(_) => Ok(()),
+                }
+            }
             Predicate::RequiredWith { trigger, required } => {
                 if lower.contains(&trigger.to_lowercase())
                     && !lower.contains(&required.to_lowercase())
@@ -196,6 +252,9 @@ impl Predicate {
                 (None, None) => "has no word-count bound".to_string(),
             },
             Predicate::ParsesAsJson => "must be valid JSON".to_string(),
+            Predicate::JsonField { field } => {
+                format!("must be a JSON object carrying a non-null {field:?}")
+            }
             Predicate::RequiredWith { trigger, required } => {
                 format!("must not contain {trigger:?} without also containing {required:?}")
             }

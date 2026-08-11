@@ -1345,10 +1345,22 @@ pub async fn run_validate(
         format!(" against rule `{}`", validate.rule)
     };
     let shape = PureShapeStep {
+        // §Fase 121 — the narration binds under ITS OWN identity, never the
+        // target's. It used to be named `validate.target` verbatim, and
+        // `run_pure_shape` binds its output under the step name — so
+        // `validate Assess.output` OVERWROTE `Assess.output` with the model's
+        // prose narration. The validation destroyed the value it validated:
+        // every downstream reader of the target (a `weave`, an `ask`
+        // interpolation, §121's own scorer) received an essay about the value
+        // instead of the value. Shipped since §33.y.c; invisible because
+        // nothing read the binding after a validate until §121's scorer did —
+        // found by this fase's own gate seeding a value and watching it
+        // vanish. The wire `step_type` stays `"validate"` (pinned by §33.y.c's
+        // gate); only the step NAME gains the suffix.
         name: if validate.target.is_empty() {
             "Validate".to_string()
         } else {
-            validate.target.clone()
+            format!("{}.validate", validate.target)
         },
         user_prompt: format!("Validate: {}{}", validate.target, rule_clause),
         framing_addendum: Some(
@@ -1361,7 +1373,159 @@ pub async fn run_validate(
         now_tz: None,
         stream_on_chunk: None,
     };
-    run_pure_shape(shape, ctx).await
+    let outcome = run_pure_shape(shape, ctx).await?;
+
+    // §Fase 121 — SCORE THE EVIDENCE, not the narration about it.
+    //
+    // Two distinct things happen in this function and conflating them was this
+    // fase's own first defect, caught in review before it shipped:
+    //
+    //   * the LLM call above is the COGNITIVE act — the reasoning the author
+    //     asked for. It is kept, and it is *narration*.
+    //   * the score below is the VERDICT, and it is computed over the
+    //     **validated value itself** — `resolve(target)` — never over the
+    //     model's prose about it. `validate Assess.output against: Schema`
+    //     asks whether *Assess.output* conforms; scoring the narration would
+    //     measure whether the model's ESSAY happens to be shaped like the
+    //     schema, which certifies the wrong artifact entirely.
+    //
+    // Scoring the value makes the verdict a PURE FUNCTION of the bindings:
+    // `CSR = |{c ∈ C_T : value ⊨ c}| / |C_T|` from `pem::semantic_validator`
+    // (§119.b, already driving `mandate`) over the constraint set the declared
+    // schema denotes (`pem::schema_constraints`). Deterministic, replayable,
+    // and independent of the model's mood. Composition, not a subsystem.
+    //
+    // No schema (`against:` absent) ⇒ nothing is scored and nothing is bound.
+    // Deliberate: with no declared structure there is no evidence to compute a
+    // confidence FROM, and manufacturing one — a default 1.0, a prose
+    // heuristic — is the §112 kernel defect. A downstream `if confidence < …`
+    // then finds no binding, which is what makes it refusable rather than
+    // silently false.
+    if let Some(schema) = validate.resolved_schema.as_deref() {
+        // An unbound target resolves to its own NAME, which scores as prose —
+        // CSR 0 with every reason naming "not valid JSON". Honest: a
+        // validation over a value that does not exist has no conformance.
+        let value =
+            crate::exec_context::resolve_value_reference(&validate.target, &ctx.let_bindings);
+        match crate::pem::schema_constraints::constraints_for_type(schema) {
+            Ok(constraints) => {
+                let verdict = constraints.evaluate(&value);
+
+                // §Fase 121 — the guard: a floor over the CSR plus a BOUNDED,
+                // MONOTONE, NON-DEGRADING recovery.
+                //
+                //   * Bounded — `attempt` strictly increases toward
+                //     `max_attempts`, a `u32` from a source literal. The loop
+                //     terminates by construction, the §119.m discipline
+                //     (every control loop carries its termination argument).
+                //   * Monotone — an attempt is KEPT only if it strictly
+                //     improves the CSR. The stub-prose case is why this is not
+                //     optional: a refinement that comes back as prose scores 0,
+                //     and a loop that adopted it would hand downstream a value
+                //     WORSE than the one the author already had, signed off by
+                //     the very guard that exists to raise it. The governed
+                //     value can only go up or stay.
+                //   * Early exit — the moment the best CSR clears the floor,
+                //     no further model calls are spent.
+                //
+                // Exhaustion below the floor is NOT an error: the guard's
+                // published action is `refine`, a recovery — not a gate. The
+                // step proceeds with the BEST value seen and the bindings tell
+                // the truth (`.passed = false`, the real `.confidence`, the
+                // surviving `.violations`); an author who wants rejection has
+                // `anchor` for exactly that. Proceeding SILENTLY would be the
+                // defect; proceeding with an honest record is the anchor-retry
+                // precedent this runtime already lives by.
+                let (mut best_value, mut best) = (value, verdict);
+                if let Some(guard) = &validate.guard {
+                    let mut attempt: u32 = 0;
+                    while best.csr < guard.threshold && attempt < guard.max_attempts {
+                        attempt += 1;
+                        let shape = PureShapeStep {
+                            name: format!("{}.refine[{attempt}]", validate.target),
+                            user_prompt: format!(
+                                "Refine the following output so it satisfies every declared \
+                                 constraint of `{}`. Respond with ONLY the corrected output.\n\n\
+                                 Unmet constraints:\n{}\n\nOutput to refine:\n{}",
+                                validate.rule,
+                                best.feedback(),
+                                best_value,
+                            ),
+                            framing_addendum: Some(
+                                "You are refining. Treat the target as draft input; improve it \
+                                 along the declared strategy without losing fidelity to its \
+                                 intent."
+                                    .into(),
+                            ),
+                            kind_slug: "refine",
+                            tools: Vec::new(),
+                            requires_context: None,
+                            temperature: None,
+                            now_tz: None,
+                            stream_on_chunk: None,
+                        };
+                        // Each attempt is a real wire step (StepStart/Complete
+                        // under `<target>.refine[i]`): the recovery is
+                        // OBSERVABLE, so an adopter watching the wire sees the
+                        // work, not just a score that changed.
+                        if let NodeOutcome::Completed { output, .. } =
+                            run_pure_shape(shape, ctx).await?
+                        {
+                            let rescored = constraints.evaluate(&output);
+                            if rescored.csr > best.csr {
+                                best = rescored;
+                                best_value = output;
+                            }
+                        }
+                    }
+                    // Re-bind the governed value under the target's EXACT key:
+                    // a later `Assess.output` resolves to the refined value
+                    // (exact-key lookup wins) while the bare step name keeps
+                    // the original — provenance intact, improvement visible.
+                    ctx.let_bindings
+                        .insert(validate.target.clone(), best_value.clone());
+                }
+                bind_verdict(ctx, &validate.target, &best);
+            }
+            // A schema that denotes no checkable constraint cannot score
+            // anything. FAIL CLOSED rather than binding a confidence the set
+            // could not justify — the same posture as the missing-schema case,
+            // one level in.
+            Err(e) => {
+                return Err(DispatchError::BackendError {
+                    name: "validate".to_string(),
+                    message: format!(
+                        "`validate … against: {}` could not be scored: {e:?}. A schema that \
+                         denotes no checkable obligation cannot produce a confidence, and \
+                         reporting one anyway would certify a check that never ran.",
+                        validate.rule
+                    ),
+                })
+            }
+        }
+    }
+    Ok(outcome)
+}
+
+/// §Fase 121 — publish a validation verdict into the live bindings, under the
+/// VALIDATION TARGET's name so a later `if confidence < …` reads THIS
+/// validation's score and not some other step's. One writer, used by the
+/// validate arm and by every guard re-score, so the two can never bind
+/// different shapes.
+fn bind_verdict(
+    ctx: &mut DispatchCtx,
+    target: &str,
+    verdict: &crate::pem::semantic_validator::Verdict,
+) {
+    let name = if target.is_empty() { "Validate" } else { target };
+    ctx.let_bindings
+        .insert(format!("{name}.confidence"), format!("{:.4}", verdict.csr));
+    ctx.let_bindings
+        .insert(format!("{name}.passed"), verdict.is_satisfied().to_string());
+    // The corrective payload `refine` consumes, already rendered by the §119.b
+    // engine. Empty when nothing was violated.
+    ctx.let_bindings
+        .insert(format!("{name}.violations"), verdict.feedback());
 }
 
 /// Refine entry — improvement framing. The target is treated as
@@ -2799,6 +2963,8 @@ mod tests {
 
         let validate = IRValidateStep {
             node_type: "validate",
+            resolved_schema: None,
+            guard: None,
             source_line: 0,
             source_column: 0,
             target: "draft".into(),

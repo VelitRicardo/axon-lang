@@ -114,6 +114,8 @@ fn reason_node() -> IRFlowNode {
 fn validate_node() -> IRFlowNode {
     IRFlowNode::Validate(IRValidateStep {
         node_type: "validate",
+        resolved_schema: None,
+        guard: None,
         source_line: 0,
         source_column: 0,
         target: String::new(),

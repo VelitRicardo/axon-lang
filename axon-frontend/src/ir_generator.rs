@@ -68,6 +68,11 @@ pub struct IRGenerator {
     /// operation — a disagreement that would let the checker pass a program the
     /// generator then lowers against a different effect.
     effect_catalog: crate::effect_catalog::EffectCatalog,
+    /// §Fase 121 (Phase 0) — declared `type`s by name, so `validate … against:
+    /// <Schema>` resolves regardless of whether the type is declared above or
+    /// below the flow. Same order-independence `shield_signs` (§77.b) and the
+    /// effect catalog (§120) needed, and for the same reason.
+    type_defs: HashMap<String, IRType>,
     /// §Fase 120 — per-generation handler-frame counter. `Cell` because
     /// `visit_flow_step` is `&self` across the recursive call sites (the
     /// `grad_lets` precedent).
@@ -124,6 +129,7 @@ impl IRGenerator {
         IRGenerator {
             grad_lets: std::cell::RefCell::new(HashMap::new()),
             effect_catalog: crate::effect_catalog::EffectCatalog::default(),
+            type_defs: HashMap::new(),
             next_frame_id: std::cell::Cell::new(0),
             personas: HashMap::new(),
             contexts: HashMap::new(),
@@ -299,6 +305,14 @@ impl IRGenerator {
         // whether `effect SSE { Emit … }` was written above it or below.
         self.effect_catalog =
             crate::effect_catalog::EffectCatalog::from_program(program);
+        // §Fase 121 — and the declared `type`s, so `validate … against:` binds
+        // its schema whether the type sits above or below the flow.
+        for decl in &program.declarations {
+            if let Declaration::Type(t) = decl {
+                let lowered = self.visit_type(t);
+                self.type_defs.insert(lowered.name.clone(), lowered);
+            }
+        }
 
         // Phase 1: visit all declarations
         for decl in &program.declarations {
@@ -1084,6 +1098,26 @@ impl IRGenerator {
                 source_column: s.loc.column,
                 target: s.target.clone(),
                 rule: s.rule.clone(),
+                // §Fase 121 — resolve `against: <Schema>` HERE, from the Phase 0
+                // catalog, so the artifact carries its own derivation and the
+                // dispatcher cannot be reached without it. Order-independent: a
+                // `type` declared after the flow resolves exactly as one
+                // declared before it.
+                resolved_schema: self
+                    .type_defs
+                    .get(&s.rule)
+                    .cloned()
+                    .map(Box::new),
+                // §Fase 121 — the guard rides its validation into the IR; the
+                // pairing needs no re-derivation because it was never taken
+                // apart.
+                guard: s.guard.as_ref().map(|g| crate::ir_nodes::IRConfidenceGuard {
+                    node_type: "confidence_guard",
+                    source_line: g.loc.line,
+                    source_column: g.loc.column,
+                    threshold: g.threshold,
+                    max_attempts: g.max_attempts,
+                }),
             }),
             FlowStep::Refine(s) => IRFlowNode::Refine(IRRefineStep {
                 node_type: "refine",

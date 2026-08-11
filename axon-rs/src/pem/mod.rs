@@ -36,6 +36,10 @@ pub mod density_matrix;
 /// §Fase 119.b — `e(t)` for `mandate`. The paper places the semantic validator
 /// inside the PEM engine (`docs/papers/paper_mandate.md`), so it lives here.
 pub mod semantic_validator;
+/// §Fase 121 — a declared `type` lowered into the constraint set that
+/// `validate … against:` scores a response with. Reuses the §119.b CSR rather
+/// than introducing a second notion of conformance.
+pub mod schema_constraints;
 pub mod state;
 
 pub use self::backend::{

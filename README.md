@@ -247,6 +247,12 @@ anchor NoHallucination {
 > NOT reach the model. Use `enforce` for text that must shape the model's behavior.
 
 ```axon
+type ContractSchema {
+    summary:         String
+    risks:           String
+    recommendations: String
+}
+
 flow AnalyzeContract(doc: Document) -> StructuredReport {
     step Extract {
         probe doc for [parties, obligations, dates, penalties]
@@ -1304,6 +1310,12 @@ tool MarketFeed {
     effects: <io, network, epistemic:speculate, stream:drop_oldest>
 }
 
+type MarketSchema {
+    symbol: String
+    price:  Float
+    volume: Float
+}
+
 flow MonitorMarket(sector: String) -> MarketReport {
     step Stream {
         apply: MarketFeed
@@ -1409,6 +1421,17 @@ async def process_payment(amount: float, currency: str) -> dict:
 ```
 
 ```axon
+tool process_payment {
+    timeout: 10s
+    effects: <io, network>
+}
+
+type PaymentSchema {
+    transaction_id: String
+    amount:         Float
+    status:         String
+}
+
 flow ProcessOrder(order: Order) -> Receipt {
     step Charge {
         use_tool process_payment with amount: order.total, currency: "USD"
@@ -1602,6 +1625,12 @@ pix ClinicalProtocol {
     depth: 5
     branching: 2
     model: "precise"
+}
+
+type ClinicalSchema {
+    procedure:         String
+    steps:             String
+    contraindications: String
 }
 
 flow FindGuideline(procedure: String) -> ClinicalGuideline {

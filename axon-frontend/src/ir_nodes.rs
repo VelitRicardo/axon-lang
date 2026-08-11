@@ -1298,6 +1298,45 @@ pub struct IRValidateStep {
     pub source_column: u32,
     pub target: String,
     pub rule: String,
+    /// §Fase 121 — the `type` that `against: <Schema>` names, RESOLVED at
+    /// lowering and stamped into the artifact.
+    ///
+    /// # Why resolved here rather than threaded to the dispatcher
+    ///
+    /// The alternative was an `Arc<Vec<IRType>>` on `DispatchCtx`, the shape
+    /// `mandate_specs` / `compute_specs` / `agent_specs` use. §119.m.3 records
+    /// what that costs: threading `agent_specs` meant touching EIGHT production
+    /// sites, and missing one is a silent hole. `IRRun` already shows the other
+    /// pattern — `resolved_flow`, `resolved_persona`, `resolved_anchors` — and
+    /// it is the better one here: the artifact carries its own derivation, so
+    /// dispatch cannot be reached with the resolution missing, and the schema a
+    /// validation scored against is auditable after the fact.
+    ///
+    /// `None` when `against:` was absent. It is NOT `None` for an *unresolved*
+    /// name — the type-checker refuses that program, so a `None` here never
+    /// means "the author named a schema I could not find".
+    ///
+    /// Elided when absent, so every pre-§121 program's IR JSON is
+    /// byte-identical (the §68.b/§91.a/§119.n/§120 discipline).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resolved_schema: Option<Box<IRType>>,
+    /// §Fase 121 — `if confidence < θ -> refine(max_attempts: N)`, attached to
+    /// THIS validation (see `ast::ValidateStep::guard` for why attachment, not
+    /// siblinghood). Elided when absent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub guard: Option<IRConfidenceGuard>,
+}
+
+/// §Fase 121 — the lowered confidence guard: a floor over the validation's CSR
+/// plus a bounded recovery. Termination is by construction — attempts strictly
+/// increase toward `max_attempts`, a `u32` from a literal.
+#[derive(Debug, Clone, Serialize)]
+pub struct IRConfidenceGuard {
+    pub node_type: &'static str,
+    pub source_line: u32,
+    pub source_column: u32,
+    pub threshold: f64,
+    pub max_attempts: u32,
 }
 
 #[derive(Debug, Clone, Serialize)]

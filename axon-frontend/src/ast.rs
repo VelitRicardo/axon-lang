@@ -3218,6 +3218,47 @@ pub struct ReasonStep {
 pub struct ValidateStep {
     pub target: String,
     pub rule: String,
+    /// §Fase 121 — `if confidence < 0.8 -> refine(max_attempts: 2)`, ATTACHED
+    /// to the validation it governs.
+    ///
+    /// The guard is a field of the `validate` rather than a sibling statement,
+    /// and the difference is what makes `confidence` unambiguous BY
+    /// CONSTRUCTION. As a sibling, "which confidence does this guard read?"
+    /// needs a resolution rule (nearest preceding validate), a compile error
+    /// for the zero case, and dispatch-side re-pairing — three places to
+    /// drift. As a field there is exactly one validation it can mean, the
+    /// pairing survives into the IR untouched, and a guard with no validation
+    /// is UNREPRESENTABLE rather than refused.
+    pub guard: Option<ConfidenceGuard>,
+    pub loc: Loc,
+}
+
+/// §Fase 121 — the self-correction guard three README blocks publish:
+///
+/// ```text
+/// validate Assess.output against: ContractSchema
+/// if confidence < 0.8 -> refine(max_attempts: 2)
+/// ```
+///
+/// NOT control flow. It has no `else`, no braced body, no nesting; the metric,
+/// the comparison and the action are each a CLOSED catalog of one. What it
+/// declares is a floor and a bounded recovery: *if the validation's CSR is
+/// below `threshold`, refine the validated value — at most `max_attempts`
+/// times — re-scoring each attempt.* Landing it as a guard keeps "no
+/// imperative branching inside a step body" true by construction while the
+/// published surface compiles verbatim.
+#[derive(Debug)]
+pub struct ConfidenceGuard {
+    /// The floor. The type-checker requires `0 < threshold ≤ 1`: the CSR lives
+    /// in `[0, 1]`, so a floor of 0 can never fire (dead governance that reads
+    /// as live) and a floor above 1 always fires (a retry loop disguised as a
+    /// conditional). Both are refused, not warned.
+    pub threshold: f64,
+    /// Bound on recovery attempts. Required by the grammar itself — the
+    /// published form always carries it — and the type-checker refuses 0 (a
+    /// guard that promises recovery and performs none). Termination is by
+    /// construction: attempts strictly increase toward this bound.
+    pub max_attempts: u32,
     pub loc: Loc,
 }
 #[derive(Debug)]

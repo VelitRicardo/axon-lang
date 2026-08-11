@@ -114,6 +114,8 @@ fn reason(target: &str, strategy: &str) -> IRReasonStep {
 fn validate(target: &str, rule: &str) -> IRValidateStep {
     IRValidateStep {
         node_type: "validate",
+        resolved_schema: None,
+        guard: None,
         source_line: 0,
         source_column: 0,
         target: target.into(),
@@ -373,7 +375,14 @@ async fn reason_audit_row_recorded() {
 async fn validate_audit_row_recorded() {
     let (mut ctx, _rx) = fresh_ctx();
     run_validate(&validate("doc", "rule"), &mut ctx).await.unwrap();
-    assert_audit_row_canonical(&ctx, "doc").await;
+    // §Fase 121 — the audit row carries `doc.validate`, not `doc`. The old
+    // name was the CLOBBER: the narration step was named after its target, and
+    // `run_pure_shape` binds output under the step name, so `validate doc`
+    // silently overwrote the binding `doc` with the model's prose about it —
+    // every downstream reader of the validated value got an essay instead.
+    // The narration now carries its own identity, in the audit row too: a row
+    // named `doc` would claim the TARGET produced this output.
+    assert_audit_row_canonical(&ctx, "doc.validate").await;
 }
 
 #[tokio::test]
