@@ -56,6 +56,25 @@
   <code>socket</code> · <code>upstream</code> · <code>send T</code> · <code>receive T</code> · <code>select {ℓᵢ:…}</code> · <code>branch {ℓᵢ:…}</code> · <code>backpressure: credit(k)</code> · <code>reconnect: cognitive_state</code>
 </p>
 
+**Unwired — advertised, and not yet reachable (§122).** Three of the badges
+above name a primitive whose engine exists and passes its own tests, and which
+**no published program can reach**: nothing calls it. They are listed in the
+compiler's `KNOWN_DEBT` ratchet, which may only shrink, so this list cannot grow
+quietly:
+
+| primitive | the engine that exists | what is missing |
+|---|---|---|
+| `cache` | `cache_runtime` — content-addressed keys, single-flight, TTL with jitter, LRU, errors never cached | the call site. `backend:`, `ttl:`, `key_params:` and `invalidate_on:` are inert; **nothing is memoised** |
+| `savant` | an HRR codec, a VFE/EFE active-inference engine, and a Betti/PHC topology engine | dispatch. `cognition.depth:` is validated at compile time and read by nothing at runtime |
+| `synth` | the deny-by-default OSS reference, which refuses by design | a mount point. Note the honest ceiling: wiring it in OSS yields a *refusal*, not execution — synthesised code runs only in the enterprise sandbox |
+
+This table exists because the alternative is worse. `cache` was attested as
+working until §122 measured it, on a citation that named a compile-time property
+as evidence of a runtime — so the state `Unwired` was added to the gate, and it
+owes a ledger entry exactly like an unimplemented promise does. A ledger that
+stays empty because a row is mislabelled is worth less than one that admits
+three.
+
 </details>
 
 ---

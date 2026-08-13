@@ -43,11 +43,18 @@
 //!    packaging.** Conversely, an `is_advertised: false` primitive must be
 //!    neither badged nor classified: hiding a primitive from the promise is a
 //!    deliberate, pinned act.
-//! 2. **Nothing advertised may be [`RuntimeStatus::NotImplemented`]** … except
-//!    what is written down in [`KNOWN_DEBT`], which is a **ratchet**: it may only
-//!    shrink. A *new* unimplemented promise is a red build. That is the whole
-//!    point — §111's debt becomes a ledger the compiler enforces, instead of a
-//!    finding in a document nobody rereads.
+//! 2. **Nothing advertised may be [`RuntimeStatus::NotImplemented`] or
+//!    `RuntimeStatus::Unwired`** … except what is written down in
+//!    [`KNOWN_DEBT`], which is a **ratchet**: it may only shrink. A *new*
+//!    unkept promise is a red build. That is the whole point — §111's debt
+//!    becomes a ledger the compiler enforces, instead of a finding in a
+//!    document nobody rereads.
+//!
+//!    §122.a added `Unwired` to this law rather than beside it (D122.6). The
+//!    two states differ in what the fix COSTS — `NotImplemented` needs an
+//!    engine, `Unwired` needs a call site — and not at all in what the adopter
+//!    experiences. If reclassifying could move a row out from under the
+//!    ratchet, the ratchet would measure vocabulary instead of debt.
 //! 3. **A [`RuntimeStatus::Real`] claim must cite its proof**, and if the proof
 //!    names a test file, that file must exist on disk. A claim of reality that
 //!    cannot point at the gate proving it is just a nicer-sounding assertion.
@@ -91,15 +98,84 @@ pub enum RuntimeStatus {
     /// The runtime does NOT do what the summary promises, and says nothing about
     /// it. **This may not be advertised** unless it is in [`KNOWN_DEBT`].
     NotImplemented { finding: &'static str },
+    /// §Fase 122.a — **the engine EXISTS, is tested, and no production path
+    /// reaches it.**
+    ///
+    /// The state this table was missing, and its absence is what produced the
+    /// one false `Real` in it. The other five describe degrees of FULFILMENT —
+    /// how close the runtime comes to the summary. None described
+    /// REACHABILITY. `cache` was attested `Real` because its engine is complete
+    /// and correct (content-addressed keys, single-flight, TTL with jitter,
+    /// LRU, errors never cached, all with passing tests) and, of the five,
+    /// `Real` was the only state that meant *"the engine is good"*. It was not
+    /// dishonesty; it was a taxonomy with no box for the truth.
+    ///
+    /// `engine` names what exists, so a reader can tell a **cable job** from a
+    /// **build job** — an `Unwired` row is not a missing feature, it is a
+    /// missing call site.
+    ///
+    /// **It owes a [`KNOWN_DEBT`] entry, exactly like `NotImplemented`**
+    /// (D122.6, ratified 2026-08-13). To the adopter the two are
+    /// indistinguishable: the primitive does not do what the summary says, and
+    /// nothing tells them. Letting `Unwired` dodge Law 2 would make
+    /// reclassification an escape hatch from the ratchet — which is the exact
+    /// species of drift this file exists to stop. The debt did not grow when
+    /// these rows landed; it was **uncovered**. A ledger that stays empty
+    /// because a row lies is worth nothing.
+    Unwired { engine: &'static str },
     /// §111 has not verified this one. Advertised on trust, and counted: the
     /// unaudited population is pinned below and may only shrink.
     Unaudited,
+    /// §Fase 122.a — **`Real`, re-attested under Law 4**: the claim names the
+    /// `.axon` FIXTURE a published program could write, and the GATE that
+    /// walks that fixture to dispatch.
+    ///
+    /// Law 4 has been written in this file since §119.f.8 and never ran. The
+    /// mechanism of that erosion is the shape of [`Self::Real`]: Law 3 is
+    /// conditional (*"if the proof names a test file"*) and `proof` is free
+    /// prose, so a citation that names no file evaluates the check to vacuous
+    /// truth. `cache`'s proof — *"cacheability derives from the type system's
+    /// `effects: pure` proof"* — cited a COMPILE-TIME property as evidence of a
+    /// runtime, and passed. Nothing had to be forgotten; a sentence was enough.
+    ///
+    /// A free-string field breeds an imaginary catalog — the third time this
+    /// project has recorded that shape. The fix is the same as always: a closed
+    /// pair the build can verify. `fixture` must exist and be `.axon`;
+    /// `gate` must exist and must READ that fixture (§122.b).
+    ///
+    /// `Real { proof }` remains for rows not yet re-attested. Its population is
+    /// pinned and **may only shrink**; §122.b drives it to zero. Migrating the
+    /// shape and re-attesting forty rows in one commit would mix a mechanical
+    /// refactor with forty judgements, and that mixture is where a convenience
+    /// `Real` gets in (D122.2).
+    Attested {
+        /// Repo-relative path to an `.axon` source file a published program
+        /// could have written.
+        fixture: &'static str,
+        /// Repo-relative path to the test that compiles `fixture` and drives it
+        /// to dispatch.
+        gate: &'static str,
+    },
 }
 
 impl RuntimeStatus {
-    /// The predicate law 2 turns on.
+    /// Literally `NotImplemented` — nothing else.
     pub fn is_unimplemented(self) -> bool {
         matches!(self, RuntimeStatus::NotImplemented { .. })
+    }
+
+    /// **The predicate Law 2 turns on** (§122.a).
+    ///
+    /// Both states owe a ledger entry, because both present the adopter with
+    /// the same thing: a promise the runtime does not keep, silently.
+    /// `NotImplemented` has no engine; `Unwired` has one nothing calls. The
+    /// distinction tells a maintainer what the fix costs; it tells an adopter
+    /// nothing, and Law 2 is written for the adopter.
+    pub fn owes_a_debt_entry(self) -> bool {
+        matches!(
+            self,
+            RuntimeStatus::NotImplemented { .. } | RuntimeStatus::Unwired { .. }
+        )
     }
 }
 
@@ -182,8 +258,11 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     }),
     ("shield", Partial { gap: "§111 — the scanner registry IS consulted and a Reject really fails the step, but OSS ships ZERO registered scanners, so an OSS adopter's shield is an identity pass-through until one is mounted" }),
     // ── Security & autonomous analysis
-    ("savant", Unaudited),
-    ("synth", Unaudited),
+    // §Fase 122.a — both were `Unaudited`, which was honest in §111 and is no
+    // longer: they HAVE been audited now (2026-08-13), and the finding is
+    // reachability, not uncertainty. `Unwired` is strictly more informative.
+    ("savant", Unwired { engine: "holograph::ReferenceHolographCodec (HRR, FFT, dim-capped) + inference::ReferenceInference (VFE/EFE) + topology::ReferenceTopology (Betti/PHC) — three tested engines with ZERO callers outside their own tests. `cognition.depth:` is read only by the PCC (axon-T876, catalog validity) and by `main.rs` to print it; HOLOGRAPH_DIM_CAP is never exercised. Wiring active inference is its own fase, not a cable" }),
+    ("synth", Unwired { engine: "synth::DenyByDefaultSynth — the OSS reference, which refuses BY DESIGN (§87.j: OSS never executes synthesised code). No mount point exists, so no flow reaches it. NOTE: cabling it in OSS yields FailsClosed, not Real — the enterprise Extism/gVisor executor is what makes it Real, and it needs the sandbox reachable at all" }),
     ("warden", Real { proof: "tests/fase111_c_warden_wired.rs (§111.c — real attested findings, verify()-gated, body runs, fail-closed at 6 joints)" }),
     ("scope", Real { proof: "tests/fase111_c_warden_wired.rs — the scope catalog is resolved at dispatch and the allowlist enforced (the check §88.c deferred)" }),
     // ── Effects & streaming
@@ -263,6 +342,14 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     ("reconcile", Real { proof: "tests/fase112_e_reconcile_drift.rs (§112.e — REAL Jaccard drift between the manifest's desired shape and the world's actual shape. It used to compare the belief against ITSELF: when evidence was missing it defaulted to the manifest, so drift was structurally always 0.0)" }),
     ("lease", Real { proof: "tests/fase113_d_lease_breach_fires.rs (§113.d — post-expiry USE of a leased store is the CT-2 Anchor Breach, and all three `on_expire` policies are honoured. The kernel was NEVER broken: it had no SUBJECT. A flow could not USE a resource, so a guarantee about post-expiry use was VACUOUS — unviolatable, and therefore unkeepable. §113 made the store operation the use)" }),
     ("ensemble", Real { proof: "tests/fase112_c_cognitive_io_deploy.rs (§112.b/c — the EnsembleAggregator is instantiated from the IR at deploy and aggregates only observations ACTUALLY TAKEN; a refused source is absent, not present-and-failing, which is what lets its quorum gate work honestly)" }),
+    // §Fase 122.a — ADJUDICATED, because two different things in this codebase
+    // are called "topology" and the §122 audit tripped over it. This badge is
+    // the SESSION-TYPE liveness checker (Honda), which is real and compile-time.
+    // It is NOT `topology.rs`'s `TopologyBackend`/`ReferenceTopology` (Betti
+    // numbers / persistent homology), which is one of `savant`'s three unwired
+    // engines and is carried by that row. The proof below does not overclaim —
+    // it names exactly what it means — but a reader scanning for "topology" will
+    // find the unwired engine first, so the disambiguation lives here.
     ("topology", Real { proof: "type_checker::check_topology_liveness — a genuine DFS gray/black cycle detector emitting a Honda-liveness violation (narrow sufficient condition, but real)" }),
     ("session", Real { proof: "type_checker::check_session_duality → session.rs (dual involution, capture-avoiding substitution, coinductive equality). Duality is genuinely DECIDED, not faked" }),
     ("send", Real { proof: "lowered into the session algebra; an unmatched send fails the duality check" }),
@@ -276,7 +363,17 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     ("component", Partial { gap: "§111 — the compile-time shield-coverage law over regulated κ IS genuinely enforced (a real set difference). But the component renders NOTHING; the README itself defers the renderer" }),
     ("view", Partial { gap: "§111 — only referential integrity is checked. No `route` check, no session-typed-reactivity check, and it renders nothing" }),
     // ── Enterprise I/O (Fases 80–85)
-    ("cache", Real { proof: "cache_runtime — cacheability derives from the type system's `effects: pure` proof (§85)" }),
+    // §Fase 122.a — was `Real { proof: "cache_runtime — cacheability derives
+    // from the type system's `effects: pure` proof (§85)" }`. That proof cited
+    // a COMPILE-TIME property as evidence of a runtime, named no test file, and
+    // so passed Law 3 vacuously and Law 4 not at all. Measured 2026-08-13:
+    // `CacheRuntime::dispatch` has ZERO production callers (only its own
+    // tests), `CacheBackend` has no enterprise implementor, and fase_85's own
+    // plan records §85.h as "deferred, not built". `backend:`, `ttl:`,
+    // `key_params:`, `invalidate_on:` and `default_policy:` are inert in BOTH
+    // flavours — `backend: redis` is not a downgrade to in-process, there is no
+    // cache. Shipped as `Real` in 2.88.0; this is the row with public exposure.
+    ("cache", Unwired { engine: "cache_runtime::CacheRuntime::dispatch — content-addressed key, single-flight, TTL+jitter, LRU eviction, errors never cached, with its own passing tests. The seam was designed for a call site it never got (§85.h). Cabling it is §122.d, the cheapest cable in its class" }),
     ("voice", Unaudited),
     ("shell", Unaudited),
     ("path rewrite", Unaudited),
@@ -333,8 +430,8 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
 ];
 
 /// **The ratchet.** Every advertised name whose runtime is
-/// [`RuntimeStatus::NotImplemented`] — i.e. every promise the README makes today
-/// that the code does not keep.
+/// [`RuntimeStatus::NotImplemented`] or `RuntimeStatus::Unwired` — i.e. every
+/// promise the README makes today that the code does not keep.
 ///
 /// This list may only ever **shrink**. Adding a name to it requires editing this
 /// file, which is the point: a new unkept promise cannot land quietly. Removing
@@ -343,6 +440,19 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
 ///
 /// §111 inherited every one of these. They are the fase's open debt, and now the
 /// compiler holds the ledger.
+///
+/// # §Fase 122.a — this ledger went 0 → 3, and that is the ratchet WORKING
+///
+/// §119 drove it to empty and that was true of everything the table classified
+/// honestly. It was not true of the table. `cache` was attested `Real` on a
+/// proof that named a compile-time property, so its dead runtime was never
+/// counted; `savant` and `synth` sat under `Unaudited`, which said *nobody
+/// looked* — accurate in §111, and no longer accurate once someone did.
+///
+/// **The debt did not grow. It was uncovered.** Three engines that exist, pass
+/// their own tests, and are reachable from no published program. Recording them
+/// is the entire thesis of §122 applied to the file that carries it: a ledger
+/// that stays empty because a row lies is worth less than one that admits three.
 pub const KNOWN_DEBT: &[&str] = &[
     // Tier 4 — implement or retract.
     // `compute` LEFT this ledger in §111.f: it is now a real pure function over
@@ -410,25 +520,40 @@ pub const KNOWN_DEBT: &[&str] = &[
     // and its audit row. SIXTH AND LAST TURN.
     //
     // ═══════════════════════════════════════════════════════════════════
-    //  THE RATCHET IS EMPTY.
+    //  §111 opened this ledger with 22 advertised primitives that were not
+    //  real. §111.f paid `compute`. §112 paid six of the Cognitive-I/O block.
+    //  §113 paid `resource`/`lease`. §114 paid the governed channel. §119 paid
+    //  the last five — `mandate` (b), `lambda` + `ots` (c), `hibernate` (d),
+    //  `fabric` (e), all on 2026-08-07 — and the list reached EMPTY.
     //
-    //  §111 opened it with 22 advertised primitives that were not real, and
-    //  built this list as the ledger of what the language owed. §111.f paid
-    //  `compute`. §112 paid six of the Cognitive-I/O block. §113 paid
-    //  `resource`/`lease`. §114 paid the governed channel. §119 paid the last
-    //  five: `mandate` (b), `lambda` + `ots` (c), `hibernate` (d), `fabric`
-    //  (e) — all on 2026-08-07.
+    //  §Fase 122.a re-opened it at THREE, and the reason is the point of the
+    //  whole fase: the list was empty of everything this table classified
+    //  honestly, and the table had one row that did not. Each entry below is an
+    //  `Unwired` engine — complete, tested, and reachable from no published
+    //  program. NONE of them is new work discovered by §122; all three predate
+    //  it and were simply not counted.
     //
-    //  An empty KNOWN_DEBT does NOT mean every primitive is Real. Several are
-    //  `Partial` with the gap NAMED in `advertised.rs` — which is the whole
-    //  point of the distinction: `Partial` is a bounded, published limit an
-    //  adopter can read and plan around; `NotImplemented` was an advertised
-    //  promise with nothing behind it. There is none of the latter left.
-    //
-    //  KEEP THIS LIST EMPTY. Adding a name back means the language advertised
-    //  something it does not have — which is exactly the state §111 existed to
-    //  end, and the gate below will make that addition loud.
+    //  A KNOWN_DEBT of 0 or 3 does NOT mean every other primitive is Real.
+    //  Several are `Partial` with the gap NAMED — a bounded, published limit an
+    //  adopter can read and plan around, which is the whole point of the
+    //  distinction.
     // ═══════════════════════════════════════════════════════════════════
+    //
+    // §Fase 122.a — measured 2026-08-13. `CacheRuntime::dispatch` has zero
+    // production callers, `CacheBackend` has no enterprise implementor, and
+    // fase_85 records §85.h as "deferred, not built". Nothing memoises
+    // anything. It LEAVES when §122.d gives the seam its call site — the
+    // cheapest cable in the class, because the engine is already there.
+    "cache",
+    // §Fase 122.a — three tested engines (HRR codec, VFE/EFE inference,
+    // Betti/PHC topology), zero callers outside their own tests. It LEAVES when
+    // active inference is wired, which is a fase, not a cable.
+    "savant",
+    // §Fase 122.a — `DenyByDefaultSynth` exists and has no mount point. NOTE
+    // the honest ceiling: cabling it in OSS yields `FailsClosed` (§87.j — OSS
+    // never executes synthesised code), not `Real`. It leaves this ledger for
+    // `FailsClosed`, which is an acceptable state to advertise from.
+    "synth",
 ];
 
 /// Look up what an advertised name's runtime actually does.
@@ -588,40 +713,93 @@ mod tests {
         );
     }
 
-    /// **LAW 2 — the ratchet.** Nothing advertised may be `NotImplemented`
-    /// unless it is in `KNOWN_DEBT`, and that list may only shrink.
+    /// **LAW 2 — the ratchet.** Nothing advertised may be `NotImplemented` OR
+    /// `Unwired` unless it is in `KNOWN_DEBT`, and that list may only shrink.
     ///
     /// This is the law that makes §111's findings durable. A *new* unkept promise
     /// is a red build. The existing ones are a ledger the compiler holds — not a
     /// paragraph in a document nobody rereads.
+    ///
+    /// §122.a widened it from `is_unimplemented()` to `owes_a_debt_entry()`
+    /// (D122.6). Had `Unwired` been added beside this law instead of inside it,
+    /// the state would have been an escape hatch: any `NotImplemented` row could
+    /// be relabelled out from under the ratchet, and the ratchet would measure
+    /// vocabulary instead of debt.
     #[test]
     fn no_new_unkept_promises() {
         let debt: HashSet<&str> = KNOWN_DEBT.iter().copied().collect();
         let undeclared: Vec<&str> = ADVERTISED
             .iter()
-            .filter(|(_, s)| s.is_unimplemented())
+            .filter(|(_, s)| s.owes_a_debt_entry())
             .map(|(n, _)| *n)
             .filter(|n| !debt.contains(*n))
             .collect();
         assert!(
             undeclared.is_empty(),
-            "these advertised primitives are NotImplemented and are NOT in KNOWN_DEBT: {undeclared:?}\n\n\
-             You have advertised a promise the code does not keep. Either implement it, retract it \
-             from the README, or (if you are knowingly shipping the gap) add it to KNOWN_DEBT with \
-             its finding — so it is a LEDGER ENTRY and not a lie."
+            "these advertised primitives are NotImplemented/Unwired and are NOT in KNOWN_DEBT: {undeclared:?}\n\n\
+             You have advertised a promise the code does not keep. Either implement it, wire it, \
+             retract it from the README, or (if you are knowingly shipping the gap) add it to \
+             KNOWN_DEBT with its finding — so it is a LEDGER ENTRY and not a lie."
         );
     }
 
     /// The ratchet's teeth: `KNOWN_DEBT` may only shrink. Bump this DOWN when a
     /// debt is paid; a build that needs it bumped UP is telling you something.
+    ///
+    /// §122.a TIGHTENED the cap 14 → 3. The old cap was slack left over from
+    /// §111's opening balance: with the list at zero, eleven rows could have
+    /// been added before any gate complained. A ratchet with slack is a ratchet
+    /// that has stopped measuring. The three entries are the `Unwired` engines
+    /// §122.a uncovered; the next move is 3 → 2 when §122.d cables `cache`.
     #[test]
     fn the_debt_ledger_only_shrinks() {
         assert!(
-            KNOWN_DEBT.len() <= 14,
-            "KNOWN_DEBT grew to {} — the ratchet only turns one way. §111 inherited 14 unkept \
-             promises; a new one is not an entry to add, it is a bug to fix.",
+            KNOWN_DEBT.len() <= 3,
+            "KNOWN_DEBT grew to {} — the ratchet only turns one way. §122.a re-baselined it at 3 \
+             (the `Unwired` engines it uncovered) and TIGHTENED the cap to match; a new entry is \
+             not a row to add, it is a bug to fix.",
             KNOWN_DEBT.len()
         );
+    }
+
+    /// **§122.a — the `Unwired` population is pinned, and may only shrink.**
+    ///
+    /// Three, measured 2026-08-13: `cache` · `savant` · `synth`. Each is an
+    /// engine that exists, passes its own tests, and is reachable from no
+    /// published program.
+    ///
+    /// This pin exists so the state cannot become a comfortable parking spot.
+    /// `Unwired` is the honest label for a cable that was never run — it is not
+    /// a place to move rows that have become inconvenient to defend as `Real`.
+    /// The only direction is down, and down means a call site landed.
+    #[test]
+    fn the_unwired_population_only_shrinks() {
+        let n = ADVERTISED
+            .iter()
+            .filter(|(_, s)| matches!(s, Unwired { .. }))
+            .count();
+        assert!(
+            n <= 3,
+            "the Unwired population grew to {n} — §122.a measured 3 (cache · savant · synth). \
+             A new Unwired row means a primitive was advertised with an engine nobody calls; \
+             wire it or retract it."
+        );
+    }
+
+    /// Every `Unwired` row must NAME the engine that exists. The name is what
+    /// separates a cable job from a build job — without it the state degrades
+    /// into a politer `NotImplemented`, which is not what it is for.
+    #[test]
+    fn every_unwired_row_names_its_engine() {
+        for (name, status) in ADVERTISED {
+            if let Unwired { engine } = status {
+                assert!(
+                    !engine.trim().is_empty(),
+                    "`{name}` is Unwired with no engine named — say what exists, or the row \
+                     cannot be told apart from NotImplemented"
+                );
+            }
+        }
     }
 
     /// Every debt entry must actually BE a debt — no padding the ledger with
@@ -632,9 +810,9 @@ mod tests {
             let s = status_of(name)
                 .unwrap_or_else(|| panic!("KNOWN_DEBT names `{name}`, which is not advertised"));
             assert!(
-                s.is_unimplemented(),
-                "`{name}` is in KNOWN_DEBT but its status is {s:?} — if it was implemented or \
-                 retracted, delete its ledger row in the same PR."
+                s.owes_a_debt_entry(),
+                "`{name}` is in KNOWN_DEBT but its status is {s:?} — if it was implemented, wired, \
+                 or retracted, delete its ledger row in the same PR."
             );
         }
     }
@@ -663,6 +841,68 @@ mod tests {
                 }
             }
         }
+    }
+
+    /// **§122.a — LAW 4's shape.** An `Attested` claim must name a `.axon`
+    /// FIXTURE that exists and a GATE that exists.
+    ///
+    /// This is the half of Law 4 that the SHAPE can enforce. The other half —
+    /// that the gate actually READS that fixture — is §122.b, and it is the
+    /// half that makes the citation mean something. Landing the shape first is
+    /// deliberate (D122.2): re-attesting sixty-four rows is sixty-four
+    /// judgements, and mixing them into a mechanical refactor is how a
+    /// convenience `Real` gets in.
+    #[test]
+    fn every_attested_claim_names_a_fixture_and_a_gate_that_exist() {
+        for (name, status) in ADVERTISED {
+            if let Attested { fixture, gate } = status {
+                assert!(
+                    fixture.ends_with(".axon"),
+                    "`{name}` is Attested but its fixture `{fixture}` is not a `.axon` source. \
+                     Law 4 wants the input a published program could have written — a test file \
+                     proves the engine, not the path."
+                );
+                for (label, path) in [("fixture", fixture), ("gate", gate)] {
+                    let found = [repo_root().join(path)]
+                        .into_iter()
+                        .chain([
+                            repo_root().join("axon-rs").join(path),
+                            repo_root().join("axon-frontend").join(path),
+                        ])
+                        .any(|p| p.exists());
+                    assert!(
+                        found,
+                        "`{name}` is Attested and cites {label} `{path}`, which does not exist. \
+                         A citation that cannot be run is not a proof."
+                    );
+                }
+            }
+        }
+    }
+
+    /// **§122.a — the legacy `Real { proof }` population is pinned, and may only
+    /// shrink.** §122.b drives it to zero.
+    ///
+    /// **Sixty-nine** rows still carry the free-prose citation whose conditional
+    /// check let `cache` through: Law 3 only verifies a proof that happens to
+    /// name a test file, and Law 4 — written since §119.f.8 — never ran at all.
+    /// Every row that migrates to `Attested` is one that has been re-attested
+    /// against a fixture, by hand, on purpose.
+    ///
+    /// The number going UP means a new claim of reality was made in the old,
+    /// unverifiable shape.
+    #[test]
+    fn the_legacy_real_population_only_shrinks() {
+        let n = ADVERTISED
+            .iter()
+            .filter(|(_, s)| matches!(s, Real { .. }))
+            .count();
+        assert!(
+            n <= 69,
+            "the legacy `Real {{ proof }}` population grew to {n} — §122.a measured 69 and §122.b \
+             drives it to zero. A NEW claim of reality must be `Attested {{ fixture, gate }}`: \
+             name the `.axon` a published program could write, and the gate that runs it."
+        );
     }
 
     /// Partial / FailsClosed entries must NAME the gap or the diagnostic. An
