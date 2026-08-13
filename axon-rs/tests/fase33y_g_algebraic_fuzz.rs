@@ -127,6 +127,7 @@ async fn fuzz_shield_apply_never_panics() {
             output_type: lcg.ascii_with_random_len(15),
         
             breach_policy: None,
+            scan: Vec::new(),
         });
         let outcome = dispatch_node(&node, &mut ctx).await;
         assert_no_panic(&format!("shield iter={iter}"), &outcome);
@@ -254,6 +255,7 @@ async fn fuzz_cancel_propagation_across_algebraic_handlers() {
                 output_type: "o".into(),
             
                 breach_policy: None,
+                scan: Vec::new(),
             }),
             1 => IRFlowNode::OtsApply(IROtsApplyStep {
                 node_type: "ots_apply",
@@ -325,6 +327,7 @@ async fn fuzz_algebraic_nested_inside_orchestration() {
                 output_type: format!("out_{iter}"),
             
                 breach_policy: None,
+                scan: Vec::new(),
             }),
             1 => IRFlowNode::OtsApply(IROtsApplyStep {
                 node_type: "ots_apply",

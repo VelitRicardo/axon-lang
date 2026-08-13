@@ -460,8 +460,8 @@ pub async fn run_emit(
     let resolved_value = if node.shield_ref.is_empty() {
         resolved_value
     } else {
-        match crate::shield_registry::lookup_shield_scanner(&node.shield_ref) {
-            Some(scanner) => {
+        match crate::shield_registry::resolve_scan(&node.shield_ref, &node.scan) {
+            crate::shield_registry::ScanDisposition::Scanner(scanner) => {
                 let scan_ctx =
                     crate::shield_registry::ShieldScanContext::new(node.shield_ref.clone());
                 match scanner.scan(&resolved_value, &scan_ctx) {
@@ -495,8 +495,17 @@ pub async fn run_emit(
                     }
                 }
             }
-            // OSS identity passthrough — no scanner registered for this shield.
-            None => resolved_value,
+            // §Fase 122.a — a declared `scan:` with nothing to run it REFUSES,
+            // and it refuses HERE, before the value reaches the bus, the outbox
+            // or the buffer — the same fail-closed point a `Reject` uses.
+            crate::shield_registry::ScanDisposition::UnhonouredScan { message } => {
+                return Err(DispatchError::BackendError {
+                    name: format!("shield:{}", node.shield_ref),
+                    message,
+                });
+            }
+            // OSS identity passthrough — no scanner, and no declared `scan:`.
+            crate::shield_registry::ScanDisposition::IdentityIsHonest => resolved_value,
         }
     };
 
@@ -2538,6 +2547,7 @@ mod tests {
             shield_ref: String::new(),
         
             breach_policy: None,
+            scan: Vec::new(),
         };
         let outcome = run_emit(&node, &mut ctx).await.unwrap();
         match outcome {
@@ -2580,6 +2590,7 @@ mod tests {
             shield_ref: String::new(),
         
             breach_policy: None,
+            scan: Vec::new(),
         };
         run_emit(&node, &mut ctx).await.unwrap();
 
@@ -2622,6 +2633,7 @@ mod tests {
             shield_ref: String::new(),
         
             breach_policy: None,
+            scan: Vec::new(),
         };
         run_emit(&node, &mut ctx).await.unwrap();
 
@@ -2656,6 +2668,7 @@ mod tests {
             shield_ref: String::new(),
         
             breach_policy: None,
+            scan: Vec::new(),
         };
         run_emit(&node, &mut ctx).await.unwrap();
 
@@ -2688,6 +2701,7 @@ mod tests {
             shield_ref: String::new(),
         
             breach_policy: None,
+            scan: Vec::new(),
         };
         run_emit(&node, &mut ctx).await.unwrap();
         assert_eq!(outbox.pending_total(), 0, "ephemeral does not touch the outbox");
@@ -2714,6 +2728,7 @@ mod tests {
             shield_ref: String::new(),
         
             breach_policy: None,
+            scan: Vec::new(),
         };
         run_emit(&node, &mut ctx).await.unwrap();
         assert_eq!(ctx.let_bindings.get("__channel_unregistered").unwrap(), "hello");
@@ -3106,6 +3121,7 @@ mod tests {
             shield_ref: String::new(),
         
             breach_policy: None,
+            scan: Vec::new(),
         };
         assert!(matches!(run_emit(&emit, &mut ctx).await, Err(DispatchError::UpstreamCancelled)));
 

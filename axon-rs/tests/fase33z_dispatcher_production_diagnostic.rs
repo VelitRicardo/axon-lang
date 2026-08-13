@@ -991,6 +991,7 @@ fn d1_catalog_totality_pin_45_variants() {
             output_type: String::new(),
         
             breach_policy: None,
+            scan: Vec::new(),
         }),
         IRFlowNode::Stream(IRStreamBlock {
             node_type: "stream_block",
@@ -1088,6 +1089,7 @@ fn d1_catalog_totality_pin_45_variants() {
             shield_ref: String::new(),
         
             breach_policy: None,
+            scan: Vec::new(),
         }),
         IRFlowNode::Publish(IRPublish {
             node_type: "publish",

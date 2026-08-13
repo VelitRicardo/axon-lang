@@ -371,6 +371,7 @@ fn shield_apply_node() -> IRFlowNode {
         output_type: String::new(),
     
         breach_policy: None,
+        scan: Vec::new(),
     })
 }
 
@@ -510,6 +511,7 @@ fn emit_node() -> IRFlowNode {
         shield_ref: String::new(),
     
         breach_policy: None,
+        scan: Vec::new(),
     })
 }
 

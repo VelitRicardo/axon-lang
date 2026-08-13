@@ -154,6 +154,7 @@ async fn emit_wakes_a_parked_continuation_end_to_end() {
         value_is_channel: false,
         shield_ref: String::new(),
         breach_policy: None,
+        scan: Vec::new(),
     };
     axon::flow_dispatcher::wire_integrations::run_emit(&node, &mut ctx)
         .await

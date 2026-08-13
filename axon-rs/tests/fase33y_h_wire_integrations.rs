@@ -51,6 +51,7 @@ fn emit_node(channel: &str, value: &str) -> IRFlowNode {
         shield_ref: String::new(),
     
         breach_policy: None,
+        scan: Vec::new(),
     })
 }
 

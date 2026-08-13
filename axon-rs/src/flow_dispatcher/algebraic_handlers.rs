@@ -189,8 +189,8 @@ pub async fn run_shield_apply(
     // attribute blame. When NO scanner is registered for this name, the
     // OSS identity passthrough applies (backwards-compatible — adopters
     // with no enterprise layer see their data unmodified).
-    let shielded = match crate::shield_registry::lookup_shield_scanner(&node.shield_name) {
-        Some(scanner) => {
+    let shielded = match crate::shield_registry::resolve_scan(&node.shield_name, &node.scan) {
+        crate::shield_registry::ScanDisposition::Scanner(scanner) => {
             let scan_ctx = crate::shield_registry::ShieldScanContext::new(node.shield_name.clone());
             match scanner.scan(&resolved_target, &scan_ctx) {
                 crate::shield_registry::ShieldVerdict::Pass(content) => content,
@@ -220,7 +220,16 @@ pub async fn run_shield_apply(
                 }
             }
         }
-        None => apply_shield_to_target(&node.shield_name, &resolved_target, ctx),
+        // §Fase 122.a — a declared `scan:` with nothing to run it REFUSES.
+        crate::shield_registry::ScanDisposition::UnhonouredScan { message } => {
+            return Err(DispatchError::BackendError {
+                name: format!("shield:{}", node.shield_name),
+                message,
+            });
+        }
+        crate::shield_registry::ScanDisposition::IdentityIsHonest => {
+            apply_shield_to_target(&node.shield_name, &resolved_target, ctx)
+        }
     };
 
     let output_key = if !node.output_type.is_empty() {
@@ -945,6 +954,7 @@ mod tests {
             output_type: "scrubbed".into(),
         
             breach_policy: None,
+            scan: Vec::new(),
         };
         let outcome = run_shield_apply(&node, &mut ctx).await.unwrap();
         match outcome {
@@ -978,6 +988,7 @@ mod tests {
             output_type: String::new(),
         
             breach_policy: None,
+            scan: Vec::new(),
         };
         run_shield_apply(&node, &mut ctx).await.unwrap();
         assert_eq!(ctx.let_bindings.get("doc_shielded").unwrap(), "content");
@@ -1025,6 +1036,7 @@ mod tests {
             output_type: "scrubbed".into(),
         
             breach_policy: None,
+            scan: Vec::new(),
         };
         let outcome = run_shield_apply(&node, &mut ctx).await.unwrap();
         match outcome {
@@ -1052,6 +1064,7 @@ mod tests {
             output_type: "scrubbed".into(),
         
             breach_policy: None,
+            scan: Vec::new(),
         };
         let err = run_shield_apply(&node, &mut ctx).await.unwrap_err();
         match err {
@@ -1082,6 +1095,7 @@ mod tests {
             output_type: "out".into(),
         
             breach_policy: None,
+            scan: Vec::new(),
         };
         let outcome = run_shield_apply(&node, &mut ctx).await.unwrap();
         match outcome {
@@ -1360,6 +1374,7 @@ mod tests {
                     output_type: "z".into(),
                 
                     breach_policy: None,
+                    scan: Vec::new(),
                 },
                 &mut ctx,
             )

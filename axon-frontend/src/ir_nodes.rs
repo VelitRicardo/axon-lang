@@ -1726,6 +1726,23 @@ pub struct IRShieldApplyStep {
     /// default) — and every pre-§114.w program serializes byte-identically.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub breach_policy: Option<IRBreachPolicy>,
+    /// §Fase 122.a — the named shield's declared `scan:` list, resolved at
+    /// lowering beside `breach_policy` (same Phase 0 pre-pass).
+    ///
+    /// It is the SUBJECT of the §122 refusal. A shield that declares
+    /// `scan: [prompt_injection]` is not asking to filter — it is ASSERTING
+    /// that nothing past this point carries an injection. With no scanner
+    /// registered under the name, OSS used to pass the value through
+    /// untouched and bind it under a name that claims the property. That is
+    /// the `warden` shape (§111 F12): a clean-looking result for something
+    /// never examined. The runtime now refuses instead.
+    ///
+    /// Empty ⇒ a shield with no declared scan, where §119.c's argument still
+    /// holds (a filter's absence honestly leaves data untouched) and the
+    /// identity passthrough is kept. `skip_serializing_if` elides it → zero
+    /// IR-SHA drift for every program whose shields declare no `scan:`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub scan: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -3070,6 +3087,14 @@ pub struct IREmit {
     /// (halt, the fail-closed default); elided → zero IR-SHA drift.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub breach_policy: Option<IRBreachPolicy>,
+    /// §Fase 122.a — the σ-shield's declared `scan:` list, resolved at lowering
+    /// beside `shield_ref` (same Phase 0 pre-pass). See
+    /// [`IRShieldApplyStep::scan`] for the argument; the egress site carries it
+    /// for the same reason the apply site does, because an `emit` through a
+    /// scanning channel makes the same assertion about the value that leaves.
+    /// Empty ⇒ unshielded, or shielded by a shield declaring no `scan:`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub scan: Vec<String>,
 }
 
 /// §Fase 92.a — compiled `credential` contract. The TTL is carried as

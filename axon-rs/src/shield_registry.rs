@@ -135,6 +135,63 @@ pub fn lookup_shield_scanner(shield_name: &str) -> Option<Arc<dyn ShieldScanner>
         .cloned()
 }
 
+/// §Fase 122.a — what a shield site must do, decided ONCE for every site.
+///
+/// There are two shield enforcement sites (`run_shield_apply` and `run_emit`'s
+/// σ-gate) and they must never disagree about when a missing scanner is
+/// tolerable. §120 is the reason this is a projection and not a rule: two
+/// public entry points into one subsystem, each with its own copy of the
+/// decision, drifted in silence for entire fases. Here the decision has one
+/// home and the sites only obey it.
+pub enum ScanDisposition {
+    /// A scanner is registered — run it.
+    Scanner(Arc<dyn ShieldScanner>),
+    /// No scanner, and the shield DECLARES no `scan:`. Identity is honest:
+    /// a filter that filters nothing leaves the data untouched and claims
+    /// nothing about it (§119.c's argument, kept deliberately).
+    IdentityIsHonest,
+    /// No scanner, but the shield DECLARES a `scan:` list. Refuse.
+    ///
+    /// A declared scan is not a request to filter — it is an ASSERTION about
+    /// the content ("nothing past this point carries an injection"), which the
+    /// PCC proves over and the ESK maps to ISO 27001 A.8.23. Passing the value
+    /// through and binding it under a name that claims the property is the
+    /// §111 F12 shape `warden` already refuses: a clean-looking result for
+    /// something never examined. It is also what makes §98.d's web-taint
+    /// barrier real — `<web>` content is born Untrusted and `prompt_injection`
+    /// is what it must pass; an identity there tracks the taint at compile
+    /// time and evaporates it at runtime.
+    UnhonouredScan {
+        /// The adopter-facing refusal, naming the scans nobody can run.
+        message: String,
+    },
+}
+
+/// §Fase 122.a — resolve what a shield site must do for `shield_name`, given
+/// the `scan:` list the artifact carries for it (stamped at lowering).
+pub fn resolve_scan(shield_name: &str, declared_scan: &[String]) -> ScanDisposition {
+    if let Some(scanner) = lookup_shield_scanner(shield_name) {
+        return ScanDisposition::Scanner(scanner);
+    }
+    if declared_scan.is_empty() {
+        return ScanDisposition::IdentityIsHonest;
+    }
+    ScanDisposition::UnhonouredScan {
+        message: format!(
+            "shield `{shield_name}` declares `scan: [{}]` and NO scanner is registered under that \
+             name, so nothing examined this content. Passing it through would bind a value under a \
+             name asserting a property that was never checked — the one result a content barrier \
+             must never fabricate (§111 F12, the posture `warden` already takes for an unread \
+             target). This build ships no scanners for `{shield_name}`: register one via \
+             `axon::shield_registry::register_shield_scanner` (the enterprise vertical crates \
+             register the HIPAA / legal / AML / prompt-injection scanners), or remove the `scan:` \
+             declaration if the shield is only meant to filter — a shield with no `scan:` still \
+             passes content through untouched, honestly.",
+            declared_scan.join(", ")
+        ),
+    }
+}
+
 /// True when at least one scanner is registered. Cheap O(1)-ish guard so
 /// the dispatcher can skip the lookup entirely in the common OSS case (no
 /// enterprise layer present).

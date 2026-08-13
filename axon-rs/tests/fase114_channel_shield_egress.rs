@@ -107,6 +107,10 @@ fn emit_node(shield: &str) -> IREmit {
         value_is_channel: false,
         shield_ref: shield.to_string(),
         breach_policy: None,
+        // §Fase 122.a — these tests exercise the REGISTERED-scanner path (and
+        // the honest-identity path); an empty `scan:` is what a §114 shield
+        // that declares no scan list lowers to.
+        scan: Vec::new(),
     }
 }
 

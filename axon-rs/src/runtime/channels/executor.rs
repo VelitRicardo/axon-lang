@@ -552,6 +552,7 @@ mod tests {
             shield_ref: String::new(),
         
             breach_policy: None,
+            scan: Vec::new(),
         };
         block_on(dispatch_emit(&ir, &ctx)).unwrap();
         let event = block_on(ctx.bus.receive("Orders")).unwrap();
@@ -572,6 +573,7 @@ mod tests {
             shield_ref: String::new(),
         
             breach_policy: None,
+            scan: Vec::new(),
         };
         let err = block_on(dispatch_emit(&ir, &ctx)).unwrap_err();
         assert!(matches!(err, DispatchError::EmitFailure(_)));

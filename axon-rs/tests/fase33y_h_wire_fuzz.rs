@@ -94,6 +94,7 @@ async fn fuzz_emit_never_panics() {
             shield_ref: String::new(),
         
             breach_policy: None,
+            scan: Vec::new(),
         });
         let outcome = dispatch_node(&node, &mut ctx).await;
         assert_no_panic(&format!("emit iter={iter}"), &outcome);
@@ -281,6 +282,7 @@ async fn fuzz_cancel_propagation_across_wire_handlers() {
                 shield_ref: String::new(),
             
                 breach_policy: None,
+                scan: Vec::new(),
             }),
             1 => IRFlowNode::Publish(IRPublish {
                 node_type: "publish",
@@ -380,6 +382,7 @@ async fn fuzz_wire_handlers_nested_inside_orchestration() {
                 shield_ref: String::new(),
             
                 breach_policy: None,
+                scan: Vec::new(),
             }),
             1 => IRFlowNode::Publish(IRPublish {
                 node_type: "publish",

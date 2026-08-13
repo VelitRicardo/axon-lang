@@ -117,6 +117,13 @@ pub struct IRGenerator {
     /// the policy rides `IRShieldApplyStep` / `IREmit` regardless of
     /// declaration order.
     shield_policies: HashMap<String, crate::ir_nodes::IRBreachPolicy>,
+    /// §Fase 122.a — shield name → its declared `scan:` list (only shields with
+    /// a non-empty `scan:` are recorded), pre-resolved in Phase 0 beside
+    /// `shield_policies` so the assertion rides `IRShieldApplyStep` / `IREmit`
+    /// regardless of declaration order. The runtime refuses to honour a
+    /// declared scan it has no scanner for; it can only do that if the artifact
+    /// carries what was declared.
+    shield_scans: HashMap<String, Vec<String>>,
     /// §Fase 115.e — dotted module path → `.axi` interface hash for every
     /// module the EMS resolved in this compilation. Empty (every pre-§115
     /// caller) ⇒ `visit_import` lowers exactly as in v2.75.0 (the new
@@ -144,6 +151,7 @@ impl IRGenerator {
             channel_shields: HashMap::new(),
             resource_channels: HashMap::new(),
             shield_policies: HashMap::new(),
+            shield_scans: HashMap::new(),
             import_resolution: std::collections::BTreeMap::new(),
         }
     }
@@ -233,6 +241,26 @@ impl IRGenerator {
         }
     }
 
+    /// §Fase 122.a (Phase 0) — record every declared shield's `scan:` list so
+    /// the enforcement nodes carry the assertion they are supposed to honour.
+    ///
+    /// Mirrors [`Self::collect_shield_policies`] exactly, including the
+    /// `epistemic` recursion. A shield with an empty `scan:` records nothing:
+    /// it asserts nothing about the content, so the OSS identity passthrough
+    /// stays honest for it (§119.c's argument, which this fase keeps rather
+    /// than reverses).
+    fn collect_shield_scans(&mut self, decls: &[Declaration]) {
+        for decl in decls {
+            match decl {
+                Declaration::Shield(sh) if !sh.scan.is_empty() => {
+                    self.shield_scans.insert(sh.name.clone(), sh.scan.clone());
+                }
+                Declaration::Epistemic(eb) => self.collect_shield_scans(&eb.body),
+                _ => {}
+            }
+        }
+    }
+
     /// §Fase 77.b (Phase 1.5) — walk every lowered body (flows + daemon
     /// listeners, recursing into conditionals / loops / par branches /
     /// nested listen + quant bodies) for `publish` sites carrying a
@@ -300,6 +328,11 @@ impl IRGenerator {
         // §Fase 114.w — and shield breach policies, so `on_breach:` rides the
         // enforcement nodes on every dispatch path by construction.
         self.collect_shield_policies(&program.declarations);
+        // §Fase 122.a — and shield `scan:` lists, so a declared scan rides the
+        // enforcement nodes too. Without it the runtime cannot tell a shield
+        // that asserts something (and must refuse when nothing can check it)
+        // from a shield that only filters (where absence is honest).
+        self.collect_shield_scans(&program.declarations);
         // §Fase 120 — and the effect catalog, so D120.2's bare-name resolution
         // is order-independent: `flow F { … perform Emit(x) … }` must resolve
         // whether `effect SSE { Emit … }` was written above it or below.
@@ -1387,6 +1420,13 @@ impl IRGenerator {
                 output_type: s.output_type.clone(),
                 // §Fase 114.w — the shield's breach policy rides the step.
                 breach_policy: self.shield_policies.get(&s.shield_name).cloned(),
+                // §Fase 122.a — and its declared `scan:`, so the runtime can
+                // refuse an assertion it has no scanner to honour.
+                scan: self
+                    .shield_scans
+                    .get(&s.shield_name)
+                    .cloned()
+                    .unwrap_or_default(),
             }),
             FlowStep::Stream(s) => IRFlowNode::Stream(self.lower_stream_block(s)),
             // ── §Fase 120 — algebraic effects ────────────────────
@@ -1530,6 +1570,15 @@ impl IRGenerator {
                 } else {
                     self.shield_policies.get(&shield_ref).cloned()
                 };
+                // §Fase 122.a — and its declared `scan:`, for the same reason.
+                let scan = if shield_ref.is_empty() {
+                    Vec::new()
+                } else {
+                    self.shield_scans
+                        .get(&shield_ref)
+                        .cloned()
+                        .unwrap_or_default()
+                };
                 IRFlowNode::Emit(IREmit {
                     node_type: "emit",
                     source_line: s.loc.line,
@@ -1539,6 +1588,7 @@ impl IRGenerator {
                     value_is_channel: self.channel_names.contains(&s.value_ref),
                     shield_ref,
                     breach_policy,
+                    scan,
                 })
             }
             FlowStep::Publish(s) => IRFlowNode::Publish(IRPublish {

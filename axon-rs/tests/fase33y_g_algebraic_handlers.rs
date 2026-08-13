@@ -99,6 +99,7 @@ fn shield_apply(shield_name: &str, target: &str, output_type: &str) -> IRFlowNod
         output_type: output_type.into(),
     
         breach_policy: None,
+        scan: Vec::new(),
     })
 }
 

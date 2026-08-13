@@ -51,6 +51,50 @@ use axum::http::{Request, StatusCode};
 use http_body_util::BodyExt;
 use tower::ServiceExt;
 
+/// §Fase 122.a — the three fixtures below declare `shield … { scan: [pii_leak]
+/// compliance: [HIPAA] }` and then apply it. Their SUBJECT is the dispatcher
+/// path + `axon-W002` reachability, not shield semantics — the shields are
+/// realistic decoration for the regulated-vertical shapes.
+///
+/// Before §122.a those flows completed because **nothing scanned anything**:
+/// with no scanner registered, `shield PHIShield on response` was an identity
+/// passthrough and `SanitizedResponse` was bound to unexamined content. These
+/// fixtures were, unintentionally, a demonstration of the defect §122.a closes
+/// — a HIPAA-badged `pii_leak` scan in a showcase vertical, enforcing nothing.
+///
+/// A declared `scan:` with no scanner now REFUSES, so the flow must be given
+/// what it declares. Registering a scanner is not a workaround for the gate:
+/// it is what makes these tests exercise their real subject on a flow that
+/// actually runs its declared barrier.
+///
+/// **Do not delete this to make a red build green** — dropping it means the
+/// flows stop completing, which is §122.a working. If a fixture is meant to
+/// have no barrier, remove its `scan:` instead (a shield with no `scan:` still
+/// passes content through, honestly — §119.c).
+struct PassThroughTestScanner;
+impl axon::shield_registry::ShieldScanner for PassThroughTestScanner {
+    fn scan(
+        &self,
+        target: &str,
+        _ctx: &axon::shield_registry::ShieldScanContext,
+    ) -> axon::shield_registry::ShieldVerdict {
+        axon::shield_registry::ShieldVerdict::pass(target)
+    }
+}
+
+/// Register the fixtures' scanners once per test binary (the registry is
+/// process-global and integration tests get their own process).
+fn ensure_vertical_scanners() {
+    static ONCE: std::sync::Once = std::sync::Once::new();
+    ONCE.call_once(|| {
+        for name in ["PHIShield", "PrivilegeShield"] {
+            axon::shield_registry::register_shield_scanner(
+                name,
+                std::sync::Arc::new(PassThroughTestScanner),
+            );
+        }
+    });
+}
 
 fn server_cfg() -> ServerConfig {
     ServerConfig {
@@ -269,6 +313,7 @@ async fn assert_default_on_no_w002(label: &str, src: &str) {
     // Defensive flag-state assertion — the test depends on the
     // 33.z.c default ON. If a previous test left the flag at OFF
     // via panic-during-guard, we reset to the documented default.
+    ensure_vertical_scanners(); // §122.a — see the doc at the definition.
 
     let app = build_router(server_cfg());
     let dep = deploy(app.clone(), src).await;
@@ -526,6 +571,7 @@ const FINTECH_AML_FLOW: &str =
      axonendpoint Aml { public: true method: POST path: \"/aml\" execute: AmlInvestigation transport: sse(axon) }";
 
 async fn assert_vertical_pattern(label: &str, src: &str, path: &str) {
+    ensure_vertical_scanners(); // §122.a — see the doc at the definition.
 
     let app = build_router(server_cfg());
     let dep = deploy(app.clone(), src).await;

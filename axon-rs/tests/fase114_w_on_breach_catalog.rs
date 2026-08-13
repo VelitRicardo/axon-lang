@@ -90,6 +90,7 @@ fn emit_node(shield: &str, policy: Option<IRBreachPolicy>) -> IREmit {
         value_is_channel: false,
         shield_ref: shield.to_string(),
         breach_policy: policy,
+        scan: Vec::new(),
     }
 }
 
