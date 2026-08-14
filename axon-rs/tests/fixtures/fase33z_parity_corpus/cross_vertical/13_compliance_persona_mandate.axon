@@ -1,0 +1,40 @@
+// META: flow_name=ComplianceSignalReview, mode=count_only
+//
+// §Fase 122.b — added to give `persona` and `mandate` a citation Law 4 accepts.
+// Shapes lifted from the canonical `compliance_monitoring` template, which
+// compiles today; `on_violation: coerce` is chosen over `halt` so the closed
+// loop visibly releases its best attempt instead of stopping the flow under the
+// stub backend.
+
+persona ComplianceAuditor {
+    domain: ["regulatory-compliance", "internal-audit"]
+    tone: precise
+    confidence_threshold: 0.9
+    cite_sources: true
+}
+
+mandate AuditorReview {
+    constraint:   "A posture change from passing to failing must name the control it breached"
+    tolerance:    0.01
+    max_steps:    1
+    on_violation: coerce
+}
+
+flow ComplianceSignalReview() -> Unit {
+    step ScoreSignal {
+        ask: "Score the signal against the framework's control catalogue"
+        output: Stream<Token>
+    }
+    mandate AuditorReview on ScoreSignal.output -> ReviewedPosture
+    step Publish {
+        ask: "Publish the reviewed posture"
+        output: Stream<Token>
+    }
+}
+
+axonendpoint ComplianceSignalReviewEndpoint {
+    method: POST
+    path: "/cross/compliance-signal-review"
+    execute: ComplianceSignalReview
+    transport: sse public: true
+}

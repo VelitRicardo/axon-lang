@@ -190,7 +190,13 @@ use RuntimeStatus::*;
 pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     // ── Cognitive core — LLM-driven, and honestly so. Calling the model IS
     //    their nature; that is not the defect §111 hunts.
-    ("persona", Real { proof: "flow_dispatcher::pure_shape" }),
+    // §Fase 122.b — was the bare module name `flow_dispatcher::pure_shape`, one
+    // of the 38 rows Law 3 never checked. The fixture below was added by §122.b
+    // and declares a `persona` alongside the `mandate` that governs its output.
+    ("persona", Attested {
+        fixture: "tests/fixtures/fase33z_parity_corpus/cross_vertical/13_compliance_persona_mandate.axon",
+        gate: "tests/fase33z_d_parity_corpus.rs",
+    }),
     ("intent", Unaudited),
     // §Fase 122.b — FIRST TWO RE-ATTESTATIONS. Both used to cite a module
     // (`flow_dispatcher::dispatch_node`, `flow_dispatcher::pure_shape`) — an
@@ -368,7 +374,22 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     ("psyche", Unaudited),
     ("ots", Partial { gap: "§119.c made the dispatch layer REAL: `apply_ots_to_target` (identity, §111 F18) is deleted; `run_ots_apply` resolves the declaration, consults the name-keyed `ots_registry` (shield_registry's shape — the hook that F18 said did not exist, now tested by registering a transformer and watching it fire), propagates transformer refusals, and REFUSES an unregistered name (identity under a transformation's name fabricates a result). Step-scoped `ots X on y -> b` elevates before generation. THE GAP: no OSS transformer registers by default — any generic default would be the identity lie again — so OSS `ots` refuses at runtime until the media pipeline (crate::ots) or an enterprise vertical registers; the paper's JIT synthesis pipeline remains future work" }),
     ("mcp", Unaudited),
-    ("mandate", Real { proof: "§119.b — the closed loop runs through production dispatch: axon-rs/src/mandate_engine.rs (e = 1 − CSR from pem::semantic_validator, PID from pem::density_matrix, Converge(e,ε,N) with Breach fail-closed, declared-D premise discharge, |C|=0 refused before any token) driven by run_mandate_apply + the D119.4 step guard (buffered — attempts never stream). Tier 1 logit-bias bans on the OpenAI-compat wire, Tier 2 CSP feedback everywhere. Gates: mandate_engine tests (16), algebraic_handlers MandateApply tests (incl. the F18 regression: an unresolved name REFUSES, never identity), openai_compat logit_bias wire tests, fase119_b3_stability_band.rs, fase119_b_mandate_grammar.rs — 9/9 dispatch-chain mutations killed" }),
+    // §Fase 122.b — §119.b's account stays true and is worth keeping: the closed
+    // loop runs through production dispatch via `mandate_engine.rs` (e = 1 − CSR
+    // from `pem::semantic_validator`, PID from `pem::density_matrix`,
+    // Converge(e,ε,N) with Breach fail-closed, declared-D premise discharge,
+    // |C|=0 refused before any token), driven by `run_mandate_apply` + the
+    // D119.4 step guard (buffered — attempts never stream). Tier 1 logit-bias
+    // bans on the OpenAI-compat wire, Tier 2 CSP feedback everywhere. Gates:
+    // mandate_engine (16), algebraic_handlers MandateApply incl. the F18
+    // regression (an unresolved name REFUSES, never identity),
+    // openai_compat logit_bias wire, fase119_b3_stability_band.rs,
+    // fase119_b_mandate_grammar.rs — 9/9 dispatch-chain mutations killed.
+    // None of those reads a file, so none could satisfy Law 4. This does.
+    ("mandate", Attested {
+        fixture: "tests/fixtures/fase33z_parity_corpus/cross_vertical/13_compliance_persona_mandate.axon",
+        gate: "tests/fase33z_d_parity_corpus.rs",
+    }),
     // §Fase 122.b — §119.c's account stays true and is worth keeping here: the
     // ΛD engine (`lambda_data.rs`: ψ = ⟨T,V,E⟩, four invariants, compose with
     // c_out ≤ min(c_i); `lambda_runtime.rs`: Theorem 5.1 enforced at apply, only
@@ -1123,9 +1144,9 @@ mod tests {
             .filter(|(_, s)| matches!(s, Real { .. }))
             .count();
         assert!(
-            n <= 57,
+            n <= 55,
             "the legacy `Real {{ proof }}` population grew to {n} — §122.a measured 69 and §122.b \
-             drives it to zero (69 → 57 so far). A NEW claim of reality must be \
+             drives it to zero (69 → 55 so far). A NEW claim of reality must be \
              `Attested {{ fixture, gate }}`: name the `.axon` a published program could write, \
              and the gate that runs it."
         );
