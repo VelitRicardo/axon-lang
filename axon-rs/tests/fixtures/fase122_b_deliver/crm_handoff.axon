@@ -1,0 +1,31 @@
+// §Fase 122.b (group B) — the `.axon` input the `deliver` proof never had.
+//
+// `deliver` is a governed egress to a system of record, and §105's rule is that
+// PROVENANCE TRAVELS OR THE DELIVERY REFUSES. Its laws are compile-time and
+// they are the whole primitive:
+//
+//   axon-T921  `target:` is a closed system-of-record class
+//   axon-T922  `provenance:` decides how field origin crosses the boundary
+//   axon-T923  `secret:` is a per-tenant key under §94 custody — never a literal
+//   axon-T924  the effect row MUST include `web`, because the delivery leaves
+//   axon-T926  every operation carries an idempotency `key:`
+//
+// This is why `deliver` was NOT group A: `secret:` cannot be satisfied by a
+// fixture with no custody mounted, so it could not be dispatched from the
+// parity corpus. Its compile-time laws, however, are exactly what the corpus
+// gate's type-check pass exercises — and they are the ones an adopter meets
+// first.
+
+deliver CrmHandoff {
+    target:     crm
+    provenance: attached
+    secret:     "crm.hubspot"
+    effects:    <web, sensitive:contact, legal:legitimate_interest>
+
+    upsert_contact {
+        key:       "lead-4471"
+        email:     "buyer@example.com"
+        firstname: "Ada"
+        company:   "Example Ltd"
+    }
+}

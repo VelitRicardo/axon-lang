@@ -782,7 +782,25 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
         fixture: "tests/fixtures/fase33z_parity_corpus/cross_vertical/20_document_notify_egress.axon",
         gate: "tests/fase33z_d_parity_corpus.rs",
     }),
-    ("deliver", Real { proof: "delivery.rs + axon-T920 (§105 — provenance travels or the delivery refuses; first top-level egress integrated in the executor, D105.7(B))" }),
+    // §Fase 122.b — was `delivery.rs + axon-T920`, a module plus a code.
+    //
+    // The boundary is stated precisely, because overstating it would be the very
+    // defect this fase closes: this citation proves the DECLARATION path (source →
+    // type checker → IR), NOT the egress. `deliver` cannot be dispatched from a
+    // fixture at all — `secret:` is a per-tenant key under §94 custody (axon-T923),
+    // so no fixture without a mounted minter reaches the wire. The egress stays
+    // proven by §105's own runtime gates.
+    //
+    // What the fixture does carry is the substance an adopter meets first, each law
+    // watched refusing on the file's own text: T921 (`target:` is a closed
+    // system-of-record class), T924 twice — the delivery must declare the `web` it
+    // crosses, AND binding `sensitive:*` into a system of record is further
+    // processing (D105.6) so the legal basis is not decoration — and T926 (every
+    // operation carries an idempotency key).
+    ("deliver", Attested {
+        fixture: "tests/fixtures/fase122_b_deliver/crm_handoff.axon",
+        gate: "tests/fase122_b_deliver_laws.rs",
+    }),
     // §Fase 122.b — verified by perturbation on this fixture: 
     // `window: 0m` fails it — §110's mandatory positive window. All five
     // §110 laws fired when the block was first written wrong, and the fixture
@@ -1463,9 +1481,9 @@ mod tests {
             .filter(|(_, s)| matches!(s, Real { .. }))
             .count();
         assert!(
-            n <= 16,
+            n <= 15,
             "the legacy `Real {{ proof }}` population grew to {n} — §122.a measured 69 and §122.b \
-             drives it to zero (69 → 16 so far). A NEW claim of reality must be \
+             drives it to zero (69 → 15 so far). A NEW claim of reality must be \
              `Attested {{ fixture, gate }}`: name the `.axon` a published program could write, \
              and the gate that runs it."
         );
