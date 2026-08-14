@@ -34,6 +34,28 @@ fn rustdoc_stderr() -> String {
         .args(["doc", "--no-deps", "--color", "never"])
         .current_dir(env!("CARGO_MANIFEST_DIR"))
         .env("CARGO_PROFILE_DEV_DEBUG", "0")
+        // §Fase 122.d — do NOT inherit the parent's build flags.
+        //
+        // The `sanitizer (thread)` lane sets `RUSTFLAGS=-Zsanitizer=thread …`
+        // and `CFLAGS/LDFLAGS=-fsanitize=thread` for the TEST BINARY. This
+        // nested `cargo doc` inherited them and failed outright, because the
+        // sanitizer needs `-Zbuild-std` — which the lane passes as a CARGO
+        // flag, not through RUSTFLAGS, so the child never saw it. The gate then
+        // fired its own "cargo doc failed outright" refusal, correctly: the
+        // count would have been meaningless.
+        //
+        // It looked like broken links and it was an ENVIRONMENT LEAK from
+        // parent to subprocess. `sanitizer (address)` passed while
+        // `sanitizer (thread)` failed, which is the tell — a real doc-link
+        // regression cannot depend on which sanitizer is instrumenting the
+        // harness.
+        //
+        // Clearing them is the fix rather than skipping the gate under
+        // sanitizers: a documentation ratchet must not go dark in a lane, and
+        // building docs has nothing to do with instrumenting the harness.
+        .env_remove("RUSTFLAGS")
+        .env_remove("CFLAGS")
+        .env_remove("LDFLAGS")
         .output()
         .expect("`cargo doc` must be runnable — this gate is worthless if it silently skips");
 

@@ -56,6 +56,15 @@ fn rustdoc_stderr() -> String {
         // a different profile than the suite was built under and rebuild the
         // whole graph.
         .env("CARGO_PROFILE_DEV_DEBUG", "0")
+        // §Fase 122.d — do not inherit the parent's build flags. The identical
+        // gate in `axon-csys` failed in the `sanitizer (thread)` lane because
+        // this nested `cargo doc` picked up `RUSTFLAGS=-Zsanitizer=thread`
+        // without the `-Zbuild-std` that makes it valid. This crate has no
+        // sanitizer lane today, so the leak is latent here — fixed as a CLASS
+        // rather than only in the copy that went red (§120's lesson).
+        .env_remove("RUSTFLAGS")
+        .env_remove("CFLAGS")
+        .env_remove("LDFLAGS")
         .output()
         .expect("`cargo doc` must be runnable — this gate is worthless if it silently skips");
 
