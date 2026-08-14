@@ -8,6 +8,7 @@ server	fase112_e_reconcile_drift
 server	fase112_f_driver_walks_the_graph
 server	fase114_h_immune_watches_a_used_vendor
 server	fase114_scrape_concurrency
+server	fase122_c_dataspace_from_disk
 server	fase30_keepalive
 server	fase30_negotiation
 server	fase30_sse_fuzz

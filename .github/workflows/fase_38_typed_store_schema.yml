@@ -180,7 +180,18 @@ jobs:
         # module ships `application_name_for_with_namespace` (Gap-3) +
         # `connect_named_with_namespace`. Both surfaces are pure; the
         # runtime DSN is mocked through the constructor.
-        run: "cargo test --lib store::registry:: store::postgres_backend::"
+        # `cargo test` takes ONE filter. Passing two made the second an
+        # unexpected argument and this job had been red since at least v2.87.0.
+        #
+        # And splitting it is not enough: `store::postgres_backend::` matches
+        # ZERO tests under the default feature set (70 with `--features
+        # postgres`), so the naive fix would have produced a green step that
+        # ran nothing — the §120.g defect, reintroduced by the repair. The
+        # surfaces are pure and the DSN is mocked, so the feature only needs to
+        # be ON to compile them; no database is required.
+        run: |
+          cargo test --lib store::registry::
+          cargo test --lib --features postgres store::postgres_backend::
 
       - name: Backend — StoreError T806 / T807 message contracts
         working-directory: axon-rs
