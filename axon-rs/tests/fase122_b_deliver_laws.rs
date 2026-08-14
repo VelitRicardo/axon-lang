@@ -26,9 +26,22 @@
 
 const FIXTURE: &str = "tests/fixtures/fase122_b_deliver/crm_handoff.axon";
 
+/// Read a fixture with line endings NORMALISED to `\n`.
+///
+/// §Fase 122.d — without this the T926 perturbation below (which spans a line
+/// break) matches nothing on a Windows checkout, where git hands the file over
+/// as CRLF. The test then failed on `windows-latest` only, and it failed on the
+/// right assertion: `assert_ne!(mutated, src)` exists precisely so a
+/// perturbation that changes nothing cannot masquerade as a passing mutation.
+/// It caught its own author on a platform he never ran.
+///
+/// Normalising is correct rather than a workaround: the fixture's SEMANTIC
+/// content is what is under test, and `\r\n` versus `\n` is not part of it.
 fn read_fixture(rel: &str) -> String {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(rel);
-    std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("read {}: {e}", path.display()))
+    std::fs::read_to_string(&path)
+        .unwrap_or_else(|e| panic!("read {}: {e}", path.display()))
+        .replace("\r\n", "\n")
 }
 
 fn errors_of(src: &str) -> Vec<String> {
