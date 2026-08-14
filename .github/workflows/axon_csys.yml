@@ -242,11 +242,32 @@ jobs:
           CFLAGS: "-fsanitize=${{ matrix.kind }} -fno-omit-frame-pointer -O1 -g"
           LDFLAGS: "-fsanitize=${{ matrix.kind }}"
           RUSTFLAGS: "-Zsanitizer=${{ matrix.kind }} -Cunsafe-allow-abi-mismatch=sanitizer -Cforce-frame-pointers=yes -Cdebuginfo=2"
+        # §Fase 122.d — `--all-targets` (lib + bins + tests + benches, and
+        # notably NOT doctests).
+        #
+        # The doctest phase was aborting with 24 errors under ThreadSanitizer
+        # while every lib/integration target passed. Doctests are compiled as
+        # separate throwaway binaries outside the `-Zbuild-std` graph, so they
+        # do not get a sanitizer-instrumented std and the link fails — the same
+        # build-graph-sibling problem the `-Cunsafe-allow-abi-mismatch` note
+        # above describes, which that flag covers for proc-macros and build
+        # scripts but cannot cover for doctests.
+        #
+        # Nothing is lost, and this is measured rather than assumed:
+        # `cargo test --doc` reports ZERO doctests in this crate. The 24 errors
+        # come from COMPILING the doctest harness, not from running any test.
+        # The exclusion removes a build step for zero tests.
+        #
+        # Even if doctests are added later, they would still be exercised by
+        # every `core` lane on four platforms. This lane exists to find RACES in
+        # the concurrent C kernel paths (slab allocator, FSM dispatcher,
+        # tokeniser) — a documentation example is not what it is for.
         run: |
           cargo +nightly test \
             -Zbuild-std \
             --target x86_64-unknown-linux-gnu \
             --release \
+            --all-targets \
             --verbose
 
   # UBSan applied only to the C kernels (not via -Zsanitizer because
