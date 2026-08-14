@@ -348,7 +348,15 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     // reasoned over, and which had left the §117 ledger on the strength of
     // compiling. The `reason` defect one fase later, in the table that recorded it.
     ("stream", Partial { gap: "§119.n made the PUBLISHED surface real: `stream<T> { on_chunk: … on_complete: … }` parses at both the step-body and flow positions (it was a hard parse error at flow level and a SILENT DISCARD in a step body), the `<T>` chunk type reaches the IR instead of being eaten by the argument-skip loop, and each arm is a step body so its `output:` lands. BOTH chunk sources are wired: a streaming TOOL bound with `apply:` (README block 15's own shape — the handler rides `unified_stream_handler`, so it sees the chunks the declared `backpressure:` policy let through, never the raw source), and the step's own generation (fase_23 §3.7's `stream<Token>` case, hooked into `drain_direct`). Neither has a private drain, so a handler cannot drift from the stream it handles. `on_complete` binds the accumulation as `complete` and its output becomes the step's. An `apply:` that is not a registered streaming tool is REFUSED, never demoted to the LLM path — demoting would stream something the author never named (§112). §119.n.3 added the THIRD arm, `on_error:`, run when the SOURCE fails with the failure bound as `error`; the step then completes with that arm's output (a recovery the author declared, not a swallowed error) and `on_complete` does NOT run, because a stream that broke did not close. It is deliberately NOT a catch-all: a failure raised by the author's own `on_chunk` is tagged and excluded, since a broken handler that silently catches itself and reports the stream as healthy is worse than one that crashes; cancellation is not a failure either. `on_chunk` is SEQUENTIAL and INTERLEAVED — one run per chunk, during the stream, gated by a wire-trace test that a buffered implementation would fail (it passes every other assertion in the file). Gates: axon-frontend/tests/fase119_n_stream_handlers.rs (12, source→AST→IR) + axon-rs/tests/fase119_n_stream_dispatch.rs (16, source→dispatch, incl. README block 15 VERBATIM executing); 7/7 mutations killed. THE GAP: `stream<τ>` is NOT desugared to `effect _StreamBuiltin<T>` + `handle … in …`, so fase_23's D8 claim of one-shot delimited continuations under this primitive is still future work and the algebraic `perform Stream.Yield` bridge stays orthogonal. A handler slower than the producer backpressures the whole step — correct, but a performance property an adopter should be told about. And `on_error` cannot RESUME the stream: it runs once, after the source is already gone" }),
-    ("effects", Real { proof: "parse_effect_row + type_checker; §85 `cache` derives cacheability from the `effects: pure` proof" }),
+    // §Fase 122.b — `parse_effect_row` + the type checker are the engines; §85's
+    // cacheability derivation reads the `effects: pure` proof. Verified on this
+    // fixture by perturbation: `effects: <not_an_effect>` fails it with the
+    // closed catalog named — "Valid: io, network, pure, random, storage, stream,
+    // trust, sensitive, legal, ots, web" — so the row really is decided here.
+    ("effects", Attested {
+        fixture: "tests/fixtures/fase33z_parity_corpus/cross_vertical/19_run_effects_compliance.axon",
+        gate: "tests/fase33z_d_parity_corpus.rs",
+    }),
     // §Fase 120 — the algebraic-effect system. `effects` (plural, above) is a
     // DIFFERENT thing that shares a word: the `effects: <io, network>` row on a
     // tool declaration. These three are Plotkin/Pretnar handlers.
@@ -563,7 +571,16 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
         fixture: "tests/fixtures/fase33z_parity_corpus/banking/01_canonical_loan_decision.axon",
         gate: "tests/fase33z_d_parity_corpus.rs",
     }),
-    ("run", Real { proof: "§65 unified executor — runner + execute_server_flow bind flow+persona+context and execute; every fase gate that runs a program runs through it" }),
+    // §Fase 122.b — §65's unified executor (runner + execute_server_flow, binding
+    // flow+persona+context) is what every gate that runs a program goes through,
+    // which made the old citation true and unfalsifiable at once. This fixture
+    // carries a literal top-level `run` statement, and perturbation confirms it
+    // is resolved: `run NoSuchFlowAtAll()` fails with "Undefined flow
+    // 'NoSuchFlowAtAll' in run statement".
+    ("run", Attested {
+        fixture: "tests/fixtures/fase33z_parity_corpus/cross_vertical/19_run_effects_compliance.axon",
+        gate: "tests/fase33z_d_parity_corpus.rs",
+    }),
     // §Fase 122.b — `type_checker` (structural + refinement validation) and
     // `store_schema` (§38, declared shapes pinned to SQL column types) are the
     // engines. The fixture below DECLARES types and is compiled from disk by the
@@ -612,9 +629,22 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     ("window", Unaudited),
     ("cors", Unaudited),
     // The governed-egress trio (§105 · §99/§106 · §110) — none was ever badged.
-    ("document", Real { proof: "axon-T916 (§99 — compile-time-validated, byte-deterministic OOXML synthesis; the assertion-laundering barrier refuses a sub-believe value in an assertive slot)" }),
+    // §Fase 122.b — verified by perturbation on this fixture: 
+    // `target: notaformat` fails it (§99's serializer catalog is decided, not
+    // parsed).
+    ("document", Attested {
+        fixture: "tests/fixtures/fase33z_parity_corpus/cross_vertical/20_document_notify_egress.axon",
+        gate: "tests/fase33z_d_parity_corpus.rs",
+    }),
     ("deliver", Real { proof: "delivery.rs + axon-T920 (§105 — provenance travels or the delivery refuses; first top-level egress integrated in the executor, D105.7(B))" }),
-    ("notify", Real { proof: "notification.rs + axon-T933/T934/T935 (§110 — carried lineage or refusal; at-most-once-per-window attention ledger across replicas, ENT mig 033)" }),
+    // §Fase 122.b — verified by perturbation on this fixture: 
+    // `window: 0m` fails it — §110's mandatory positive window. All five
+    // §110 laws fired when the block was first written wrong, and the fixture
+    // keeps their diagnostics as comments.
+    ("notify", Attested {
+        fixture: "tests/fixtures/fase33z_parity_corpus/cross_vertical/20_document_notify_egress.axon",
+        gate: "tests/fase33z_d_parity_corpus.rs",
+    }),
     // Credentials + custody verbs.
     ("credential", Real { proof: "tests/fase92_mint_runtime.rs (§92 — grants ⊆ minter, TTL ≤ 24h; axon-T893–T896)" }),
     ("mint", Real { proof: "tests/fase92_mint_runtime.rs (§92 — fail-closed without a minter port; the raw bearer is shown once and never persisted, axon-T896)" }),
@@ -1239,9 +1269,9 @@ mod tests {
             .filter(|(_, s)| matches!(s, Real { .. }))
             .count();
         assert!(
-            n <= 39,
+            n <= 35,
             "the legacy `Real {{ proof }}` population grew to {n} — §122.a measured 69 and §122.b \
-             drives it to zero (69 → 39 so far). A NEW claim of reality must be \
+             drives it to zero (69 → 35 so far). A NEW claim of reality must be \
              `Attested {{ fixture, gate }}`: name the `.axon` a published program could write, \
              and the gate that runs it."
         );
