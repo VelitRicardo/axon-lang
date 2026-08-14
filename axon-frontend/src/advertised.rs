@@ -192,7 +192,19 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     //    their nature; that is not the defect §111 hunts.
     ("persona", Real { proof: "flow_dispatcher::pure_shape" }),
     ("intent", Unaudited),
-    ("flow", Real { proof: "flow_dispatcher::dispatch_node (exhaustive, zero catch-alls)" }),
+    // §Fase 122.b — FIRST TWO RE-ATTESTATIONS. Both used to cite a module
+    // (`flow_dispatcher::dispatch_node`, `flow_dispatcher::pure_shape`) — an
+    // ENGINE citation, the shape §119.f.8 proved worthless, and one Law 3 never
+    // checked because it names no test file. The parity corpus is the honest
+    // replacement: `fase33z_d_parity_corpus` reads each `.axon` fixture from
+    // disk, drives it through BOTH execution paths (sync runner + async
+    // dispatcher) under the stub backend, and pins the results byte-equal. The
+    // input is source an adopter could have written; the gate walks it to
+    // dispatch. That is Law 4 satisfied, not asserted.
+    ("flow", Attested {
+        fixture: "tests/fixtures/fase33z_parity_corpus/banking/01_canonical_loan_decision.axon",
+        gate: "tests/fase33z_d_parity_corpus.rs",
+    }),
     // §Fase 119.f.8 — the proof used to read `pure_shape::run_reason`, and it was
     // TRUE and USELESS. The handler existed and worked; the grammar that reaches
     // it did not. The README's `reason { given ask depth }` — 16 blocks, each one
@@ -203,18 +215,51 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     // FUNCTION proves the engine exists. It does not prove any published program
     // reaches it. Cite the gate that walks the path — grammar to dispatch — and
     // the attestation means what a reader thinks it means.
-    ("reason", Real { proof: "fase119_f8_reason_block + fase119_f8_reason_prompt_is_built (grammar → IR → prompt); engine pure_shape::run_reason" }),
-    ("anchor", Real { proof: "anchor_checker" }),
+    // §Fase 122.b — §119.f.8's semantic gates (`fase119_f8_reason_block`,
+    // `fase119_f8_reason_prompt_is_built`) still hold and still run; what they
+    // could not do is satisfy Law 4, because they build their source inline and
+    // no file on disk holds it. The parity corpus does: a published-shaped
+    // program carrying a `reason` block, executed on both paths.
+    ("reason", Attested {
+        fixture: "tests/fixtures/fase33z_parity_corpus/cross_vertical/09_content_moderation_reason.axon",
+        gate: "tests/fase33z_d_parity_corpus.rs",
+    }),
+    // §Fase 122.b — was the bare engine name `anchor_checker`. The fixture below
+    // was ADDED by §122.b for exactly this: every gate proving `anchor`, `probe`
+    // and `weave` built its source inline, so no file on disk held a program
+    // using them and the rows could only cite an engine. The corpus gate
+    // discovers it by directory walk and drives it through both paths.
+    ("anchor", Attested {
+        fixture: "tests/fixtures/fase33z_parity_corpus/cross_vertical/12_legal_intake_probe_weave_anchor.axon",
+        gate: "tests/fase33z_d_parity_corpus.rs",
+    }),
     ("refine", Real { proof: "pure_shape::run_refine" }),
     ("memory", Real { proof: "cognitive::run_remember / run_recall (PEM write-through)" }),
     ("tool", Real { proof: "lambda_tools::dispatch_use_tool_real (§58)" }),
-    ("probe", Real { proof: "pure_shape::run_probe" }),
+    // §Fase 122.b — see the `anchor` note above; same fixture, same gate.
+    ("probe", Attested {
+        fixture: "tests/fixtures/fase33z_parity_corpus/cross_vertical/12_legal_intake_probe_weave_anchor.axon",
+        gate: "tests/fase33z_d_parity_corpus.rs",
+    }),
     // §Fase 119.f.9 — see rule 4 above: this proof used to name the handler
     // alone, and the handler was reachable only from a braced form no published
     // block writes. Worse, it sent the model the source NAMES, so even when
     // reached it synthesised over identifiers instead of outputs.
-    ("weave", Real { proof: "fase119_f9_weave_statement + fase119_f9_weave_prompt_is_built (grammar → IR → resolved prompt); engine pure_shape::run_weave" }),
-    ("validate", Real { proof: "pure_shape::run_validate" }),
+    // §Fase 122.b — §119.f.9's gates (`fase119_f9_weave_statement`,
+    // `fase119_f9_weave_prompt_is_built`) still hold: grammar → IR → resolved
+    // prompt, over the engine `pure_shape::run_weave`. They build their source
+    // inline, so they cannot satisfy Law 4. Same fixture as `anchor`/`probe`.
+    ("weave", Attested {
+        fixture: "tests/fixtures/fase33z_parity_corpus/cross_vertical/12_legal_intake_probe_weave_anchor.axon",
+        gate: "tests/fase33z_d_parity_corpus.rs",
+    }),
+    // §Fase 122.b — was `pure_shape::run_validate`, a bare engine name and one
+    // of the 38 rows Law 3 never checked (no `tests/` token ⇒ vacuous). §121's
+    // own gates prove the scoring; this proves a published program reaches it.
+    ("validate", Attested {
+        fixture: "tests/fixtures/fase33z_parity_corpus/cross_vertical/04_capability_mediation_validate.axon",
+        gate: "tests/fase33z_d_parity_corpus.rs",
+    }),
     ("context", Unaudited),
     // ── Epistemic scopes
     ("know", Unaudited),
@@ -222,7 +267,12 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     ("speculate", Unaudited),
     ("doubt", Unaudited),
     // ── Concurrency & continuation
-    ("par", Real { proof: "parallel::run_par (real fan-out via join_all, §65)" }),
+    // §Fase 122.b — real fan-out via `join_all` (§65) stays the mechanism; the
+    // citation now names a program that uses it and the gate that runs it.
+    ("par", Attested {
+        fixture: "tests/fixtures/fase33z_parity_corpus/banking/04_par_concurrent_checks.axon",
+        gate: "tests/fase33z_d_parity_corpus.rs",
+    }),
     ("hibernate", Partial { gap: "§119.d made the suspension REAL on the production dispatch path: the walk HALTS at the hibernate point (the task dies — zero further compute, zero tokens, the primitive's economic guarantee), the continuation parks under the README's SHA-256(flow ∥ event ∥ position) id with the remaining nodes + bindings + catalogs, `emit <channel>` WAKES matching continuations (fire-and-forget resume through the real dispatcher), a late resume is REFUSED by lazy expiry (no timer burns while asleep), and `hibernate until \"event\"` — the README's own spelling — parses. Gates: tests/fase119_d_hibernate.rs (halt counted in StepCompletes, park, emit-wake e2e, nested refusal) + hibernation unit suite; 4/4 mutations killed incl. the F20 walk-keeps-going reinjection. THE GAP: the parking lot is in-process (the pem::InMemoryBackend discipline) — a continuation does not survive process restart, so README's sleep-for-months across restarts is the durable-store enterprise catch-up (cognitive_states), and chained hibernation inside a resumed continuation is not yet defined" }),
     // ── Deterministic data plane (§108)
     ("dataspace", Real { proof: "dataspace_engine (columnar, first-party)" }),
@@ -307,13 +357,31 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     ("navigate", Partial { gap: "§111 F11 — three REAL deterministic engines (MDN store-sourced, MDN in-memory, PIX), BUT with no indexable source in scope it falls back to an LLM prompt that INSTRUCTS the model to fabricate a provenance trail. The one live §108 left in the tree" }),
     ("drill", Partial { gap: "§111 — real subtree navigation when a source is in scope; degrades to a placeholder string otherwise" }),
     ("trail", Partial { gap: "§111 — reads the real breadcrumb `navigate` seeds; falls back to a placeholder when no navigate ran. Inherits F11: a trail harvested from the LLM fallback is confabulation wearing an audit's clothes" }),
-    ("corpus", Real { proof: "mdn (signed Epistemic PageRank; §62–§64)" }),
+    // §Fase 122.b — `mdn` (signed Epistemic PageRank, §62–§64) is the engine and
+    // has its own unit coverage; this citation is the PATH: a published program
+    // declaring a `corpus`, compiled from disk and executed.
+    ("corpus", Attested {
+        fixture: "tests/fixtures/fase33z_parity_corpus/cross_vertical/06_mdn_navigate_graph.axon",
+        gate: "tests/fase33z_d_parity_corpus.rs",
+    }),
     // ── Advanced cognition & trust
     ("psyche", Unaudited),
     ("ots", Partial { gap: "§119.c made the dispatch layer REAL: `apply_ots_to_target` (identity, §111 F18) is deleted; `run_ots_apply` resolves the declaration, consults the name-keyed `ots_registry` (shield_registry's shape — the hook that F18 said did not exist, now tested by registering a transformer and watching it fire), propagates transformer refusals, and REFUSES an unregistered name (identity under a transformation's name fabricates a result). Step-scoped `ots X on y -> b` elevates before generation. THE GAP: no OSS transformer registers by default — any generic default would be the identity lie again — so OSS `ots` refuses at runtime until the media pipeline (crate::ots) or an enterprise vertical registers; the paper's JIT synthesis pipeline remains future work" }),
     ("mcp", Unaudited),
     ("mandate", Real { proof: "§119.b — the closed loop runs through production dispatch: axon-rs/src/mandate_engine.rs (e = 1 − CSR from pem::semantic_validator, PID from pem::density_matrix, Converge(e,ε,N) with Breach fail-closed, declared-D premise discharge, |C|=0 refused before any token) driven by run_mandate_apply + the D119.4 step guard (buffered — attempts never stream). Tier 1 logit-bias bans on the OpenAI-compat wire, Tier 2 CSP feedback everywhere. Gates: mandate_engine tests (16), algebraic_handlers MandateApply tests (incl. the F18 regression: an unresolved name REFUSES, never identity), openai_compat logit_bias wire tests, fase119_b3_stability_band.rs, fase119_b_mandate_grammar.rs — 9/9 dispatch-chain mutations killed" }),
-    ("lambda", Real { proof: "§119.c — the ΛD engine (lambda_data.rs: ψ = ⟨T,V,E⟩, four invariants, compose with c_out ≤ min(c_i); lambda_runtime.rs: Theorem 5.1 enforced at apply — only raw data may carry c = 1.0) now runs on the PRODUCTION dispatch path: `apply_lambda_data` (the placeholder string, §111 F18) is deleted, `run_lambda_data_apply` builds ψ via build_psi with D10 runner parity, an undeclared lambda REFUSES, and the step-scoped `lambda X on y -> b` (README blocks 46-47) elevates BEFORE prompt interpolation. Gates: lambda_tools elevation suite incl. the F18 regression + fase119_c_apply_grammar.rs; mutations C1/C2/C5 killed" }),
+    // §Fase 122.b — §119.c's account stays true and is worth keeping here: the
+    // ΛD engine (`lambda_data.rs`: ψ = ⟨T,V,E⟩, four invariants, compose with
+    // c_out ≤ min(c_i); `lambda_runtime.rs`: Theorem 5.1 enforced at apply, only
+    // raw data may carry c = 1.0) runs on the PRODUCTION dispatch path.
+    // `apply_lambda_data` — the §111 F18 placeholder string — is deleted, an
+    // undeclared lambda REFUSES, and the step-scoped form elevates BEFORE prompt
+    // interpolation. Gates: the lambda_tools elevation suite incl. the F18
+    // regression + fase119_c_apply_grammar.rs; mutations C1/C2/C5 killed.
+    // The citation below is the one Law 4 asks for: source on disk → dispatch.
+    ("lambda", Attested {
+        fixture: "tests/fixtures/fase33z_parity_corpus/cross_vertical/08_rate_limiting_lambda.axon",
+        gate: "tests/fase33z_d_parity_corpus.rs",
+    }),
     // ── Deterministic compute
     // §Fase 119.o — the proof now cites a gate whose INPUT is `.axon` source
     // (law 4). The §111.f citation stayed, because it is still true and still
@@ -399,14 +467,36 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     // unchecked box is not a passing one.
     //
     // The language core — exercised by essentially every gate in both repos.
-    ("step", Real { proof: "flow_dispatcher::pure_shape — the step executor every flow runs through (the same shared seam §114's channel guards read)" }),
+    // §Fase 122.b — see the `flow` note above; same fixture, same gate. The
+    // fixture is a single-`step` flow, so the byte-equal pin IS the step
+    // executor's output on both paths.
+    ("step", Attested {
+        fixture: "tests/fixtures/fase33z_parity_corpus/banking/01_canonical_loan_decision.axon",
+        gate: "tests/fase33z_d_parity_corpus.rs",
+    }),
     ("run", Real { proof: "§65 unified executor — runner + execute_server_flow bind flow+persona+context and execute; every fase gate that runs a program runs through it" }),
-    ("type", Real { proof: "type_checker (structural + refinement validation) + store_schema (§38 — declared shapes pinned to SQL column types)" }),
+    // §Fase 122.b — `type_checker` (structural + refinement validation) and
+    // `store_schema` (§38, declared shapes pinned to SQL column types) are the
+    // engines. The fixture below DECLARES types and is compiled from disk by the
+    // gate before it executes, so the front half of the path is exercised on
+    // source an adopter could have written.
+    ("type", Attested {
+        fixture: "tests/fixtures/fase33z_parity_corpus/cross_vertical/06_mdn_navigate_graph.axon",
+        gate: "tests/fase33z_d_parity_corpus.rs",
+    }),
     ("json", Real { proof: "tests/fase73_c_json_accessors.rs + tests/fase73_e_json_lens.rs (§73 — total navigation; honest fail-closed accessor semantics pinned in axon-rs orchestration tests)" }),
     // The audit chain + π-calc channel family.
     ("ledger", Unaudited),
     ("channel", Partial { gap: "§114.z — durable persistence (§74 outbox) and the σ-shield egress gate (§114, tests/fase114_channel_shield_egress.rs) are proven; `qos:`/`lifetime:` enforcement is unaudited" }),
-    ("emit", Real { proof: "tests/fase114_channel_shield_egress.rs (§114 — the channel's shield scans on EVERY path by IR-resolution; Reject fails closed before any routing) + §74 durable outbox delivery" }),
+    // §Fase 122.b — the previous citation (`tests/fase114_channel_shield_egress.rs`)
+    // is the SEMANTIC gate and still runs: the channel's σ-shield scans on every
+    // path by IR-resolution, and a Reject fails closed before any routing. But
+    // its dispatch half hand-builds `IREmit`, so it proves the handler, not the
+    // path — the §119.f.8 distinction. The parity corpus supplies the path.
+    ("emit", Attested {
+        fixture: "tests/fixtures/fase33z_parity_corpus/banking/09_credit_score_reasoning.axon",
+        gate: "tests/fase33z_d_parity_corpus.rs",
+    }),
     ("publish", Unaudited),
     ("discover", Unaudited),
     // Governance operators.
@@ -880,6 +970,141 @@ mod tests {
         }
     }
 
+    /// **§122.b — LAW 4, ENFORCED.** The cited gate must actually reach the
+    /// cited fixture, and the fixture must be a program the compiler accepts.
+    ///
+    /// # What this proves, and what it does not
+    ///
+    /// Enforced here, mechanically:
+    ///
+    /// 1. the fixture **compiles** — a `.axon` that no longer parses is not a
+    ///    program any adopter could have written, and a citation to it is
+    ///    stale. This is the check that catches rot;
+    /// 2. the gate **names a path that reaches the fixture** — the fixture
+    ///    itself, or a directory under `fixtures/` that contains it (the
+    ///    corpus-driven idiom `fase116_laws_corpus` and `fase33z_d_parity_corpus`
+    ///    already use). A gate naming only `tests/fixtures` proves nothing and
+    ///    is rejected: the path must be at least one segment deeper.
+    ///
+    /// **Not** enforced, and it must be said plainly, because a ratchet that is
+    /// believed to prove more than it does is the exact defect this file
+    /// exists to close: nothing here decides whether the gate *meaningfully
+    /// exercises the primitive*. That stays a human attestation — the premise
+    /// of [`RuntimeStatus`] from the beginning, *because no linter can decide
+    /// it*. What §122.b removes is the ability to cite something that cannot be
+    /// run, or that has quietly stopped compiling. It makes the CITATION
+    /// verifiable. It does not make the JUDGEMENT automatic.
+    #[test]
+    fn every_attested_gate_reaches_a_fixture_that_still_compiles() {
+        for (name, status) in ADVERTISED {
+            let Attested { fixture, gate } = status else {
+                continue;
+            };
+            // (1) The fixture is a program the compiler still accepts.
+            let fixture_path = resolve_repo_path(fixture)
+                .unwrap_or_else(|| panic!("`{name}` cites fixture `{fixture}`, which is missing"));
+            let src = std::fs::read_to_string(&fixture_path)
+                .unwrap_or_else(|e| panic!("`{name}`: cannot read `{fixture}`: {e}"));
+            let tokens = crate::lexer::Lexer::new(&src, fixture)
+                .tokenize()
+                .unwrap_or_else(|e| {
+                    panic!(
+                        "`{name}` cites fixture `{fixture}`, which no longer LEXES: {e:?}\n\
+                         A citation to a program the compiler rejects is stale."
+                    )
+                });
+            crate::parser::Parser::new(tokens).parse().unwrap_or_else(|e| {
+                panic!(
+                    "`{name}` cites fixture `{fixture}`, which no longer PARSES: {e:?}\n\
+                     A citation to a program the compiler rejects is stale."
+                )
+            });
+
+            // (2) The gate names a path that reaches it.
+            let gate_path = resolve_repo_path(gate)
+                .unwrap_or_else(|| panic!("`{name}` cites gate `{gate}`, which is missing"));
+            let gate_src = std::fs::read_to_string(&gate_path)
+                .unwrap_or_else(|e| panic!("`{name}`: cannot read gate `{gate}`: {e}"));
+            assert!(
+                gate_mentions_a_path_reaching(&gate_src, fixture),
+                "`{name}` is Attested, but gate `{gate}` never names a path that reaches fixture \
+                 `{fixture}`.\n\n\
+                 This is LAW 4. A gate that does not read the fixture proves the ENGINE, not the \
+                 PATH — §119.f.8's lesson, and the hole `cache` went through. Name the fixture (or \
+                 the corpus directory that holds it) in the gate, or cite a gate that does."
+            );
+        }
+    }
+
+    /// Resolve a repo-relative path, tolerating the two crate roots the table's
+    /// citations use.
+    fn resolve_repo_path(p: &str) -> Option<std::path::PathBuf> {
+        [
+            repo_root().join(p),
+            repo_root().join("axon-rs").join(p),
+            repo_root().join("axon-frontend").join(p),
+        ]
+        .into_iter()
+        .find(|c| c.exists())
+    }
+
+    /// True when `gate_src` names the fixture, or a directory under a
+    /// `fixtures` segment that contains it.
+    ///
+    /// The depth rule is the load-bearing part: naming `tests/fixtures` alone
+    /// would let any gate claim any fixture, so an ancestor only counts when it
+    /// is at least one segment deeper than the `fixtures` directory itself.
+    fn gate_mentions_a_path_reaching(gate_src: &str, fixture: &str) -> bool {
+        let fixture = fixture.replace('\\', "/");
+        if gate_src.contains(&fixture) {
+            return true;
+        }
+        let segments: Vec<&str> = fixture.split('/').collect();
+        let Some(fx) = segments.iter().position(|s| *s == "fixtures") else {
+            return false;
+        };
+        // Ancestors strictly deeper than `.../fixtures`, longest first.
+        (fx + 2..segments.len())
+            .rev()
+            .any(|end| gate_src.contains(&segments[..end].join("/")))
+    }
+
+    /// §122.b — the depth rule inside [`gate_mentions_a_path_reaching`] is the
+    /// load-bearing half, so it gets its own test rather than trust.
+    ///
+    /// Without it, a gate that merely says `tests/fixtures` anywhere in its
+    /// source could claim EVERY fixture in the repo — which would make Law 4
+    /// enforceable in form and vacuous in fact, the precise failure this whole
+    /// fase exists to end.
+    #[test]
+    fn naming_the_fixtures_root_alone_does_not_reach_a_fixture() {
+        let fixture = "tests/fixtures/fase33z_parity_corpus/banking/01_canonical_loan_decision.axon";
+
+        // Too shallow: the corpus root is not named.
+        assert!(!gate_mentions_a_path_reaching("reads tests/fixtures/", fixture));
+        assert!(!gate_mentions_a_path_reaching("reads tests/", fixture));
+        // An unrelated corpus does not reach it either.
+        assert!(!gate_mentions_a_path_reaching(
+            "reads tests/fixtures/fase116_laws",
+            fixture
+        ));
+        // Deep enough: the corpus directory that actually holds it.
+        assert!(gate_mentions_a_path_reaching(
+            "reads tests/fixtures/fase33z_parity_corpus/",
+            fixture
+        ));
+        // And the fixture named outright.
+        assert!(gate_mentions_a_path_reaching(
+            &format!("reads {fixture}"),
+            fixture
+        ));
+        // A fixture outside any `fixtures/` directory must be named exactly.
+        assert!(!gate_mentions_a_path_reaching(
+            "reads examples/",
+            "examples/loan.axon"
+        ));
+    }
+
     /// **§122.a — the legacy `Real { proof }` population is pinned, and may only
     /// shrink.** §122.b drives it to zero.
     ///
@@ -898,10 +1123,11 @@ mod tests {
             .filter(|(_, s)| matches!(s, Real { .. }))
             .count();
         assert!(
-            n <= 69,
+            n <= 57,
             "the legacy `Real {{ proof }}` population grew to {n} — §122.a measured 69 and §122.b \
-             drives it to zero. A NEW claim of reality must be `Attested {{ fixture, gate }}`: \
-             name the `.axon` a published program could write, and the gate that runs it."
+             drives it to zero (69 → 57 so far). A NEW claim of reality must be \
+             `Attested {{ fixture, gate }}`: name the `.axon` a published program could write, \
+             and the gate that runs it."
         );
     }
 
