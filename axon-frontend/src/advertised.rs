@@ -455,7 +455,19 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
         gate: "tests/fase33z_d_parity_corpus.rs",
     }),
     // ── Reactive processes & platform boundary
-    ("daemon", Real { proof: "daemon.rs — OTP-style supervision + §74 durable event delivery" }),
+    // §Fase 122.b — was the bare module name `daemon.rs`. The delivery proof is real
+    // and stays (it lives in that module's unit tests), but it builds its source
+    // inline, so nothing on disk held the program. This citation drives §74.a's
+    // headline from a fixture: a producer emits on a typed channel, the bus — built
+    // FROM the compiled IR, so the channel is registered because the PROGRAM
+    // declares it — carries the event, and the consumer daemon's `listen` body runs
+    // with the payload bound. §52.g's `axon-W009` said that delivery did not exist.
+    //
+    // Emptying the `listen` body or renaming the daemon kills the citation.
+    ("daemon", Attested {
+        fixture: "tests/fixtures/fase122_b_daemon/intent_learner.axon",
+        gate: "tests/fase122_b_daemon_delivery.rs",
+    }),
     ("listen", Partial { gap: "§111 F7 — TWO disjoint paths sharing one keyword. Inside a DAEMON: real (§74 outbox → deliver_typed_event → execute_server_flow). Inside a FLOW BODY: binds the canned string \"(awaiting <channel>)\". Sub-gap: a daemon listener body executes ONLY `run <Flow>` steps; any other step type is silently dropped" }),
         // §Fase 122.b — was the bare engine name `axon_server`. The fixture is DEPLOYED
     // and its route FETCHED. Perturbing the declared `path:` kills it, and so does
@@ -1451,9 +1463,9 @@ mod tests {
             .filter(|(_, s)| matches!(s, Real { .. }))
             .count();
         assert!(
-            n <= 17,
+            n <= 16,
             "the legacy `Real {{ proof }}` population grew to {n} — §122.a measured 69 and §122.b \
-             drives it to zero (69 → 17 so far). A NEW claim of reality must be \
+             drives it to zero (69 → 16 so far). A NEW claim of reality must be \
              `Attested {{ fixture, gate }}`: name the `.axon` a published program could write, \
              and the gate that runs it."
         );

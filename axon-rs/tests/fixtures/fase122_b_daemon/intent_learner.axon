@@ -1,0 +1,31 @@
+// §Fase 122.b (group B) — the `.axon` input the daemon delivery proof never had
+// on disk.
+//
+// §74.a's headline is flow → daemon delivery: a producer emits on a typed
+// channel, the bus carries it, and the consumer daemon's `listen` body RUNS
+// with the event payload bound to the consumer flow's parameters. §52.g's
+// `axon-W009` said that delivery did not exist; §74.a made it exist.
+//
+// The proof for it lives in unit tests that build their source inline, which
+// makes it an ENGINE citation by Law 4's standard. This is the same program as
+// a file an adopter could have written.
+
+type Hib {
+    tenant_id: String
+    session_id: String
+}
+
+channel HibCh {
+    message: Hib
+    qos: at_least_once
+    persistence: persistent_axonstore
+}
+
+flow Learn(tenant_id: String, session_id: String) -> String {
+    return "learned"
+}
+
+daemon IntentLearner {
+    requires: [flow.execute]
+    listen HibCh as ev { run Learn() }
+}
