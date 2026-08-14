@@ -76,6 +76,62 @@ fn resolver() -> MapResourceResolver {
     MapResourceResolver::new().with("db.main", "postgres://h/app")
 }
 
+// ── §Fase 122.b — the same wire, from a program on disk ────────────────────
+//
+// The gates below hand-build `IRResource` and `IRAxonStore`, which proves the
+// REGISTRY. Law 4 asks for the PATH: the declarations as an adopter writes
+// them, through the real compiler, into the same registry builder.
+
+/// Compile a fixture through the real pipeline — INCLUDING the type checker.
+/// A fixture that does not type-check is not a program an adopter could deploy.
+fn compile_fixture(rel: &str) -> axon::ir_nodes::IRProgram {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(rel);
+    let src = std::fs::read_to_string(&path)
+        .unwrap_or_else(|e| panic!("read {}: {e}", path.display()));
+    let tokens = axon_frontend::lexer::Lexer::new(&src, rel)
+        .tokenize()
+        .expect("fixture must lex");
+    let prog = axon_frontend::parser::Parser::new(tokens)
+        .parse()
+        .expect("fixture must parse");
+    let errors = axon_frontend::type_checker::TypeChecker::new(&prog).check();
+    assert!(
+        errors.is_empty(),
+        "the fixture must TYPE-CHECK: {:?}",
+        errors.iter().map(|e| &e.message).collect::<Vec<_>>()
+    );
+    axon_frontend::ir_generator::IRGenerator::new().generate(&prog)
+}
+
+#[test]
+fn a_compiled_declaration_sizes_the_pool_and_supplies_the_dsn() {
+    const FIXTURE: &str = "tests/fixtures/fase122_b_resource/pooled_store.axon";
+    let ir = compile_fixture(FIXTURE);
+
+    assert!(
+        !ir.resources.is_empty() && !ir.axonstore_specs.is_empty(),
+        "the fixture declares a `resource` and an `axonstore`; empty catalogs mean \
+         the declarations no longer reach the IR"
+    );
+
+    let reg = StoreRegistry::build_with_resources(&ir.axonstore_specs, &ir.resources, &resolver())
+        .expect("the compiled declarations must build a registry");
+
+    assert_eq!(
+        reg.pool_capacity_of("Users"),
+        Some(20),
+        "the pool must be sized by the DECLARED `capacity: 20`. If this is 10, the \
+         resource is a label: the reference resolved, the declaration looked governed, \
+         and the runtime did exactly what it did before anyone declared anything."
+    );
+    assert_eq!(
+        reg.dsn_source_of("Users"),
+        Some("postgres://h/app"),
+        "the DSN must come from the resource's config key — the store declares no \
+         `connection:` of its own (axon-T944)"
+    );
+}
+
 // ── The wire ─────────────────────────────────────────────────────────────────
 
 /// **`capacity: 20` produces a pool of twenty.**

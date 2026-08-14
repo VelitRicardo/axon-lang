@@ -92,6 +92,66 @@ fn resolver() -> MapResourceResolver {
     MapResourceResolver::new().with("db.main", "postgres://h/app")
 }
 
+// ── §Fase 122.b — the same breach, from a program on disk ──────────────────
+//
+// The gates below hand-build `IRResource`, `IRLease` and `IRAxonStore`, which
+// proves the KERNEL. Law 4 asks for the PATH: the declarations as an adopter
+// writes them, through the real compiler, into the same governed registry.
+
+/// Compile a fixture through the real pipeline — INCLUDING the type checker.
+/// A fixture that does not type-check is not a program an adopter could deploy.
+fn compile_fixture(rel: &str) -> axon::ir_nodes::IRProgram {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(rel);
+    let src = std::fs::read_to_string(&path)
+        .unwrap_or_else(|e| panic!("read {}: {e}", path.display()));
+    let tokens = axon_frontend::lexer::Lexer::new(&src, rel)
+        .tokenize()
+        .expect("fixture must lex");
+    let prog = axon_frontend::parser::Parser::new(tokens)
+        .parse()
+        .expect("fixture must parse");
+    let errors = axon_frontend::type_checker::TypeChecker::new(&prog).check();
+    assert!(
+        errors.is_empty(),
+        "the fixture must TYPE-CHECK: {:?}",
+        errors.iter().map(|e| &e.message).collect::<Vec<_>>()
+    );
+    axon_frontend::ir_generator::IRGenerator::new().generate(&prog)
+}
+
+#[test]
+fn a_compiled_lease_permits_the_use_then_makes_it_a_breach() {
+    const FIXTURE: &str = "tests/fixtures/fase122_b_resource/leased_store.axon";
+    let ir = compile_fixture(FIXTURE);
+    assert!(
+        !ir.leases.is_empty(),
+        "the fixture declares a `lease`; an empty catalog means the declaration \
+         no longer reaches the IR"
+    );
+
+    let now = Arc::new(Mutex::new(chrono::Utc::now()));
+    let c = now.clone();
+    let reg = StoreRegistry::build_governed_with_clock(
+        &ir.axonstore_specs,
+        &ir.resources,
+        &ir.leases,
+        &resolver(),
+        Box::new(move || *c.lock().unwrap()),
+    )
+    .expect("the lease declared in the fixture is acquired at build");
+
+    // Within the DECLARED duration: the capability is held.
+    reg.resolve("Users")
+        .expect("a live lease must permit the use — the capability IS held");
+
+    // Past it, the same use is the CT-2 Anchor Breach.
+    *now.lock().unwrap() += chrono::Duration::seconds(3601);
+    reg.resolve("Users").expect_err(
+        "post-expiry USE is the CT-2 Anchor Breach the README promises — and before \
+         §113 it could not even be expressed, because a flow could not USE a resource",
+    );
+}
+
 // ── The breach ───────────────────────────────────────────────────────────────
 
 /// **The assertion this entire fase exists to make possible.**

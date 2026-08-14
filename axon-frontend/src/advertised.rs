@@ -483,7 +483,20 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     // daemon field that can consume any of them. The kernels are real,
     // well-written and unit-tested; the language never grew a way to reach them.
     // Founder-ratified: designing that consumption surface is §112+.
-    ("resource", Real { proof: "tests/fase113_c_resource_is_a_wire.rs (§113.c — an `axonstore { resource: Db }` DERIVES its DSN and its POOL SIZE from the resource: `capacity: 20` produces twenty connections. Before §113 `capacity` was read by zero lines of code in either repo while every pool sat at a hardcoded 10, and `lifetime` — sold as Linear Logic — was read by nothing at all)" }),
+    // §Fase 122.b — §113.c's flagship is the difference between the resource being a
+    // WIRE and being a LABEL: before it, `capacity:` was declared, type-checked,
+    // lowered into the IR, advertised in the README as a pool cap — and read by
+    // nothing. Every pool was 10, always, for everyone. Its gates hand-build
+    // `IRResource`/`IRAxonStore`, which proves the REGISTRY; this fixture is the
+    // program an adopter writes, and the store deliberately declares no
+    // `connection:` so the DSN can only come from the resource's config key
+    // (axon-T944). Three perturbations kill it: changing the declared `capacity:`,
+    // changing the `endpoint:` config key, and pointing `resource:` at a name that
+    // does not resolve.
+    ("resource", Attested {
+        fixture: "tests/fixtures/fase122_b_resource/pooled_store.axon",
+        gate: "tests/fase113_c_resource_is_a_wire.rs",
+    }),
     ("fabric", Partial { gap: "§119.e made provider/region DECIDE things, on the line the knowledge doc draws (fabric describes what the runtime expects to find; it is explicitly NOT infrastructure-as-code, so `provision` is not what it owed). COMPILE TIME: `axon-E041` refuses a region that cannot belong to the declared provider (the doc's own `provider: aws region: \"eastus\"` example) and `axon-E042` refuses a compliance obligation the substrate cannot satisfy (the doc's own \"a GDPR-tagged manifest deployed to a non-EU region is rejected\") — with an UNDETERMINABLE jurisdiction counted as a violation, never a pass. RUNTIME: a tool whose resource lives `within` a fabric carries that fabric's (provider, region) on its binding and into its audit row — the doc's compliance propagation, made a fact — and a `within:` naming an undeclared fabric REFUSES the binding. Gates: axon-frontend/tests/fase119_e_fabric_substrate.rs (10) + substrate unit suite (11) + axon-rs/tests/fase119_e_fabric_runtime.rs (5); 6/6 mutations killed. THE GAP: the provider catalog is open by design, so a provider whose region shape this compiler does not know is accepted UNVALIDATED (visible via ProviderShape::Unvalidated) — and `zones`/`ephemeral`/`shield:` are still consumed by nothing, so a fabric-level shield does not yet wrap resource acquisition" }),
     ("manifest", Partial { gap: "§111 F14 — the κ/compliance half IS genuinely consumed (it feeds attestation + the audit scorer); the \"desired shape\" half is dead" }),
         // §Fase 122.b — the readings that drive the immune's baseline come through this
@@ -504,7 +517,22 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
         fixture: "tests/fixtures/fase122_b_cognitive_io/reconcile_drift.axon",
         gate: "tests/fase112_e_reconcile_drift.rs",
     }),
-    ("lease", Real { proof: "tests/fase113_d_lease_breach_fires.rs (§113.d — post-expiry USE of a leased store is the CT-2 Anchor Breach, and all three `on_expire` policies are honoured. The kernel was NEVER broken: it had no SUBJECT. A flow could not USE a resource, so a guarantee about post-expiry use was VACUOUS — unviolatable, and therefore unkeepable. §113 made the store operation the use)" }),
+    // §Fase 122.b — the sharpest case in the whole §111 line, and worth restating
+    // because this fixture is what makes it checkable from source: the kernel was
+    // NEVER broken. `LeaseKernel` had acquire/use_token/release, the CT-2 Anchor
+    // Breach and all three `on_expire` policies, and its unit tests passed for
+    // years. IT HAD NO SUBJECT — the README promised that using a resource after
+    // expiry is a breach, in a language where a flow could not USE a resource at
+    // all. A guarantee about using a thing that cannot be used is not weak; it is
+    // VACUOUS: unviolatable, and therefore unkeepable. §113 made the store
+    // operation the use.
+    //
+    // Perturbing the DECLARATION kills it: widening `duration:` past the clock we
+    // advance, and changing `on_expire:` away from `anchor_breach`.
+    ("lease", Attested {
+        fixture: "tests/fixtures/fase122_b_resource/leased_store.axon",
+        gate: "tests/fase113_d_lease_breach_fires.rs",
+    }),
     // §Fase 122.b — §112.c exercised `ensemble` ONLY as a refusal (an unsatisfiable
     // quorum must refuse the deploy, because a half-instantiated immune system is
     // worse than none — it looks like one). That law stays, and it left the path
@@ -1408,9 +1436,9 @@ mod tests {
             .filter(|(_, s)| matches!(s, Real { .. }))
             .count();
         assert!(
-            n <= 20,
+            n <= 18,
             "the legacy `Real {{ proof }}` population grew to {n} — §122.a measured 69 and §122.b \
-             drives it to zero (69 → 20 so far). A NEW claim of reality must be \
+             drives it to zero (69 → 18 so far). A NEW claim of reality must be \
              `Attested {{ fixture, gate }}`: name the `.axon` a published program could write, \
              and the gate that runs it."
         );
@@ -1453,8 +1481,13 @@ mod tests {
             .iter()
             .filter(|(_, s)| matches!(s, Unaudited))
             .count();
+        // §Fase 122.b — restored to 23 after a blind string replace walked this pin
+        // down alongside the legacy-`Real` pin, which happened to hold the same
+        // number. The Unaudited population is 20 today (`savant` and `synth` left it
+        // for `Unwired` in §122.a); it is NOT re-baselined here, because a pin that
+        // moves as a side effect of editing another pin has stopped being a ratchet.
         assert!(
-            n <= 20,
+            n <= 23,
             "the Unaudited population grew to {n} — §111 left 18, §114.z's census widening \
              re-baselined at 23. Auditing is the only direction."
         );
