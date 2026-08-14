@@ -1,0 +1,29 @@
+// §Fase 122.b (group B) — the `.axon` input `fase111_i_socket_served.rs` never
+// had on disk.
+//
+// Same precisely-small gap as the §112 gates: this one already deploys through
+// the real `POST /v1/deploy` and boots a real TCP listener, so it was always a
+// path proof. What it lacked is a program on disk, so nothing could catch the
+// citation going stale.
+//
+// §111.i's finding is worth restating, because it is why this file exists at
+// all: the OSS server had NO WebSocket route — not a stub, none — while the
+// public README led with "session-typed WebSocket dialogue as a first-class
+// primitive". And when a route did appear, every socket got a hardcoded
+// canonical chat schema, so an adopter could declare a protocol and be served
+// something else.
+//
+// The protocol below is exact duals: the broker receives an Order and sends a
+// Fill; the client does the reverse. `socket Wire` carries it, and the served
+// schema must be THIS one.
+
+type Order { sku: String }
+
+type Fill { id: String }
+
+session Trade {
+    broker: [ receive Order, send Fill, end ]
+    client: [ send Order, receive Fill, end ]
+}
+
+socket Wire { protocol: Trade }

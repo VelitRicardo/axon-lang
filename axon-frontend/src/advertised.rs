@@ -457,8 +457,24 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     // ── Reactive processes & platform boundary
     ("daemon", Real { proof: "daemon.rs — OTP-style supervision + §74 durable event delivery" }),
     ("listen", Partial { gap: "§111 F7 — TWO disjoint paths sharing one keyword. Inside a DAEMON: real (§74 outbox → deliver_typed_event → execute_server_flow). Inside a FLOW BODY: binds the canned string \"(awaiting <channel>)\". Sub-gap: a daemon listener body executes ONLY `run <Flow>` steps; any other step type is silently dropped" }),
-    ("axonendpoint", Real { proof: "axon_server — typed routes, body/output schemas, Idempotency-Key (§32/§37)" }),
-    ("axpoint", Real { proof: "an ALIAS of axonendpoint — same TokenType (tokens.rs)" }),
+        // §Fase 122.b — was the bare engine name `axon_server`. The fixture is DEPLOYED
+    // and its route FETCHED. Perturbing the declared `path:` kills it, and so does
+    // swapping `execute:` — but only after the test was strengthened to assert the
+    // step name that belongs to the declared flow. The first version checked only
+    // that `a` flow ran, which does not discriminate between two flows of the same
+    // shape; the mutation found that weakness in the TEST.
+    ("axonendpoint", Attested {
+        fixture: "tests/fixtures/fase122_b_endpoint/served_routes.axon",
+        gate: "tests/fase33z_c_default_on_and_tool_call.rs",
+    }),
+        // §Fase 122.b — `axpoint` claims to be an ALIAS of `axonendpoint` (same
+    // TokenType). That is a claim only a program can check, so the fixture writes
+    // one route each way and the gate fetches BOTH, asserting each runs the flow it
+    // declares and not the other's.
+    ("axpoint", Attested {
+        fixture: "tests/fixtures/fase122_b_endpoint/served_routes.axon",
+        gate: "tests/fase33z_c_default_on_and_tool_call.rs",
+    }),
     ("axonstore", Real { proof: "wire_integrations::run_{persist,retrieve,mutate,purge} — parameterized SQL, capability gate, epistemic floor, HMAC-Merkle audit chain" }),
     // ── Cognitive I/O (λ-L-E, Fases 1–9)
     //
@@ -604,7 +620,21 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     ("path rewrite", Unaudited),
     ("PASETO", Unaudited),
     // ── Session types (§41)
-    ("socket", Real { proof: "tests/fase111_i_socket_served.rs (§111.i — the OSS server now SERVES the session-typed WebSocket at GET /ws/{socket}, and enforces the protocol the adopter DECLARED: the missing SessionType compiler lands in session_runtime::compile. An unresolvable protocol is REFUSED, never substituted — enterprise used to hand every socket a hardcoded chat schema, so a protocol proven dual at compile time had a different one enforced at runtime)" }),
+    // §Fase 122.b — §111.i already deploys through the real path and boots a real
+    // TCP listener; its only Law 4 gap was that the program was a Rust `const`.
+    // The finding it closed is why the citation matters: the OSS server had NO
+    // WebSocket route — not a stub, none — while the README led with session-typed
+    // dialogue as the headline feature; and when a route appeared, every socket got
+    // a hardcoded canonical chat schema, so the protocol proven at compile time was
+    // not the protocol enforced.
+    //
+    // Perturbing the fixture kills it two ways: breaking the session's duality
+    // (`send Fill` -> `send Order` in the broker's arm), and pointing the socket at
+    // an undeclared protocol — which must REFUSE rather than substitute.
+    ("socket", Attested {
+        fixture: "tests/fixtures/fase122_b_socket/trade_dialogue.axon",
+        gate: "tests/fase111_i_socket_served.rs",
+    }),
     // §Fase 122.b — the surface forms the README badges separately from the bare
     // names above. The same fixture carries all four literally: `send Quote`,
     // `receive Settlement`, and the labelled `select`/`branch` whose arms the
@@ -1378,9 +1408,9 @@ mod tests {
             .filter(|(_, s)| matches!(s, Real { .. }))
             .count();
         assert!(
-            n <= 23,
+            n <= 20,
             "the legacy `Real {{ proof }}` population grew to {n} — §122.a measured 69 and §122.b \
-             drives it to zero (69 → 23 so far). A NEW claim of reality must be \
+             drives it to zero (69 → 20 so far). A NEW claim of reality must be \
              `Attested {{ fixture, gate }}`: name the `.axon` a published program could write, \
              and the gate that runs it."
         );
@@ -1424,7 +1454,7 @@ mod tests {
             .filter(|(_, s)| matches!(s, Unaudited))
             .count();
         assert!(
-            n <= 23,
+            n <= 20,
             "the Unaudited population grew to {n} — §111 left 18, §114.z's census widening \
              re-baselined at 23. Auditing is the only direction."
         );

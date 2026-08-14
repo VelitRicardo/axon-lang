@@ -309,6 +309,57 @@ const LAMBDA_DATA_APPLY_FLOW: &str =
      }\n\
      axonendpoint ChatEndpoint { public: true method: POST path: \"/c\" execute: Chat transport: sse }";
 
+// ── §Fase 122.b — a program on disk whose routes are actually served ────────
+//
+// `axonendpoint` is a claim about typed routes and `axpoint` is a claim that it
+// is the same thing under another spelling. Both were cited on an engine
+// (`axon_server`, `tokens.rs`), and no program on disk was being served to
+// check either. This deploys one and fetches BOTH routes.
+
+#[tokio::test]
+async fn a_deployed_fixture_serves_both_endpoint_spellings() {
+    const FIXTURE: &str = "tests/fixtures/fase122_b_endpoint/served_routes.axon";
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(FIXTURE);
+    let src = std::fs::read_to_string(&path)
+        .unwrap_or_else(|e| panic!("read {}: {e}", path.display()));
+
+    let app = build_router(server_cfg());
+    assert_eq!(
+        deploy(app.clone(), &src).await,
+        StatusCode::OK,
+        "the fixture must deploy"
+    );
+
+    // Each route must run the flow IT declares — checked by the step name that
+    // only that flow contains. Asserting merely that "a flow ran" does not
+    // discriminate: both flows have the same shape, so swapping `execute:`
+    // between them leaves the stream looking identical. (Found by mutating it.)
+    for (route, own_step, other_step) in [
+        ("/fixture/primary", "Assess", "Confirm"),
+        ("/fixture/alias", "Confirm", "Assess"),
+    ] {
+        let (status, ct, body) = fetch_sse_body(app.clone(), route).await;
+        assert_eq!(status, StatusCode::OK, "{route}: HTTP status");
+        assert!(
+            ct.starts_with("text/event-stream"),
+            "{route}: the declared `transport: sse` must be honoured, got {ct}"
+        );
+        let events = parse_sse_body(&body);
+        assert!(
+            !events.completes.is_empty(),
+            "{route}: the route must actually execute its declared flow"
+        );
+        assert!(
+            body.contains(own_step),
+            "{route}: must run the flow it DECLARES in `execute:` (step `{own_step}`). Body: {body}"
+        );
+        assert!(
+            !body.contains(other_step),
+            "{route}: must NOT run the other route's flow (step `{other_step}`). Body: {body}"
+        );
+    }
+}
+
 async fn assert_default_on_no_w002(label: &str, src: &str) {
     // Defensive flag-state assertion — the test depends on the
     // 33.z.c default ON. If a previous test left the flag at OFF

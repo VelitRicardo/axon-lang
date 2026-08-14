@@ -121,6 +121,54 @@ async fn boot(app: axum::Router) -> String {
 /// The flagship. Deploy a program, open a real WebSocket, and speak the protocol
 /// the adopter wrote.
 #[tokio::test]
+async fn a_deployed_fixture_is_served_and_follows_its_declared_protocol() {
+    // §Fase 122.b — the same dialogue, from a program that lives on disk.
+    //
+    // This gate already deploys through the real path and boots a real TCP
+    // listener, so it was always a path proof. Its only Law 4 gap is that the
+    // program is a Rust `const`, so nothing on disk holds it and no build can
+    // catch the citation going stale.
+    const FIXTURE: &str = "tests/fixtures/fase122_b_socket/trade_dialogue.axon";
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(FIXTURE);
+    let src = std::fs::read_to_string(&path)
+        .unwrap_or_else(|e| panic!("read {}: {e}", path.display()));
+
+    let (app, _state) = axon::axon_server::build_router_with_state(server_cfg());
+    let out = deploy(&app, &src).await;
+    assert_eq!(out["success"], true, "the fixture must deploy: {out}");
+
+    let base = boot(app).await;
+    let (mut ws, resp) = tokio_tungstenite::connect_async(format!("{base}/ws/Wire"))
+        .await
+        .expect("the declared socket must be SERVED");
+    assert_eq!(resp.status(), 101, "the upgrade must be accepted");
+
+    let order = serde_json::json!({
+        "v": 1, "kind": "send", "payload_type": "Order", "data": { "sku": "AXN" }
+    });
+    ws.send(Message::Text(order.to_string().into()))
+        .await
+        .expect("send Order");
+
+    let reply = tokio::time::timeout(std::time::Duration::from_secs(5), ws.next())
+        .await
+        .expect("the server must answer within the protocol")
+        .expect("a frame")
+        .expect("a valid frame");
+    let text = match reply {
+        Message::Text(t) => t.to_string(),
+        other => panic!("expected a text frame, got {other:?}"),
+    };
+    let frame: serde_json::Value = serde_json::from_str(&text).expect("a JSON frame");
+    assert_eq!(
+        frame["payload_type"], "Fill",
+        "the server must send what the FIXTURE's `session Trade` declares the broker sends. \
+         The enterprise path once substituted a canonical chat schema here, so the protocol \
+         proven at compile time was not the protocol enforced (§111 §13). Got: {frame}"
+    );
+}
+
+#[tokio::test]
 async fn the_declared_socket_is_served_and_follows_its_declared_protocol() {
     let (app, _state) = axon::axon_server::build_router_with_state(server_cfg());
     let out = deploy(&app, PROGRAM).await;
