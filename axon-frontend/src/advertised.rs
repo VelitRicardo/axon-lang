@@ -239,9 +239,20 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
         fixture: "tests/fixtures/fase33z_parity_corpus/cross_vertical/12_legal_intake_probe_weave_anchor.axon",
         gate: "tests/fase33z_d_parity_corpus.rs",
     }),
-    ("refine", Real { proof: "pure_shape::run_refine" }),
+    // §Fase 122.b — was the bare engine name `pure_shape::run_refine`.
+    ("refine", Attested {
+        fixture: "tests/fixtures/fase33z_parity_corpus/cross_vertical/18_refine_grad_compute.axon",
+        gate: "tests/fase33z_d_parity_corpus.rs",
+    }),
     ("memory", Real { proof: "cognitive::run_remember / run_recall (PEM write-through)" }),
-    ("tool", Real { proof: "lambda_tools::dispatch_use_tool_real (§58)" }),
+    // §Fase 122.b — was the bare engine name `lambda_tools::dispatch_use_tool_real`.
+    // The gate that DID read a file for `tool` (`fase54_c_tool_dispatch_example`)
+    // only parses and type-checks the canonical example — the front half. This
+    // fixture is dispatched.
+    ("tool", Attested {
+        fixture: "tests/fixtures/fase33z_parity_corpus/cross_vertical/15_tool_budget_governance.axon",
+        gate: "tests/fase33z_d_parity_corpus.rs",
+    }),
     // §Fase 122.b — see the `anchor` note above; same fixture, same gate.
     ("probe", Attested {
         fixture: "tests/fixtures/fase33z_parity_corpus/cross_vertical/12_legal_intake_probe_weave_anchor.axon",
@@ -410,7 +421,15 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     // `compute` evaluates a §70 expression while the form every published block
     // writes (`input:` / `output:` / `logic { let … return }`) did not parse at
     // all. Three of the four README computes were in the §117 ledger for it.
-    ("compute", Real { proof: "tests/fase111_f_compute_real.rs (§111.f — a named PURE FUNCTION over the §70 expression language, evaluated natively by eval_expr: linear in the term, ZERO tokens, no model in the loop. Every failure refuses rather than binding a string that looks like a number) + axon-rs/tests/fase119_o_compute_logic_let.rs (§119.o — the PUBLISHED body form, from source: `input:`/`output:` are real parameter/return spellings instead of reaching skip_value(), and `logic { let … return }` lowers to nested Expr::Let terms evaluated over a lexical scope stack — one evaluation per binding, shadowing by nesting. README's CalculatePremium computes 285 end to end; a `let` shadows the caller's frame WITHOUT mutating it; `return` is required and a non-`let` statement in `logic` is refused, because compute is a pure function. 2/2 mutations killed; §117 ledger 18 → 14)" }),
+    // §Fase 122.b — `fase111_f_compute_real.rs` stays the semantic gate (§111.f
+    // deleted the placeholder string that a downstream step consumed as if it
+    // were a number). It builds its source inline, and until this fixture NO
+    // `.axon` in the repository declared a `compute` at all — the third such
+    // primitive, with `json` and `budget`.
+    ("compute", Attested {
+        fixture: "tests/fixtures/fase33z_parity_corpus/cross_vertical/18_refine_grad_compute.axon",
+        gate: "tests/fase33z_d_parity_corpus.rs",
+    }),
     // ── Reactive processes & platform boundary
     ("daemon", Real { proof: "daemon.rs — OTP-style supervision + §74 durable event delivery" }),
     ("listen", Partial { gap: "§111 F7 — TWO disjoint paths sharing one keyword. Inside a DAEMON: real (§74 outbox → deliver_typed_event → execute_server_flow). Inside a FLOW BODY: binds the canned string \"(awaiting <channel>)\". Sub-gap: a daemon listener body executes ONLY `run <Flow>` steps; any other step type is silently dropped" }),
@@ -439,12 +458,45 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     // engines and is carried by that row. The proof below does not overclaim —
     // it names exactly what it means — but a reader scanning for "topology" will
     // find the unwired engine first, so the disambiguation lives here.
-    ("topology", Real { proof: "type_checker::check_topology_liveness — a genuine DFS gray/black cycle detector emitting a Honda-liveness violation (narrow sufficient condition, but real)" }),
-    ("session", Real { proof: "type_checker::check_session_duality → session.rs (dual involution, capture-avoiding substitution, coinductive equality). Duality is genuinely DECIDED, not faked" }),
-    ("send", Real { proof: "lowered into the session algebra; an unmatched send fails the duality check" }),
-    ("receive", Real { proof: "lowered into the session algebra; dual of send" }),
-    ("select", Real { proof: "session.rs dual_map — internal/external choice duality is really checked arm-for-arm" }),
-    ("branch", Real { proof: "session.rs dual_map — the dual of select" }),
+    // §Fase 122.b — the session family and `topology` are COMPILE-time claims
+    // (`check_session_duality` decides dual involution with capture-avoiding
+    // substitution and coinductive equality; `check_topology_liveness` is a DFS
+    // gray/black cycle detector emitting a Honda-liveness violation). The corpus
+    // gate COMPILES every fixture before executing it, so both deductions run on
+    // this file on every corpus run — which makes a compiled fixture the RIGHT
+    // KIND of citation here, not a weaker substitute for a dispatch one.
+    //
+    // Verified by breaking it, not by assuming: flipping ONE arm of `Buyer`'s
+    // `select` from `send` to `receive` fails the gate with the full session
+    // type and its dual printed —
+    //   `!Quote.?Settlement.+{accept: ?Settlement.end, …}` vs the expected
+    //   `?Quote.!Settlement.&{accept: !Settlement.end, …}`
+    // — so the duality is genuinely DECIDED arm-for-arm on this fixture, not
+    // merely parsed.
+    ("topology", Attested {
+        fixture: "tests/fixtures/fase33z_parity_corpus/cross_vertical/17_session_duality_topology.axon",
+        gate: "tests/fase33z_d_parity_corpus.rs",
+    }),
+    ("session", Attested {
+        fixture: "tests/fixtures/fase33z_parity_corpus/cross_vertical/17_session_duality_topology.axon",
+        gate: "tests/fase33z_d_parity_corpus.rs",
+    }),
+    ("send", Attested {
+        fixture: "tests/fixtures/fase33z_parity_corpus/cross_vertical/17_session_duality_topology.axon",
+        gate: "tests/fase33z_d_parity_corpus.rs",
+    }),
+    ("receive", Attested {
+        fixture: "tests/fixtures/fase33z_parity_corpus/cross_vertical/17_session_duality_topology.axon",
+        gate: "tests/fase33z_d_parity_corpus.rs",
+    }),
+    ("select", Attested {
+        fixture: "tests/fixtures/fase33z_parity_corpus/cross_vertical/17_session_duality_topology.axon",
+        gate: "tests/fase33z_d_parity_corpus.rs",
+    }),
+    ("branch", Attested {
+        fixture: "tests/fixtures/fase33z_parity_corpus/cross_vertical/17_session_duality_topology.axon",
+        gate: "tests/fase33z_d_parity_corpus.rs",
+    }),
     ("immune", Real { proof: "tests/fase112_d_immune_fires.rs (§112.d — the KL sensor detects a REAL deviation from a LEARNED baseline. Wiring it exposed a kernel bug that made it structurally blind: an unseen symbol was scored against the baseline's MINIMUM probability, so a perfectly stable baseline could never register an anomaly at all)" }),
     ("reflex", Real { proof: "tests/fase112_d_immune_fires.rs (§112.d — a real anomaly FIRES the declared action with an HMAC-signed trace, within its sla:, and the same signature does not re-fire. No reflex may fire while the baseline is still being learned — that would be a false positive by construction)" }),
     ("heal", Real { proof: "tests/fase112_d_immune_fires.rs (§112.d — the HealKernel is registered from the IR and renders a decision under its declared mode: on a real health report)" }),
@@ -469,10 +521,26 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     ("PASETO", Unaudited),
     // ── Session types (§41)
     ("socket", Real { proof: "tests/fase111_i_socket_served.rs (§111.i — the OSS server now SERVES the session-typed WebSocket at GET /ws/{socket}, and enforces the protocol the adopter DECLARED: the missing SessionType compiler lands in session_runtime::compile. An unresolvable protocol is REFUSED, never substituted — enterprise used to hand every socket a hardcoded chat schema, so a protocol proven dual at compile time had a different one enforced at runtime)" }),
-    ("send T", Real { proof: "the session algebra's send, carrying a payload type" }),
-    ("receive T", Real { proof: "the session algebra's receive" }),
-    ("select {ℓᵢ:…}", Real { proof: "session.rs Select — labelled internal choice" }),
-    ("branch {ℓᵢ:…}", Real { proof: "session.rs Branch — labelled external choice" }),
+    // §Fase 122.b — the surface forms the README badges separately from the bare
+    // names above. The same fixture carries all four literally: `send Quote`,
+    // `receive Settlement`, and the labelled `select`/`branch` whose arms the
+    // duality check pairs one for one.
+    ("send T", Attested {
+        fixture: "tests/fixtures/fase33z_parity_corpus/cross_vertical/17_session_duality_topology.axon",
+        gate: "tests/fase33z_d_parity_corpus.rs",
+    }),
+    ("receive T", Attested {
+        fixture: "tests/fixtures/fase33z_parity_corpus/cross_vertical/17_session_duality_topology.axon",
+        gate: "tests/fase33z_d_parity_corpus.rs",
+    }),
+    ("select {ℓᵢ:…}", Attested {
+        fixture: "tests/fixtures/fase33z_parity_corpus/cross_vertical/17_session_duality_topology.axon",
+        gate: "tests/fase33z_d_parity_corpus.rs",
+    }),
+    ("branch {ℓᵢ:…}", Attested {
+        fixture: "tests/fixtures/fase33z_parity_corpus/cross_vertical/17_session_duality_topology.axon",
+        gate: "tests/fase33z_d_parity_corpus.rs",
+    }),
     ("backpressure: credit(k)", Real { proof: "session_runtime credit window + the PCC credit-positivity witness" }),
     ("reconnect: cognitive_state", Unaudited),
     // ── §Fase 114.z — the classifications the badge-only gate never asked for.
@@ -505,7 +573,15 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
         fixture: "tests/fixtures/fase33z_parity_corpus/cross_vertical/06_mdn_navigate_graph.axon",
         gate: "tests/fase33z_d_parity_corpus.rs",
     }),
-    ("json", Real { proof: "tests/fase73_c_json_accessors.rs + tests/fase73_e_json_lens.rs (§73 — total navigation; honest fail-closed accessor semantics pinned in axon-rs orchestration tests)" }),
+    // §Fase 122.b — `fase73_c_json_accessors.rs` + `fase73_e_json_lens.rs` stay
+    // the semantic gates for §73's totality (navigation yields null rather than
+    // panicking; coercions are honest about a type mismatch). Neither reads a
+    // file. The fixture carries both surfaces — open `Json` and the `Json<T>`
+    // lens — and is the first published program in the repo to use either.
+    ("json", Attested {
+        fixture: "tests/fixtures/fase33z_parity_corpus/cross_vertical/16_json_open_navigation.axon",
+        gate: "tests/fase33z_d_parity_corpus.rs",
+    }),
     // The audit chain + π-calc channel family.
     ("ledger", Unaudited),
     ("channel", Partial { gap: "§114.z — durable persistence (§74 outbox) and the σ-shield egress gate (§114, tests/fase114_channel_shield_egress.rs) are proven; `qos:`/`lifetime:` enforcement is unaudited" }),
@@ -521,7 +597,18 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     ("publish", Unaudited),
     ("discover", Unaudited),
     // Governance operators.
-    ("budget", Real { proof: "tests/fase114_a_budget_governs_the_canonical_path.rs (§114.a — the ceiling binds on the canonical `use Tool(…)` path; before, the field was README prose that governed nothing)" }),
+    // §Fase 122.b — `fase114_a_budget_governs_the_canonical_path.rs` (9/9) still
+    // proves the ceiling binds on the canonical `use Tool(…)` path, and stays
+    // the semantic gate. What it cannot do is satisfy Law 4: it builds its
+    // source inline. §114.a rescued `budget` from being README prose that
+    // governed nothing — and it was STILL true, until this fixture, that no
+    // published `.axon` in the repo declared one. That is the same shape one
+    // level up: a primitive whose runtime is real and whose surface nobody
+    // writes.
+    ("budget", Attested {
+        fixture: "tests/fixtures/fase33z_parity_corpus/cross_vertical/15_tool_budget_governance.axon",
+        gate: "tests/fase33z_d_parity_corpus.rs",
+    }),
     ("window", Unaudited),
     ("cors", Unaudited),
     // The governed-egress trio (§105 · §99/§106 · §110) — none was ever badged.
@@ -537,7 +624,15 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     ("quant", Real { proof: "tests/fase111_d_quant_wired.rs (§111.d — E = ⟨ψ|M|ψ⟩ by real arithmetic; the body RUNS; `depth:` is refused rather than fabricating the physics)" }),
     ("observable", Real { proof: "tests/fase111_d_quant_wired.rs (§111.d — the DECLARED observable is resolved and measured; no resolvable M ⇒ refusal, because an expectation without an observable is a category error)" }),
     // Symbolic differentiation.
-    ("grad", Real { proof: "tests/fase109_grad_runtime.rs (§109 — SYMBOLIC differentiation at compile time; the gradient IS IR under the PCC GradientSoundness witness; the runtime only evaluates)" }),
+    // §Fase 122.b — `fase109_grad_runtime.rs` stays the semantic gate (it deploys
+    // through the REAL /v1/deploy + /v1/execute and checks the evaluated
+    // derivative). It builds its source inline. `grad` is SYMBOLIC and happens at
+    // COMPILE time — the gradient IS IR under the PCC GradientSoundness witness —
+    // so the corpus gate's compile pass is where the claim is exercised.
+    ("grad", Attested {
+        fixture: "tests/fixtures/fase33z_parity_corpus/cross_vertical/18_refine_grad_compute.axon",
+        gate: "tests/fase33z_d_parity_corpus.rs",
+    }),
 ];
 
 /// **The ratchet.** Every advertised name whose runtime is
@@ -1144,9 +1239,9 @@ mod tests {
             .filter(|(_, s)| matches!(s, Real { .. }))
             .count();
         assert!(
-            n <= 55,
+            n <= 39,
             "the legacy `Real {{ proof }}` population grew to {n} — §122.a measured 69 and §122.b \
-             drives it to zero (69 → 55 so far). A NEW claim of reality must be \
+             drives it to zero (69 → 39 so far). A NEW claim of reality must be \
              `Attested {{ fixture, gate }}`: name the `.axon` a published program could write, \
              and the gate that runs it."
         );

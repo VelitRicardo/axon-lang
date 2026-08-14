@@ -1,0 +1,50 @@
+// META: flow_name=RiskRefinement, mode=count_only
+//
+// §Fase 122.b (group A) — `refine`, `grad` and `compute`, none of which had a
+// published program on disk. `compute` is the third of the three primitives
+// (with `json` and `budget`) that no `.axon` in the repository used at all
+// before §122.b.
+//
+// `grad` is symbolic differentiation performed at COMPILE time — the gradient
+// IS IR under the PCC GradientSoundness witness, and the runtime only evaluates
+// it — so the corpus gate's compile pass is where that claim is exercised.
+// `refine` is the flow-level sibling of `step`, and `compute` is a named pure
+// function over the §70 expression language.
+
+compute RiskScore {
+  shield: RiskGuard
+}
+
+shield RiskGuard {
+  on_breach: halt
+}
+
+flow RiskRefinement() -> Unit {
+  step Assess {
+    ask: "Assess portfolio exposure from the position book"
+    output: Stream<Token>
+  }
+
+  refine Assess
+
+  // NOTE for whoever reads the paper first: `axon://primitives/grad` documents
+  // `let g = grad(<expr>, <wrt>)`, and that form does NOT parse. The shape the
+  // §109 gate deploys — and the one below — is a statement:
+  //   grad <target> wrt [<bindings>] as <name>
+  let base = 3.0
+  let total = 3.0 * base + base * base
+  grad total wrt [base] as sensitivity
+
+  step Report {
+    given: sensitivity
+    ask: "Report the exposure and its sensitivity"
+    output: Stream<Token>
+  }
+}
+
+axonendpoint RiskRefinementEndpoint {
+  method: POST
+  path: "/cross/risk-refinement"
+  execute: RiskRefinement
+  transport: sse public: true
+}
