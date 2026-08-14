@@ -200,9 +200,29 @@ fn project_events(events: &[FlowExecutionEvent]) -> AsyncMetrics {
     // Per-step accumulator keyed by step_name. We use BTreeMap for
     // deterministic insertion-order iteration if needed (though we
     // also track explicit ordering via `step_names`).
-    let mut current_step_idx: Option<usize> = None;
     let mut success: Option<bool> = None;
     let mut saw_error = false;
+
+    // §Fase 122.b — attribute by STEP NAME, not by a positional cursor.
+    //
+    // This projection used to carry `current_step_idx`, which encodes an
+    // assumption the event stream does not make: that steps run one at a time.
+    // Under `par` the branches are concurrent and interleave, so a second
+    // branch's `StepStart` moved the cursor off the first and a branch's
+    // `StepComplete` cleared it while another was still emitting — landing
+    // tokens (and `full_output`) on the wrong branch, or dropping them.
+    //
+    // The sibling projection in `fase33z_production_fuzz.rs` carried the same
+    // assumption, and §122.b fixed both in one pass: two harnesses reading one
+    // event stream with one private copy of the same wrong rule is the §120
+    // shape, and patching only the one that happened to go red would leave the
+    // other to be rediscovered later. Note that §65.D already patched a
+    // DIFFERENT hole in this very projection without noticing the concurrency
+    // assumption underneath it.
+    //
+    // `StepToken` and `StepComplete` both carry `step_name` (and `branch_path`,
+    // the §65 multiplexing key added for exactly this).
+    let idx_of = |names: &[String], name: &str| names.iter().rposition(|n| n == name);
 
     for ev in events {
         match ev {
@@ -210,16 +230,21 @@ fn project_events(events: &[FlowExecutionEvent]) -> AsyncMetrics {
             FlowExecutionEvent::StepStart { step_name, .. } => {
                 step_names.push(step_name.clone());
                 step_results.push(String::new());
-                current_step_idx = Some(step_results.len() - 1);
             }
-            FlowExecutionEvent::StepToken { content, .. } => {
-                if let Some(idx) = current_step_idx {
+            FlowExecutionEvent::StepToken {
+                step_name, content, ..
+            } => {
+                if let Some(idx) = idx_of(&step_names, step_name) {
                     if let Some(acc) = step_results.get_mut(idx) {
                         acc.push_str(content);
                     }
                 }
             }
-            FlowExecutionEvent::StepComplete { full_output, .. } => {
+            FlowExecutionEvent::StepComplete {
+                step_name,
+                full_output,
+                ..
+            } => {
                 // §Fase 65.D — capture the step's FULL output. `StepComplete`
                 // carries the complete accumulated text for EVERY step type,
                 // including STRUCTURAL verbs (navigate / drill / trail) that emit
@@ -231,14 +256,13 @@ fn project_events(events: &[FlowExecutionEvent]) -> AsyncMetrics {
                 // gate. For LLM steps `full_output` equals the StepToken
                 // accumulation already in `acc`, so we only fill when empty
                 // (structural verbs) — LLM-step parity is unchanged.
-                if let Some(idx) = current_step_idx {
+                if let Some(idx) = idx_of(&step_names, step_name) {
                     if let Some(acc) = step_results.get_mut(idx) {
                         if acc.is_empty() {
                             *acc = full_output.clone();
                         }
                     }
                 }
-                current_step_idx = None;
             }
             FlowExecutionEvent::FlowComplete {
                 success: s,

@@ -915,7 +915,6 @@ async fn run_async_snapshot(
 
     let mut step_names: Vec<String> = Vec::new();
     let mut step_results: Vec<String> = Vec::new();
-    let mut current_idx: Option<usize> = None;
     let mut success: Option<bool> = None;
     let mut saw_error = false;
 
@@ -925,18 +924,36 @@ async fn run_async_snapshot(
             FlowExecutionEvent::StepStart { step_name, .. } => {
                 step_names.push(step_name.clone());
                 step_results.push(String::new());
-                current_idx = Some(step_results.len() - 1);
             }
-            FlowExecutionEvent::StepToken { content, .. } => {
-                if let Some(idx) = current_idx {
+            // §Fase 122.b — attribute by STEP NAME, not by a positional cursor.
+            //
+            // This projection used to carry a single `current_idx`: `StepStart`
+            // set it, `StepToken` appended to it, `StepComplete` cleared it.
+            // That encodes an assumption the event stream does not make — that
+            // steps run one at a time. Under `par` the branches are concurrent
+            // and their events interleave, so a second branch's `StepStart`
+            // moved the cursor off the first, and a branch's `StepComplete`
+            // cleared it while another branch was still emitting. Tokens landed
+            // on the wrong branch or were dropped, and the "divergence" the
+            // stress test then reported was manufactured by its own instrument.
+            //
+            // It read as stable only because the interleaving happened to be
+            // stable for this corpus; §122.b added one fixture and two
+            // unrelated `par` fixtures started diverging, deterministically.
+            //
+            // `StepToken` has carried `step_name` (and `branch_path`, the §65
+            // multiplexing key added for exactly this) all along. Attributing
+            // by name removes the assumption instead of tuning around it.
+            FlowExecutionEvent::StepToken {
+                step_name, content, ..
+            } => {
+                if let Some(idx) = step_names.iter().rposition(|n| *n == step_name) {
                     if let Some(acc) = step_results.get_mut(idx) {
                         acc.push_str(&content);
                     }
                 }
             }
-            FlowExecutionEvent::StepComplete { .. } => {
-                current_idx = None;
-            }
+            FlowExecutionEvent::StepComplete { .. } => {}
             FlowExecutionEvent::FlowComplete { success: s, .. } => {
                 success = Some(s);
             }
