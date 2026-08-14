@@ -74,6 +74,27 @@ jobs:
         working-directory: axon-rs
         run: cargo test --verbose
 
+      # §Fase 122.d — the lane that lights the dark targets.
+      #
+      # `cargo test` above runs the DEFAULT feature set (`cli`). §120.g pinned
+      # 104 test targets that compile to ZERO tests under it — 88 behind
+      # `server`, 15 behind `postgres`, 1 behind `documents` — and its ratchet
+      # says, in its own failure message: *going dark is allowed; going dark
+      # SILENTLY is not*, and asks that something actually run them.
+      #
+      # Nothing did. Not here. For entire fases the only thing running them was
+      # a developer's local `--features server,csys-native`, so CI was green
+      # over a subset of the suite while the full run was ~5.6k tests. That is
+      # §120.g's own finding — "860 tests reporting green without executing" —
+      # one level up, in the place nobody had looked.
+      #
+      # `postgres` is deliberately NOT in this list: those 15 targets need a
+      # live database and have their own workflows (fase_37x, fase_65,
+      # fase_38_i). This lane covers the 88 + 1 that need only a feature flag.
+      - name: Run cargo test (axon-rs, server + csys-native)
+        working-directory: axon-rs
+        run: cargo test --verbose --features server,csys-native,documents
+
       - name: Build release binary
         working-directory: axon-rs
         run: cargo build --release

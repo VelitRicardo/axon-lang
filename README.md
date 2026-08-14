@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/runtime-100%25%20Rust%20%2B%20C23-orange" alt="100% Rust + C23">
   <img src="https://img.shields.io/badge/streaming-SSE%20%7C%20NDJSON%20%7C%20WebSocket-brightgreen" alt="Streaming">
   <img src="https://img.shields.io/badge/realtime-session--typed-purple" alt="Session types">
-  <img src="https://img.shields.io/badge/tests-5624%20axon--lang%20%2B%201699%20frontend-brightgreen" alt="Tests">
+  <img src="https://img.shields.io/badge/tests-5661%20axon--lang%20%2B%201700%20frontend-brightgreen" alt="Tests">
   <img src="https://img.shields.io/badge/compliance-HIPAA%20%7C%20PCI__DSS%20%7C%20GDPR%20%7C%20SOX%20%7C%20SOC2%20%7C%20ISO27001%20%7C%20FIPS%20%7C%20CC%20EAL4%2B-blueviolet" alt="Compliance">
   <img src="https://img.shields.io/badge/persistence-postgresql-blue" alt="PostgreSQL">
   <img src="https://img.shields.io/badge/observability-tracing-green" alt="Tracing">
