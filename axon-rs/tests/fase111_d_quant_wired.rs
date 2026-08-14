@@ -136,6 +136,81 @@ async fn expectation_of(ctx: &mut DispatchCtx, carrier: &str) -> f64 {
     v["expectation"].as_f64().expect("a real expectation")
 }
 
+// ── §Fase 122.b — the same measurement, driven from SOURCE ──────────────────
+//
+// Every gate in this file hand-builds `IRObservable` and `IRQuant` in Rust,
+// which proves the HANDLER. Law 4 asks for the PATH: a program an adopter could
+// write, compiled by the real pipeline, dispatched as the compiler lowered it,
+// against the same `ReferenceSimulator` the runner mounts.
+//
+// The observable is the single-qubit Pauli-Z and the carrier is the all-zero
+// vector, so the register stays in |0⟩ and ⟨Z⟩ = +1 EXACTLY. The expected value
+// is analytic — it cannot be satisfied by a placeholder, and it is not an oracle
+// invented for this fixture.
+
+/// Compile a fixture through the real pipeline.
+fn compile_fixture(rel: &str) -> IRProgram {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(rel);
+    let src = std::fs::read_to_string(&path)
+        .unwrap_or_else(|e| panic!("read {}: {e}", path.display()));
+    let tokens = axon_frontend::lexer::Lexer::new(&src, rel)
+        .tokenize()
+        .expect("fixture must lex");
+    let prog = axon_frontend::parser::Parser::new(tokens)
+        .parse()
+        .expect("fixture must parse");
+    axon_frontend::ir_generator::IRGenerator::new().generate(&prog)
+}
+
+#[tokio::test]
+async fn a_compiled_program_reaches_the_simulator_and_is_measured() {
+    const FIXTURE: &str = "tests/fixtures/fase122_b_quant/ground_state_measurement.axon";
+    let ir = compile_fixture(FIXTURE);
+
+    // The observable catalog the COMPILER produced from `observable GroundEnergy`.
+    assert!(
+        !ir.observables.is_empty(),
+        "the fixture declares `observable GroundEnergy`; an empty catalog means \
+         the declaration no longer reaches the IR"
+    );
+    let (mut ctx, _rx) = ctx_with_quant(ir.observables.clone());
+
+    let steps: Vec<IRFlowNode> = ir
+        .flows
+        .iter()
+        .flat_map(|f| f.steps.iter().cloned())
+        .collect();
+    assert!(
+        steps.iter().any(|n| matches!(n, IRFlowNode::Quant(_))),
+        "the fixture's `quant(...)` block must lower to an IRQuant node"
+    );
+
+    let mut measured = None;
+    for node in &steps {
+        let outcome = dispatch_node(node, &mut ctx)
+            .await
+            .expect("every node in the compiled fixture must dispatch");
+        if matches!(node, IRFlowNode::Quant(_)) {
+            measured = match outcome {
+                NodeOutcome::Completed { output, .. } => Some(output),
+                other => panic!("expected Completed from quant, got {other:?}"),
+            };
+        }
+    }
+
+    let output = measured.expect("the quant node must have produced a result");
+    let v: serde_json::Value = serde_json::from_str(&output).expect("quant binds a JSON result");
+
+    // It must say WHAT it measured, and the name came from the declaration.
+    assert_eq!(v["observable"], "GroundEnergy");
+
+    let e = v["expectation"].as_f64().expect("a real expectation");
+    assert!(
+        (e - 1.0).abs() < 1e-9,
+        "|0⟩ under Z must give ⟨Z⟩ = +1 exactly; got {e}"
+    );
+}
+
 // ── 1-3. The flagship: a quant block that actually measures ─────────────────
 
 /// An all-zero carrier under angle encoding applies no rotation, so the register

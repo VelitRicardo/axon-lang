@@ -330,8 +330,24 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     // reachability, not uncertainty. `Unwired` is strictly more informative.
     ("savant", Unwired { engine: "holograph::ReferenceHolographCodec (HRR, FFT, dim-capped) + inference::ReferenceInference (VFE/EFE) + topology::ReferenceTopology (Betti/PHC) — three tested engines with ZERO callers outside their own tests. `cognition.depth:` is read only by the PCC (axon-T876, catalog validity) and by `main.rs` to print it; HOLOGRAPH_DIM_CAP is never exercised. Wiring active inference is its own fase, not a cable" }),
     ("synth", Unwired { engine: "synth::DenyByDefaultSynth — the OSS reference, which refuses BY DESIGN (§87.j: OSS never executes synthesised code). No mount point exists, so no flow reaches it. NOTE: cabling it in OSS yields FailsClosed, not Real — the enterprise Extism/gVisor executor is what makes it Real, and it needs the sandbox reachable at all" }),
-    ("warden", Real { proof: "tests/fase111_c_warden_wired.rs (§111.c — real attested findings, verify()-gated, body runs, fail-closed at 6 joints)" }),
-    ("scope", Real { proof: "tests/fase111_c_warden_wired.rs — the scope catalog is resolved at dispatch and the allowlist enforced (the check §88.c deferred)" }),
+    // §Fase 122.b — §111.c's nine joints all still run, and all nine hand-build
+    // `IRScope`/`IRWarden` in Rust: a proof of the HANDLER. The gate now also
+    // compiles a fixture through the real pipeline and dispatches the node the
+    // COMPILER produced, against the same `ReferenceStaticWarden` the runner
+    // mounts. Perturbing the DECLARATION kills it three ways — a target outside
+    // `targets:`, an empty `approver:`, and `depth: live_network` above the OSS
+    // ceiling — so the authorization envelope really comes from the source.
+    ("warden", Attested {
+        fixture: "tests/fixtures/fase122_b_warden/authorized_audit.axon",
+        gate: "tests/fase111_c_warden_wired.rs",
+    }),
+    // §Fase 122.b — the scope catalog under test is the one the compiler emitted
+    // from the fixture's `scope InternalAudit { … }`, not a Rust literal. See the
+    // `warden` note above; the same three perturbations kill this citation.
+    ("scope", Attested {
+        fixture: "tests/fixtures/fase122_b_warden/authorized_audit.axon",
+        gate: "tests/fase111_c_warden_wired.rs",
+    }),
     // ── Effects & streaming
     // §Fase 119.n — `Real` → `Partial`, and the DOWNGRADE is the honest move.
     //
@@ -651,8 +667,25 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     ("rotate", Real { proof: "tests/fase94_custody_runtime.rs (§94 — rotation_without_revelation: ENUMERATE+ROTATE(CAS)+USE; no term evaluates to a secret value)" }),
     // Session types + quantum bridge.
     ("upstream", Real { proof: "tests/fase80_d_upstream_e2e.rs (§80 — config-resolved dial, declared auth, credit flow-control against a real WS server)" }),
-    ("quant", Real { proof: "tests/fase111_d_quant_wired.rs (§111.d — E = ⟨ψ|M|ψ⟩ by real arithmetic; the body RUNS; `depth:` is refused rather than fabricating the physics)" }),
-    ("observable", Real { proof: "tests/fase111_d_quant_wired.rs (§111.d — the DECLARED observable is resolved and measured; no resolvable M ⇒ refusal, because an expectation without an observable is a category error)" }),
+    // §Fase 122.b — §111.d's gates all still run and all hand-build `IRQuant`:
+    // a proof of the HANDLER. The gate now also compiles a fixture and dispatches
+    // the node the COMPILER lowered, against the same `ReferenceSimulator` the
+    // runner mounts. The expected value is ANALYTIC — |0⟩ under Pauli-Z gives
+    // ⟨Z⟩ = +1 exactly — so no placeholder satisfies it. Perturbation kills it
+    // three ways: flipping the term's sign, renaming the observable, and rotating
+    // the carrier off the ground state.
+    ("quant", Attested {
+        fixture: "tests/fixtures/fase122_b_quant/ground_state_measurement.axon",
+        gate: "tests/fase111_d_quant_wired.rs",
+    }),
+    // §Fase 122.b — the observable under test is the one the compiler emitted from
+    // `observable GroundEnergy { qubits: 1  term: 1.0 * \"Z\" }`, and the result
+    // must NAME it. Renaming the reference in the `quant` header kills the
+    // citation; so does flipping the declared term's coefficient.
+    ("observable", Attested {
+        fixture: "tests/fixtures/fase122_b_quant/ground_state_measurement.axon",
+        gate: "tests/fase111_d_quant_wired.rs",
+    }),
     // Symbolic differentiation.
     // §Fase 122.b — `fase109_grad_runtime.rs` stays the semantic gate (it deploys
     // through the REAL /v1/deploy + /v1/execute and checks the evaluated
@@ -1269,9 +1302,9 @@ mod tests {
             .filter(|(_, s)| matches!(s, Real { .. }))
             .count();
         assert!(
-            n <= 35,
+            n <= 31,
             "the legacy `Real {{ proof }}` population grew to {n} — §122.a measured 69 and §122.b \
-             drives it to zero (69 → 35 so far). A NEW claim of reality must be \
+             drives it to zero (69 → 31 so far). A NEW claim of reality must be \
              `Attested {{ fixture, gate }}`: name the `.axon` a published program could write, \
              and the gate that runs it."
         );

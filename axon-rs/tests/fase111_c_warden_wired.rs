@@ -110,6 +110,93 @@ fn ctx_without_warden() -> (DispatchCtx, mpsc::UnboundedReceiver<FlowExecutionEv
     )
 }
 
+// ── §Fase 122.b — the same flagship, driven from SOURCE ─────────────────────
+//
+// Every gate in this file hand-builds `IRScope` and `IRWarden` in Rust. That is
+// a proof of the HANDLER, and §119.f.8 is the expensive lesson about what such a
+// proof does not say: `reason` was attested on `pure_shape::run_reason`, the
+// citation was accurate, and the grammar that reaches it did not exist.
+//
+// Law 4 asks for the PATH. This test takes a `.axon` file an adopter could have
+// written, compiles it through the REAL pipeline (lexer → parser → IR
+// generator), lifts the `scope` catalog and the `warden` node the compiler
+// actually produced, and dispatches THAT against the same `ReferenceStaticWarden`
+// the runner mounts for every deployment. Nothing about the primitive changes;
+// the citation stops being an engine name.
+
+/// Compile a fixture through the real pipeline.
+fn compile_fixture(rel: &str) -> IRProgram {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(rel);
+    let src = std::fs::read_to_string(&path)
+        .unwrap_or_else(|e| panic!("read {}: {e}", path.display()));
+    let tokens = axon_frontend::lexer::Lexer::new(&src, rel)
+        .tokenize()
+        .expect("fixture must lex");
+    let prog = axon_frontend::parser::Parser::new(tokens)
+        .parse()
+        .expect("fixture must parse");
+    axon_frontend::ir_generator::IRGenerator::new().generate(&prog)
+}
+
+#[tokio::test]
+async fn a_compiled_program_reaches_the_warden_and_is_analysed() {
+    const FIXTURE: &str = "tests/fixtures/fase122_b_warden/authorized_audit.axon";
+    let ir = compile_fixture(FIXTURE);
+
+    // The scope catalog the COMPILER produced — not one written here.
+    assert!(
+        !ir.scopes.is_empty(),
+        "the fixture declares `scope InternalAudit`; if this is empty the \
+         declaration no longer reaches the IR"
+    );
+    let (mut ctx, _rx) = ctx_with_warden(ir.scopes.clone());
+
+    // Drive the flow's nodes in order, exactly as lowered.
+    let steps: Vec<IRFlowNode> = ir
+        .flows
+        .iter()
+        .flat_map(|f| f.steps.iter().cloned())
+        .collect();
+    assert!(
+        steps.iter().any(|n| matches!(n, IRFlowNode::Warden(_))),
+        "the fixture's `warden(...) within ...` must lower to an IRWarden node"
+    );
+
+    let mut summary = None;
+    for node in &steps {
+        let outcome = dispatch_node(node, &mut ctx)
+            .await
+            .expect("every node in the compiled fixture must dispatch");
+        if matches!(node, IRFlowNode::Warden(_)) {
+            summary = match outcome {
+                NodeOutcome::Completed { output, .. } => Some(output),
+                other => panic!("expected Completed from warden, got {other:?}"),
+            };
+        }
+    }
+
+    let output = summary.expect("the warden node must have produced a summary");
+    let v: serde_json::Value = serde_json::from_str(&output).expect("warden binds a JSON summary");
+
+    // The same two deterministic defects, found on evidence that arrived through
+    // the compiler instead of through a Rust string constant.
+    let classes: Vec<&str> = v["findings"]
+        .as_array()
+        .expect("findings array")
+        .iter()
+        .map(|f| f["class"].as_str().unwrap())
+        .collect();
+    assert!(
+        classes.contains(&"unsafe_call") && classes.contains(&"hardcoded_secret"),
+        "the reference analyzer must find both defects in the compiled fixture; got {classes:?}"
+    );
+
+    // The authorization envelope came from the DECLARATION, not from a literal.
+    assert_eq!(v["scope"], "InternalAudit");
+    assert_eq!(v["depth"], "static_artifact");
+    assert_eq!(v["approver"], "security.lead");
+}
+
 // ── 1-3. The flagship: a warden that actually analyses ──────────────────────
 
 #[tokio::test]
