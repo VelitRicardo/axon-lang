@@ -1569,6 +1569,86 @@ mod tests {
             .any(|end| gate_src.contains(&segments[..end].join("/")))
     }
 
+    /// **§Fase 122.d — the README's VERSION is a build input too.**
+    ///
+    /// This file has parsed the README as a build input since §111 — for the
+    /// primitive badges. Nobody pinned the version, and it drifted until the
+    /// README disagreed with itself: the title said `v2.75.0`, the badge said
+    /// `v2.85.0`, the prose said `v2.75.0`, and the shipped crate was `2.88.0`.
+    /// Three numbers in one file, none of them right.
+    ///
+    /// That is the same species of unverified public claim §122 spent itself
+    /// removing from the ledger, sitting two screens above the ledger. The gate
+    /// costs two lines and closes it: every `vX.Y.Z` the header block asserts
+    /// about THIS crate must equal `axon-rs/Cargo.toml`'s version.
+    ///
+    /// Scope note — deliberate, and narrower than the first draft: only the
+    /// title, the badges, and the two-repositories note are checked. The
+    /// primitive-census `<details>` block sits between them and carries
+    /// HISTORICAL labels ("Session types (v2.3.0)"), which say when a feature
+    /// shipped and must never move. The first version of this gate swept the
+    /// whole header and immediately flagged those — correctly refusing to let
+    /// me conflate "what ships now" with "when this arrived".
+    #[test]
+    fn the_readme_header_states_the_version_the_crate_actually_is() {
+        let cargo = std::fs::read_to_string(repo_root().join("axon-rs/Cargo.toml"))
+            .expect("axon-rs/Cargo.toml must be readable");
+        let version = cargo
+            .lines()
+            .find_map(|l| l.strip_prefix("version = \""))
+            .and_then(|r| r.split('"').next())
+            .expect("axon-rs/Cargo.toml must declare a version");
+
+        let readme = std::fs::read_to_string(repo_root().join("README.md"))
+            .expect("README.md must be readable");
+        let header_end = readme
+            .find("## What is AXON?")
+            .expect("the README must still have its `What is AXON?` heading");
+        // Everything above the prose, MINUS the primitive-census block, whose
+        // version labels are historical.
+        let (census_start, census_end) = (
+            readme.find("<details>").unwrap_or(header_end),
+            readme
+                .find("</details>")
+                .map(|i| i + "</details>".len())
+                .unwrap_or(header_end),
+        );
+        let header = format!(
+            "{}{}",
+            &readme[..census_start.min(header_end)],
+            &readme[census_end.min(header_end)..header_end]
+        );
+        let header = header.as_str();
+
+        let expected = format!("v{version}");
+        let claims: Vec<&str> = header
+            .match_indices("v2.")
+            .map(|(i, _)| {
+                let rest = &header[i..];
+                let end = rest
+                    .find(|c: char| !(c.is_ascii_digit() || c == '.' || c == 'v'))
+                    .unwrap_or(rest.len());
+                &rest[..end]
+            })
+            .filter(|c| c.matches('.').count() == 2)
+            .collect();
+
+        assert!(
+            !claims.is_empty(),
+            "the README header must state the version somewhere — if this fires, the \
+             header was restructured and this gate needs its anchor updated"
+        );
+        for c in &claims {
+            assert_eq!(
+                *c, expected,
+                "the README header claims `{c}` but axon-rs/Cargo.toml is `{version}`. \
+                 Every version the header asserts about THIS crate must match the crate. \
+                 (Historical `vX.Y.Z (Fase N) adds…` references live BELOW the header and \
+                 are deliberately out of scope — they say when something shipped.)"
+            );
+        }
+    }
+
     /// §122.b — the depth rule inside [`gate_mentions_a_path_reaching`] is the
     /// load-bearing half, so it gets its own test rather than trust.
     ///
