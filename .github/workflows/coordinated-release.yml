@@ -1,5 +1,30 @@
 name: Coordinated Cross-Stack Release
 
+# ⚠️ §Fase 122.d — THIS WORKFLOW IS BROKEN. Do not dispatch it expecting a
+# release; releases are currently done by hand (see the §122 release for the
+# sequence that works).
+#
+# It is dispatch-only, so it produces no red runs and nothing surfaced it. Its
+# last successful run was 2026-06-05. Everything it depends on from the Python
+# era was removed by §116.c.5 ("retire the PyPI distribution shim"):
+#
+#   - `pyproject.toml`                        — gone; the `pip install` step
+#                                               and `[tool.bumpversion]`, the
+#                                               declared source of truth for
+#                                               the bump rules, went with it
+#   - `axon/__init__.py`                      — gone
+#   - `tests/test_cli_mvp_smoke.py`           — gone (steps below still call it)
+#   - `tests/test_frontend_contract_golden.py`— gone (steps below still call it)
+#
+# Repairing it means re-homing the bump rules somewhere that still exists and
+# swapping the pytest steps for `cargo test --test fase39f_cli_binary_parity`
+# (the Rust harness written to replicate them, which asserts against
+# `AXON_VERSION` instead of a literal). That is its own task.
+#
+# This notice is deliberately NOT a partial fix: patching only the pytest lines
+# would leave the workflow failing at `pip install` while LOOKING repaired, and
+# a workflow that looks repaired is worse than one that says it is broken.
+
 # Single-button release for the AXON ecosystem.
 #
 # Bumps version atomically across:

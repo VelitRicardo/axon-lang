@@ -163,18 +163,27 @@ jobs:
         working-directory: axon-rs
         run: cargo build
 
-      - name: Set up Python (for the Cat 3 subprocess harness only)
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-
-      - name: Install pytest (test harness, NOT the language)
-        run: |
-          python -m pip install --upgrade pip
-          pip install pytest
-
-      - name: Run Cat 3 CLI contract tests against the native binary
-        run: pytest tests/test_cli_mvp_smoke.py tests/test_frontend_contract_golden.py -q
+      # §Fase 122.d — was `pytest tests/test_cli_mvp_smoke.py
+      # tests/test_frontend_contract_golden.py`. Both files were DELETED by
+      # §116.c.5 ("retire the PyPI distribution shim — 5 of 6 .py files gone")
+      # and this step was not updated, so the job has failed on every push
+      # since.
+      #
+      # It failed quietly, in a lane nobody watches — and it took the GitHub
+      # Releases with it: the `release` job below declares
+      # `needs: [rust-native, cli-contract]`, so a red cli-contract meant no
+      # Release was ever created. That is why the newest Release on the repo
+      # was v2.75.0 while the tags ran to v2.88.0. Nobody connected a deleted
+      # Python file to a missing releases page.
+      #
+      # The coverage was never lost. `fase39f_cli_binary_parity` was written to
+      # replicate that exact harness — it subprocess-invokes the built binary
+      # across all eight plan-vivo commands — and it asserts the version
+      # against `axon::runner::AXON_VERSION` rather than a literal, so it can
+      # never go stale the way the Python assert did.
+      - name: Run the CLI contract against the native binary
+        working-directory: axon-rs
+        run: cargo test --test fase39f_cli_binary_parity -- --nocapture
 
   # ── Release ───────────────────────────────────────────────────────
   # Triggered only on version tags (v*). Downloads native binaries
