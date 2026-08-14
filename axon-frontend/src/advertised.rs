@@ -244,7 +244,14 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
         fixture: "tests/fixtures/fase33z_parity_corpus/cross_vertical/18_refine_grad_compute.axon",
         gate: "tests/fase33z_d_parity_corpus.rs",
     }),
-    ("memory", Real { proof: "cognitive::run_remember / run_recall (PEM write-through)" }),
+        // §Fase 122.b — was `cognitive::run_remember / run_recall`. This citation proves
+    // the DECLARATION path and says so: the PEM write-through stays proven by §112's
+    // gates. The fixture's `store: session` and `retrieval: semantic` reach the IR,
+    // and both closed catalogs are watched refusing a value outside them.
+    ("memory", Attested {
+        fixture: "tests/fixtures/fase122_b_declarations/memory_pix_store.axon",
+        gate: "tests/fase122_b_declaration_laws.rs",
+    }),
     // §Fase 122.b — was the bare engine name `lambda_tools::dispatch_use_tool_real`.
     // The gate that DID read a file for `tool` (`fase54_c_tool_dispatch_example`)
     // only parses and type-checks the canonical example — the front half. This
@@ -443,13 +450,43 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     // way this repo has recorded: ZERO lexer tokens, no AST, no IR emission,
     // and `EffectRuntime::new()` with both call sites inside `#[cfg(test)]`.
     // An unadvertised subsystem is invisible to every gate in this file.
-    ("effect", Real { proof: "axon-frontend/tests/fase120_a_effect_grammar.rs (29, source→AST→IR: the declaration lands in IRProgram::effects, the field §23 created and nothing ever wrote to) + axon-rs/tests/fase120_c_effect_dispatch.rs (15, source→dispatch)" }),
-    ("handle", Real { proof: "axon-rs/tests/fase120_c_effect_dispatch.rs §1-§9 — source→dispatch: the `in { … }` body EXECUTES, a clause body executes, `resume` returns control to the perform site, a clause with no resume aborts (fase_23 §3.1's published `Done()` shape), an abort reaches the frame that OWNS it under nesting, `forward` delegates to the outer frame, and a clause binder does not leak into the continuation" }),
-    ("perform", Real { proof: "axon-rs/tests/fase120_c_effect_dispatch.rs §2/§8/§10 (the clause sees the RESOLVED value; an unhandled perform FAILS CLOSED; a step-body perform runs AFTER generation over the step's own output) + axon-frontend/tests/fase120_a_effect_grammar.rs §4/§5 (D120.2 bare-name resolution, ambiguity refused naming both candidates, and D9 exhaustiveness INTERPROCEDURALLY at every entry point incl. axonendpoint)" }),
+        // §Fase 122.b — cited against the PUBLISHED EXAMPLE, not a fixture written for
+    // the gate. That is deliberate and stronger: `examples/algebraic_effects.axon`
+    // is what this repository shows an adopter, so if it rots the row goes red, and
+    // it is the file people actually read. `fase117_a_examples_compile` already
+    // proves it COMPILES; §120's dispatch gate runs the machine from inline source.
+    // This joins the two ends — the published program, dispatched.
+    //
+    // §120's finding: the Plotkin/Pretnar engine from §23 (590 lines, 49 tests) had
+    // ZERO lexer tokens. There was no grammar. It was invisible to every gate
+    // because it was never ADVERTISED — no badge, nothing to classify.
+    //
+    // Renaming the declared `effect` or the `handle` target kills the citation.
+    ("effect", Attested {
+        fixture: "examples/algebraic_effects.axon",
+        gate: "tests/fase122_b_effects_from_the_example.rs",
+    }),
+        // §Fase 122.b — see the `effect` note above; same published example and gate.
+    ("handle", Attested {
+        fixture: "examples/algebraic_effects.axon",
+        gate: "tests/fase122_b_effects_from_the_example.rs",
+    }),
+        // §Fase 122.b — see the `effect` note above; same published example and gate.
+    ("perform", Attested {
+        fixture: "examples/algebraic_effects.axon",
+        gate: "tests/fase122_b_effects_from_the_example.rs",
+    }),
     ("@contract_tool", Unaudited),
     ("@csp_tool", Unaudited),
     // ── Knowledge navigation (PIX · MDN)
-    ("pix", Real { proof: "pix_navigator (embeddings-free structural index)" }),
+        // §Fase 122.b — was `pix_navigator`. Declaration path only; §63 owns the
+    // navigation itself. The declared `depth: 4` reaches the IR — §119 found
+    // `pix_ops` being read by nobody, so a declared field arriving at a consumer is
+    // exactly the property worth pinning here.
+    ("pix", Attested {
+        fixture: "tests/fixtures/fase122_b_declarations/memory_pix_store.axon",
+        gate: "tests/fase122_b_declaration_laws.rs",
+    }),
     ("navigate", Partial { gap: "§111 F11 — three REAL deterministic engines (MDN store-sourced, MDN in-memory, PIX), BUT with no indexable source in scope it falls back to an LLM prompt that INSTRUCTS the model to fabricate a provenance trail. The one live §108 left in the tree" }),
     ("drill", Partial { gap: "§111 — real subtree navigation when a source is in scope; degrades to a placeholder string otherwise" }),
     ("trail", Partial { gap: "§111 — reads the real breadcrumb `navigate` seeds; falls back to a placeholder when no navigate ran. Inherits F11: a trail harvested from the LLM fallback is confabulation wearing an audit's clothes" }),
@@ -542,7 +579,16 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
         fixture: "tests/fixtures/fase122_b_endpoint/served_routes.axon",
         gate: "tests/fase33z_c_default_on_and_tool_call.rs",
     }),
-    ("axonstore", Real { proof: "wire_integrations::run_{persist,retrieve,mutate,purge} — parameterized SQL, capability gate, epistemic floor, HMAC-Merkle audit chain" }),
+        // §Fase 122.b — was `wire_integrations::run_{persist,retrieve,mutate,purge}`.
+    // `backend: in_memory` follows §113.d's precedent deliberately: this proves the
+    // DECLARED surface — the closed backend catalog, the isolation level, and the
+    // §38.b inline schema riding the artifact — not the Postgres wire, which
+    // `fase38_i_integration` owns. A store whose declared shape reaches no consumer
+    // is the §111 shape, so `column_schema` being present is the assertion.
+    ("axonstore", Attested {
+        fixture: "tests/fixtures/fase122_b_declarations/memory_pix_store.axon",
+        gate: "tests/fase122_b_declaration_laws.rs",
+    }),
     // ── Cognitive I/O (λ-L-E, Fases 1–9)
     //
     // §111 F14 + the §11 REFRAME: this family is not merely unwired — it is
@@ -695,7 +741,28 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
         fixture: "tests/fixtures/fase122_b_cognitive_io/immune_reflex_heal.axon",
         gate: "tests/fase112_d_immune_fires.rs",
     }),
-    ("compliance", Real { proof: "tests/fase117_a_regulated_boundary_coverage.rs (§117.a — `axon-T957` finally scopes the ESK Fase 6.1 κ-coverage law to the `axonendpoint`, the surface the README has advertised since v1.x. It is a real SET DIFFERENCE over the κ of the boundary's `body:`/`output:` types against the declared shield's `compliance:` — NOT the `!compliance.is_empty()` presence check §111 F16 condemned. The endpoint's own `compliance:` list does NOT satisfy it: a label is not a control. The §111 diagnosis was right that the law existed only for `component`; what it missed is that the promise was VACUOUS, not weak — the same shape `lease` had before §113 gave it a subject)" }),
+    // §Fase 122.b — DOWNGRADED from `Real`, deliberately, and this is the row that
+    // shows the ratchet doing what it was built for.
+    //
+    // Measured 2026-08-14: `compliance: [NOT_A_FRAMEWORK]` on an `axonendpoint`
+    // COMPILES CLEAN. In the same fixture, `effects: <not_an_effect>` is refused
+    // with its closed catalog named. `compliance:` is a free-string field.
+    //
+    // It could have been attested — a fixture declaring it compiles and passes —
+    // and that citation would have proven the field EXISTS, not that it GOVERNS.
+    // Writing it would have been the exact species of claim §122 exists to remove,
+    // committed by the fase that removes it. So the row states the gap instead.
+    //
+    // This is the fourth recorded instance in this project of "a free string field
+    // breeds an imaginary catalog", and the most exposed: the values are `PCI_DSS`,
+    // `SOX`, `HIPAA` — read by a regulated adopter as an assertion. The ESK maps
+    // `shield.scan` to ISO 27001 A.8.23 with `CompileTime` evidence, which is
+    // honest about its own strength; this field has no such qualifier.
+    //
+    // Closing it is compiler work — a closed catalog keyed to what the runtime
+    // reaches, and a decision about what declaring a framework OBLIGES — not
+    // fixture work. A dedicated fase is scheduled after §122's release.
+    ("compliance", Partial { gap: "§122.b — `compliance:` is a FREE-STRING field: `compliance: [NOT_A_FRAMEWORK]` compiles clean, while `effects:` in the same position is a decided closed catalog. `axon-T957`'s coverage law (§117.a) scopes WHICH boundaries must carry a compliance declaration; nothing validates the VALUES against a catalog, and nothing ties a declared framework to an obligation the runtime enforces. An adopter reads `[PCI_DSS, SOX, HIPAA]` as an assertion" }),
     ("component", Partial { gap: "§111 — the compile-time shield-coverage law over regulated κ IS genuinely enforced (a real set difference). But the component renders NOTHING; the README itself defers the renderer" }),
     ("view", Partial { gap: "§111 — only referential integrity is checked. No `route` check, no session-typed-reactivity check, and it renders nothing" }),
     // ── Enterprise I/O (Fases 80–85)
@@ -750,7 +817,13 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
         fixture: "tests/fixtures/fase33z_parity_corpus/cross_vertical/17_session_duality_topology.axon",
         gate: "tests/fase33z_d_parity_corpus.rs",
     }),
-    ("backpressure: credit(k)", Real { proof: "session_runtime credit window + the PCC credit-positivity witness" }),
+        // §Fase 122.b — the §80 upstream fixture DECLARES `backpressure: credit(8)` and
+    // narrowing it to `credit(3)` kills that gate, so the declared credit window is
+    // what the session runtime honours.
+    ("backpressure: credit(k)", Attested {
+        fixture: "tests/fixtures/fase122_b_upstream/stt_dialogue.axon",
+        gate: "tests/fase80_d_upstream_e2e.rs",
+    }),
     ("reconnect: cognitive_state", Unaudited),
     // ── §Fase 114.z — the classifications the badge-only gate never asked for.
     //
@@ -883,7 +956,21 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
         fixture: "tests/fixtures/fase122_b_credential/visitor_session.axon",
         gate: "tests/fase92_mint_runtime.rs",
     }),
-    ("rotate", Real { proof: "tests/fase94_custody_runtime.rs (§94 — rotation_without_revelation: ENUMERATE+ROTATE(CAS)+USE; no term evaluates to a secret value)" }),
+    // §Fase 122.b — a DECLARATION-path citation, and the boundary is structural
+    // rather than a testing gap: §94's runtime gate drives a local tool server on
+    // an ephemeral port, and a tool endpoint has no config-key indirection the way
+    // §80 requires for `upstream` — so a static file cannot name it without
+    // bending. `rotation_without_revelation` (ENUMERATE + ROTATE(CAS) + USE, no
+    // term evaluating to a secret) stays proven by §94's own gates.
+    //
+    // What the file carries are the two laws that make the verb governable, each
+    // watched refusing: `axon-T898` — the target must be a `backend: secrets`
+    // store, because you cannot rotate what is not custody — and `axon-T899` — the
+    // exchange tool must be declared, not ad-hoc.
+    ("rotate", Attested {
+        fixture: "tests/fixtures/fase122_b_credential/rotate_crm_class.axon",
+        gate: "tests/fase122_b_declaration_laws.rs",
+    }),
     // Session types + quantum bridge.
     // §Fase 122.b — §80's gates hand-build `IRUpstream`, which proves the DIAL.
     // This citation compiles the declaration an adopter writes and dials the same
@@ -1536,9 +1623,9 @@ mod tests {
             .filter(|(_, s)| matches!(s, Real { .. }))
             .count();
         assert!(
-            n <= 9,
+            n <= 0,
             "the legacy `Real {{ proof }}` population grew to {n} — §122.a measured 69 and §122.b \
-             drives it to zero (69 → 9 so far). A NEW claim of reality must be \
+             drives it to zero (69 → 0). A NEW claim of reality must be \
              `Attested {{ fixture, gate }}`: name the `.axon` a published program could write, \
              and the gate that runs it."
         );
