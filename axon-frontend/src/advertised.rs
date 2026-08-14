@@ -292,12 +292,67 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     }),
     ("hibernate", Partial { gap: "§119.d made the suspension REAL on the production dispatch path: the walk HALTS at the hibernate point (the task dies — zero further compute, zero tokens, the primitive's economic guarantee), the continuation parks under the README's SHA-256(flow ∥ event ∥ position) id with the remaining nodes + bindings + catalogs, `emit <channel>` WAKES matching continuations (fire-and-forget resume through the real dispatcher), a late resume is REFUSED by lazy expiry (no timer burns while asleep), and `hibernate until \"event\"` — the README's own spelling — parses. Gates: tests/fase119_d_hibernate.rs (halt counted in StepCompletes, park, emit-wake e2e, nested refusal) + hibernation unit suite; 4/4 mutations killed incl. the F20 walk-keeps-going reinjection. THE GAP: the parking lot is in-process (the pem::InMemoryBackend discipline) — a continuation does not survive process restart, so README's sleep-for-months across restarts is the durable-store enterprise catch-up (cognitive_states), and chained hibernation inside a resumed continuation is not yet defined" }),
     // ── Deterministic data plane (§108)
-    ("dataspace", Real { proof: "dataspace_engine (columnar, first-party)" }),
-    ("ingest", Real { proof: "cognitive::run_ingest — bounds-before-parse, sha256 + Untrusted taint (§108)" }),
-    ("focus", Real { proof: "dataspace_engine::focus_query (σ∘π)" }),
-    ("associate", Real { proof: "dataspace_engine::associate_query (hash equi-join; refuses a keyless join)" }),
-    ("aggregate", Real { proof: "dataspace_engine::aggregate_query (γ)" }),
-    ("explore", Real { proof: "dataspace_engine::explore_profile (zone-map stats)" }),
+        // §Fase 122.c — §108's finding is what this citation keeps closed:`dataspace` was
+    // declared, type-checked and carried into the IR while `dataspace_specs` was
+    // `#[serde(skip)]`-hidden and read by NOTHING. The declared dataspace reached no
+    // runtime state, so this whole verb family was NARRATION — the program would
+    // have sent "You are ingesting…" to a language model and returned prose.
+    //
+    // Group C was scoped as needing a live database. Measured: it does not. The §108
+    // engine is first-party COLUMNAR and in-process, and the server's deploy path
+    // builds it; what cannot reach it is the PARITY corpus, which passes `None` and
+    // therefore fails these verbs closed BY DESIGN. "The parity harness cannot drive
+    // it" is not "it needs Postgres".
+    //
+    // The gate deploys the fixture, executes it, and reads the ENGINE afterwards:
+    // three CSV rows land as three typed rows, born `Untrusted` (§98) with a 64-hex
+    // witness hash, and the `Float` column reads back as a float. Four perturbations
+    // kill it: the declared column TYPE, the `max_rows` limit, selecting an
+    // undeclared column in `focus`, and joining `associate` on the wrong key.
+    ("dataspace", Attested {
+        fixture: "tests/fixtures/fase122_c_dataspace/lead_pipeline.axon",
+        gate: "tests/fase122_c_dataspace_from_disk.rs",
+    }),
+        // §Fase 122.c — see the `dataspace` note above; same fixture and gate. The
+    // execute-success assertion is what makes this verb's presence a claim rather
+    // than decoration: §108's verbs fail CLOSED without the engine, so a green
+    // execute is what says it ran.
+    ("ingest", Attested {
+        fixture: "tests/fixtures/fase122_c_dataspace/lead_pipeline.axon",
+        gate: "tests/fase122_c_dataspace_from_disk.rs",
+    }),
+        // §Fase 122.c — see the `dataspace` note above; same fixture and gate. The
+    // execute-success assertion is what makes this verb's presence a claim rather
+    // than decoration: §108's verbs fail CLOSED without the engine, so a green
+    // execute is what says it ran.
+    ("focus", Attested {
+        fixture: "tests/fixtures/fase122_c_dataspace/lead_pipeline.axon",
+        gate: "tests/fase122_c_dataspace_from_disk.rs",
+    }),
+        // §Fase 122.c — see the `dataspace` note above; same fixture and gate. The
+    // execute-success assertion is what makes this verb's presence a claim rather
+    // than decoration: §108's verbs fail CLOSED without the engine, so a green
+    // execute is what says it ran.
+    ("associate", Attested {
+        fixture: "tests/fixtures/fase122_c_dataspace/lead_pipeline.axon",
+        gate: "tests/fase122_c_dataspace_from_disk.rs",
+    }),
+        // §Fase 122.c — see the `dataspace` note above; same fixture and gate. The
+    // execute-success assertion is what makes this verb's presence a claim rather
+    // than decoration: §108's verbs fail CLOSED without the engine, so a green
+    // execute is what says it ran.
+    ("aggregate", Attested {
+        fixture: "tests/fixtures/fase122_c_dataspace/lead_pipeline.axon",
+        gate: "tests/fase122_c_dataspace_from_disk.rs",
+    }),
+        // §Fase 122.c — see the `dataspace` note above; same fixture and gate. The
+    // execute-success assertion is what makes this verb's presence a claim rather
+    // than decoration: §108's verbs fail CLOSED without the engine, so a green
+    // execute is what says it ran.
+    ("explore", Attested {
+        fixture: "tests/fixtures/fase122_c_dataspace/lead_pipeline.axon",
+        gate: "tests/fase122_c_dataspace_from_disk.rs",
+    }),
     // ── Budget, selection & synthesis
     ("deliberate", FailsClosed { diagnostic: "axon-T939 (§111) — the body is discarded at parse time; no budget was ever controlled" }),
     ("consensus", FailsClosed { diagnostic: "axon-T940 (§111) — no votes, no aggregation, no candidates" }),
@@ -1481,9 +1536,9 @@ mod tests {
             .filter(|(_, s)| matches!(s, Real { .. }))
             .count();
         assert!(
-            n <= 15,
+            n <= 9,
             "the legacy `Real {{ proof }}` population grew to {n} — §122.a measured 69 and §122.b \
-             drives it to zero (69 → 15 so far). A NEW claim of reality must be \
+             drives it to zero (69 → 9 so far). A NEW claim of reality must be \
              `Attested {{ fixture, gate }}`: name the `.axon` a published program could write, \
              and the gate that runs it."
         );
