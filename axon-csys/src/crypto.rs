@@ -580,7 +580,12 @@ mod portable {
 
     impl Sha256 {
         pub fn new() -> Self {
-            Self { h: INITIAL_H, total_bits: 0, buf: [0u8; SHA256_BLOCK_SIZE], buf_len: 0 }
+            Self {
+                h: INITIAL_H,
+                total_bits: 0,
+                buf: [0u8; SHA256_BLOCK_SIZE],
+                buf_len: 0,
+            }
         }
 
         /// §6.2.2 — compress one 512-bit block into the state.
@@ -879,7 +884,11 @@ mod portable {
         if digits.is_empty() {
             return None;
         }
-        let bound: u64 = if negative { i64::MAX as u64 + 1 } else { i64::MAX as u64 };
+        let bound: u64 = if negative {
+            i64::MAX as u64 + 1
+        } else {
+            i64::MAX as u64
+        };
         let mut acc: u64 = 0;
         for c in digits {
             if !c.is_ascii_digit() {
@@ -936,17 +945,13 @@ mod portable {
         Ok(b64url_encode(&decoded))
     }
 
-    pub fn continuity_verify(
-        key: &[u8],
-        wire: &str,
-    ) -> Result<(String, i64), ContinuityWireError> {
+    pub fn continuity_verify(key: &[u8], wire: &str) -> Result<(String, i64), ContinuityWireError> {
         // The C decodes into a fixed buffer sized to the protocol's
         // framing; anything longer is malformed rather than merely
         // large, and both map to BAD_BASE64 there.
         const DECODED_CAP: usize =
             MAX_SESSION_ID + 1 + I64_MAX_CHARS + 1 + SHA256_DIGEST_SIZE * 2 + 4;
-        let decoded =
-            b64url_decode(wire.as_bytes()).ok_or(ContinuityWireError::BadBase64)?;
+        let decoded = b64url_decode(wire.as_bytes()).ok_or(ContinuityWireError::BadBase64)?;
         if decoded.len() > DECODED_CAP {
             return Err(ContinuityWireError::BadBase64);
         }
@@ -975,14 +980,13 @@ mod portable {
         // The MAC covers everything before the second separator, which
         // is exactly the body that `sign` hashed.
         let expected = hmac_sha256(key, &decoded[..second]);
-        let actual =
-            hex_decode(&decoded[mac_off..]).ok_or(ContinuityWireError::BadHex)?;
+        let actual = hex_decode(&decoded[mac_off..]).ok_or(ContinuityWireError::BadHex)?;
         if !ct_eq(&expected, &actual) {
             return Err(ContinuityWireError::ForgedOrRotated);
         }
 
-        let expiry_ms = parse_i64_strict(&decoded[first + 1..second])
-            .ok_or(ContinuityWireError::BadExpiry)?;
+        let expiry_ms =
+            parse_i64_strict(&decoded[first + 1..second]).ok_or(ContinuityWireError::BadExpiry)?;
 
         // Only reached after the MAC verified, so these bytes were UTF-8
         // when signed. Still checked: a non-axon signer holding the key
@@ -1010,7 +1014,9 @@ pub struct Sha256 {
 #[cfg(not(feature = "native"))]
 impl Sha256 {
     pub fn new() -> Self {
-        Self { inner: portable::Sha256::new() }
+        Self {
+            inner: portable::Sha256::new(),
+        }
     }
     pub fn update(&mut self, data: &[u8]) -> &mut Self {
         self.inner.update(data);
@@ -1043,7 +1049,9 @@ pub struct HmacSha256 {
 #[cfg(not(feature = "native"))]
 impl HmacSha256 {
     pub fn new(key: &[u8]) -> Self {
-        Self { inner: portable::HmacSha256::new(key) }
+        Self {
+            inner: portable::HmacSha256::new(key),
+        }
     }
     pub fn update(&mut self, data: &[u8]) -> &mut Self {
         self.inner.update(data);

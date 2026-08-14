@@ -114,7 +114,11 @@ pub struct EpistemicEnvelope {
 impl EpistemicEnvelope {
     /// Construct an envelope from explicit producer values.
     pub fn new(certainty: f64, derived_status: bool, kind: EpistemicKind) -> Self {
-        Self { certainty, derived_status, kind }
+        Self {
+            certainty,
+            derived_status,
+            kind,
+        }
     }
 
     /// §Theorem 5.1 enforcement via the C23 kernel. THIS IS THE
@@ -170,8 +174,7 @@ pub const THEOREM_5_1_CEILING: f64 = 0.99;
 #[cfg(feature = "native")]
 pub fn validate_degradation(env: EpistemicEnvelope) -> EpistemicEnvelope {
     let c_input: EpistemicEnvelopeCRepr = env.into();
-    let c_output =
-        unsafe { axon_csys_envelope_validate_degradation(c_input) };
+    let c_output = unsafe { axon_csys_envelope_validate_degradation(c_input) };
     c_output.into()
 }
 

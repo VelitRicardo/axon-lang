@@ -46,8 +46,8 @@ pub mod tokens;
 
 // §Fase 39.c.x — re-export the epistemic envelope public surface.
 pub use envelope::{
-    clamp_ceiling, theorem_5_1_ceiling_from_c, validate_degradation,
-    EpistemicEnvelope, EpistemicEnvelopeCRepr, EpistemicKind, THEOREM_5_1_CEILING,
+    clamp_ceiling, theorem_5_1_ceiling_from_c, validate_degradation, EpistemicEnvelope,
+    EpistemicEnvelopeCRepr, EpistemicKind, THEOREM_5_1_CEILING,
 };
 
 #[cfg(feature = "native")]

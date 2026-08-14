@@ -676,6 +676,9 @@ pub fn utf8_count_chars(bytes: &[u8]) -> usize {
     // §Fase 119.h — same contract as the C: count non-continuation bytes.
     #[cfg(not(feature = "native"))]
     {
-        bytes.iter().filter(|b| (*b & 0b1100_0000) != 0b1000_0000).count()
+        bytes
+            .iter()
+            .filter(|b| (*b & 0b1100_0000) != 0b1000_0000)
+            .count()
     }
 }
