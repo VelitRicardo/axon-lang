@@ -1,3 +1,14 @@
+//! §Fase 118.b.2 — this gate drives the HTTP server surface (`/v1/deploy` +
+//! `/v1/execute`), which lives behind the `server` feature. Gated at the file
+//! level so a `cli`-only build still compiles.
+//!
+//! Added after CI went red on the release commit while every local run was
+//! green. §120.g's lesson is *"run with `--features server,csys-native`, the
+//! default hides 1625 tests"* — and the INVERSE is just as true and was not
+//! written down: running ONLY with those features hides compile errors in the
+//! default build, which is the build CI runs. The release check needs BOTH.
+#![cfg(feature = "server")]
+
 //! §Fase 122.c — the §108 data plane, from a program that lives on disk.
 //!
 //! # What §108 found, and what this keeps closed
