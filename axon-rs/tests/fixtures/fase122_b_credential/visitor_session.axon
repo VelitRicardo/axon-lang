@@ -1,0 +1,20 @@
+// §Fase 122.b (group B) — the `.axon` input `fase92_mint_runtime.rs` never had.
+//
+// §92 proves the mint runtime at every joint that matters — the bearer is bound
+// once and NEVER rides the outcome or the wire, a missing minter port fails
+// closed, grants must be a subset of what the minter can issue, and the TTL is
+// capped at 24h. All of it hand-builds `IRCredential` and the mint node in Rust,
+// which proves the HANDLER.
+//
+// This is the program an adopter writes. The contract below is the same one
+// §92's gates use, declared in source: a 15-minute visitor session granting a
+// single capability.
+
+credential WidgetSession {
+    ttl:    15m
+    grants: [chat.invoke]
+}
+
+flow IssueVisitorSession() -> Unit {
+    mint WidgetSession as tok
+}

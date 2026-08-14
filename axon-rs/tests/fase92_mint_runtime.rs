@@ -61,6 +61,107 @@ fn ctx_with(
     (ctx, rx)
 }
 
+// ── §Fase 122.b — the same mint, from a program that lives on disk ──────────
+//
+// Every gate in this file hand-builds `IRCredential` and the mint node, which
+// proves the HANDLER. Law 4 asks for the PATH: the contract and the verb as an
+// adopter writes them, compiled by the real pipeline, dispatched against the
+// same reference minter.
+
+/// Compile a fixture through the real pipeline — INCLUDING the type checker.
+///
+/// §Fase 122.b: the first version of this helper stopped at the IR generator,
+/// and that was a hole in the method rather than in the code under test. A
+/// fixture that does not type-check is not a program an adopter could deploy,
+/// so skipping the checker means the fixture silently tolerates illegal
+/// programs — and a compile-time law (here `axon-T894`, `ttl ≤ 24h`) can be
+/// broken in the fixture without any gate noticing. Found by mutating the
+/// fixture's `ttl:` to `48h` and watching the test stay green.
+fn compile_fixture(rel: &str) -> axon::ir_nodes::IRProgram {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(rel);
+    let src = std::fs::read_to_string(&path)
+        .unwrap_or_else(|e| panic!("read {}: {e}", path.display()));
+    let tokens = axon_frontend::lexer::Lexer::new(&src, rel)
+        .tokenize()
+        .expect("fixture must lex");
+    let prog = axon_frontend::parser::Parser::new(tokens)
+        .parse()
+        .expect("fixture must parse");
+    let errors = axon_frontend::type_checker::TypeChecker::new(&prog).check();
+    assert!(
+        errors.is_empty(),
+        "the fixture must TYPE-CHECK — an adopter could not deploy it otherwise: {:?}",
+        errors.iter().map(|e| &e.message).collect::<Vec<_>>()
+    );
+    axon_frontend::ir_generator::IRGenerator::new().generate(&prog)
+}
+
+#[tokio::test]
+async fn a_compiled_credential_contract_mints_and_never_wires_the_token() {
+    const FIXTURE: &str = "tests/fixtures/fase122_b_credential/visitor_session.axon";
+    let ir = compile_fixture(FIXTURE);
+
+    // The contract catalog the COMPILER produced from `credential WidgetSession`.
+    assert!(
+        !ir.credentials.is_empty(),
+        "the fixture declares a `credential`; an empty catalog means the \
+         declaration no longer reaches the IR"
+    );
+
+    let minter = Arc::new(InMemoryMinter::new());
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+    let mut ctx = DispatchCtx::new("F", "stub", "", CancellationFlag::new(), tx);
+    ctx.credentials = Arc::new(
+        ir.credentials
+            .iter()
+            .map(|c| (c.name.clone(), c.clone()))
+            .collect(),
+    );
+    ctx.credential_minter = Some(minter.clone());
+    ctx.held_capabilities = Some(vec!["chat.invoke".to_string(), "flow.execute".to_string()]);
+
+    let steps: Vec<axon::ir_nodes::IRFlowNode> = ir
+        .flows
+        .iter()
+        .flat_map(|f| f.steps.iter().cloned())
+        .collect();
+    let mut minted = None;
+    for node in &steps {
+        let outcome = dispatch_node(node, &mut ctx)
+            .await
+            .expect("every node in the compiled fixture must dispatch");
+        if let NodeOutcome::Completed { output, .. } = outcome {
+            minted = Some(output);
+        }
+    }
+
+    // The binding name came from the SOURCE (`as tok`), and the grants from the
+    // declared contract.
+    let token = ctx
+        .let_bindings
+        .get("tok")
+        .expect("the fixture binds the bearer under `tok`")
+        .clone();
+    let rec = minter.verify(&token).expect("token verifies");
+    assert_eq!(
+        rec.grants,
+        vec!["chat.invoke"],
+        "the grants must come from the DECLARED contract, not a default"
+    );
+
+    // And the secret never leaves: not in the outcome, not on the wire.
+    let output = minted.expect("the mint node must complete");
+    assert!(
+        !output.contains(&token),
+        "the raw bearer must not ride the outcome: {output}"
+    );
+    drop(ctx);
+    while let Ok(ev) = rx.try_recv() {
+        let json = serde_json::to_string(&ev).unwrap();
+        assert!(!json.contains(&token), "token must not ride the wire: {json}");
+    }
+}
+
 #[tokio::test]
 async fn mint_binds_the_bearer_and_never_wires_the_token() {
     let minter = Arc::new(InMemoryMinter::new());

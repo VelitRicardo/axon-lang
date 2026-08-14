@@ -722,8 +722,24 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
         gate: "tests/fase33z_d_parity_corpus.rs",
     }),
     // Credentials + custody verbs.
-    ("credential", Real { proof: "tests/fase92_mint_runtime.rs (§92 — grants ⊆ minter, TTL ≤ 24h; axon-T893–T896)" }),
-    ("mint", Real { proof: "tests/fase92_mint_runtime.rs (§92 — fail-closed without a minter port; the raw bearer is shown once and never persisted, axon-T896)" }),
+        // §Fase 122.b — §92's gates hand-build `IRCredential`. The contract under test
+    // is now the one the compiler emitted from `credential WidgetSession { ttl: 15m
+    // grants: [chat.invoke] }`. Perturbation kills it three ways: changing the
+    // declared `grants:`, renaming the `as` binding, and — after the helper was
+    // fixed to run the TYPE CHECKER — pushing `ttl:` past the 24h ceiling, which
+    // now fails with `axon-T894` naming the §81 service-account surface instead.
+    ("credential", Attested {
+        fixture: "tests/fixtures/fase122_b_credential/visitor_session.axon",
+        gate: "tests/fase92_mint_runtime.rs",
+    }),
+        // §Fase 122.b — the flow-body verb, from source: `mint WidgetSession as tok`.
+    // The bearer is bound under the name the SOURCE chose, its grants come from the
+    // DECLARED contract, and the test still pins the property that matters — the
+    // raw token rides neither the outcome nor the wire.
+    ("mint", Attested {
+        fixture: "tests/fixtures/fase122_b_credential/visitor_session.axon",
+        gate: "tests/fase92_mint_runtime.rs",
+    }),
     ("rotate", Real { proof: "tests/fase94_custody_runtime.rs (§94 — rotation_without_revelation: ENUMERATE+ROTATE(CAS)+USE; no term evaluates to a secret value)" }),
     // Session types + quantum bridge.
     ("upstream", Real { proof: "tests/fase80_d_upstream_e2e.rs (§80 — config-resolved dial, declared auth, credit flow-control against a real WS server)" }),
@@ -1362,9 +1378,9 @@ mod tests {
             .filter(|(_, s)| matches!(s, Real { .. }))
             .count();
         assert!(
-            n <= 25,
+            n <= 23,
             "the legacy `Real {{ proof }}` population grew to {n} — §122.a measured 69 and §122.b \
-             drives it to zero (69 → 25 so far). A NEW claim of reality must be \
+             drives it to zero (69 → 23 so far). A NEW claim of reality must be \
              `Attested {{ fixture, gate }}`: name the `.axon` a published program could write, \
              and the gate that runs it."
         );

@@ -148,7 +148,11 @@ async fn expectation_of(ctx: &mut DispatchCtx, carrier: &str) -> f64 {
 // is analytic — it cannot be satisfied by a placeholder, and it is not an oracle
 // invented for this fixture.
 
-/// Compile a fixture through the real pipeline.
+/// Compile a fixture through the real pipeline — INCLUDING the type checker.
+///
+/// §Fase 122.b: skipping the checker would let a fixture break a compile-time
+/// law without any gate noticing. A program that does not type-check is not one
+/// an adopter could deploy, so it cannot stand as a Law 4 citation.
 fn compile_fixture(rel: &str) -> IRProgram {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(rel);
     let src = std::fs::read_to_string(&path)
@@ -159,6 +163,12 @@ fn compile_fixture(rel: &str) -> IRProgram {
     let prog = axon_frontend::parser::Parser::new(tokens)
         .parse()
         .expect("fixture must parse");
+    let errors = axon_frontend::type_checker::TypeChecker::new(&prog).check();
+    assert!(
+        errors.is_empty(),
+        "the fixture must TYPE-CHECK — an adopter could not deploy it otherwise: {:?}",
+        errors.iter().map(|e| &e.message).collect::<Vec<_>>()
+    );
     axon_frontend::ir_generator::IRGenerator::new().generate(&prog)
 }
 
