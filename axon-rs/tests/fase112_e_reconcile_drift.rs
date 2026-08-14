@@ -154,6 +154,50 @@ reconcile Keeper {{ observe: World  tolerance: {tolerance}  on_drift: {on_drift}
     )
 }
 
+// ── §Fase 122.b — the same drift, from a program that lives on disk ─────────
+//
+// The gap Law 4 closes here is small and worth stating precisely: this file
+// already deploys through the real path and measures real drift. What it lacked
+// is a program on DISK, so nothing could catch the citation going stale.
+
+/// Read a fixture program from disk.
+fn fixture(rel: &str) -> String {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(rel);
+    std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("read {}: {e}", path.display()))
+}
+
+#[tokio::test]
+async fn a_deployed_fixture_measures_real_drift_against_its_declared_manifest() {
+    const FIXTURE: &str = "tests/fixtures/fase122_b_cognitive_io/reconcile_drift.axon";
+    // The manifest declares two resources; only one of them answers.
+    register_source_adapter("FixtureDb", Arc::new(Up("FixtureDb".into())));
+    register_source_adapter("FixtureCache", Arc::new(Gone("FixtureCache".into())));
+
+    let (app, _s) = axon::axon_server::build_router_with_state(server_cfg());
+    assert_eq!(
+        deploy(&app, &fixture(FIXTURE)).await["success"],
+        true,
+        "the fixture must deploy through the REAL path"
+    );
+
+    let t = tick(&app).await;
+    let r = &t["reconciles"]["Keeper"];
+
+    let drift = r["drift"]
+        .as_f64()
+        .unwrap_or_else(|| panic!("no drift reported: {t}"));
+    assert!(
+        (drift - 0.5).abs() < 1e-9,
+        "the fixture's manifest declares two resources and the world has one; the Jaccard \
+         symmetric difference is 1/2 = 0.5. Got drift={drift}, tick={t}"
+    );
+    assert_eq!(
+        r["action"], "alert",
+        "drift beyond the fixture's declared `tolerance: 0.1` must fire its declared \
+         `on_drift: alert`. Got: {r}"
+    );
+}
+
 // ── 1. The world matches the belief ⇒ no drift ─────────────────────────────
 
 /// Both declared resources are present. Drift is **0.0** — and this time that zero

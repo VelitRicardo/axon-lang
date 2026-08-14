@@ -470,10 +470,43 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     ("resource", Real { proof: "tests/fase113_c_resource_is_a_wire.rs (§113.c — an `axonstore { resource: Db }` DERIVES its DSN and its POOL SIZE from the resource: `capacity: 20` produces twenty connections. Before §113 `capacity` was read by zero lines of code in either repo while every pool sat at a hardcoded 10, and `lifetime` — sold as Linear Logic — was read by nothing at all)" }),
     ("fabric", Partial { gap: "§119.e made provider/region DECIDE things, on the line the knowledge doc draws (fabric describes what the runtime expects to find; it is explicitly NOT infrastructure-as-code, so `provision` is not what it owed). COMPILE TIME: `axon-E041` refuses a region that cannot belong to the declared provider (the doc's own `provider: aws region: \"eastus\"` example) and `axon-E042` refuses a compliance obligation the substrate cannot satisfy (the doc's own \"a GDPR-tagged manifest deployed to a non-EU region is rejected\") — with an UNDETERMINABLE jurisdiction counted as a violation, never a pass. RUNTIME: a tool whose resource lives `within` a fabric carries that fabric's (provider, region) on its binding and into its audit row — the doc's compliance propagation, made a fact — and a `within:` naming an undeclared fabric REFUSES the binding. Gates: axon-frontend/tests/fase119_e_fabric_substrate.rs (10) + substrate unit suite (11) + axon-rs/tests/fase119_e_fabric_runtime.rs (5); 6/6 mutations killed. THE GAP: the provider catalog is open by design, so a provider whose region shape this compiler does not know is accepted UNVALIDATED (visible via ProviderShape::Unvalidated) — and `zones`/`ephemeral`/`shield:` are still consumed by nothing, so a fabric-level shield does not yet wrap resource acquisition" }),
     ("manifest", Partial { gap: "§111 F14 — the κ/compliance half IS genuinely consumed (it feeds attestation + the audit scorer); the \"desired shape\" half is dead" }),
-    ("observe", Real { proof: "tests/fase112_c_cognitive_io_deploy.rs (§112.a/c — a real Handler reaches a real target through a deny-by-default SourceRegistry; an observation that cannot be taken REFUSES. The only prior Handler returned certainty 1.0 unconditionally, without going anywhere)" }),
-    ("reconcile", Real { proof: "tests/fase112_e_reconcile_drift.rs (§112.e — REAL Jaccard drift between the manifest's desired shape and the world's actual shape. It used to compare the belief against ITSELF: when evidence was missing it defaulted to the manifest, so drift was structurally always 0.0)" }),
+        // §Fase 122.b — the readings that drive the immune's baseline come through this
+    // `observe` declaration, sampling a source adapter the gate registers. A
+    // refused observation feeds nothing downstream (deny-by-default).
+    ("observe", Attested {
+        fixture: "tests/fixtures/fase122_b_cognitive_io/immune_reflex_heal.axon",
+        gate: "tests/fase112_d_immune_fires.rs",
+    }),
+    // §Fase 122.b — §112.e already deploys through the real path and measures
+    // REAL Jaccard drift between the manifest's desired shape and the observed
+    // world (before it, the loop compared the belief against itself and reported
+    // 0.0 for every world). The fixture makes that program a file. Three
+    // perturbations kill it: widening `tolerance:` past the measured drift,
+    // changing `on_drift:` to `noop`, and shrinking the manifest — the last
+    // proving the drift is computed against the DECLARATION, not a constant.
+    ("reconcile", Attested {
+        fixture: "tests/fixtures/fase122_b_cognitive_io/reconcile_drift.axon",
+        gate: "tests/fase112_e_reconcile_drift.rs",
+    }),
     ("lease", Real { proof: "tests/fase113_d_lease_breach_fires.rs (§113.d — post-expiry USE of a leased store is the CT-2 Anchor Breach, and all three `on_expire` policies are honoured. The kernel was NEVER broken: it had no SUBJECT. A flow could not USE a resource, so a guarantee about post-expiry use was VACUOUS — unviolatable, and therefore unkeepable. §113 made the store operation the use)" }),
-    ("ensemble", Real { proof: "tests/fase112_c_cognitive_io_deploy.rs (§112.b/c — the EnsembleAggregator is instantiated from the IR at deploy and aggregates only observations ACTUALLY TAKEN; a refused source is absent, not present-and-failing, which is what lets its quorum gate work honestly)" }),
+    // §Fase 122.b — §112.c exercised `ensemble` ONLY as a refusal (an unsatisfiable
+    // quorum must refuse the deploy, because a half-instantiated immune system is
+    // worse than none — it looks like one). That law stays, and it left the path
+    // the CLAIM is about — aggregating observations actually TAKEN — with no
+    // program on disk. This fixture is the satisfiable case.
+    //
+    // Writing it surfaced a law worth knowing: the type checker refuses a Byzantine
+    // ensemble over a single observation ("Byzantine quorum requires >= 2").
+    // Byzantine agreement over one voter is not agreement, and the compiler says so
+    // rather than deploying something that merely looks like a quorum.
+    //
+    // Perturbations that kill it: a quorum above the declared observations, and
+    // pointing an observation at a source nobody registered — the latter proving
+    // the aggregator counts only observations that were really taken.
+    ("ensemble", Attested {
+        fixture: "tests/fixtures/fase122_b_cognitive_io/ensemble_quorum.axon",
+        gate: "tests/fase112_c_cognitive_io_deploy.rs",
+    }),
     // §Fase 122.a — ADJUDICATED, because two different things in this codebase
     // are called "topology" and the §122 audit tripped over it. This badge is
     // the SESSION-TYPE liveness checker (Honda), which is real and compile-time.
@@ -521,9 +554,36 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
         fixture: "tests/fixtures/fase33z_parity_corpus/cross_vertical/17_session_duality_topology.axon",
         gate: "tests/fase33z_d_parity_corpus.rs",
     }),
-    ("immune", Real { proof: "tests/fase112_d_immune_fires.rs (§112.d — the KL sensor detects a REAL deviation from a LEARNED baseline. Wiring it exposed a kernel bug that made it structurally blind: an unseen symbol was scored against the baseline's MINIMUM probability, so a perfectly stable baseline could never register an anomaly at all)" }),
-    ("reflex", Real { proof: "tests/fase112_d_immune_fires.rs (§112.d — a real anomaly FIRES the declared action with an HMAC-signed trace, within its sla:, and the same signature does not re-fire. No reflex may fire while the baseline is still being learned — that would be a false positive by construction)" }),
-    ("heal", Real { proof: "tests/fase112_d_immune_fires.rs (§112.d — the HealKernel is registered from the IR and renders a decision under its declared mode: on a real health report)" }),
+        // §Fase 122.b — §112.d already deploys through the REAL `POST /v1/deploy`,
+    // so the path was never in doubt; what it lacked was a program on DISK, which
+    // is what lets a build catch the citation going stale. The KL sensor detects a
+    // real deviation from a LEARNED baseline (wiring it exposed a kernel bug that
+    // made it structurally blind). Perturbing the fixture's `window: 4` kills the
+    // test — the declared learning window is honoured.
+    ("immune", Attested {
+        fixture: "tests/fixtures/fase122_b_cognitive_io/immune_reflex_heal.axon",
+        gate: "tests/fase112_d_immune_fires.rs",
+    }),
+        // §Fase 122.b — see `immune`. Perturbing the fixture's `action: quarantine`
+    // kills the test: the reflex takes the action the ADOPTER declared, not a
+    // default, and its firing carries an HMAC-signed trace.
+    //
+    // NOTE for a future mutation attempt: loosening `on_level` does NOT kill it,
+    // and that is correct, not a hole. `level_at_least` is `observed >= threshold`
+    // over know(0) < believe < speculate < doubt(3) — severity order — so a lower
+    // threshold fires on a MORE severe classification. Discrimination in the other
+    // direction is what `a_steady_system_stays_quiet_once_the_baseline_is_learned`
+    // pins.
+    ("reflex", Attested {
+        fixture: "tests/fixtures/fase122_b_cognitive_io/immune_reflex_heal.axon",
+        gate: "tests/fase112_d_immune_fires.rs",
+    }),
+        // §Fase 122.b — see `immune`. The HealKernel is registered from the compiled
+    // IR and renders a decision under the fixture's declared `mode: audit_only`.
+    ("heal", Attested {
+        fixture: "tests/fixtures/fase122_b_cognitive_io/immune_reflex_heal.axon",
+        gate: "tests/fase112_d_immune_fires.rs",
+    }),
     ("compliance", Real { proof: "tests/fase117_a_regulated_boundary_coverage.rs (§117.a — `axon-T957` finally scopes the ESK Fase 6.1 κ-coverage law to the `axonendpoint`, the surface the README has advertised since v1.x. It is a real SET DIFFERENCE over the κ of the boundary's `body:`/`output:` types against the declared shield's `compliance:` — NOT the `!compliance.is_empty()` presence check §111 F16 condemned. The endpoint's own `compliance:` list does NOT satisfy it: a label is not a control. The §111 diagnosis was right that the law existed only for `component`; what it missed is that the promise was VACUOUS, not weak — the same shape `lease` had before §113 gave it a subject)" }),
     ("component", Partial { gap: "§111 — the compile-time shield-coverage law over regulated κ IS genuinely enforced (a real set difference). But the component renders NOTHING; the README itself defers the renderer" }),
     ("view", Partial { gap: "§111 — only referential integrity is checked. No `route` check, no session-typed-reactivity check, and it renders nothing" }),
@@ -1302,9 +1362,9 @@ mod tests {
             .filter(|(_, s)| matches!(s, Real { .. }))
             .count();
         assert!(
-            n <= 31,
+            n <= 25,
             "the legacy `Real {{ proof }}` population grew to {n} — §122.a measured 69 and §122.b \
-             drives it to zero (69 → 31 so far). A NEW claim of reality must be \
+             drives it to zero (69 → 25 so far). A NEW claim of reality must be \
              `Attested {{ fixture, gate }}`: name the `.axon` a published program could write, \
              and the gate that runs it."
         );

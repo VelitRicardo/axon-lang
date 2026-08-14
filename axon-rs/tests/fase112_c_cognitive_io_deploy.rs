@@ -238,6 +238,54 @@ async fn a_program_with_no_cognitive_io_gets_no_supervisor() {
     assert_eq!(tick["active"], false);
 }
 
+// ── §Fase 122.b — the SATISFIABLE ensemble, from a program on disk ──────────
+//
+// The refusal case below is a real law and stays. But it left `ensemble` with no
+// program exercising the path its claim is actually about: aggregating
+// observations that WERE taken. This fixture does that, from disk, through the
+// same deploy path.
+
+/// Read a fixture program from disk.
+fn fixture(rel: &str) -> String {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(rel);
+    std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("read {}: {e}", path.display()))
+}
+
+#[tokio::test]
+async fn a_deployed_fixture_aggregates_a_satisfiable_ensemble() {
+    const FIXTURE: &str = "tests/fixtures/fase122_b_cognitive_io/ensemble_quorum.axon";
+    register_source_adapter("ensemble_probe", Arc::new(Fixed("ensemble_probe".into(), 0.91)));
+    register_source_adapter(
+        "ensemble_probe_b",
+        Arc::new(Fixed("ensemble_probe_b".into(), 0.88)),
+    );
+    let (app, _state) = axon::axon_server::build_router_with_state(server_cfg());
+
+    let out = deploy(&app, &fixture(FIXTURE)).await;
+    assert_eq!(
+        out["success"], true,
+        "a satisfiable ensemble must DEPLOY — the refusal law below is about \
+         unsatisfiable quorums, not about ensembles. Got: {out}"
+    );
+
+    let status = get(&app, "/v1/cognitive-io").await;
+    assert_eq!(
+        status["active"], true,
+        "the declared graph must be instantiated at deploy. Got: {status}"
+    );
+
+    let tick = post(&app, "/v1/cognitive-io/tick", serde_json::json!({})).await;
+    let t = &tick["tick"];
+
+    // The observation the ensemble aggregates was actually TAKEN, and carries what
+    // the source really reported — not a default.
+    assert_eq!(
+        t["observations"]["EnsHealth"]["certainty"], 0.91,
+        "the envelope must carry what the source ACTUALLY reported. Got: {t}"
+    );
+    assert_eq!(t["observations"]["EnsHealth"]["status"], "ok");
+}
+
 /// **All-or-nothing** (the §108 deploy discipline). An `ensemble` naming a quorum
 /// its declared observations cannot satisfy is an invalid graph, and it must refuse
 /// the DEPLOY.

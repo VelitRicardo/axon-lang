@@ -1,0 +1,43 @@
+// §Fase 122.b (group B) — a SATISFIABLE `ensemble`.
+//
+// §112.c exercises `ensemble` only as a refusal: a quorum its declared
+// observations cannot satisfy must refuse the DEPLOY, because a
+// half-instantiated immune system is worse than none — it looks like one.
+//
+// That is a real law and it stays. But it means the positive case — the
+// aggregator actually running over observations that WERE taken — had no
+// program on disk. `ensemble`'s claim is precisely about that path: it
+// aggregates only observations ACTUALLY TAKEN, so a refused source is absent
+// rather than present-and-failing, which is what lets the quorum gate work
+// honestly rather than counting a failure as a vote.
+//
+// TWO observations, quorum 2: satisfiable by construction. The type checker
+// refuses a Byzantine ensemble over a single observation — "Byzantine quorum
+// requires >= 2" — which is correct: Byzantine agreement over one voter is not
+// agreement, and the compiler says so rather than letting it deploy and look
+// like a quorum.
+
+resource EnsDb    { kind: postgres  endpoint: db.main }
+resource EnsCache { kind: redis     endpoint: cache.main }
+
+manifest EnsInfra { resources: [EnsDb, EnsCache] }
+
+observe EnsHealth from EnsInfra {
+    sources: [ensemble_probe]
+    quorum: 1
+    timeout: 1s
+    on_partition: fail
+}
+
+observe EnsLatency from EnsInfra {
+    sources: [ensemble_probe_b]
+    quorum: 1
+    timeout: 1s
+    on_partition: fail
+}
+
+ensemble EnsQuorum {
+    observations: [EnsHealth, EnsLatency]
+    quorum: 2
+    aggregation: byzantine
+}

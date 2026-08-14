@@ -139,6 +139,82 @@ heal     Repair {{ source: Sentinel  on_level: doubt  mode: audit_only  scope: t
     )
 }
 
+// ── §Fase 122.b — the same arc, from a program that lives on disk ───────────
+//
+// The gap Law 4 closes here is SMALL, and worth stating precisely rather than
+// overselling: every test in this file already deploys through `POST /v1/deploy`
+// and drives the real supervisor. It is a genuine source → dispatch proof
+// already. What it could not do is let a build verify that its program still
+// compiles, because the program is a Rust `format!` string — nothing on disk
+// holds it, so nothing can check it.
+//
+// This test deploys the identical arc from a `.axon` file. If the fixture ever
+// stops compiling, §122.b's ratchet says so before any adopter meets it.
+
+/// Read a fixture program from disk.
+fn fixture(rel: &str) -> String {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(rel);
+    std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("read {}: {e}", path.display()))
+}
+
+#[tokio::test]
+async fn a_deployed_fixture_learns_then_fires_its_declared_reflex() {
+    const FIXTURE: &str = "tests/fixtures/fase122_b_cognitive_io/immune_reflex_heal.axon";
+    let milli = Arc::new(AtomicU64::new(980));
+    register_source_adapter(
+        "fixture_probe",
+        Arc::new(Shifty {
+            name: "fixture_probe".into(),
+            milli: milli.clone(),
+        }),
+    );
+    let (app, _s) = axon::axon_server::build_router_with_state(server_cfg());
+    assert_eq!(
+        deploy(&app, &fixture(FIXTURE)).await["success"],
+        true,
+        "the fixture must deploy through the REAL path — a program on disk that \
+         no longer deploys is a stale citation"
+    );
+
+    // `window: 4` in the DECLARATION ⇒ four ticks train the baseline, and no
+    // reflex may fire while learning.
+    for _ in 0..4 {
+        let t = tick(&app).await;
+        assert_eq!(
+            t["reflexes_fired"], 0,
+            "a reflex fired against an untrained baseline is a false positive by \
+             construction. Got: {t}"
+        );
+    }
+
+    // The world changes to something never observed.
+    milli.store(120, Ordering::SeqCst);
+    let t = tick(&app).await;
+
+    assert_eq!(
+        t["health"]["Sentinel"]["classification"], "doubt",
+        "the KL sensor must reach the level the reflex DECLARES it triggers on. Got: {t}"
+    );
+    assert_eq!(
+        t["reflexes_fired"], 1,
+        "the declared reflex must fire on the anomaly it declares. Got: {t}"
+    );
+    assert_eq!(
+        t["reflexes"][0]["action"], "quarantine",
+        "it must take the action the fixture DECLARED, not a default. Got: {t}"
+    );
+    assert!(
+        t["reflexes"][0]["signed_trace"]
+            .as_str()
+            .is_some_and(|s| !s.is_empty()),
+        "the firing must be attestable — an HMAC-signed trace. Got: {t}"
+    );
+    assert!(
+        !t["heal_decisions"].as_array().unwrap().is_empty(),
+        "the heal bound to this immune must render its `mode: audit_only` decision. Got: {t}"
+    );
+}
+
 // ── 1-3. Learning, then quiet ───────────────────────────────────────────────
 
 /// **The subtle defect, pinned.** While the baseline is being learned, the immune
