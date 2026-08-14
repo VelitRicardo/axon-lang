@@ -800,7 +800,22 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     }),
     ("rotate", Real { proof: "tests/fase94_custody_runtime.rs (§94 — rotation_without_revelation: ENUMERATE+ROTATE(CAS)+USE; no term evaluates to a secret value)" }),
     // Session types + quantum bridge.
-    ("upstream", Real { proof: "tests/fase80_d_upstream_e2e.rs (§80 — config-resolved dial, declared auth, credit flow-control against a real WS server)" }),
+    // §Fase 122.b — §80's gates hand-build `IRUpstream`, which proves the DIAL.
+    // This citation compiles the declaration an adopter writes and dials the same
+    // real WebSocket vendor with it. A static fixture works here for the reason
+    // `rotate` cannot yet use one: `resolve:`/`secret:` are CONFIG KEYS by §80's
+    // rule, never literals, so the vendor's ephemeral address is supplied by the
+    // resolver and nothing about the program bends to the test.
+    //
+    // Three perturbations kill it: changing the declared `auth:` from header to
+    // query (the secret must ride where the DECLARATION says), narrowing the
+    // `backpressure: credit(n)` window, and changing the `when` clause that
+    // classifies the inbound frame — the last proving the vendor's reply is typed
+    // by the fixture's `map:`, not guessed.
+    ("upstream", Attested {
+        fixture: "tests/fixtures/fase122_b_upstream/stt_dialogue.axon",
+        gate: "tests/fase80_d_upstream_e2e.rs",
+    }),
     // §Fase 122.b — §111.d's gates all still run and all hand-build `IRQuant`:
     // a proof of the HANDLER. The gate now also compiles a fixture and dispatches
     // the node the COMPILER lowered, against the same `ReferenceSimulator` the
@@ -1436,9 +1451,9 @@ mod tests {
             .filter(|(_, s)| matches!(s, Real { .. }))
             .count();
         assert!(
-            n <= 18,
+            n <= 17,
             "the legacy `Real {{ proof }}` population grew to {n} — §122.a measured 69 and §122.b \
-             drives it to zero (69 → 18 so far). A NEW claim of reality must be \
+             drives it to zero (69 → 17 so far). A NEW claim of reality must be \
              `Attested {{ fixture, gate }}`: name the `.axon` a published program could write, \
              and the gate that runs it."
         );

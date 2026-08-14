@@ -1,0 +1,37 @@
+// §Fase 122.b (group B) — the `.axon` input `fase80_d_upstream_e2e.rs` never
+// had.
+//
+// §80's gates hand-build `IRUpstream`, which proves the DIAL. Law 4 asks for
+// the PATH: the declaration as an adopter writes it, through the real compiler,
+// into the same end-to-end run against a real WebSocket vendor.
+//
+// A static fixture works here for the reason `rotate` currently cannot use one:
+// `resolve:` and `secret:` are CONFIG KEYS, never literals (that is the §80
+// rule, not a testing convenience). The vendor's ephemeral address is supplied
+// by the gate under the key this file names, so nothing about the program has
+// to bend to the test.
+
+type AudioChunk { bytes: String }
+
+type Transcript { text: String }
+
+session SttDialogue {
+    axon:   [ send AudioChunk, receive Transcript, end ]
+    vendor: [ receive AudioChunk, send Transcript, end ]
+}
+
+upstream TestSTT {
+    transport: websocket
+    protocol:  SttDialogue
+    role:      axon
+    resolve:   upstream.test.url
+    secret:    upstream.test.api_key
+    auth:      header("Authorization", "Bearer")
+    map: [
+        send AudioChunk as binary,
+        receive Transcript as json when "type" = "Results"
+    ]
+    reconnect: { backoff_ms: 1, max_attempts: 3, on_exhausted: fail }
+    overflow: drop_oldest
+    backpressure: credit(8)
+}

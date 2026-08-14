@@ -174,6 +174,110 @@ async fn spawn_vendor(drop_after: Option<usize>) -> (SocketAddr, Arc<Mutex<Vec<S
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 #[tokio::test]
+async fn a_compiled_upstream_dials_and_transcodes_both_directions() {
+    // §Fase 122.b — the same end-to-end dial, from a program on disk.
+    //
+    // The gates here hand-build `IRUpstream`, which proves the DIAL. This one
+    // takes the declaration an adopter writes, compiles it through the real
+    // pipeline, and dials the same real vendor with it. A static fixture works
+    // because `resolve:`/`secret:` are CONFIG KEYS by §80's rule — never
+    // literals — so the vendor's ephemeral address is supplied by the resolver
+    // and nothing about the program bends to the test.
+    const FIXTURE: &str = "tests/fixtures/fase122_b_upstream/stt_dialogue.axon";
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(FIXTURE);
+    let src = std::fs::read_to_string(&path)
+        .unwrap_or_else(|e| panic!("read {}: {e}", path.display()));
+    let tokens = axon_frontend::lexer::Lexer::new(&src, FIXTURE)
+        .tokenize()
+        .expect("fixture must lex");
+    let prog = axon_frontend::parser::Parser::new(tokens)
+        .parse()
+        .expect("fixture must parse");
+    let errors = axon_frontend::type_checker::TypeChecker::new(&prog).check();
+    assert!(
+        errors.is_empty(),
+        "the fixture must TYPE-CHECK: {:?}",
+        errors.iter().map(|e| &e.message).collect::<Vec<_>>()
+    );
+    let ir = axon_frontend::ir_generator::IRGenerator::new().generate(&prog);
+    let spec = ir
+        .upstreams
+        .first()
+        .expect("the fixture declares an `upstream`; an empty catalog means it no longer lowers")
+        .clone();
+
+    // The declaration must have reached the IR as declared, before any dial.
+    assert_eq!(
+        (spec.auth_kind.as_str(), spec.auth_name.as_deref()),
+        ("header", Some("Authorization")),
+        "the fixture's `auth: header(\"Authorization\", \"Bearer\")` must lower as \
+         header auth; got kind={:?} name={:?} prefix={:?}",
+        spec.auth_kind,
+        spec.auth_name,
+        spec.auth_prefix
+    );
+    assert_eq!(spec.backpressure_credit, Some(8), "declared credit window");
+    assert_eq!(spec.overflow.as_deref(), Some("drop_oldest"));
+
+    let (addr, captured, _) = spawn_vendor(None).await;
+    let resolver = FixedResolver {
+        url: format!("ws://{addr}/v1/listen?model=nova"),
+        secret: "sk-test".into(),
+    };
+    let witness = RecordingWitness::new(false);
+
+    let mut handle = dial_upstream(&spec, &resolver, witness.clone(), None)
+        .await
+        .expect("the compiled upstream must dial");
+    handle
+        .send("AudioChunk", OutboundPayload::Bytes(vec![0u8; 320]))
+        .await
+        .expect("send audio");
+
+    let ev = handle.recv().await.expect("event");
+    match ev {
+        UpstreamEvent::Message { message, payload } => {
+            assert_eq!(
+                message, "Transcript",
+                "the inbound frame must classify as the type the FIXTURE's `map:` declares"
+            );
+            let InboundPayload::Json(v) = payload else {
+                panic!("json payload")
+            };
+            assert_eq!(v["channel"]["alternatives"][0]["transcript"], "len=320");
+        }
+        other => panic!("expected Transcript, got {other:?}"),
+    }
+
+    // The fixture declares `auth: header("Authorization", "Bearer")`, so the
+    // secret must ride the HEADER — not the query.
+    let cap = captured.lock().unwrap().join("\n");
+    assert!(
+        cap.contains("authorization="),
+        "the declared header auth must be what is sent; captured: {cap}; \
+         spec kind={:?} name={:?} prefix={:?}",
+        spec.auth_kind,
+        spec.auth_name,
+        spec.auth_prefix
+    );
+    assert!(
+        cap.contains("sk-test"),
+        "the resolved secret must ride the header; captured: {cap}"
+    );
+    assert!(
+        !cap.contains("token=sk-test"),
+        "a header-auth upstream must not put the secret on the query; captured: {cap}"
+    );
+
+    // The dial was witnessed BEFORE connecting (fail-closed order).
+    assert_eq!(
+        witness.seen.lock().unwrap()[0],
+        UpstreamLifecycle::Connected { attempt: 0 }
+    );
+    handle.close();
+}
+
+#[tokio::test]
 async fn dials_with_query_auth_and_transcodes_both_directions() {
     let (addr, captured, _) = spawn_vendor(None).await;
     let spec = stt_spec("query", Some("token"), None, 0);
