@@ -1663,11 +1663,42 @@ mod tests {
             &readme[..census_start.min(header_end)],
             &readme[census_end.min(header_end)..header_end]
         );
+        // …and MINUS the `axon-enterprise` note, which states a DIFFERENT
+        // product's version.
+        //
+        // That note has always been there; it was invisible to this gate only
+        // because the gate matched the literal `"v2."` while enterprise was on
+        // `v3.x`. The README says the two lines "diverge by design", and at
+        // axon-lang v3.0.0 they stopped diverging in the MAJOR — so a purely
+        // lexical scan can no longer tell `v3.0.0` (this crate) from
+        // `v3.100.0` (the control plane). The exclusion has to be named rather
+        // than emergent, exactly like the census block above.
+        //
+        // The note is a blockquote, so it ends at the first blank line.
+        let header: String = match header.find("axon-enterprise") {
+            None => header,
+            Some(at) => {
+                let tail_from = header[at..]
+                    .find("\n\n")
+                    .map(|i| at + i)
+                    .unwrap_or(header.len());
+                // Rewind to the start of the blockquote that mentions it.
+                let quote_from = header[..at].rfind("\n>").map(|i| i + 1).unwrap_or(at);
+                format!("{}{}", &header[..quote_from], &header[tail_from..])
+            }
+        };
         let header = header.as_str();
 
         let expected = format!("v{version}");
+        // §Fase 122 wrote this anchor as the literal `"v2."`, and v3.0.0 is
+        // where that came due: the header stated `v3.0.0`, the scan found zero
+        // `v2.` claims, and the gate failed with "the header must state the
+        // version somewhere" — reporting a restructured README when nothing had
+        // moved. A gate keyed to the CURRENT major cannot survive the next one,
+        // so it now matches any `vN.N.N` and compares every one it finds.
         let claims: Vec<&str> = header
-            .match_indices("v2.")
+            .match_indices('v')
+            .filter(|(i, _)| header[i + 1..].starts_with(|c: char| c.is_ascii_digit()))
             .map(|(i, _)| {
                 let rest = &header[i..];
                 let end = rest

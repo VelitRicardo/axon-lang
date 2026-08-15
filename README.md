@@ -1,5 +1,5 @@
 <p align="center">
-  <strong>AXON</strong> <em>v2.89.0</em><br>
+  <strong>AXON</strong> <em>v3.0.0</em><br>
   Axon is the Cognitive Runtime for Enterprise Software.<br><br>
   Build AI systems with deterministic execution, formal guarantees and
   native cognitive primitives.
@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://www.ricardovelit.com/axon-docs"><img src="https://img.shields.io/badge/docs-ricardovelit.com%2Faxon--docs-blue" alt="Documentation"></a>
-  <img src="https://img.shields.io/badge/version-v2.89.0-informational" alt="Version">
+  <img src="https://img.shields.io/badge/version-v3.0.0-informational" alt="Version">
   <img src="https://img.shields.io/badge/status-production-brightgreen" alt="Status: Production">
   <img src="https://img.shields.io/badge/runtime-100%25%20Rust%20%2B%20C23-orange" alt="100% Rust + C23">
   <img src="https://img.shields.io/badge/streaming-SSE%20%7C%20NDJSON%20%7C%20WebSocket-brightgreen" alt="Streaming">
@@ -81,7 +81,7 @@ three.
 
 > **Two repositories, two version lines.** This repo (`axon-lang`,
 > AGPL-3.0-or-later, public) ships the **language + runtime + compiler + 7 LLM
-> backends + Cognitive I/O + WebSocket session types** — currently **v2.89.0**.
+> backends + Cognitive I/O + WebSocket session types** — currently **v3.0.0**.
 > The commercial control plane (`axon-enterprise`, EULA, private) layers
 > multi-tenant identity / RBAC / SSO / metering / audit / vertical compliance
 > **on top of** this language via a pinned Cargo dependency — currently
@@ -5427,9 +5427,10 @@ PURPOSE. See the GNU Affero General Public License for more details.
 
 Effective 2026-05-25, axon-lang transitioned from MIT to AGPL-3.0
 to close the SaaS loophole: forks deployed as network services must
-release their modifications under AGPL too. Existing MIT-licensed
-releases on crates.io / PyPI (≤ axon-lang 2.3.0) retain MIT terms;
-new releases from v3.0.0 onward ship under AGPL.
+release their modifications under AGPL too. Releases published before
+the transition (**≤ axon-lang 2.3.0**) retain MIT terms; **every
+release from 2.4.0 onward ships under AGPL-3.0-or-later**, which is
+the `license` field those crates carry on crates.io.
 
 ### Contributing
 
