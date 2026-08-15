@@ -198,6 +198,45 @@ pub trait QuantBackend {
     fn kernel(&self, a: &StateVector, b: &StateVector) -> Result<f64, QuantError>;
 }
 
+/// §Fase 122.c — **the deploy gate.** Which declared observables this backend
+/// cannot realise.
+///
+/// The sibling of [`crate::warden::unsupported_scope_depths`], and it exists
+/// for the same reason: §111.d already refuses an over-capacity register with
+/// `axon-E0783` rather than truncating it silently — but it refuses at the
+/// `yield`, after the block's body and every step before it has run.
+///
+/// `capacity()` is on the trait and the observable catalog is compiled, so both
+/// halves are available at deploy. An `observable` declaring more qubits than
+/// the mounted simulator can hold is a program that cannot run here, and saying
+/// so before it starts costs nothing.
+///
+/// Empty ⇒ every declared observable fits.
+pub fn unsupported_observables(
+    backend: &dyn QuantBackend,
+    observables: &[crate::ir_nodes::IRObservable],
+) -> Vec<String> {
+    let cap = backend.capacity();
+    observables
+        .iter()
+        .filter_map(|o| {
+            // `qubits` is optional in the grammar — an observable that declares
+            // none is inferred at dispatch and is not this gate's business.
+            let n = usize::try_from(o.qubits?).ok()?;
+            (n > cap).then(|| {
+                format!(
+                    "observable `{}` declares {n} qubits, above the mounted simulator's \
+                     capacity of {cap}. Refusing at DEPLOY rather than at the `yield`: a \
+                     register that cannot be realised is not a late failure to discover. \
+                     The OSS reference simulator is capped at {} qubits (D = 2^{} \
+                     amplitudes); larger registers require the enterprise backend.",
+                    o.name, OSS_QUBIT_CAP, OSS_QUBIT_CAP
+                )
+            })
+        })
+        .collect()
+}
+
 // ── The OSS reference simulator ─────────────────────────────────────────────
 
 /// The default capacity cap for the OSS reference simulator: n ≤ 10 ⇒ D ≤ 1024

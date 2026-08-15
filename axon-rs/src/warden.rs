@@ -111,6 +111,53 @@ impl std::fmt::Display for WardenError {
 
 impl std::error::Error for WardenError {}
 
+/// §Fase 122.c — **the deploy gate.** Which declared scopes this backend cannot
+/// honour.
+///
+/// # Why this exists at DEPLOY and not only at dispatch
+///
+/// §88 already refuses a depth above the backend's ceiling, and refuses it
+/// LOUDLY — [`WardenError::DepthNotSupported`], never a silent downgrade. That
+/// was never the defect. The defect is WHEN.
+///
+/// `can_analyze_depth` was called only from inside [`WardenBackend::analyze`],
+/// so a flow whose seventh step is `warden(…) within LiveScope` ran steps one
+/// through six — with their emits, writes, deliveries and notifications — and
+/// only then discovered that the audit it was built around cannot run on this
+/// deployment. The program was refused after it had already acted.
+///
+/// Everything needed to answer this is present at deploy: the compiled `scope`
+/// catalog and the mounted backend arrive at the same call site. §122 opened on
+/// exactly this charge — *"the compiler accepts `depth: live_network`, the OSS
+/// runtime rejects it"* — and the founder's ruling (D122.3) is that the deploy
+/// gate is the SOURCE OF TRUTH, not a rung below a compile-time check: a
+/// compile-time check is only as honest as the manifest it reads, so if the
+/// build declares a capability and mounts a backend without it, the lie merely
+/// moves earlier.
+///
+/// Returns one adopter-facing diagnostic per unsupported scope. Empty ⇒ every
+/// declared scope is within reach of the mounted engine.
+pub fn unsupported_scope_depths(
+    backend: &dyn WardenBackend,
+    scopes: &[crate::ir_nodes::IRScope],
+) -> Vec<String> {
+    scopes
+        .iter()
+        .filter(|s| !backend.can_analyze_depth(&s.depth))
+        .map(|s| {
+            format!(
+                "scope `{}` declares `depth: {}`, which the mounted warden backend cannot \
+                 analyse. Refusing at DEPLOY rather than mid-flow: a `warden` block that fails \
+                 on its seventh step has already let the six before it emit, persist and \
+                 deliver. The OSS reference supports `static_artifact` only; the invasive \
+                 depths (`memory_dump`, `live_network`) require the enterprise engine (§88.h). \
+                 Either lower the scope's ceiling or deploy against a backend that reaches it.",
+                s.name, s.depth
+            )
+        })
+        .collect()
+}
+
 /// The paraconsistent finding-validator (paper §5.3): a `Vulnerability` is valid
 /// iff its witness attests something. An un-witnessed finding is noise and does
 /// not cross the type boundary — the runtime rejects it and (in a flow) retries

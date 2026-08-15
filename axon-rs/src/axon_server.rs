@@ -2079,6 +2079,44 @@ async fn deploy_handler(
             }
         }
 
+        // §Fase 122.c — BACKEND CAPABILITY, checked before the program runs.
+        //
+        // §122 opened on the charge that `depth: live_network` compiles and the
+        // OSS runtime rejects it. The rejection was never the defect — it is
+        // loud and fails closed. WHEN it arrived was: `can_analyze_depth` ran
+        // only inside `analyze()`, so a flow whose seventh step is a `warden`
+        // block executed the six before it — emits, writes, deliveries — and
+        // only then refused. The audit the program was built around could not
+        // run here, and the program found out after it had already acted.
+        //
+        // D122.3 (ratified): the deploy gate is the SOURCE OF TRUTH, not a rung
+        // below a compile-time capability check. A compile-time check is only
+        // as honest as the manifest it reads — if the build declares a
+        // capability and mounts a backend without it, the lie moves earlier
+        // rather than disappearing.
+        //
+        // Same all-or-nothing discipline as the §112.c graph below: a program
+        // that cannot run here must not half-exist.
+        {
+            let mut unsupported = crate::warden::unsupported_scope_depths(
+                &crate::warden::ReferenceStaticWarden,
+                &ir.scopes,
+            );
+            unsupported.extend(crate::quant::unsupported_observables(
+                &crate::quant::ReferenceSimulator::new(),
+                &ir.observables,
+            ));
+            if !unsupported.is_empty() {
+                s.metrics.total_errors += 1;
+                return Ok(Json(serde_json::json!({
+                    "success": false,
+                    "error": unsupported.join(" | "),
+                    "error_count": unsupported.len(),
+                    "phase": "backend_capability",
+                })));
+            }
+        }
+
         // §Fase 112.c — instantiate the Cognitive-I/O graph.
         //
         // Every kernel (`AnomalyDetector`, `EnsembleAggregator`, `ReconcileLoop`)

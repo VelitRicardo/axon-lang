@@ -399,6 +399,15 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     // mounts. Perturbing the DECLARATION kills it three ways — a target outside
     // `targets:`, an empty `approver:`, and `depth: live_network` above the OSS
     // ceiling — so the authorization envelope really comes from the source.
+    //
+    // §Fase 122.c adds the SECOND proof, and it is about timing rather than
+    // dispatch: `tests/fase122_c_deploy_gate.rs` deploys a program whose `warden`
+    // block sits after two emitting steps, and the mounted backend's inability to
+    // reach `depth: live_network` now refuses at /v1/deploy — before the flow acts
+    // — instead of on the seventh step, after it already had. The citation below
+    // stays pointed at §111.c because that is the gate that proves the engine
+    // ANALYSES; §122.c proves only that an unreachable one is refused in time.
+    // Two properties, two gates; collapsing them would lose the first.
     ("warden", Attested {
         fixture: "tests/fixtures/fase122_b_warden/authorized_audit.axon",
         gate: "tests/fase111_c_warden_wired.rs",
@@ -1003,6 +1012,14 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     // `observable GroundEnergy { qubits: 1  term: 1.0 * \"Z\" }`, and the result
     // must NAME it. Renaming the reference in the `quant` header kills the
     // citation; so does flipping the declared term's coefficient.
+    // §Fase 122.c — as with `warden`, the deploy gate is the timing proof: an
+    // `observable` declaring more qubits than the mounted simulator can hold is
+    // refused at /v1/deploy. Worth recording WHY that test was hard to write —
+    // the first draft declared `qubits: 24` with a one-qubit Pauli string and was
+    // refused by `axon-E0785` (declared width must match the terms) before the
+    // capacity gate ran at all. The two laws are complementary: E0785 asks whether
+    // the DECLARATION is coherent with itself, §122.c asks whether a coherent
+    // declaration is REALISABLE on the backend actually mounted.
     ("observable", Attested {
         fixture: "tests/fixtures/fase122_b_quant/ground_state_measurement.axon",
         gate: "tests/fase111_d_quant_wired.rs",
