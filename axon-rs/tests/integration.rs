@@ -19103,9 +19103,16 @@ fn resolve_backend_key_function_exported() {
     use axon::axon_server::resolve_backend_key;
 
     // We can't construct a full ServerState easily, but we verify the function
-    // signature is accessible from test code (it takes &ServerState, &str).
+    // signature is accessible from test code.
     // This is a compilation test — if it compiles, the wiring is correct.
-    let _fn_ptr: fn(&axon::axon_server::ServerState, &str) -> Result<String, String> = resolve_backend_key;
+    //
+    // §Fase 122.e — the third parameter is the TENANT, and pinning it in the
+    // signature here is deliberate: it took an ambient `current_tenant_id()`
+    // read, which two spawned callers reached across a task boundary where it
+    // resolves to `"default"`. If a future edit removes the parameter and goes
+    // back to reading the ambient value, this line stops compiling.
+    let _fn_ptr: fn(&axon::axon_server::ServerState, &str, &str) -> Result<String, String> =
+        resolve_backend_key;
 }
 
 #[test]

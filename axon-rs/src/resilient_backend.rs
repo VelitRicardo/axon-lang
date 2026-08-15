@@ -98,18 +98,39 @@ impl ResilientBackend {
 
     /// Make a resilient LLM call with retry, per-tenant circuit breaker, and fallback.
     ///
-    /// Tenant is derived automatically from `current_tenant_id()` — the active
-    /// Axum request's task-local set by `tenant_extractor_middleware`.
+    /// # §Fase 122.e — `tenant_id` is a parameter, and used to be ambient
+    ///
+    /// This doc used to read *"Tenant is derived automatically from
+    /// `current_tenant_id()` — the active Axum request's task-local"*. That
+    /// sentence was a trap with the pin pulled, and the shape of the trap is
+    /// worth naming because it is not obvious from the code.
+    ///
+    /// `call` is a **synchronous `fn` doing blocking network I/O**. This
+    /// codebase has one rule for that — Brief #63: blocking work goes on
+    /// `spawn_blocking`, or it hangs the server. So the first caller to wire
+    /// this up correctly, by following the rule the codebase enforces
+    /// everywhere else, would put it on the far side of a task boundary, where
+    /// the task-local does not exist and `current_tenant_id()` returns the
+    /// `"default"` fallback. Every tenant would then share one circuit breaker
+    /// — collapsing precisely the per-`(tenant, provider)` isolation this type
+    /// exists for — and nothing would say so.
+    ///
+    /// §122.e's census found `call` has ZERO production callers today: the
+    /// field is built on `ServerState` and never read. So this is not a defect
+    /// being fixed, it is a defect being **disarmed before it is reachable** —
+    /// the alternative was leaving a doc comment that instructs the next author
+    /// to walk into it. `call_single_provider` already took the tenant
+    /// explicitly; the wrapper is now consistent with the thing it wraps.
     pub fn call(
         &self,
+        tenant_id: &str,
         provider: &str,
         api_key: &str,
         system_prompt: &str,
         user_prompt: &str,
         max_tokens: Option<u32>,
     ) -> Result<ModelResponse, BackendError> {
-        let tenant_id = crate::tenant_context::current_tenant_id();
-        match self.call_single_provider(&tenant_id, provider, api_key, system_prompt, user_prompt, max_tokens) {
+        match self.call_single_provider(tenant_id, provider, api_key, system_prompt, user_prompt, max_tokens) {
             Ok(resp) => Ok(resp),
             Err(primary_err) => {
                 if let Some(fallbacks) = self.fallback_chains.get(provider) {

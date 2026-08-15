@@ -211,8 +211,22 @@ pub fn execute_listener_body(
                 backend,
                 // §Fase 95.f — the OSS in-process daemon runs under the
                 // request/default tenant scope (self-hosted is single-tenant;
-                // the ENT multi-tenant path is the supervisor). Bridge the
-                // task-local to the executor's explicit tenant.
+                // the ENT multi-tenant path is the supervisor).
+                //
+                // §Fase 122.e — the old wording, *"bridge the task-local to the
+                // executor's explicit tenant"*, described something that cannot
+                // happen here. This read is inside `run_daemon`'s
+                // `tokio::spawn`, and a spawned task inherits no task-local, so
+                // there is nothing to bridge: the value is always the
+                // `"default"` fallback.
+                //
+                // The BEHAVIOUR is correct and deliberate — a self-hosted OSS
+                // daemon is single-tenant, and `"default"` is that tenant. Only
+                // the comment was wrong, and a comment that describes a bridge
+                // where there is none is how the next reader concludes this
+                // path is tenant-aware. It is not; the multi-tenant story is
+                // the enterprise supervisor, which re-enters `scope_tenant` per
+                // tenant inside its own spawned driver.
                 &crate::tenant_context::current_tenant_id(),
                 source_file,
                 None,
@@ -439,7 +453,12 @@ pub fn deliver_typed_event_reliable(
                         ir,
                         &run.flow_name,
                         backend,
-                        // §Fase 95.f — bridge the daemon's tenant scope.
+                        // §Fase 95.f — the daemon's tenant scope.
+                        // §Fase 122.e — likewise inside `run_event_listeners`'s
+                        // `tokio::spawn`: nothing is bridged, this is always
+                        // `"default"`, and for a single-tenant OSS daemon that
+                        // is the right answer. See the note in
+                        // `execute_listener_body`.
                         &crate::tenant_context::current_tenant_id(),
                         source_file,
                         None,

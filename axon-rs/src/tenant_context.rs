@@ -82,6 +82,50 @@ where
     CURRENT_TENANT_ID.scope(tenant_id, fut).await
 }
 
+/// §Fase 122.e — the SYNCHRONOUS twin of [`scope_tenant`], for the far side of a
+/// `spawn_blocking`.
+///
+/// # Why the twin was missing, and what its absence cost
+///
+/// [`scope_tenant`] binds the tenant for a *future*. That covers the request
+/// boundary and nothing else, because the value is a `tokio::task_local!` and a
+/// task-local crosses **no** task boundary — not `tokio::spawn`, and not
+/// `spawn_blocking`. Measured rather than assumed:
+///
+/// ```text
+/// same task      = acme
+/// spawn_blocking = default
+/// tokio::spawn   = default
+/// block_on_store = default
+/// ```
+///
+/// The `"default"` fallback is what makes this expensive: nothing errors,
+/// nothing panics, and every downstream reader carries on under an identity
+/// that is *plausible*. §95.f threaded the tenant to the executor explicitly and
+/// still shipped two doors that lost it, because the bridge was written on the
+/// wrong side of the boundary and no test compared the two sides.
+///
+/// Prefer an explicit parameter where a single value crosses — it makes the
+/// boundary visible in the signature. Reach for this when MANY readers are
+/// downstream and threading a parameter to each is 29 chances to forget one.
+///
+/// ```no_run
+/// # fn ex() {
+/// let tenant = axon::tenant_context::current_tenant_id(); // on the ASYNC side
+/// tokio::task::spawn_blocking(move || {
+///     axon::tenant_context::scope_tenant_blocking(tenant, || {
+///         // every ambient reader in here now sees the real tenant
+///     })
+/// });
+/// # }
+/// ```
+pub fn scope_tenant_blocking<F, R>(tenant_id: String, f: F) -> R
+where
+    F: FnOnce() -> R,
+{
+    CURRENT_TENANT_ID.sync_scope(tenant_id, f)
+}
+
 // ── TenantPlan ────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

@@ -2649,7 +2649,9 @@ async fn execute_handler(
         let history = s.versions.get_history(&payload.flow);
         match history.and_then(|h| h.active()) {
             Some(active) => {
-                let key = resolve_backend_key(&s, &eff).ok();
+                // §Fase 122.e — resolved on the ASYNC side, before the
+                // `spawn_blocking` below; the task-local is real here.
+                let key = resolve_backend_key(&s, &eff, &crate::tenant::current_tenant_id()).ok();
                 (active.source.clone(), active.source_file.clone(), eff, key)
             }
             None => {
@@ -2696,11 +2698,23 @@ async fn execute_handler(
     // `"default"` no matter who authenticated.
     let tenant_owned = crate::tenant::current_tenant_id();
     let exec_join = tokio::task::spawn_blocking(move || {
-        execute_with_fallback(
-            &state_for_exec, &source_owned, &source_file_owned, &flow_owned,
-            &backend_owned, &tenant_owned, key_owned.as_deref(),
-            body_owned.as_ref(), &path_owned, &query_owned,
-        )
+        // §Fase 122.e — REBIND the task-local for the whole blocking task, on
+        // top of passing it explicitly below.
+        //
+        // The parameter fixes the executor, which is the reader §122.d.1 knew
+        // about. This fixes the ones it did not: `execute_with_fallback`'s
+        // fallback-branch key resolution, every `storage_postgres` RLS read, and
+        // whatever the next fase adds in here without thinking about threads.
+        // Belt AND braces, deliberately — the parameter makes the boundary
+        // visible in the signature, the rebind makes forgetting it survivable.
+        let tenant_for_scope = tenant_owned.clone();
+        crate::tenant_context::scope_tenant_blocking(tenant_for_scope, move || {
+            execute_with_fallback(
+                &state_for_exec, &source_owned, &source_file_owned, &flow_owned,
+                &backend_owned, &tenant_owned, key_owned.as_deref(),
+                body_owned.as_ref(), &path_owned, &query_owned,
+            )
+        })
     });
     let (result, actual_backend) = match tokio::time::timeout(deadline, exec_join).await {
         Ok(Ok(pair)) => pair,
@@ -13811,7 +13825,11 @@ fn execute_with_fallback(
     for fallback_backend in &chain {
         let fb_key = {
             let s = state.lock().unwrap();
-            resolve_backend_key(&s, fallback_backend).ok()
+            // §Fase 122.e — the tenant threaded in, not read here. This branch
+            // runs on the blocking pool (see this function's own doc), where
+            // an ambient read yields `"default"` and the fallback would resolve
+            // a DIFFERENT key than the primary attempt did.
+            resolve_backend_key(&s, fallback_backend, tenant_id).ok()
         };
         let fb_result = server_execute(
             source,
@@ -13871,7 +13889,9 @@ fn server_execute_full(
     // Resolve key from registry
     let resolved_key = {
         let s = state.lock().unwrap();
-        resolve_backend_key(&s, &effective_backend).ok()
+        // §Fase 122.e — this entry point is synchronous and has no request
+        // scope of its own; it reports whatever the caller established.
+        resolve_backend_key(&s, &effective_backend, &crate::tenant::current_tenant_id()).ok()
     };
 
     // Execute with fallback chain. §Fase 37.b — `server_execute_full`
@@ -13907,7 +13927,34 @@ fn server_execute_full(
     (result, actual_backend)
 }
 
-pub fn resolve_backend_key(state: &ServerState, backend: &str) -> Result<String, String> {
+/// Resolve the API key for `backend`, for `tenant_id`.
+///
+/// # §Fase 122.e — the tenant is a PARAMETER, and used to be ambient
+///
+/// Tier 2 below is a per-tenant AWS Secrets Manager cache, and it used to key
+/// itself on `crate::tenant::current_tenant_id()` read right here. That is
+/// correct from an async handler, where the middleware has scoped the task —
+/// and this function is also reached from two SPAWNED contexts, where the
+/// task-local is gone and the read yields the `"default"` fallback:
+///
+/// - `execute_sse_handler_inner`'s `tokio::spawn` → `server_execute_streaming`
+///   → here (the SSE door);
+/// - `execute_handler`'s `spawn_blocking` → `execute_with_fallback`'s FALLBACK
+///   branch → here. The primary attempt resolves its key on the async side and
+///   passes it in, so only the fallback re-resolved — a per-tenant key silently
+///   becoming the global env var precisely when the primary provider was
+///   already failing.
+///
+/// Taking it as a parameter is what makes those two boundaries visible; a
+/// caller on the far side of a spawn now has to say which tenant it means.
+/// Enterprise is unaffected: it injects the tenant's revealed key into
+/// `backend_registry` (tier 1) on a per-request `ServerState` and never reaches
+/// tier 2.
+pub fn resolve_backend_key(
+    state: &ServerState,
+    backend: &str,
+    tenant_id: &str,
+) -> Result<String, String> {
     // 1. Server registry (inline key, enabled check, circuit breaker)
     if let Some(entry) = state.backend_registry.get(backend) {
         if !entry.enabled {
@@ -13934,8 +13981,7 @@ pub fn resolve_backend_key(state: &ServerState, backend: &str) -> Result<String,
     }
 
     // 2. Per-tenant AWS SM cache (sync, zero-latency fast path)
-    let tenant_id = crate::tenant::current_tenant_id();
-    if let Some(key) = state.tenant_secrets.get_cached(&tenant_id, backend) {
+    if let Some(key) = state.tenant_secrets.get_cached(tenant_id, backend) {
         return Ok(key);
     }
 
@@ -15270,7 +15316,8 @@ async fn mcp_handler(
                 let ts = s.tenant_secrets.clone();
                 match history.and_then(|h| h.active()) {
                     Some(active) => {
-                        let key = resolve_backend_key(&s, backend).ok();
+                        // §Fase 122.e - async handler: the task-local is real here.
+                        let key = resolve_backend_key(&s, backend, &crate::tenant::current_tenant_id()).ok();
                         (active.source.clone(), active.source_file.clone(), key, ts)
                     }
                     None => {
@@ -16391,7 +16438,8 @@ async fn mcp_stream_handler(
         let history = s.versions.get_history(flow_name);
         match history.and_then(|h| h.active()) {
             Some(active) => {
-                let key = resolve_backend_key(&s, backend).ok();
+                // §Fase 122.e - async handler: the task-local is real here.
+                let key = resolve_backend_key(&s, backend, &crate::tenant::current_tenant_id()).ok();
                 (active.source.clone(), active.source_file.clone(), key, ts)
             }
             None => {
@@ -19471,7 +19519,14 @@ pub fn server_execute_streaming(
     // `.ok()` degrades to `None` (env key) when no key is configured anywhere.
     let resolved_api_key: Option<String> = {
         let s = state.lock().unwrap();
-        resolve_backend_key(&s, &effective_backend).ok()
+        // §Fase 122.e — the verified tenant, threaded in as a parameter.
+        //
+        // This is one of the two spawned contexts the parameter exists for:
+        // `server_execute_streaming` is called from inside
+        // `execute_sse_handler_inner`'s `tokio::spawn`, so an ambient read here
+        // yielded `"default"` and the per-tenant Secrets Manager cache was
+        // consulted under the wrong name for every SSE request.
+        resolve_backend_key(&s, &effective_backend, &tenant_id).ok()
     };
 
     // §Fase 114 — the per-deployment channel guards (`resource.capacity`
@@ -19746,8 +19801,14 @@ async fn execute_sse_handler_inner(
             // globex was served acme's memoised result. That is the argument for
             // gates over comments, made against this very sub-fase.
             let tenant_for_task = crate::tenant::current_tenant_id();
+            // §Fase 122.e — and REBIND it for the whole spawned task, so the
+            // ambient readers inside (`resolve_backend_key`'s per-tenant
+            // Secrets Manager cache, and anything a later fase adds) see the
+            // real tenant rather than the `"default"` fallback. The explicit
+            // parameter below stays: it is what makes the boundary visible.
+            let tenant_for_scope = tenant_for_task.clone();
 
-            tokio::spawn(async move {
+            tokio::spawn(crate::tenant_context::scope_tenant(tenant_for_scope, async move {
                 // 33.c: live forwarding pipeline.
                 //
                 // server_execute_streaming spawns the synchronous
@@ -20142,7 +20203,7 @@ async fn execute_sse_handler_inner(
                 }
                 // tx drops here → rx stream ends → axum closes
                 // the response body. KeepAlive stops firing.
-            });
+            }));
         }
         None => {
             // Not-deployed: emit a single error event + dialect

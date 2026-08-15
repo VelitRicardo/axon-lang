@@ -1125,11 +1125,41 @@ const MAX_ANCHOR_RETRIES: u32 = 2;
 // thread before returning. One pool is created + used + dropped per
 // store op; cross-request pooling is the streaming dispatcher's path
 // (35.f, the production hot path).
+// §Fase 122.e — and a fresh thread never carries the ambient TENANT either.
+//
+// The paragraph above is right that a fresh thread has no ambient runtime, which
+// is what makes this bridge safe against "runtime within a runtime". It is also
+// the reason the tenant disappears: `CURRENT_TENANT_ID` is a `tokio::task_local!`,
+// and a new OS thread starts with none. Measured:
+//
+// ```text
+// same task = acme    spawn_blocking = default
+// tokio::spawn = default    block_on_store = default
+// ```
+//
+// That matters because `storage_postgres.rs` derives the RLS GUC from
+// `current_tenant_id()` in **29 places** — `SET LOCAL axon.current_tenant` on
+// every data method — and its module header presents that as the isolation of
+// last resort: *"RLS isolation is enforced even if application code forgets to
+// filter by tenant_id"*. Every store op the synchronous runner performs crosses
+// THIS boundary, so that last resort would have resolved to `'default'`.
+//
+// (Those 29 are latent today — nothing in production calls `StorageBackend`
+// through `ServerState.storage`. Fixed anyway, and fixed HERE: a defect that is
+// unreachable by accident is still armed, and the accident that arms it is one
+// call site away.)
+//
+// The fix is the boundary, not the readers. Capturing the tenant on the calling
+// thread and re-binding it inside repairs every downstream ambient read at once
+// — the §120 discipline of fixing a class rather than adding the missing pass to
+// each copy. Threading a tenant parameter through 29 storage methods would have
+// produced 29 chances to forget.
 fn block_on_store<F>(fut: F) -> F::Output
 where
     F: std::future::Future + Send,
     F::Output: Send,
 {
+    let tenant = crate::tenant_context::current_tenant_id();
     std::thread::scope(|scope| {
         scope
             .spawn(|| {
@@ -1137,7 +1167,7 @@ where
                     .enable_all()
                     .build()
                     .expect("Fase 35.e: failed to build the store-op Tokio runtime")
-                    .block_on(fut)
+                    .block_on(crate::tenant_context::CURRENT_TENANT_ID.scope(tenant, fut))
             })
             .join()
             .expect("Fase 35.e: the store-op thread panicked")
@@ -5201,6 +5231,34 @@ mod fase35e_tests {
         // The CLI path: `execute_real` runs with no ambient runtime.
         let n = block_on_store(async { 20 + 15 });
         assert_eq!(n, 35);
+    }
+
+    /// §Fase 122.e — the bridge carries the AMBIENT TENANT across its thread.
+    ///
+    /// `block_on_store` runs its future on a freshly-spawned OS thread, and a
+    /// fresh thread starts with no task-local. Every store op the synchronous
+    /// runner performs crosses this boundary, and `storage_postgres.rs` derives
+    /// `SET LOCAL axon.current_tenant` from `current_tenant_id()` in 30 places —
+    /// so before §122.e that RLS scope resolved to `'default'`, silently,
+    /// because the fallback is a plausible string rather than an error.
+    ///
+    /// This test lives HERE, in the crate, because `block_on_store` is private:
+    /// the boundary gate in `tests/fase122_e_…` can only reach the public
+    /// primitives, which means it proves `scope_tenant_blocking` works and
+    /// proves nothing about whether this function calls it. That gap is the
+    /// exact shape of the defect being fixed — a correct mechanism with no
+    /// caller — so leaving it would have been ironic and untested.
+    #[tokio::test]
+    async fn block_on_store_carries_the_ambient_tenant_across_its_thread() {
+        let seen = crate::tenant_context::scope_tenant("acme".to_string(), async {
+            block_on_store(async { crate::tenant_context::current_tenant_id() })
+        })
+        .await;
+        assert_eq!(
+            seen, "acme",
+            "the store-op thread must inherit the caller's tenant; `default` here means \
+             every RLS scope on the synchronous runner's store path is wrong"
+        );
     }
 
     #[tokio::test]
