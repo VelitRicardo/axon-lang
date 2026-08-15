@@ -174,19 +174,32 @@ jobs:
     name: sanitizer (${{ matrix.kind }})
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    # `continue-on-error` is conditional on the matrix kind: ASan
-    # is a hard gate (memory-safety regressions block the build),
-    # but TSan currently exits with an "ABI mismatch" error during
-    # the post-test artefact assembly step even after every TSan-
-    # instrumented test passes. The cause is rustc nightly's
-    # `-Zsanitizer` interaction with build-graph siblings (proc-
-    # macros + build scripts compiled without the sanitizer flag);
-    # `-Cunsafe-allow-abi-mismatch=sanitizer` is supposed to silence
-    # it but does not on the current toolchain (2026-05-09). Until
-    # the rustc nightly settles, TSan runs as a soft gate — its
-    # tests still execute + race detector is exercised, but a final
-    # ABI-mismatch error doesn't fail the workflow.
-    continue-on-error: ${{ matrix.kind == 'thread' }}
+    # §Fase 122.d — BOTH sanitizers are hard gates again.
+    #
+    # TSan carried `continue-on-error: ${{ matrix.kind == 'thread' }}` since
+    # 2026-05-09, for a stated and reasonable cause: a post-test ABI-mismatch
+    # abort from rustc nightly's `-Zsanitizer` interaction with build-graph
+    # siblings, which `-Cunsafe-allow-abi-mismatch=sanitizer` did not silence
+    # on that toolchain. The note said "until the rustc nightly settles".
+    #
+    # It did not settle by itself; the lane had two OTHER faults stacked on top
+    # (a doc-link gate inheriting the sanitizer RUSTFLAGS into a nested
+    # `cargo doc`, and a doctest phase that compiles a harness for zero
+    # doctests). Both are fixed, and the job is green on both counts.
+    #
+    # Why the exception could not stay. `axon-csys` is the one place in this
+    # repository where the language's compile-time guarantees do not apply by
+    # construction — it is C23, which is exactly why it carries the heaviest
+    # tooling here (ASan, TSan, UBSan, valgrind, cppcheck, clang-tidy). A race
+    # detector over the slab allocator, the FSM dispatcher and the tokeniser
+    # that CANNOT fail the build is not a gate; it is telemetry. And because
+    # the job had been red for months, red had become its baseline — nobody
+    # would have distinguished "red from ABI mismatch" from "red because TSan
+    # found a race in the concurrent kernel paths".
+    #
+    # A temporary exception that outlives its cause becomes a permanent one by
+    # forgetting. If a TSan flake reddens master, that is the gate working and
+    # the flake is the thing to fix.
     strategy:
       fail-fast: false
       matrix:
