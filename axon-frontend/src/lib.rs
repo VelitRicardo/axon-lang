@@ -26,6 +26,10 @@
 
 pub mod ast;
 pub mod checker;
+/// §Fase 123 — the closed regulatory vocabulary Κ, in the crate that
+/// type-checks it. The rich per-class metadata stays in
+/// `axon-rs::esk::compliance`, which now derives its membership from here.
+pub mod compliance;
 /// §Fase 120 — the closed catalog of declared `effect`s + D120.2's bare-name
 /// resolution. ONE derivation, shared by the IR generator and the type-checker,
 /// so the two can never disagree about which effect owns an operation.

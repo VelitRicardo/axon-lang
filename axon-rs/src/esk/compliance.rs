@@ -130,8 +130,23 @@ pub fn registry() -> HashMap<String, RegulatoryClass> {
     entries.into_iter().map(|c| (c.name.clone(), c)).collect()
 }
 
+/// §Fase 123 — membership now DELEGATES to the frontend's Κ.
+///
+/// The registry below still owns what each class MEANS — title, jurisdiction,
+/// sector, description — because that metadata exists to build audit dossiers,
+/// which is a runtime concern. But *which labels exist* is a compile-time
+/// question, and it had ended up here, downstream of the type checker that
+/// needed it: `axon-frontend` depends on `serde` and nothing else, so the
+/// catalog was unreachable from the only place a compile-time law can live.
+/// That is the whole reason `compliance:` was a free-string field while
+/// `effects:` beside it was closed.
+///
+/// So the vocabulary moved up to [`axon_frontend::compliance`] and this
+/// function reads it. One source of truth for membership, one for meaning, and
+/// `registry_matches_the_frontend_vocabulary` below proves they describe the
+/// same eleven classes — rather than two lists that agree until one is edited.
 pub fn is_known(label: &str) -> bool {
-    registry().contains_key(label)
+    axon_frontend::compliance::is_known(label)
 }
 
 pub fn get_class(label: &str) -> Option<RegulatoryClass> {
@@ -172,6 +187,37 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// §Fase 123 — the two halves describe the SAME eleven classes.
+    ///
+    /// Membership lives in the frontend (a compiler needs it); meaning lives
+    /// here (a dossier needs it). That split is only safe while the sets are
+    /// identical — a class the frontend accepts but this registry cannot
+    /// describe would produce a dossier silently missing an entry, and a class
+    /// described here but rejected upstream could never be written by any
+    /// program.
+    ///
+    /// §122.e is why this test exists rather than a comment: a compatibility
+    /// window written in three places had two of them updated and the third
+    /// missed, and only the suite caught it. Two places is better than three,
+    /// and two places compared is better than two places trusted.
+    #[test]
+    fn registry_matches_the_frontend_vocabulary() {
+        let mut described: Vec<String> = registry().keys().cloned().collect();
+        described.sort();
+        let mut vocabulary: Vec<String> = axon_frontend::compliance::REGULATORY_CLASSES
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+        vocabulary.sort();
+        assert_eq!(
+            described, vocabulary,
+            "the ESK registry (what each class MEANS) and the frontend vocabulary (which \
+             classes EXIST) have diverged. Adding a regulatory framework means adding it to \
+             BOTH — the compiler must accept the label and the dossier must be able to \
+             describe it."
+        );
+    }
 
     #[test]
     fn registry_has_all_expected_classes() {

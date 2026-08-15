@@ -1640,6 +1640,9 @@ impl<'a> TypeChecker<'a> {
         // §Fase 85.c — cross-declaration cache laws (single default, effect
         // widening); needs the full tool + cache set.
         self.check_cache_module_laws(&self.program.declarations);
+        // §Fase 123 (`axon-T1214`) — every regulatory label, on all four
+        // declarations that can carry one, must be a member of Κ.
+        self.check_compliance_vocabulary(&self.program.declarations);
         // §Fase 113 — the Linear-Logic sharing discipline + manifest/fabric
         // coherence. Cross-declaration by nature: it counts HOLDERS of a
         // resource, which no per-declaration visit can see.
@@ -5107,6 +5110,88 @@ impl<'a> TypeChecker<'a> {
                     }
                 }
             }
+        }
+    }
+
+    /// §Fase 123 (`axon-T1214`) — **every declared regulatory class must be in Κ.**
+    ///
+    /// # The promise this keeps
+    ///
+    /// The ESK paper §6.1 states it as a compile-time rule: *"Cualquier etiqueta
+    /// fuera de Κ es compile-time error (typos como `HIPPA` rechazados)"*, and
+    /// cites a Python test. It was true in the retired interpreter and did not
+    /// survive the Rust rewrite — not by decision, but because the canonical
+    /// registry landed in `axon-rs::esk::compliance`, DOWNSTREAM of this file.
+    /// `axon-frontend` depends on `serde` and nothing else, so the catalog was
+    /// unreachable from the only place a compile-time law can live.
+    ///
+    /// So `compliance:` became a free-string field while `effects:` in the same
+    /// declaration stayed closed. Measured 2026-08-14:
+    /// `compliance: [NOT_A_FRAMEWORK]` compiled clean. §123 moved the vocabulary
+    /// to [`crate::compliance`] and this is the law it enables.
+    ///
+    /// # Why a typo here is worse than a typo elsewhere
+    ///
+    /// `HIPPA` does not merely fail to mean `HIPAA` — it **passes every
+    /// downstream check by being consistently wrong**. `axon-T957` requires
+    /// `κ(shield) ⊇ κ(body) ∪ κ(output)` as a set difference over these strings,
+    /// so a `type` labelled `[HIPPA]` is perfectly covered by a shield labelled
+    /// `[HIPPA]`, and covered not at all by one labelled `[HIPAA]`. The coverage
+    /// law is correct and was operating on a vocabulary nobody had closed.
+    ///
+    /// Closing the vocabulary shuts that hole by construction rather than by
+    /// adding a second check to T957: neither side can carry a string that is
+    /// not a real framework, so a symmetric typo is no longer representable.
+    ///
+    /// Applies to all four declarations that carry the field — `type`,
+    /// `shield`, `axonendpoint`, `manifest` — because a label is an assertion
+    /// wherever it is written.
+    /// The ONE walk: exactly the four declarations that can carry a `compliance:`
+    /// list, in one place, so "which declarations does this law cover?" is
+    /// answered by reading four lines rather than by grepping four checkers.
+    ///
+    /// If a fifth declaration ever gains the field, it belongs here — and the
+    /// parser is the only other place that knows the set, which is why
+    /// `every_declaration_that_parses_compliance_is_checked` compares them.
+    fn check_compliance_vocabulary(&mut self, decls: &[Declaration]) {
+        for decl in decls {
+            match decl {
+                Declaration::Type(n) => {
+                    self.check_compliance_classes(&n.compliance, &format!("type '{}'", n.name), &n.loc)
+                }
+                Declaration::Shield(n) => {
+                    self.check_compliance_classes(&n.compliance, &format!("shield '{}'", n.name), &n.loc)
+                }
+                Declaration::AxonEndpoint(n) => self.check_compliance_classes(
+                    &n.compliance,
+                    &format!("axonendpoint '{}'", n.name),
+                    &n.loc,
+                ),
+                Declaration::Manifest(n) => {
+                    self.check_compliance_classes(&n.compliance, &format!("manifest '{}'", n.name), &n.loc)
+                }
+                _ => {}
+            }
+        }
+    }
+
+    fn check_compliance_classes(&mut self, declared: &[String], owner: &str, loc: &Loc) {
+        for bad in crate::compliance::unknown_classes(declared) {
+            let suggestion = match crate::compliance::nearest_class(bad) {
+                Some(near) => format!(" Did you mean `{near}`?"),
+                None => String::new(),
+            };
+            self.emit(
+                format!(
+                    "axon-T1214 {owner} declares `{bad}`, which is not a regulatory class.{suggestion} \
+                     The canonical registry is {:?} (case-sensitive). A compliance label is an \
+                     ASSERTION a regulated reader trusts — an unrecognised one is not a weaker \
+                     claim, it is a claim about nothing that still satisfies every coverage law \
+                     that compares these strings.",
+                    crate::compliance::REGULATORY_CLASSES
+                ),
+                loc,
+            );
         }
     }
 

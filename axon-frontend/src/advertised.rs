@@ -771,7 +771,33 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     // Closing it is compiler work — a closed catalog keyed to what the runtime
     // reaches, and a decision about what declaring a framework OBLIGES — not
     // fixture work. A dedicated fase is scheduled after §122's release.
-    ("compliance", Partial { gap: "§122.b — `compliance:` is a FREE-STRING field: `compliance: [NOT_A_FRAMEWORK]` compiles clean, while `effects:` in the same position is a decided closed catalog. `axon-T957`'s coverage law (§117.a) scopes WHICH boundaries must carry a compliance declaration; nothing validates the VALUES against a catalog, and nothing ties a declared framework to an obligation the runtime enforces. An adopter reads `[PCI_DSS, SOX, HIPAA]` as an assertion" }),
+    // §Fase 123 — the FIRST half of that gap is closed, and the row stays
+    // `Partial` because the second half is not.
+    //
+    // What changed: `compliance:` is a closed catalog (`axon-T1214`).
+    // `[NOT_A_FRAMEWORK]` no longer compiles, on any of the four declarations
+    // that carry the field, and a typo gets its suggestion.
+    //
+    // Worth recording WHY the law had been missing, because it was not an
+    // oversight: the canonical registry and its validating predicate already
+    // existed — in `axon-rs::esk::compliance`, which is DOWNSTREAM of the type
+    // checker (`axon-frontend` depends on `serde` and nothing else). The
+    // catalog was on the wrong side of the dependency edge, so the rule the ESK
+    // paper states as compile-time could not be written where it belonged. It
+    // had been true in the retired Python interpreter — the paper still cites
+    // that test by name — and was lost in the Rust rewrite. §123 moved the
+    // vocabulary up; the metadata stayed down, with a test pinning the two.
+    //
+    // A side effect worth naming: `axon-T957` compares these strings as a set
+    // difference, so a `type` labelled `[HIPPA]` used to be perfectly covered
+    // by a shield labelled `[HIPPA]`. Closing the vocabulary makes that shape
+    // unrepresentable, so the coverage law keeps its exact logic and stops
+    // being satisfiable by nonsense. T957 was not edited.
+    //
+    // What is still true, and is why this is `Partial` and not `Attested`: a
+    // declared framework still obliges the runtime to NOTHING. The values are
+    // now real, and they are still a label.
+    ("compliance", Partial { gap: "§123 — the VALUES are now a closed catalog (`axon-T1214`: `[NOT_A_FRAMEWORK]` and `[HIPPA]` are refused on all four declarations that carry the field), which also makes a symmetric typo unable to satisfy `axon-T957`. What remains: nothing ties a DECLARED framework to an obligation the runtime enforces. `axon-T957` proves `κ(shield) ⊇ κ(body) ∪ κ(output)` at compile time — a real set difference — but the channel seam that would check a shield covers a channel's κ at egress (`TypedEventBus::from_ir_program_with`) is reached only through a caller that hands it `|_,_| true`, and the audit engine still scores `has_compliance_annotation` by PRESENCE. An adopter reads `[PCI_DSS, SOX, HIPAA]` as an assertion about behaviour; today it is an assertion about vocabulary" }),
     ("component", Partial { gap: "§111 — the compile-time shield-coverage law over regulated κ IS genuinely enforced (a real set difference). But the component renders NOTHING; the README itself defers the renderer" }),
     ("view", Partial { gap: "§111 — only referential integrity is checked. No `route` check, no session-typed-reactivity check, and it renders nothing" }),
     // ── Enterprise I/O (Fases 80–85)
