@@ -540,6 +540,51 @@ fn tool_is_pure(effects: &Option<crate::ast::EffectRow>) -> bool {
     }
 }
 
+/// §Fase 122.d (`axon-T1213`) — does this effect row declare a STREAM?
+///
+/// The base of an effect slug is the part before `:` (`stream:drop_oldest` →
+/// `stream`), the same convention `resolve_tool_cache` and `axon-W013` already
+/// use for eligibility.
+fn declares_a_streaming_effect(effects: &Option<crate::ast::EffectRow>) -> bool {
+    match effects {
+        Some(row) => row
+            .effects
+            .iter()
+            .any(|e| e.split_once(':').map(|(b, _)| b).unwrap_or(e.as_str()) == "stream"),
+        None => false,
+    }
+}
+
+/// §Fase 122.d — the one sentence both halves of `axon-T1213` say, so an adopter
+/// who greps the code finds one law rather than two similar ones.
+///
+/// # Why a stream cannot be memoised
+///
+/// §122.d cabled `cache` into the dispatch path, and measuring the consumers
+/// turned up a shape the language accepted and the runtime could never honour.
+/// A tool declaring `<stream:…>` is dispatched by
+/// `pure_shape::run_step_streaming_tool`, whose result is not a value but a
+/// SEQUENCE OF CHUNKS delivered to the client as it drains. `CacheOutcome`
+/// carries a `Vec<u8>`; there is no shape in it for "these seventeen deltas, in
+/// this order, at these boundaries".
+///
+/// The alternatives were both dishonest. Buffering the stream to memoise it
+/// destroys the very property the author chose when they declared it — the
+/// first byte would now arrive last. Serving a hit as one fat chunk changes the
+/// chunk granularity observably, so the replay is not the recording. And doing
+/// neither, silently, is the defect §122 exists to remove: a declaration the
+/// compiler accepts and the runtime ignores.
+///
+/// So the language refuses the combination. This follows D122.4 exactly — the
+/// ruling that `shield`'s refusal is breaking, correct, and BOUNDED BY THE
+/// DECLARATION: the only programs affected are those that declared both halves,
+/// which is precisely the population that was being told a memoisation was
+/// happening when none was.
+const T1213_WHY: &str = "a streaming result is a sequence of chunks, not a value: \
+                         memoising it would either buffer the stream (destroying the \
+                         streaming the author asked for) or replay it as one chunk \
+                         (a different observable shape than was recorded)";
+
 /// §Fase 84.c (`axon-T860`) — does this session-step sequence contain a
 /// **reachable** `branch { approved: […], denied: […] }` confirmation? Walks
 /// the protocol tree: a `branch` step offering BOTH the `approved` and `denied`
@@ -2811,6 +2856,29 @@ impl<'a> TypeChecker<'a> {
         if node.cache.is_empty() || node.cache == "none" {
             return;
         }
+        // §Fase 122.d (`axon-T1213`, half one of two) — a tool that STREAMS
+        // cannot name a cache. See `T1213_WHY`. Checked before the reference
+        // resolves, deliberately: `cache: Nonexistent` on a streaming tool is
+        // two mistakes, and this is the one the adopter must hear about — fixing
+        // the name would leave them with a memoisation that cannot happen.
+        if declares_a_streaming_effect(&node.effects) {
+            let row = node
+                .effects
+                .as_ref()
+                .map(|r| r.effects.join(", "))
+                .unwrap_or_else(|| "<none declared>".to_string());
+            self.emit(
+                format!(
+                    "axon-T1213 tool '{}' declares a streaming effect <{}> AND `cache: {}`. \
+                     A streaming tool is dispatched chunk-by-chunk and cannot be memoised — {}. \
+                     Remove the `cache:` reference (or `cache: none` to opt out of a default \
+                     policy), or drop the stream effect if the result really is a single value.",
+                    node.name, row, node.cache, T1213_WHY
+                ),
+                &node.loc,
+            );
+            return;
+        }
         match self.symbols.lookup(&node.cache) {
             None => {
                 self.emit(
@@ -5048,6 +5116,37 @@ impl<'a> TypeChecker<'a> {
     /// checks on `tool.cache:` / `retrieve.cache:` live in [`Self::check_tool`]
     /// and the flow-step walker.
     fn check_cache(&mut self, node: &CacheDefinition) {
+        // §Fase 122.d (`axon-T1213`, half two of two) — `apply_to_effects:` may
+        // not widen to cover streams.
+        //
+        // The two halves together are what make the law airtight, and it is
+        // worth writing down why it takes two. `resolve_tool_cache` reaches a
+        // cache by exactly two routes: an explicit `cache: <Name>` on the tool,
+        // or a `default: true` cache whose `apply_to_effects` covers the tool's
+        // effect bases. Half one closes the first route at the TOOL. This closes
+        // the second at the CACHE — and it closes it without re-deriving
+        // eligibility here, which matters: duplicating `resolve_tool_cache`'s
+        // precedence rules in the checker would create a second copy of the law
+        // that drifts from the first, which is the §120 defect this project has
+        // now paid for twice.
+        //
+        // A streaming tool's effect base is `stream`, and the implicit default
+        // (`[pure]`) never covers it. So with both halves in place there is no
+        // program in which a streaming tool resolves to a cache.
+        if let Some(bad) = node.apply_to_effects.iter().find(|e| {
+            e.split_once(':').map(|(b, _)| b).unwrap_or(e.as_str()) == "stream"
+        }) {
+            self.emit(
+                format!(
+                    "axon-T1213 cache '{}' widens `apply_to_effects:` to cover '{}'. \
+                     A cache can never memoise a streaming effect — {}. Remove '{}' from \
+                     `apply_to_effects:`; streaming tools are dispatched chunk-by-chunk and \
+                     are excluded from memoisation by construction.",
+                    node.name, bad, T1213_WHY, bad
+                ),
+                &node.loc,
+            );
+        }
         // axon-T866 — `backend:` is a closed catalog.
         if !node.backend.is_empty() && !is_valid(&node.backend, VALID_CACHE_BACKENDS) {
             self.emit(

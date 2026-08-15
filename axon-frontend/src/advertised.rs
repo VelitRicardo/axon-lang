@@ -785,7 +785,28 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     // `key_params:`, `invalidate_on:` and `default_policy:` are inert in BOTH
     // flavours — `backend: redis` is not a downgrade to in-process, there is no
     // cache. Shipped as `Real` in 2.88.0; this is the row with public exposure.
-    ("cache", Unwired { engine: "cache_runtime::CacheRuntime::dispatch — content-addressed key, single-flight, TTL+jitter, LRU eviction, errors never cached, with its own passing tests. The seam was designed for a call site it never got (§85.h). Cabling it is §122.d, the cheapest cable in its class" }),
+    //
+    // §Fase 122.d — CABLED. The fixture deploys a `pure` tool under a default
+    // cache and calls it twice; the gate counts hits on a real upstream and
+    // finds ONE. It also pins the three properties a memoiser is worthless or
+    // dangerous without: `cache: none` still computes twice, a FAILED call is
+    // never stored (D85.10), an `emit` on an `invalidate_on:` channel flushes,
+    // and a second TENANT does not read the first one's entry (D85.11).
+    //
+    // Worth recording that §122.a called this "the cheapest cable in the
+    // class" and was wrong on every count. `cache` had THREE declared
+    // consumers, not one: `use Tool(…)`, a streaming `apply:` tool, and
+    // `retrieve … cache:` — the last of which had lived in the IR since §85.b
+    // with no reader. The streaming one cannot be memoised at all (a chunk
+    // sequence is not a value), so §122.d added `axon-T1213` to refuse the
+    // combination rather than accept a declaration it could not honour. And
+    // the cross-tenant assertion could not even be made honestly until
+    // §122.d.1 fixed the tenant that two of the three execution doors were
+    // losing — see `fase122_d_cache_hits.rs`.
+    ("cache", Attested {
+        fixture: "tests/fixtures/fase122_d_cache/memoised_pure_tool.axon",
+        gate: "tests/fase122_d_cache_hits.rs",
+    }),
     ("voice", Unaudited),
     ("shell", Unaudited),
     ("path rewrite", Unaudited),
@@ -1146,12 +1167,19 @@ pub const KNOWN_DEBT: &[&str] = &[
     //  distinction.
     // ═══════════════════════════════════════════════════════════════════
     //
-    // §Fase 122.a — measured 2026-08-13. `CacheRuntime::dispatch` has zero
-    // production callers, `CacheBackend` has no enterprise implementor, and
-    // fase_85 records §85.h as "deferred, not built". Nothing memoises
-    // anything. It LEAVES when §122.d gives the seam its call site — the
-    // cheapest cable in the class, because the engine is already there.
-    "cache",
+    // §Fase 122.d — `cache` LEFT this ledger. The seam has its call sites (both
+    // of them), and `fase122_d_cache_hits.rs` counts one upstream hit for two
+    // identical calls, through the real deploy + execute handlers.
+    //
+    // §122.a's entry said it would leave via "the cheapest cable in the class,
+    // because the engine is already there". The engine was indeed already
+    // there and the estimate was still wrong: three consumers rather than one,
+    // a seam whose synchronous shape did not fit the async dispatch path, a
+    // combination the language had to start refusing (`axon-T1213`), and a
+    // tenant that two of the three execution doors were losing outright
+    // (§122.d.1). Left as a note to the next reader of this file: an entry
+    // that estimates its own cost is estimating something nobody has measured.
+    //
     // §Fase 122.a — three tested engines (HRR codec, VFE/EFE inference,
     // Betti/PHC topology), zero callers outside their own tests. It LEAVES when
     // active inference is wired, which is a fase, not a cable.
@@ -1361,10 +1389,10 @@ mod tests {
     #[test]
     fn the_debt_ledger_only_shrinks() {
         assert!(
-            KNOWN_DEBT.len() <= 3,
+            KNOWN_DEBT.len() <= 2,
             "KNOWN_DEBT grew to {} — the ratchet only turns one way. §122.a re-baselined it at 3 \
-             (the `Unwired` engines it uncovered) and TIGHTENED the cap to match; a new entry is \
-             not a row to add, it is a bug to fix.",
+             (the `Unwired` engines it uncovered) and TIGHTENED the cap to match; §122.d cabled \
+             `cache` and took it to 2. A new entry is not a row to add, it is a bug to fix.",
             KNOWN_DEBT.len()
         );
     }
@@ -1386,10 +1414,10 @@ mod tests {
             .filter(|(_, s)| matches!(s, Unwired { .. }))
             .count();
         assert!(
-            n <= 3,
-            "the Unwired population grew to {n} — §122.a measured 3 (cache · savant · synth). \
-             A new Unwired row means a primitive was advertised with an engine nobody calls; \
-             wire it or retract it."
+            n <= 2,
+            "the Unwired population grew to {n} — §122.a measured 3 (cache · savant · synth) \
+             and §122.d cabled `cache`, leaving 2. A new Unwired row means a primitive was \
+             advertised with an engine nobody calls; wire it or retract it."
         );
     }
 

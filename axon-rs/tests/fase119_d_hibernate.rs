@@ -60,6 +60,8 @@ async fn run_flow(source: &str, flow: &str) -> (bool, usize) {
         None,
         None,
         None,
+        // §Fase 122.d.1 — unscoped tenant, passed verbatim (§95.f).
+        String::new(),
     )
     .await;
     let steps = drain.await.unwrap_or(0);

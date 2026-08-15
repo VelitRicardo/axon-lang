@@ -1544,6 +1544,10 @@ struct NavDispatch {
     /// `<Agent>(args)` call fails CLOSED, because the declaration is where
     /// `max_iterations` lives and an unresolved agent is an unbounded one.
     agent_specs: std::sync::Arc<Vec<crate::ir_nodes::IRAgent>>,
+    /// §Fase 122.d — what this program memoises, resolved once from the IR.
+    /// Empty (no `cache` declaration) ⇒ no runtime is attached and every call
+    /// computes, byte-identical to pre-§122.d.
+    cache_plan: std::sync::Arc<crate::cache_runtime::CachePlan>,
 }
 
 /// §Fase 65.A — kill-switch for the structural-dispatch bridge. ON by default:
@@ -3647,6 +3651,32 @@ async fn collect_via_dispatcher(
         std::sync::Arc::new(crate::warden::ReferenceStaticWarden),
         nav_dispatch.scopes.clone(),
     );
+    // §Fase 122.d — mount the memoisation tier, so a declared `cache` memoises.
+    //
+    // Attached only when the program declares one: with no `cache` block there
+    // is nothing to memoise, and leaving the port `None` keeps this path
+    // byte-identical to pre-§122.d rather than adding a lookup that can only
+    // miss.
+    //
+    // `process_local` shares the BACKEND across flow runs (entries surviving
+    // between runs is what makes it a cache) and takes the TENANT from this run
+    // (D85.11 — the tenant is a key component, so isolation holds even in a
+    // single process). The enterprise §85.f Redis tier replaces the backend
+    // here; it is not a second call site.
+    //
+    // The SSE path in `streaming_via_dispatcher` mounts the same tier the same
+    // way. Wiring one and not the other is the "real-on-one-path,
+    // dead-on-the-other" defect §111 exists to end, and the §120 both-doors
+    // rule after it; `both_dispatch_paths_mount_the_cache` pins them together.
+    if !nav_dispatch.cache_plan.is_empty() {
+        let cache_tenant = ctx.tenant_id.clone();
+        ctx = ctx.with_cache(
+            std::sync::Arc::new(crate::cache_runtime::CacheRuntime::process_local(
+                cache_tenant,
+            )),
+            &nav_dispatch.cache_plan,
+        );
+    }
     // §Fase 111.d — mount the Hilbert-space simulator + the observable catalog,
     // so a `quant` block MEASURES instead of silently skipping its body. OSS
     // mounts the capped dense-statevector reference simulator (a register above
@@ -4195,6 +4225,13 @@ pub fn execute_server_flow(
             compute_specs: std::sync::Arc::new(ir.compute_specs.clone()),
             // §Fase 119.m.3 — the agent catalog, from the SAME IR the flow came from.
             agent_specs: std::sync::Arc::new(ir.agents.clone()),
+            // §Fase 122.d — the memoisation plan, from the same IR. §85 shipped
+            // the cache core and deferred wiring it (§85.h); §122.a measured
+            // that `CacheRuntime::dispatch` had ZERO production callers, so
+            // `ttl:`, `key_params:` and `invalidate_on:` were inert and
+            // `backend: redis` named a tier that did not exist. This line is
+            // where the declaration starts reaching the runtime.
+            cache_plan: std::sync::Arc::new(crate::cache_runtime::CachePlan::from_ir(ir)),
             // §Fase 119.b — the mandate declarations reach dispatch: the cage
             // stops being a name the handler discards.
             mandate_specs: std::sync::Arc::new(ir.mandate_specs.clone()),
@@ -5596,6 +5633,9 @@ flow Recall(q: Text) -> Text {
             mandate_specs: std::sync::Arc::new(Vec::new()),
             lambda_data_specs: std::sync::Arc::new(Vec::new()),
             ots_specs: std::sync::Arc::new(Vec::new()),
+            // §Fase 122.d — no `cache` declaration in these fixtures, so an
+            // empty plan: nothing is memoised and dispatch is unchanged.
+            cache_plan: std::sync::Arc::new(crate::cache_runtime::CachePlan::default()),
         };
         let pb = vec![("q".to_string(), "DocA".to_string())];
         let collected = collect_via_dispatcher(
@@ -5861,6 +5901,9 @@ flow Producer(tenant_id: Text) -> Text {
             mandate_specs: std::sync::Arc::new(Vec::new()),
             lambda_data_specs: std::sync::Arc::new(Vec::new()),
             ots_specs: std::sync::Arc::new(Vec::new()),
+            // §Fase 122.d — no `cache` declaration in these fixtures, so an
+            // empty plan: nothing is memoised and dispatch is unchanged.
+            cache_plan: std::sync::Arc::new(crate::cache_runtime::CachePlan::default()),
         }
     }
 }

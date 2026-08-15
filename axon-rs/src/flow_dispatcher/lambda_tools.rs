@@ -219,6 +219,60 @@ pub async fn run_use_tool(
     //
     // An adopter declared a budget over their vendor and the compiler said yes.
     //
+    // ── §Fase 122.d — THE CACHE LOOKUP, AND WHY IT IS ABOVE THIS LINE ────────
+    //
+    // §85 shipped `cache` complete: grammar, four type-checker laws proving what
+    // is safe to memoise, a hardened runtime with content-addressed keys, TTL
+    // jitter and LRU eviction — and then deferred wiring it (§85.h, "deferred,
+    // not built"). §122.a measured what that left behind: `CacheRuntime` had
+    // zero production callers, so `ttl:`, `key_params:`, `invalidate_on:` and
+    // `backend: redis` were inert. `backend: redis` was not a downgrade to
+    // in-process; there was no cache. It shipped as `Real` in 2.88.0.
+    //
+    // The lookup sits BEFORE the budget gate, and that ordering is D85.3 — the
+    // decision that a cache hit must never consume a `budget { rate: … }`
+    // quota. Placed after the gate it would still return the right value while
+    // silently spending the adopter's rate limit on work that never happened,
+    // which is the kind of defect that only shows up as a bill.
+    //
+    // §85's own plan wrote this as *"structurally guaranteed by ordering the
+    // cache lookup before the budget gate"*. This is that structure, and
+    // `fase122_d_cache_hits.rs` asserts it from a real deploy rather than
+    // trusting the ordering to survive future edits.
+    let cache_slot = match ctx.cache_runtime.clone() {
+        None => None,
+        Some(runtime) => {
+            let args = resolved_call_args(node, ctx);
+            match runtime.probe(
+                ctx.cache_policies.get(&node.tool_name),
+                &node.tool_name,
+                &args,
+            ) {
+                crate::cache_runtime::CacheProbe::NotCached => None,
+                crate::cache_runtime::CacheProbe::Miss(slot) => Some((runtime, slot)),
+                crate::cache_runtime::CacheProbe::Hit(bytes) => {
+                    // A hit returns here: no budget charged, no lease charged,
+                    // no permit taken, no vendor call. The step still completes
+                    // and still binds `<Tool>_result`, so a downstream
+                    // `${Tool_result}` cannot tell a hit from a miss — which is
+                    // the whole point of memoisation, and is exactly why the
+                    // audit trail has to be able to.
+                    let value = String::from_utf8_lossy(&bytes).to_string();
+                    if !node.tool_name.is_empty() {
+                        ctx.let_bindings
+                            .insert(format!("{}_result", node.tool_name), value.clone());
+                    }
+                    emit_step_complete(ctx, &step_name, step_index, &value, 0, true)?;
+                    return Ok(NodeOutcome::Completed {
+                        output: value,
+                        tokens_emitted: 0,
+                        step_index,
+                    });
+                }
+            }
+        }
+    };
+
     // Charged BEFORE the dispatch, deliberately: a budget charged after the call
     // bounds nothing — the vendor was already hit and the money already spent.
     // Over-emission must be impossible by construction, not merely reported.
@@ -280,6 +334,21 @@ pub async fn run_use_tool(
     };
     if ctx.cancel.is_cancelled() {
         return Err(DispatchError::UpstreamCancelled);
+    }
+
+    // §Fase 122.d — fill the slot the probe reserved, but ONLY on success.
+    //
+    // D85.10: an error is never memoised. A cached failure is the worst
+    // possible entry — it turns one bad minute at a vendor into `ttl:` minutes
+    // of a flow that cannot succeed and never retries, and it does so silently
+    // because from the flow's side a cached error is indistinguishable from a
+    // fresh one. `success` here is the tool's OWN verdict, not merely "the
+    // dispatch returned", which is the distinction that makes this correct: an
+    // HTTP 500 that arrives intact is a completed dispatch and a failed call.
+    if let Some((runtime, slot)) = cache_slot {
+        if success {
+            runtime.store(&slot, result.clone().into_bytes());
+        }
     }
 
     if !node.tool_name.is_empty() {
@@ -367,6 +436,50 @@ async fn acquire_channel_permit(
     acquire_channel_permit_by_name(&node.tool_name, ctx).await
 }
 
+/// §Fase 122.d — the call's bound `(name, value)` pairs, resolved against the
+/// current bindings.
+///
+/// Extracted because §122.d needs these TWICE and from two places: the cache key
+/// is derived from them before the budget gate, and the request body is built
+/// from them inside the dispatch. Deriving a key from a second, similar-looking
+/// interpolation is how a cache starts hitting on calls that are not the same
+/// call — so there is one function, and both readings are the same reading.
+///
+/// The legacy `on <arg>` form has no names; it keys under one reserved slot so
+/// a positional call still memoises correctly and can never collide with a
+/// keyword argument (`__argument` is not a legal parameter identifier).
+///
+/// Note this runs BEFORE §94.c secret injection, which is deliberate: the
+/// injected `axon_secret` must never enter a cache key. It would make the key
+/// change on every rotation (defeating the cache), and it would put credential
+/// material into a hash that names it. Tenant isolation is already in the key
+/// by D85.7, and a `secret_partition:` discriminator IS one of these pairs, so
+/// two sub-tenants still key apart.
+fn resolved_call_args(node: &IRUseToolStep, ctx: &DispatchCtx) -> Vec<(String, String)> {
+    if node.named_args.is_empty() {
+        return vec![(
+            "__argument".to_string(),
+            crate::exec_context::interpolate_vars(&node.argument, &ctx.let_bindings),
+        )];
+    }
+    node.named_args
+        .iter()
+        .map(|a| {
+            (
+                a.name.clone(),
+                // §Fase 60 — resolve by value_kind: a `"reference"` (bare
+                // identifier / `Step.output`) is a binding lookup, not a
+                // literal name; `"literal"` keeps `${…}` interpolation.
+                crate::exec_context::resolve_named_arg_value(
+                    &a.value,
+                    &a.value_kind,
+                    &ctx.let_bindings,
+                ),
+            )
+        })
+        .collect()
+}
+
 async fn dispatch_use_tool_real(
     node: &IRUseToolStep,
     ctx: &DispatchCtx,
@@ -388,24 +501,7 @@ async fn dispatch_use_tool_real(
     let mut argument = if node.named_args.is_empty() {
         crate::exec_context::interpolate_vars(&node.argument, &ctx.let_bindings)
     } else {
-        let interpolated: Vec<(String, String)> = node
-            .named_args
-            .iter()
-            .map(|a| {
-                (
-                    a.name.clone(),
-                    // §Fase 60 — resolve by value_kind: a `"reference"` (bare
-                    // identifier / `Step.output`) is a binding lookup, not a
-                    // literal name; `"literal"` keeps `${…}` interpolation.
-                    crate::exec_context::resolve_named_arg_value(
-                        &a.value,
-                        &a.value_kind,
-                        &ctx.let_bindings,
-                    ),
-                )
-            })
-            .collect();
-        crate::runner::build_structured_tool_body(&interpolated, &parameters)
+        crate::runner::build_structured_tool_body(&resolved_call_args(node, ctx), &parameters)
     };
 
     // §Fase 94.c — dispatch injection (`rotation_without_revelation`):

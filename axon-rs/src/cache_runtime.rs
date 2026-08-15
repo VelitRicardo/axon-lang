@@ -354,6 +354,172 @@ pub fn resolve_tool_cache<'a>(ir: &'a IRProgram, tool: &IRToolSpec) -> Option<&'
     }
 }
 
+// ── §Fase 122.d — resolution, hoisted to plan-build time ────────────────────
+
+/// Everything the dispatch path needs to key ONE memoised call, resolved from
+/// the `IRProgram` once, when the plan is built.
+///
+/// # Why this type exists
+///
+/// [`CacheRuntime::dispatch`] took `&IRProgram` because [`resolve_tool_cache`]
+/// needs the whole module to answer "which cache governs this tool?" — the
+/// default-policy rule is a property of the module, not of the tool. But
+/// `DispatchCtx` carries no `IRProgram`, deliberately: it carries narrow,
+/// pre-resolved catalogs (`credentials`, `anchors`, the §114.w shield policies)
+/// so the hot path looks nothing up that could have been looked up once.
+///
+/// Threading the IR through the runtime to satisfy one call would have inverted
+/// that, and for no gain: the answer cannot change between the deploy and the
+/// call. So resolution moves to where the IR already is, and the runtime
+/// receives the answer.
+///
+/// This is the §114.w `collect_shield_policies` shape, and it is also the §120
+/// discipline — [`resolve_tool_cache`] stays the ONE place that decides, and
+/// gains a second caller rather than a second copy.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResolvedCachePolicy {
+    /// The governing cache's name — also the backend NAMESPACE, so `invalidate`
+    /// flushes exactly this cache's entries.
+    pub cache_name: String,
+    /// Raw TTL literal (`"5m"`); `None` ⇒ cache-forever, sound only because
+    /// `axon-T865` proved the memoised thing deterministic.
+    pub ttl: Option<String>,
+    /// The `key:` subset; empty ⇒ every bound argument keys the entry.
+    pub key_params: Vec<String>,
+    /// The declaration fingerprint (D85.7) — a redeploy that changes what is
+    /// memoised changes this, so a behaviour change can never be served a
+    /// result cached under the old behaviour.
+    pub fingerprint: String,
+    /// Part of the key so two tools with identical arguments but different
+    /// result types never collide.
+    pub output_type: String,
+}
+
+impl ResolvedCachePolicy {
+    fn from_parts(cache: &IRCache, fingerprint: String, output_type: String) -> Self {
+        ResolvedCachePolicy {
+            cache_name: cache.name.clone(),
+            ttl: cache.ttl.clone(),
+            key_params: cache.key_params.clone(),
+            fingerprint,
+            output_type,
+        }
+    }
+
+    /// §Fase 122.d — the policy governing a `retrieve … cache: <Name>`.
+    ///
+    /// A retrieve names its cache directly, so there is no eligibility question
+    /// to resolve — but it still needs a fingerprint, and the honest one is the
+    /// STORE it reads. A redeploy that changes the store's shape must not serve
+    /// rows cached against the old one, exactly as a changed tool declaration
+    /// must not (D85.7). `axon-T865` already forces a finite `ttl:` here,
+    /// because a store read is never `pure`.
+    pub fn for_retrieve(cache: &IRCache, store_name: &str) -> Self {
+        let mut h = Sha256::new();
+        update_part(&mut h, "retrieve");
+        update_part(&mut h, store_name);
+        Self::from_parts(
+            cache,
+            hex(&h.finalize())[..16].to_string(),
+            String::new(),
+        )
+    }
+}
+
+/// Resolve, for every tool in the program, which cache (if any) memoises it —
+/// keyed by TOOL NAME, which is how the dispatch path knows a tool.
+///
+/// Empty for a program with no `cache` declaration, which is the overwhelming
+/// majority: an absent entry is the same "not memoised" answer
+/// [`resolve_tool_cache`] gives, so a cache-less program pays one failed hash
+/// lookup per tool call and behaves byte-identically to pre-§122.d.
+pub fn resolve_tool_cache_policies(ir: &IRProgram) -> HashMap<String, ResolvedCachePolicy> {
+    let mut out = HashMap::new();
+    if ir.caches.is_empty() {
+        return out;
+    }
+    for tool in &ir.tools {
+        if let Some(cache) = resolve_tool_cache(ir, tool) {
+            out.insert(
+                tool.name.clone(),
+                ResolvedCachePolicy::from_parts(
+                    cache,
+                    tool_fingerprint(tool),
+                    tool.output_type.clone().unwrap_or_default(),
+                ),
+            );
+        }
+    }
+    out
+}
+
+/// §Fase 122.d — **everything a deployment memoises**, resolved once from the
+/// `IRProgram`.
+///
+/// # Why one struct and not three parameters
+///
+/// The three maps are not independent knobs; they are one answer to "what does
+/// this program memoise?". A caller that supplied two of them would get a
+/// runtime that caches but never invalidates, or one that flushes a namespace
+/// nothing writes to — silent wrong answers, both, and the shape that makes
+/// them reachable is a builder with three setters.
+///
+/// Bundled, the only way to half-wire the cache is not to wire it at all, which
+/// is the honest `None` default. This is the §120 lesson expressed as an API:
+/// make the second door impossible rather than remembering to walk through it.
+///
+/// Travels the same route as `scopes`, `observables` and `credentials` — built
+/// where the IR is, passed down as a resolved catalog, so the hot path looks
+/// nothing up that could have been looked up once.
+#[derive(Debug, Clone, Default)]
+pub struct CachePlan {
+    /// Tool name → the policy memoising it.
+    pub tool_policies: HashMap<String, ResolvedCachePolicy>,
+    /// Cache name → declaration, for `retrieve … cache:` and namespace flushes.
+    pub caches: HashMap<String, IRCache>,
+    /// Channel name → the namespaces an `emit` on it flushes.
+    pub invalidation_channels: HashMap<String, Vec<String>>,
+}
+
+impl CachePlan {
+    /// Resolve the whole plan from a compiled program.
+    pub fn from_ir(ir: &IRProgram) -> Self {
+        CachePlan {
+            tool_policies: resolve_tool_cache_policies(ir),
+            caches: ir
+                .caches
+                .iter()
+                .map(|c| (c.name.clone(), c.clone()))
+                .collect(),
+            invalidation_channels: resolve_invalidation_channels(ir),
+        }
+    }
+
+    /// `true` for a program that declares no `cache` at all — the overwhelming
+    /// majority, and the case where attaching a runtime buys nothing.
+    pub fn is_empty(&self) -> bool {
+        self.caches.is_empty()
+    }
+}
+
+/// Channel name → the cache namespaces an `emit` on it flushes (`invalidate_on:`).
+///
+/// Inverted at plan-build time so `run_emit` answers "does this emit invalidate
+/// anything?" with one hash lookup instead of scanning every cache declaration
+/// on every emit. Empty ⇒ no cache in this program declares `invalidate_on:`,
+/// and the emit path is byte-identical to pre-§122.d.
+pub fn resolve_invalidation_channels(ir: &IRProgram) -> HashMap<String, Vec<String>> {
+    let mut out: HashMap<String, Vec<String>> = HashMap::new();
+    for cache in &ir.caches {
+        for channel in &cache.invalidate_on {
+            out.entry(channel.clone())
+                .or_default()
+                .push(cache.name.clone());
+        }
+    }
+    out
+}
+
 // ── Integration layer (the one seam the runner calls) ───────────────────────
 
 /// Ties policy resolution + content-addressed key derivation + single-flight
@@ -387,6 +553,37 @@ impl CacheOutcome {
     }
 }
 
+/// §Fase 122.d — a reserved place to put a computed value, handed out by
+/// [`CacheRuntime::probe`] on a miss and consumed by [`CacheRuntime::store`].
+///
+/// It carries the derived key rather than the inputs, so the value is stored
+/// under the key the lookup missed on — a caller cannot accidentally store
+/// against a key derived from arguments that changed in between.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CacheSlot {
+    namespace: String,
+    key: String,
+    ttl: Option<Duration>,
+}
+
+/// §Fase 122.d — what a pre-dispatch probe found.
+///
+/// The three arms are the three different things a caller must do, which is why
+/// this is not an `Option<Vec<u8>>`: "nothing memoises this call" and
+/// "memoised, but absent" look identical to an `Option` and are not the same
+/// fact — the first stores nothing afterwards, the second must.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CacheProbe {
+    /// No policy governs this call. Dispatch normally; store nothing.
+    NotCached,
+    /// A memoised value. **Do not dispatch, and do not charge a budget** — that
+    /// ordering is D85.3, and it is the caller's to honour.
+    Hit(Vec<u8>),
+    /// Memoised but absent. Dispatch, then hand the value to
+    /// [`CacheRuntime::store`] with this slot.
+    Miss(CacheSlot),
+}
+
 impl CacheRuntime {
     pub fn new(backend: Arc<dyn CacheBackend>, tenant: impl Into<String>) -> Self {
         CacheRuntime {
@@ -398,6 +595,40 @@ impl CacheRuntime {
     /// In-process, single-tenant default (OSS runtime with no injected tier).
     pub fn in_process() -> Self {
         Self::new(Arc::new(InProcessCache::default()), "local")
+    }
+
+    /// §Fase 122.d — the OSS runtime a production flow run gets: the
+    /// **process-wide** in-process tier, keyed to **this run's tenant**.
+    ///
+    /// # Why the split, and what each half prevents
+    ///
+    /// This looks like a detail and is the difference between a cache and a
+    /// decoration.
+    ///
+    /// Build the whole `CacheRuntime` per flow run and the backend is empty
+    /// every time: a tool called once per run — which is most tools — never
+    /// hits anything, and §122.d would ship a memoiser that memoises within a
+    /// single run and forgets between them. Wired, tested, and worthless.
+    ///
+    /// Share the whole `CacheRuntime` across runs and it is worse than
+    /// worthless. `tenant` is a field of the runtime, not a parameter of the
+    /// call, so one shared instance would key every tenant's results under
+    /// whichever tenant built it first — and D85.7 puts the tenant IN the key
+    /// precisely so that a mis-namespacing backend still cannot leak. A shared
+    /// runtime with a fixed tenant defeats that from above the backend, where
+    /// the key is derived.
+    ///
+    /// So the BACKEND is process-wide (entries survive between runs, which is
+    /// what makes it a cache) and the TENANT comes from the run (which is what
+    /// keeps them apart). Constructing this is two `Arc` clones.
+    ///
+    /// The enterprise §85.f Redis tier replaces the backend here and inherits
+    /// the same discipline unchanged — it is a different `CacheBackend`, not a
+    /// different call site.
+    pub fn process_local(tenant: impl Into<String>) -> Self {
+        static TIER: std::sync::OnceLock<Arc<InProcessCache>> = std::sync::OnceLock::new();
+        let backend = TIER.get_or_init(|| Arc::new(InProcessCache::default()));
+        Self::new(backend.clone(), tenant)
     }
 
     /// Look up (or compute-and-store) a tool result. `args` is the full bound
@@ -413,40 +644,125 @@ impl CacheRuntime {
     where
         F: FnOnce() -> Result<Vec<u8>, E>,
     {
-        let Some(cache) = resolve_tool_cache(ir, tool) else {
-            // Not cache-eligible → run and report Uncached (carrying the value).
-            return compute().map(CacheOutcome::Uncached);
+        // §Fase 122.d — resolution and execution split, so the dispatch path can
+        // supply a policy resolved once at plan-build time (see
+        // [`ResolvedCachePolicy`]). This entry point keeps its `&IRProgram`
+        // signature and resolves on the spot; both routes run the SAME body
+        // below, so there is one memoisation law and two ways to reach it —
+        // never two laws.
+        let policy = resolve_tool_cache(ir, tool).map(|cache| {
+            ResolvedCachePolicy::from_parts(
+                cache,
+                tool_fingerprint(tool),
+                tool.output_type.clone().unwrap_or_default(),
+            )
+        });
+        self.dispatch_resolved(policy.as_ref(), &tool.name, args, compute)
+    }
+
+    /// §Fase 122.d — the memoisation body, against an already-resolved policy.
+    ///
+    /// `subject` is what the entry is keyed to — a tool's name, or a store's
+    /// name for a `retrieve`. `policy: None` means "nothing memoises this":
+    /// `compute` runs and the value comes back as [`CacheOutcome::Uncached`],
+    /// which the caller uses exactly as a `Miss` minus the audit signal.
+    ///
+    /// # The ordering that D85.3 rests on
+    ///
+    /// A hit returns BEFORE `compute` is called. That is not an optimisation,
+    /// it is the guarantee: the caller places its budget charge inside
+    /// `compute`'s caller, so a hit cannot decrement a `budget { rate: … }`
+    /// quota. §85's plan calls this *"structurally guaranteed by ordering the
+    /// cache lookup before the budget gate"* — the structure is right here.
+    pub fn dispatch_resolved<F, E>(
+        &self,
+        policy: Option<&ResolvedCachePolicy>,
+        subject: &str,
+        args: &[(String, String)],
+        compute: F,
+    ) -> Result<CacheOutcome, E>
+    where
+        F: FnOnce() -> Result<Vec<u8>, E>,
+    {
+        match self.probe(policy, subject, args) {
+            CacheProbe::NotCached => compute().map(CacheOutcome::Uncached),
+            CacheProbe::Hit(v) => Ok(CacheOutcome::Hit(v)),
+            CacheProbe::Miss(slot) => {
+                let value = compute()?;
+                self.store(&slot, value.clone());
+                Ok(CacheOutcome::Miss(value))
+            }
+        }
+    }
+
+    /// §Fase 122.d — **look, without computing.**
+    ///
+    /// # Why the seam had to split
+    ///
+    /// [`dispatch_resolved`](Self::dispatch_resolved) takes a `compute` closure,
+    /// which is the right shape when the work is synchronous and owns nothing.
+    /// The real tool-call path is neither: the work between the lookup and the
+    /// value is `async`, it borrows `&mut DispatchCtx`, and it is not one call
+    /// but four in sequence — the budget charge, the lease charge, the
+    /// concurrency permit, then the vendor dispatch. None of that fits inside
+    /// an `FnOnce() -> Result<Vec<u8>, E>`, and contorting it to fit would have
+    /// meant either blocking the executor or duplicating the memoisation law at
+    /// the call site.
+    ///
+    /// So the law splits into the two moments an async caller actually has:
+    /// probe before the work, store after it. `dispatch_resolved` is now
+    /// implemented in terms of these, so the synchronous seam §85 designed and
+    /// the asynchronous one §122.d needed run the SAME key derivation, the same
+    /// TTL parse and the same namespace — one law, two ways in.
+    ///
+    /// **The ordering D85.3 rests on is the caller's to keep**: a
+    /// [`CacheProbe::Hit`] means the call must not be dispatched AND no budget
+    /// charged. Returning early on a hit is what makes "a hit never consumes a
+    /// quota" structural rather than hopeful, and it is asserted from a real
+    /// deploy in `fase122_d_cache_hits.rs`.
+    pub fn probe(
+        &self,
+        policy: Option<&ResolvedCachePolicy>,
+        subject: &str,
+        args: &[(String, String)],
+    ) -> CacheProbe {
+        let Some(policy) = policy else {
+            return CacheProbe::NotCached;
         };
         // Apply the `key:` subset (empty ⇒ all args).
-        let key_args: Vec<(String, String)> = if cache.key_params.is_empty() {
+        let key_args: Vec<(String, String)> = if policy.key_params.is_empty() {
             args.to_vec()
         } else {
             args.iter()
-                .filter(|(k, _)| cache.key_params.contains(k))
+                .filter(|(k, _)| policy.key_params.contains(k))
                 .cloned()
                 .collect()
         };
-        let output_type = tool.output_type.clone().unwrap_or_default();
         let key = derive_key(
             &self.tenant,
-            &cache.name,
-            &tool.name,
-            &tool_fingerprint(tool),
-            &output_type,
+            &policy.cache_name,
+            subject,
+            &policy.fingerprint,
+            &policy.output_type,
             &key_args,
         );
-        let ttl = cache.ttl.as_deref().and_then(parse_duration);
-
-        // Fast path: a hit returns BEFORE compute (so no budget is charged).
-        if let Some(v) = self.backend.get(&cache.name, &key) {
-            return Ok(CacheOutcome::Hit(v));
+        if let Some(v) = self.backend.get(&policy.cache_name, &key) {
+            return CacheProbe::Hit(v);
         }
-        // Miss: compute-through (single-flight is provided by the in-process
-        // backend's own `get_or_compute`; the generic path here is a
-        // check-compute-put that the Redis tier can specialise with SET NX).
-        let value = compute()?;
-        self.backend.put(&cache.name, &key, value.clone(), ttl);
-        Ok(CacheOutcome::Miss(value))
+        CacheProbe::Miss(CacheSlot {
+            namespace: policy.cache_name.clone(),
+            key,
+            ttl: policy.ttl.as_deref().and_then(parse_duration),
+        })
+    }
+
+    /// §Fase 122.d — fill the slot a [`CacheProbe::Miss`] reserved.
+    ///
+    /// Errors are never stored (D85.10) — that is the caller's decision, and it
+    /// is expressed by simply not calling this. Oversized values are dropped by
+    /// the backend, never truncated into a wrong value.
+    pub fn store(&self, slot: &CacheSlot, value: Vec<u8>) {
+        self.backend.put(&slot.namespace, &slot.key, value, slot.ttl);
     }
 
     /// Flush a cache namespace (called when an `emit` fires on one of its

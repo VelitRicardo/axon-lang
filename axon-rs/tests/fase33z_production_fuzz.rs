@@ -245,6 +245,7 @@ async fn drive_production_path(
         None, // §Fase 65.C — api_key
         None, // §Fase 114 — channel_semaphores
         None, // §Fase 114 — tool_leases
+        String::new(), // §Fase 122.d.1 — unscoped tenant, verbatim (§95.f)
     )
     .await;
 
@@ -910,6 +911,7 @@ async fn run_async_snapshot(
         None, // §Fase 65.C — api_key
         None, // §Fase 114 — channel_semaphores
         None, // §Fase 114 — tool_leases
+        String::new(), // §Fase 122.d.1 — unscoped tenant, verbatim (§95.f)
     )
     .await;
 

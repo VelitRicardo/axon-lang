@@ -554,6 +554,33 @@ pub async fn run_emit(
         emit_to_channel(&node.channel_ref, &resolved_value, ctx)
     };
 
+    // ── §Fase 122.d — `invalidate_on:` stops being inert ────────────────────
+    //
+    // `cache C { invalidate_on: [Orders] }` means an `emit Orders(…)` flushes
+    // C's namespace. §85 typed the reference (`axon-T864` proves the channel
+    // exists) and never flushed anything, which is the worst of the three
+    // inert fields for a regulated adopter: a cache with a long `ttl:` and a
+    // declared invalidation channel reads as "stale data has a bounded, and
+    // interruptible, lifetime". It had neither half.
+    //
+    // Placed AFTER the routing above, on purpose. Invalidation is a
+    // CONSEQUENCE of the emit having happened — a shield rejection or a bus
+    // failure returns through `?` before this line, so a refused emit never
+    // flushes a cache. Flushing first would mean a failed emit still threw away
+    // good entries, turning a fail-closed egress into a cache-clearing one.
+    //
+    // Reuses the §13 pub/sub rather than adding a second mechanism, exactly as
+    // the paper specifies. The lookup is against a channel→namespaces map
+    // inverted at plan-build time, so a program with no `invalidate_on:`
+    // (nearly all of them) pays one failed hash lookup per emit.
+    if let Some(runtime) = ctx.cache_runtime.clone() {
+        if let Some(namespaces) = ctx.cache_invalidation_channels.get(&node.channel_ref) {
+            for namespace in namespaces {
+                runtime.invalidate(namespace);
+            }
+        }
+    }
+
     // §Fase 119.d — the wake signal: an emit on channel C resumes every
     // unexpired continuation hibernating on C. Fire-and-forget: the resumed
     // run has no attached client, its result lands in the parking lot's
@@ -810,6 +837,74 @@ pub async fn run_retrieve(
     enforce_store_capability(ctx, &node.store_name)?;
     emit_step_start(ctx, &step_name, step_index, "retrieve")?;
 
+    // ── §Fase 122.d — `retrieve … cache: <Name>` stops being inert ───────────
+    //
+    // `IRRetrieveStep.cache` has existed since §85.b and this function never
+    // read it. §122.a counted `cache`'s consumers as one; there were three, and
+    // this was the one nobody had noticed, because the ledger's attention was
+    // on `tool.cache:`.
+    //
+    // The probe sits AFTER the capability gate and BEFORE the backend fork,
+    // deliberately, on both counts:
+    //
+    // - After the capability gate, because a memoised read must never become a
+    //   way to read a store the flow is not authorised for. Authorisation is
+    //   about the caller, not about whether the bytes are already in hand.
+    // - Before the backend fork, so `cache:` means the same thing on all three
+    //   backends (custody metadata, Postgres, KV). Placing it inside one arm
+    //   would have made a declared field silently conditional on which backend
+    //   the store happens to use — the exact species of half-truth §122 exists
+    //   to remove, reintroduced by the fase removing it.
+    //
+    // Unlike a tool, a retrieve names its cache directly, so there is no
+    // eligibility to resolve. `axon-T865` already forces a finite `ttl:` here,
+    // because a store read is never `pure`.
+    let retrieve_cache_slot = match (&ctx.cache_runtime, node.cache.is_empty()) {
+        (Some(runtime), false) => {
+            let runtime = runtime.clone();
+            let policy = ctx.caches.get(&node.cache).map(|c| {
+                crate::cache_runtime::ResolvedCachePolicy::for_retrieve(c, &node.store_name)
+            });
+            // The QUERY is the key: two retrieves against one store with
+            // different `where:`/`order_by:`/`limit:`/`aggregate:`/`group_by:`
+            // are different reads and must never share an entry. The bindings
+            // are interpolated in, so `where: id = ${user}` keys per user
+            // rather than collapsing every user onto the first one's rows.
+            let args: Vec<(String, String)> = [
+                ("where", &node.where_expr),
+                ("order_by", &node.order_by),
+                ("limit", &node.limit_expr),
+                ("aggregate", &node.aggregate),
+                ("group_by", &node.group_by),
+            ]
+            .into_iter()
+            .map(|(k, raw)| {
+                (
+                    k.to_string(),
+                    crate::exec_context::interpolate_vars(raw, &ctx.let_bindings),
+                )
+            })
+            .collect();
+            match runtime.probe(policy.as_ref(), &node.store_name, &args) {
+                crate::cache_runtime::CacheProbe::NotCached => None,
+                crate::cache_runtime::CacheProbe::Miss(slot) => Some((runtime, slot)),
+                crate::cache_runtime::CacheProbe::Hit(bytes) => {
+                    let value = String::from_utf8_lossy(&bytes).to_string();
+                    if !node.alias.is_empty() {
+                        ctx.let_bindings.insert(node.alias.clone(), value.clone());
+                    }
+                    emit_step_complete(ctx, &step_name, step_index, &value, 0)?;
+                    return Ok(NodeOutcome::Completed {
+                        output: value,
+                        tokens_emitted: 0,
+                        step_index,
+                    });
+                }
+            }
+        }
+        _ => None,
+    };
+
     // §Fase 94.d — a `backend: secrets` store routes to the custody port
     // (metadata only), NEVER to SQL and NEVER to the KV fallback (a
     // silent KV read would fabricate an empty result over live custody).
@@ -840,6 +935,10 @@ pub async fn run_retrieve(
             crate::flow_dispatcher::StoreRowKind::Retrieved,
             count as u64,
         );
+        // §Fase 122.d — memoise the custody metadata read, if declared.
+        if let Some((runtime, slot)) = retrieve_cache_slot {
+            runtime.store(&slot, envelope.clone().into_bytes());
+        }
         if !node.alias.is_empty() {
             ctx.let_bindings.insert(node.alias.clone(), envelope.clone());
         }
@@ -954,6 +1053,14 @@ pub async fn run_retrieve(
         Ok(None) => retrieve_from_store(&node.store_name, &node.where_expr, ctx),
         Err(e) => return Err(sql_dispatch_error(e)),
     };
+    // §Fase 122.d — fill the slot the probe reserved. Reached only when the
+    // read SUCCEEDED: every failure above returns through `?` before this line,
+    // so a backend error is never memoised (D85.10) without needing a flag to
+    // say so.
+    if let Some((runtime, slot)) = retrieve_cache_slot {
+        runtime.store(&slot, value.clone().into_bytes());
+    }
+
     if !node.alias.is_empty() {
         ctx.let_bindings.insert(node.alias.clone(), value.clone());
     }

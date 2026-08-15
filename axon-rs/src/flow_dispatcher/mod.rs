@@ -647,6 +647,49 @@ pub struct DispatchCtx {
     /// post-expiry vendor call is a CT-2 Anchor Breach. `None` ⇒ no lease governs a
     /// tool's channel in this program.
     pub tool_leases: Option<std::sync::Arc<crate::resource_lease::ResourceLeaseGuard>>,
+    /// §Fase 122.d — the memoisation tier behind the `cache` primitive.
+    ///
+    /// `None` (the `DispatchCtx::new` default) ⇒ nothing is memoised and every
+    /// call computes, byte-identical to pre-§122.d. Both production paths
+    /// attach one via [`DispatchCtx::with_cache`]; the enterprise §85.f Redis
+    /// tier will arrive as an injected [`crate::cache_runtime::CacheBackend`],
+    /// not as a second call site.
+    ///
+    /// # What this field closed
+    ///
+    /// §85 shipped the language, the safety proofs (`axon-T863`–`T867`), the
+    /// audit vocabulary and a production-hardened cache core with its own
+    /// passing tests — and then deferred wiring it (§85.h, *"deferred, not
+    /// built"*). §122.a measured the consequence: `CacheRuntime::dispatch` had
+    /// ZERO production callers, so `backend:`, `ttl:`, `key_params:`,
+    /// `invalidate_on:` and `default_policy:` were inert in both flavours.
+    /// `backend: redis` was not a downgrade to in-process — there was no cache.
+    /// The row shipped as `Real` in 2.88.0, which is the public exposure §122
+    /// exists to end.
+    pub cache_runtime: Option<std::sync::Arc<crate::cache_runtime::CacheRuntime>>,
+    /// §Fase 122.d — tool name → the policy memoising it, resolved from the
+    /// `IRProgram` ONCE at plan-build time.
+    ///
+    /// Empty (the default, and the case for every program with no `cache`
+    /// declaration) ⇒ each tool call pays one failed hash lookup and proceeds
+    /// unchanged. See [`crate::cache_runtime::ResolvedCachePolicy`] for why
+    /// resolution lives at build time rather than here.
+    pub cache_policies:
+        std::sync::Arc<
+            std::collections::HashMap<String, crate::cache_runtime::ResolvedCachePolicy>,
+        >,
+    /// §Fase 122.d — the declared `cache` blocks by name, for `retrieve …
+    /// cache: <Name>` (which names its cache directly, so there is no
+    /// eligibility to resolve) and for flushing by namespace.
+    pub caches: std::sync::Arc<std::collections::HashMap<String, crate::ir_nodes::IRCache>>,
+    /// §Fase 122.d — channel name → the cache namespaces an `emit` on it
+    /// flushes (`invalidate_on:`), inverted at plan-build time so the emit path
+    /// answers with one lookup instead of scanning every cache declaration.
+    ///
+    /// Empty ⇒ no cache in this program declares `invalidate_on:`, and `emit`
+    /// is byte-identical to pre-§122.d.
+    pub cache_invalidation_channels:
+        std::sync::Arc<std::collections::HashMap<String, Vec<String>>>,
     /// §Fase 74.a — the shared typed-channel event bus a flow's `emit`
     /// routes to (the producer side of durable event delivery). `None`
     /// (the `DispatchCtx::new` default — HTTP / CLI / test paths) ⇒ `emit`
@@ -768,6 +811,12 @@ impl DispatchCtx {
             budget: None,
             channel_semaphores: None,
             tool_leases: None,
+            // §Fase 122.d — no cache by default: every call computes. Both
+            // production paths attach one via `with_cache`.
+            cache_runtime: None,
+            cache_policies: std::sync::Arc::new(std::collections::HashMap::new()),
+            caches: std::sync::Arc::new(std::collections::HashMap::new()),
+            cache_invalidation_channels: std::sync::Arc::new(std::collections::HashMap::new()),
             // §Fase 74.a — no event bus by default; `emit` uses the legacy
             // per-flow buffer. The daemon supervisor attaches the shared bus
             // via `with_event_bus` so `emit` delivers to `listen`ers.
@@ -939,6 +988,37 @@ impl DispatchCtx {
         sems: std::sync::Arc<crate::channel_semaphore::ChannelSemaphores>,
     ) -> Self {
         self.channel_semaphores = Some(sems);
+        self
+    }
+
+    /// §Fase 122.d — attach the memoisation tier and resolve every cache
+    /// policy the program declares, in ONE call.
+    ///
+    /// # Why this takes the whole `IRProgram` and not four arguments
+    ///
+    /// The policies, the cache declarations and the invalidation channels are
+    /// not independent knobs; they are one answer to "what does this program
+    /// memoise?", and a caller that attached two of the three would produce a
+    /// runtime that caches but never invalidates, or invalidates a namespace
+    /// nothing writes to. Those are silent wrong answers, and the shape that
+    /// makes them possible is a builder with three setters.
+    ///
+    /// So they arrive bundled as one
+    /// [`crate::cache_runtime::CachePlan`], resolved from the IR by whoever
+    /// holds it, and the only way to half-wire the cache is not to call this —
+    /// which is the existing, honest `None` default. This is the §120 lesson
+    /// stated as an API: make the second door impossible rather than
+    /// remembering to walk through it.
+    pub fn with_cache(
+        mut self,
+        runtime: std::sync::Arc<crate::cache_runtime::CacheRuntime>,
+        plan: &crate::cache_runtime::CachePlan,
+    ) -> Self {
+        self.cache_policies = std::sync::Arc::new(plan.tool_policies.clone());
+        self.caches = std::sync::Arc::new(plan.caches.clone());
+        self.cache_invalidation_channels =
+            std::sync::Arc::new(plan.invalidation_channels.clone());
+        self.cache_runtime = Some(runtime);
         self
     }
 

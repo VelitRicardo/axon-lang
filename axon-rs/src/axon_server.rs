@@ -2321,6 +2321,11 @@ pub fn server_execute_for_test(
         source_file,
         flow_name,
         "stub",
+        // §Fase 122.d.1 — a test helper has no verified principal, so it passes
+        // the unscoped tenant VERBATIM rather than inventing one. §95.f's rule:
+        // with no scope, custody and mint fail CLOSED, which is the correct
+        // answer for a caller that cannot say who it is.
+        "",
         None,
         None,
         &empty,
@@ -2342,6 +2347,42 @@ fn server_execute(
     source_file: &str,
     flow_name: &str,
     backend: &str,
+    // §Fase 122.d.1 — the VERIFIED tenant, now a PARAMETER rather than a
+    // task-local this function reads for itself.
+    //
+    // # The measurement that forced this
+    //
+    // §95.f bridged the request-scoped tenant task-local to the executor's
+    // explicit `tenant_id`, and did it right here — `let tenant_id =
+    // crate::tenant::current_tenant_id();`. The bridge was correct and it was
+    // on the WRONG SIDE OF A THREAD BOUNDARY.
+    //
+    // `CURRENT_TENANT_ID` is a `tokio::task_local!`, and the `/v1/execute`
+    // handler wraps the entire execution in `spawn_blocking`. Task-locals do
+    // not cross to the blocking pool, so the read here returned the
+    // `"default"` fallback for every request, whatever the JWT said. Measured,
+    // not inferred:
+    //
+    // ```text
+    // async="acme"   spawn_blocking="default"
+    // ```
+    //
+    // So §95.f's guarantee — *"custody / mint / session run under the verified
+    // tenant, never ambient downstream"* — held on the enterprise deploy-API
+    // path (which passes `route.tenant_id` explicitly) and was silently void on
+    // the OSS HTTP door. `fase95f_executor_tenant_scope.rs` did not catch it
+    // because it drives `execute_server_flow` DIRECTLY, never through the
+    // handler: a green suite over a path production does not take.
+    //
+    // Taking it as a parameter is what makes the boundary visible. The caller
+    // must now name where the tenant came from, and a caller on the far side of
+    // a `spawn_blocking` cannot pretend the ambient value is still there.
+    //
+    // §122.d needed this before it could mount a cache: the tenant is a
+    // component of every cache key (D85.7/D85.11) precisely so a mis-namespaced
+    // backend cannot leak, and keying every request under `"default"` would
+    // have turned a scoping bug into a cross-tenant read.
+    tenant_id: &str,
     api_key_override: Option<&str>,
     // §Fase 37.b (D1) — the parsed request body for the Request
     // Binding Contract; `None` for callers with no HTTP request body.
@@ -2453,15 +2494,17 @@ fn server_execute(
     let ir = crate::ir_generator::IRGenerator::new().generate(&program);
 
     // Execute via runner
-    // §Fase 95.f — bridge the request-scoped tenant task-local to the
-    // executor's EXPLICIT tenant at the boundary, so custody / mint /
-    // session run under the verified tenant (never ambient downstream).
-    let tenant_id = crate::tenant::current_tenant_id();
+    // §Fase 95.f — the executor takes an EXPLICIT tenant, so custody / mint /
+    // session run under the verified one (never ambient downstream).
+    // §Fase 122.d.1 — and it now arrives as an argument. Reading the task-local
+    // here was the bug: this function runs inside `spawn_blocking` on the
+    // `/v1/execute` path, where the task-local is gone and the read silently
+    // yielded `"default"`. See the parameter's own note.
     let run_res = crate::runner::execute_server_flow(
         &ir,
         flow_name,
         backend,
-        &tenant_id,
+        tenant_id,
         source_file,
         api_key_override,
         request_body,
@@ -2646,10 +2689,16 @@ async fn execute_handler(
     let body_owned = payload.request_body.clone();
     let path_owned = payload.request_path.clone();
     let query_owned = payload.request_query.clone();
+    // §Fase 122.d.1 — read the tenant HERE, on the async side, where the
+    // task-local the middleware scoped is still in scope. One line earlier than
+    // it used to be read, and it is the whole fix: everything below this point
+    // runs on the blocking pool, where `current_tenant_id()` returns
+    // `"default"` no matter who authenticated.
+    let tenant_owned = crate::tenant::current_tenant_id();
     let exec_join = tokio::task::spawn_blocking(move || {
         execute_with_fallback(
             &state_for_exec, &source_owned, &source_file_owned, &flow_owned,
-            &backend_owned, key_owned.as_deref(),
+            &backend_owned, &tenant_owned, key_owned.as_deref(),
             body_owned.as_ref(), &path_owned, &query_owned,
         )
     });
@@ -13685,6 +13734,10 @@ fn execute_with_fallback(
     source_file: &str,
     flow_name: &str,
     primary_backend: &str,
+    // §Fase 122.d.1 — the verified tenant, captured on the ASYNC side of the
+    // `spawn_blocking` this function runs inside and passed down. See
+    // `server_execute`'s parameter note for what reading it here instead cost.
+    tenant_id: &str,
     primary_key: Option<&str>,
     // §Fase 37.b (D1) — the parsed request body for the Request
     // Binding Contract, threaded through to `runner::execute_server_flow`.
@@ -13726,6 +13779,8 @@ fn execute_with_fallback(
         source_file,
         flow_name,
         primary_backend,
+        // §Fase 122.d.1 — the tenant captured on the async side, forwarded.
+        tenant_id,
         primary_key,
         request_body,
         request_path,
@@ -13763,6 +13818,8 @@ fn execute_with_fallback(
             source_file,
             flow_name,
             fallback_backend,
+            // §Fase 122.d.1 — a fallback backend is still THIS tenant's run.
+            tenant_id,
             fb_key.as_deref(),
             request_body,
             request_path,
@@ -13825,7 +13882,11 @@ fn server_execute_full(
     let empty_path = std::collections::HashMap::new();
     let empty_query = std::collections::HashMap::new();
     let (result, actual_backend) = execute_with_fallback(
-        state, source, source_file, flow_name, &effective_backend, resolved_key.as_deref(),
+        state, source, source_file, flow_name, &effective_backend,
+        // §Fase 122.d.1 — this entry point is synchronous and has no request
+        // scope of its own, so it reports whatever the caller established.
+        &crate::tenant::current_tenant_id(),
+        resolved_key.as_deref(),
         None,
         &empty_path,
         &empty_query,
@@ -15263,7 +15324,12 @@ async fn mcp_handler(
                 s.tool_leases.clone()
             };
             let result = server_execute(
-                &source, &source_file, flow_name, backend, resolved_key.as_deref(), None,
+                &source, &source_file, flow_name, backend,
+                // §Fase 122.d.1 — this handler is fully async, so the task-local
+                // the tenant middleware scoped IS genuinely in scope here. The
+                // `/v1/execute` door is the one that was not.
+                &crate::tenant::current_tenant_id(),
+                resolved_key.as_deref(), None,
                 &empty_path,
                 &empty_query,
                 Some(ds_engine),
@@ -16369,7 +16435,10 @@ async fn mcp_stream_handler(
         s.tool_leases.clone()
     };
     match server_execute(
-        &source, &source_file, flow_name, backend, resolved_key.as_deref(), None,
+        &source, &source_file, flow_name, backend,
+        // §Fase 122.d.1 — async handler: the task-local is real here.
+        &crate::tenant::current_tenant_id(),
+        resolved_key.as_deref(), None,
         &empty_path, &empty_query, Some(ds_engine), http_budget, http_channel_sems, http_tool_leases,
     ) {
         Ok(mut er) => {
@@ -19260,6 +19329,30 @@ pub fn server_execute_streaming(
     // resolve to `{base}/{slug}` (absolute runtimes stay verbatim, D5).
     // `None` → no resolution.
     tool_base_url: Option<String>,
+    // §Fase 122.d.1 — the VERIFIED tenant this streamed flow runs under.
+    //
+    // # A slot that never existed
+    //
+    // §95.f gave `execute_server_flow` an explicit `tenant_id` and threaded it
+    // through "~9 OSS call sites + 3 ENT". The streaming entry point was not
+    // among them, and nothing recorded the omission: no parameter, no comment,
+    // no test. `DispatchCtx::with_tenant_id` had exactly ONE caller in the
+    // whole OSS tree — the synchronous runner.
+    //
+    // So on SSE, `ctx.tenant_id` stayed `String::new()` and every seam that
+    // reads it ran unscoped: `secret_custody::retrieve_metadata`, `mint`,
+    // `rotate`, `list_metadata`, hibernation resume. Enterprise had the right
+    // value in hand at the call site (`route.tenant_id`, verified against the
+    // JWT principal) and no slot to put it in.
+    //
+    // This is the same shape as §114's "real-on-sync, inert-on-SSE" finding and
+    // §120's two-doors: a subsystem whose second entry point quietly lost a
+    // guarantee the first one kept. `fase122_d1_tenant_reaches_every_door.rs`
+    // now asserts both doors, so the pair cannot drift again.
+    //
+    // `""` is the honest unscoped value (§95.f: custody then fails CLOSED); it
+    // is never a substitute for a tenant the caller actually knows.
+    tenant_id: String,
 ) -> StreamingExecution {
     use crate::flow_execution_event::FlowExecutionEvent;
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<FlowExecutionEvent>();
@@ -19432,6 +19525,12 @@ pub fn server_execute_streaming(
             // path governs `capacity:` / `lease` at parity with the sync path.
             channel_semaphores,
             tool_leases,
+            // §Fase 122.d.1 — the verified tenant, forwarded to the producer
+            // that builds the DispatchCtx. Captured by the caller BEFORE this
+            // `tokio::spawn`, because a spawned task does not inherit the
+            // request's task-local either — the same boundary that made the
+            // sync path read `"default"` for a year.
+            tenant_id,
         )
         .await;
         exited_for_dispatcher.notify_waiters();
@@ -19631,6 +19730,23 @@ async fn execute_sse_handler_inner(
                 s.trace_store.reserve_id()
             };
 
+            // §Fase 122.d.1 — read the tenant HERE, before the spawn.
+            //
+            // The first version of this fix read it at the
+            // `server_execute_streaming` call site below, with a comment
+            // asserting that this handler is fully async and so the scoped
+            // task-local is genuinely in scope. The comment was wrong: a
+            // `tokio::spawn`ed task does not inherit task-locals either, so the
+            // read returned `"default"` for every tenant.
+            //
+            // It is the SAME defect as the `spawn_blocking` one this sub-fase
+            // exists to fix, one level deeper, and it survived a careful reading
+            // that had just finished diagnosing the identical shape. What caught
+            // it was `the_sse_door_memoises_and_keys_by_tenant_too`: tenant
+            // globex was served acme's memoised result. That is the argument for
+            // gates over comments, made against this very sub-fase.
+            let tenant_for_task = crate::tenant::current_tenant_id();
+
             tokio::spawn(async move {
                 // 33.c: live forwarding pipeline.
                 //
@@ -19704,6 +19820,12 @@ async fn execute_sse_handler_inner(
                     // OSS streaming server (single-tenant per-process);
                     // enterprise threads its per-tenant override.
                     std::env::var("AXON_TOOL_BASE_URL").ok(),
+                    // §Fase 122.d.1 — the verified tenant, captured OUTSIDE the
+                    // enclosing `tokio::spawn` (see the note where it is read).
+                    // The enterprise SSE caller passes its own
+                    // `route.tenant_id`, which was already verified against the
+                    // JWT principal at dispatch.
+                    tenant_for_task,
                 );
 
                 // §Fase 33.z.k.g.2 — Construct the wire-format adapter
@@ -28393,7 +28515,10 @@ async fn execute_warm_handler(
             s.tool_leases.clone()
         };
         match server_execute(
-            source, source_file, flow_name, "stub", None, None,
+            source, source_file, flow_name, "stub",
+            // §Fase 122.d.1 — async handler: the task-local is real here.
+            &crate::tenant::current_tenant_id(),
+            None, None,
             &empty_path, &empty_query, Some(ds_engine), http_budget, http_channel_sems, http_tool_leases,
         ) {
             Ok(er) => {

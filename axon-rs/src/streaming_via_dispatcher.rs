@@ -201,6 +201,11 @@ pub async fn run_streaming_via_dispatcher(
         std::sync::Arc<crate::channel_semaphore::ChannelSemaphores>,
     >,
     tool_leases: Option<std::sync::Arc<crate::resource_lease::ResourceLeaseGuard>>,
+    // §Fase 122.d.1 — the verified tenant. See the note on
+    // `axon_server::server_execute_streaming`'s parameter of the same name: this
+    // producer built its `DispatchCtx` without ever calling `with_tenant_id`,
+    // so every explicit-tenant seam on the SSE path ran under the empty tenant.
+    tenant_id: String,
 ) {
     // Cancel-safety helper — mirrors the legacy path's `emit` closure.
     // Returns `Err(())` when the producer should exit early (cancel
@@ -537,6 +542,9 @@ pub async fn run_streaming_via_dispatcher(
         )),
     )
     .with_store_registry(store_registry)
+    // §Fase 122.d.1 — the verified tenant, at last. Before this the SSE ctx
+    // carried the empty default and custody / mint / rotate ran unscoped.
+    .with_tenant_id(tenant_id)
     // §Fase 65.C — the per-tenant API key so LLM steps use this tenant's key.
     .with_api_key(api_key)
     // §Fase 65.C.3 — the flow's anchors so each LLM step's output is checked
@@ -561,6 +569,28 @@ pub async fn run_streaming_via_dispatcher(
     // against the same axonstore for this flow lifetime routes
     // through the SAME physical Postgres backend connection.
     .with_pinned_conns(pinned_conns);
+    // §Fase 122.d — mount the memoisation tier on the SSE path too.
+    //
+    // The sync runner mounts it the same way from the same plan. Wiring one and
+    // not the other is the "real-on-one-path, dead-on-the-other" defect §111
+    // exists to end and §120 restated as the two-doors rule — and it is exactly
+    // the defect §122.d.1 had to fix first, because this path had no tenant to
+    // key entries with. Mounting a tenant-keyed cache here before that would
+    // have made every SSE caller share one namespace.
+    //
+    // `both_dispatch_paths_mount_the_cache` pins the pair together.
+    {
+        let plan = crate::cache_runtime::CachePlan::from_ir(&ir);
+        if !plan.is_empty() {
+            let cache_tenant = ctx.tenant_id.clone();
+            ctx = ctx.with_cache(
+                std::sync::Arc::new(crate::cache_runtime::CacheRuntime::process_local(
+                    cache_tenant,
+                )),
+                &plan,
+            );
+        }
+    }
     // §Fase 35.j — thread the request's held capabilities into the
     // dispatcher so the store handlers can re-check gated stores.
     ctx.held_capabilities = held_capabilities;
@@ -941,6 +971,10 @@ mod tests {
             None, // §Fase 65.C — api_key (tests use the env/stub key)
             None, // §Fase 114 — channel_semaphores (test: ungoverned)
             None, // §Fase 114 — tool_leases (test: ungoverned)
+            // §Fase 122.d.1 — unscoped tenant, VERBATIM. §95.f's rule: a caller
+            // with no verified principal passes `""` and custody fails closed,
+            // rather than inventing a plausible-looking tenant for a test.
+            String::new(),
         )
         .await;
 
@@ -1001,6 +1035,10 @@ mod tests {
             None, // §Fase 65.C — api_key (tests use the env/stub key)
             None, // §Fase 114 — channel_semaphores (test: ungoverned)
             None, // §Fase 114 — tool_leases (test: ungoverned)
+            // §Fase 122.d.1 — unscoped tenant, VERBATIM. §95.f's rule: a caller
+            // with no verified principal passes `""` and custody fails closed,
+            // rather than inventing a plausible-looking tenant for a test.
+            String::new(),
         )
         .await;
 
@@ -1069,6 +1107,10 @@ mod tests {
             None, // §Fase 65.C — api_key (tests use the env/stub key)
             None, // §Fase 114 — channel_semaphores (test: ungoverned)
             None, // §Fase 114 — tool_leases (test: ungoverned)
+            // §Fase 122.d.1 — unscoped tenant, VERBATIM. §95.f's rule: a caller
+            // with no verified principal passes `""` and custody fails closed,
+            // rather than inventing a plausible-looking tenant for a test.
+            String::new(),
         )
         .await;
 
@@ -1119,6 +1161,10 @@ mod tests {
             None, // §Fase 65.C — api_key (tests use the env/stub key)
             None, // §Fase 114 — channel_semaphores (test: ungoverned)
             None, // §Fase 114 — tool_leases (test: ungoverned)
+            // §Fase 122.d.1 — unscoped tenant, VERBATIM. §95.f's rule: a caller
+            // with no verified principal passes `""` and custody fails closed,
+            // rather than inventing a plausible-looking tenant for a test.
+            String::new(),
         )
         .await;
 

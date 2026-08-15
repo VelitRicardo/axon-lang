@@ -90,6 +90,8 @@ async fn drive_sse(
         None, // api_key
         channel_semaphores,
         tool_leases,
+        // §Fase 122.d.1 — unscoped tenant, passed verbatim (§95.f).
+        String::new(),
     )
     .await;
 
