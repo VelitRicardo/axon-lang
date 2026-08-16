@@ -62,6 +62,26 @@ pub const REGULATORY_CLASSES: &[&str] = &[
     "GxP",
     "CCPA",
     "NIST_800_53",
+    // §Fase 124 (D124.1) — the four LATAM jurisdictions the product serves.
+    //
+    // They enter Κ on the same footing as every class above: declarable, and a
+    // participant in `axon-T957`'s coverage difference. That is the whole
+    // criterion, and it is worth stating precisely because the first draft of
+    // this decision justified the set by saying the excluded jurisdictions
+    // "impose no real restriction" — which does not hold. Ley 25.326
+    // (Argentina) and Ley 81 (Panamá) would impose exactly the same restriction
+    // as these four.
+    //
+    // The real criterion is PRODUCT PRIORITY: each of these four has a named
+    // vertical in the README and a mechanism the language already provides
+    // (NOM-151 → `axonstore` sealing; LFPDPPP/LGPD/Ley 1581 → `shield`
+    // redaction). That is a good reason. Writing the other one down would have
+    // been a justification that does not survive a reading, which is the
+    // species of claim this whole line of work exists to remove.
+    "NOM151",
+    "LFPDPPP",
+    "LGPD",
+    "LEY1581",
 ];
 
 /// Is `label` a member of Κ?
@@ -149,14 +169,19 @@ mod tests {
     use super::*;
 
     #[test]
-    fn the_catalog_is_the_eleven_the_paper_names() {
+    fn the_catalog_is_the_fifteen_the_paper_names() {
         assert_eq!(
             REGULATORY_CLASSES.len(),
-            11,
-            "Κ is the canonical registry from the ESK paper §6.1. Changing its size is a \
-             decision about what an adopter may assert, not a refactor."
+            15,
+            "Κ is the canonical registry from the ESK paper §6.1, extended in §124 with the \
+             four LATAM jurisdictions. Changing its size is a decision about what an adopter \
+             may assert, not a refactor — and the paper's own Κ is pinned against this list \
+             by `fase124_the_paper_matches_the_compiler`."
         );
-        for class in ["HIPAA", "PCI_DSS", "GDPR", "SOX", "FINRA", "ISO27001", "SOC2", "FISMA", "GxP", "CCPA", "NIST_800_53"] {
+        for class in [
+            "HIPAA", "PCI_DSS", "GDPR", "SOX", "FINRA", "ISO27001", "SOC2", "FISMA", "GxP",
+            "CCPA", "NIST_800_53", "NOM151", "LFPDPPP", "LGPD", "LEY1581",
+        ] {
             assert!(is_known(class), "{class} must be in Κ");
         }
     }

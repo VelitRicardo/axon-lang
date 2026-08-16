@@ -126,6 +126,46 @@ pub fn registry() -> HashMap<String, RegulatoryClass> {
             "government",
             "Security and privacy controls catalog for US federal systems.",
         ),
+        // §Fase 124 (D124.1) — the four LATAM jurisdictions.
+        //
+        // Each row exists because the frontend's Κ accepts the label and
+        // `registry_matches_the_frontend_vocabulary` refuses to let the two
+        // halves drift: a class the compiler admits but this registry cannot
+        // describe would produce an audit dossier silently missing an entry.
+        // Adding a class to Κ is therefore never a one-line change.
+        RegulatoryClass::new(
+            "NOM151",
+            "NOM-151-SCFI-2016 (Conservación de Mensajes de Datos)",
+            "MX",
+            "cross-sector",
+            "Data-message preservation and document digitisation under the Mexican Commercial \
+             Code (arts. 89-114): a PSC-issued timestamp binds the SHA-256 of the record, so \
+             the constancia is admissible as evidence.",
+        ),
+        RegulatoryClass::new(
+            "LFPDPPP",
+            "Ley Federal de Protección de Datos Personales en Posesión de los Particulares",
+            "MX",
+            "cross-sector",
+            "Mexican private-sector personal data protection: ARCO rights (access, \
+             rectification, cancellation, opposition) and their traceability.",
+        ),
+        RegulatoryClass::new(
+            "LGPD",
+            "Lei Geral de Proteção de Dados (Lei 13.709/2018)",
+            "BR",
+            "cross-sector",
+            "Brazilian general data protection law; broadly equivalent in posture to GDPR, \
+             with its own legal bases and controller/operator duties.",
+        ),
+        RegulatoryClass::new(
+            "LEY1581",
+            "Ley 1581 de 2012 (Protección de Datos Personales)",
+            "CO",
+            "cross-sector",
+            "Colombian data protection: prior authorisation from the data subject and \
+             registration of databases with the SIC's Registro Nacional de Bases de Datos.",
+        ),
     ];
     entries.into_iter().map(|c| (c.name.clone(), c)).collect()
 }

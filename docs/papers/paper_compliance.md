@@ -12,9 +12,11 @@ La arquitectura de AXON formaliza la seguridad y la conformidad mediante el Cál
 
 Se define el universo cerrado de clases regulatorias admisibles $\mathrm{K}$ mediante el conjunto finito de alfabetos normativos validados por el compilador axon-frontend:
 
-$$\mathrm{K} = \{ \text{HIPAA}, \text{PCI\_DSS}, \text{GDPR}, \text{SOX}, \text{FINRA}, \text{ISO27001}, \text{SOC2}, \text{FISMA}, \text{GxP}, \text{CCPA}, \text{NIST\_800\_53} \}$$
+$$\mathrm{K} = \{ \text{HIPAA}, \text{PCI\_DSS}, \text{GDPR}, \text{SOX}, \text{FINRA}, \text{ISO27001}, \text{SOC2}, \text{FISMA}, \text{GxP}, \text{CCPA}, \text{NIST\_800\_53}, \text{NOM151}, \text{LFPDPPP}, \text{LGPD}, \text{LEY1581} \}$$
 
-Este conjunto es exactamente el que la constante `REGULATORY_CLASSES` declara en `axon-frontend/src/compliance.rs`, y es verificable ejecutando el compilador: cualquier identificador ajeno a $\mathrm{K}$ produce una denegación. Su extensión a jurisdicciones adicionales (LATAM, Canadá, EU AI Act) se aborda en la Fase 124 y no se documenta aquí como entregada.
+Este conjunto es exactamente el que la constante `REGULATORY_CLASSES` declara en `axon-frontend/src/compliance.rs`, y la correspondencia no se sostiene por revisión editorial: una prueba de la suite extrae $\mathrm{K}$ de este documento y falla la compilación si difiere del catálogo del compilador en miembros u orden. Cualquier identificador ajeno a $\mathrm{K}$ produce una denegación verificable ejecutando `axon check`.
+
+Las cuatro últimas clases incorporan las jurisdicciones latinoamericanas atendidas por el producto (Fase 124). Su criterio de admisión es la prioridad de producto respaldada por un mecanismo existente en el lenguaje — sellado en `axonstore` para NOM-151, redacción en `shield` para las tres normas de privacidad — y no una propiedad formal que las distinga de otras normativas regionales: la Ley 25.326 de Argentina o la Ley 81 de Panamá impondrían exactamente la misma restricción de cobertura si se incorporasen. Se documentan como cobertura de ejecución en la matriz de §3 mientras no ingresen a $\mathrm{K}$.
 
 **Distinción entre dos catálogos.** $\mathrm{K}$ no debe confundirse con el conjunto de marcos de auditoría contra los que el sistema se evalúa. Son catálogos separados por diseño y responden a preguntas distintas: $\mathrm{K}$ clasifica *qué es un dato* (una etiqueta de sensibilidad que viaja con el tipo), mientras que los marcos de auditoría — $\{\text{SOC 2 Type II}, \text{ISO/IEC 27001}, \text{FIPS 140-3}, \text{CC EAL4+}\}$, enumerados como `FrameworkId` en el motor de evidencias — definen *contra qué norma se mide la implementación*. Un dato no se etiqueta como «FIPS 140-3»; un módulo criptográfico se audita contra él.
 
@@ -80,15 +82,16 @@ La tabla siguiente distingue explícitamente **tres fuerzas de garantía**, porq
 | Europa        | EU AI Act         | trail, mandate, reason       | Gobierno / Legal   | Primitiva (runtime) |
 | EE. UU.       | FIPS 140-3        | Núcleo axon-csys (C23)       | Gobierno / Defensa | Primitiva (runtime) |
 | EE. UU.       | PCI DSS (agentes) | allow_tools, deny_tools      | FinTech            | Primitiva (runtime) |
-| Colombia      | Ley 1581 de 2012  | axonstore Audit Chain        | Gobierno / FinTech | Primitiva (runtime) |
 | Argentina     | Ley 25.326        | dataspace, shield            | Enterprise / Legal | Primitiva (runtime) |
 | Canadá        | PIPEDA            | lambda, Temporal Frames      | HealthTech / Fin   | Primitiva (runtime) |
 +---------------+-------------------+------------------------------+--------------------+---------------------+
-| México        | NOM-151-SCFI-2016 | axonstore, [NOM151]          | LegalTech / FinTech| Fase 124 (pendiente)|
-| México        | LFPDPPP           | shield, compliance [LFPDPPP] | LegalTech / Gob    | Fase 124 (pendiente)|
-| Brasil        | LGPD              | shield, compliance: [LGPD]   | Enterprise / Fin   | Fase 124 (pendiente)|
-| Costa Rica    | Ley 8968 (Prodhab)| credential, mint             | Gobierno / Legal   | Fase 124 (pendiente)|
-| Panamá        | Ley 81 de 2019    | weave include:               | Enterprise / Legal | Fase 124 (pendiente)|
+| México        | NOM-151-SCFI-2016 | axonstore, [NOM151]          | LegalTech / FinTech| κ ∈ K (compilación) |
+| México        | LFPDPPP           | shield, [LFPDPPP]            | LegalTech / Gob    | κ ∈ K (compilación) |
+| Brasil        | LGPD              | shield, compliance: [LGPD]   | Enterprise / Fin   | κ ∈ K (compilación) |
+| Colombia      | Ley 1581 de 2012  | shield, [LEY1581]            | Gobierno / FinTech | κ ∈ K (compilación) |
++---------------+-------------------+------------------------------+--------------------+---------------------+
+| Costa Rica    | Ley 8968 (Prodhab)| credential, mint             | Gobierno / Legal   | Primitiva (runtime) |
+| Panamá        | Ley 81 de 2019    | weave include:               | Enterprise / Legal | Primitiva (runtime) |
 +---------------+-------------------+------------------------------+--------------------+---------------------+
 
 3.1 Europa: GDPR, EU AI Act, NIS2 e ISO/IEC 27001:2022

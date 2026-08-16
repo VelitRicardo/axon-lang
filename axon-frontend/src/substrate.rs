@@ -155,10 +155,26 @@ pub fn jurisdiction_of(provider: &str, region: &str) -> Jurisdiction {
 /// obligation is a matter of law, not of opinion. Tags outside this list carry
 /// no jurisdictional constraint and are not checked here — which is honest,
 /// because inventing a geography for `soc2` would be a fabricated rule.
-const JURISDICTION_BOUND_TAGS: &[(&str, Jurisdiction)] = &[
-    ("gdpr", Jurisdiction::Eu),
-    ("eu_ai_act", Jurisdiction::Eu),
-];
+/// §Fase 124 — **every tag here must be a member of Κ**, or the rule is dead.
+///
+/// These names are matched case-insensitively against a `manifest`'s
+/// `compliance:` list. Since §123 that list is a closed catalogue
+/// (`axon-T1214`), so a tag absent from Κ can never appear in any program that
+/// compiles — the jurisdiction constraint keyed on it is unreachable, and
+/// unreachable-but-present is indistinguishable from enforced when reading the
+/// source.
+///
+/// `eu_ai_act` was exactly that: listed here, absent from Κ, refused by the
+/// type checker on the only declaration that feeds this function. Removed in
+/// §124 rather than promoted, because D124.1 fixed Κ's growth at the four LATAM
+/// jurisdictions and the EU AI Act's coverage in AXON is a RUNTIME one (`trail`,
+/// `mandate`, `reason`) rather than a data-classification one. Adding a κ class
+/// to make a dead rule live would have been the tail wagging the dog.
+///
+/// `every_jurisdiction_tag_is_a_real_regulatory_class` is what keeps this
+/// honest; entries are lowercase by this module's own convention and Κ is
+/// canonical-uppercase, so it compares case-insensitively.
+const JURISDICTION_BOUND_TAGS: &[(&str, Jurisdiction)] = &[("gdpr", Jurisdiction::Eu)];
 
 /// The compliance violation a `(tag, provider, region)` triple represents, if
 /// any.
@@ -227,6 +243,35 @@ impl fmt::Display for ComplianceViolation {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// §Fase 124 — a jurisdiction rule must be keyed on a class a program can
+    /// legally declare.
+    ///
+    /// `compliance_violation` is reached from `axon-E042` with the tags of a
+    /// `manifest`'s `compliance:` list, and since §123 that list is closed by
+    /// `axon-T1214`. A tag here that is not in Κ therefore describes a rule no
+    /// program can ever trigger — present in the source, enforcing nothing, and
+    /// reading exactly like a rule that works.
+    ///
+    /// That is precisely the defect class §111 named *motor real, cable
+    /// muerto*, at the granularity of a single table row. `eu_ai_act` was the
+    /// instance; this test is why there will not be another.
+    #[test]
+    fn every_jurisdiction_tag_is_a_real_regulatory_class() {
+        for (tag, _) in JURISDICTION_BOUND_TAGS {
+            let matches_kappa = crate::compliance::REGULATORY_CLASSES
+                .iter()
+                .any(|class| class.eq_ignore_ascii_case(tag));
+            assert!(
+                matches_kappa,
+                "jurisdiction tag `{tag}` is not a member of Κ ({:?}), so no program that \
+                 compiles can carry it and this rule can never fire. Either add the class to \
+                 `compliance::REGULATORY_CLASSES` — a product decision about what an adopter \
+                 may assert — or delete the row.",
+                crate::compliance::REGULATORY_CLASSES
+            );
+        }
+    }
 
     #[test]
     fn the_docs_own_mismatch_example_is_caught() {
