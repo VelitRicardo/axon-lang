@@ -13,7 +13,8 @@
   <img src="https://img.shields.io/badge/streaming-SSE%20%7C%20NDJSON%20%7C%20WebSocket-brightgreen" alt="Streaming">
   <img src="https://img.shields.io/badge/realtime-session--typed-purple" alt="Session types">
   <img src="https://img.shields.io/badge/tests-5661%20axon--lang%20%2B%201700%20frontend-brightgreen" alt="Tests">
-  <img src="https://img.shields.io/badge/compliance-HIPAA%20%7C%20PCI__DSS%20%7C%20GDPR%20%7C%20SOX%20%7C%20SOC2%20%7C%20ISO27001%20%7C%20FIPS%20%7C%20CC%20EAL4%2B-blueviolet" alt="Compliance">
+  <img src="https://img.shields.io/badge/compliance-%CE%9A%20%3D%2015%20classes%20%C2%B7%20compile--time-blueviolet" alt="Compliance">
+  <img src="https://img.shields.io/badge/audit-SOC2%20%7C%20ISO27001%20%7C%20FIPS%20140--3%20%7C%20CC%20EAL4%2B-9cf" alt="Audit frameworks">
   <img src="https://img.shields.io/badge/persistence-postgresql-blue" alt="PostgreSQL">
   <img src="https://img.shields.io/badge/observability-tracing-green" alt="Tracing">
   <img src="https://img.shields.io/badge/license-AGPL--3.0--or--later-lightgrey" alt="License">
@@ -107,10 +108,17 @@ C23 source file with a Rust wrapper).
 
 Beyond cognition, AXON ships **Cognitive I/O** — a λ-calculus-based
 infrastructure layer where resources, control loops, observability, security
-kernels, and UI components carry their regulatory class (HIPAA / PCI_DSS /
-GDPR / SOX / SOC 2 / ISO 27001 / FIPS / CC EAL 4+) as a **compile-time type**.
-Programs that fail coverage are rejected *before* they run. No other
-programming language does this.
+kernels, and UI components carry their regulatory class as a **compile-time
+type**, drawn from a **closed vocabulary Κ of 15 classes**: HIPAA, PCI_DSS,
+GDPR, SOX, FINRA, ISO27001, SOC2, FISMA, GxP, CCPA, NIST_800_53, and — since
+§124 — Brazil's LGPD, Mexico's LFPDPPP and NOM151, Colombia's LEY1581. An
+unknown label is a **compile error** with a one-edit suggestion
+(`axon-T1214`: `[HIPPA]` is refused, `HIPAA` is suggested). FIPS 140-3 and
+CC EAL 4+ are *audit frameworks* the evidence
+engine targets — deliberately **not** members of Κ: κ classifies what data
+*is*; a framework is what the implementation is *audited against*. Programs
+that fail coverage are rejected *before* they run. No other programming
+language does this.
 
 **v2.3.0 (Fase 41) adds the first session-typed real-time dialogue primitive in
 any production language**: declare a `session` (the bidirectional protocol),
@@ -150,7 +158,7 @@ error**, not a post-mortem finding.
 
 ### Hard differentiators vs. Terraform / Pulumi / Kubernetes manifests
 
-1. **Compile-time compliance.** `shield<HIPAA>` / `type PatientRecord compliance [HIPAA, GDPR]` are *types*. A `.axon` program that sends PHI to an unshielded endpoint fails `axon check` — same exit code as a syntax error.
+1. **Compile-time compliance.** `shield<HIPAA>` / `type PatientRecord compliance [HIPAA, GDPR]` are *types*. A `.axon` program that sends PHI to an unshielded endpoint fails `axon check` — same exit code as a syntax error. The rule guards **every κ-carrying boundary**: HTTP endpoints (`axon-T957`), typed channels at declaration (`axon-T1215`, §124 — a `Channel<T>` handle inherits `T`'s κ), and again at π-calculus `publish` for IR that bypassed the checker (the typed bus derives its predicate from the same IR it registers channels from, fail-closed). The audit engine scores **coverage holding**, never label presence.
 2. **Blame Calculus (Findler–Felleisen).** Every error is classified as **CT-1** (axon/runtime bug), **CT-2** (program author: anchor breach, expired lease), or **CT-3** (infrastructure: partition, missing credential, provider quota). No silent downgrades.
 3. **Audit-ready artefacts.** `axon dossier` + `axon sbom` + `axon audit --framework {soc2,iso27001,fips,cc,all}` + `axon evidence-package` produce byte-identical, deterministic JSON/ZIP — the SHA-256 of every output is a *contract* against your release.
 4. **100% Rust + C23 runtime, no interpreter.** The whole stack — lexer, parser, type-checker, IR, the algebraic-effects execution engine, the HTTP server, the seven LLM backends, the streaming wire, the session-typed WebSocket driver — is a single native Rust binary; the FIPS-routable cryptographic + tokeniser kernels live in [`axon-csys`](axon-csys/) as standalone C23 (no `unsafe` glue: `_Generic`-dispatched headers, `[[nodiscard]]` everywhere, sanitizer-clean, valgrind-clean). `cargo install axon-lang`. No GC, no interpreter, no runtime dependency.
@@ -205,6 +213,10 @@ X app.axon  1 error(s)
 
 That failure is a **type error**, not a lint warning — `axon check` exits `1` and nothing downstream will build. The rule is a real set difference over the regulatory classes carried by the boundary's `body:` and `output:` types, so a shield that covers *some* of them fails too, naming exactly the ones it misses.
 
+The vocabulary itself is closed (`axon-T1214`): `compliance: [HIPPA]` is refused with the suggestion `HIPAA`, so a symmetric typo can never satisfy the coverage difference. The same set-difference rule guards `channel` declarations (`axon-T1215` — a channel whose payload carries κ needs a covering shield before `publish` may extrude it), and is re-checked at runtime `publish` for IR that never met the checker.
+
+**Strength, stated precisely.** What Κ membership buys is *machine-checked at compile time*: vocabulary closure (T1214) and shield coverage at every κ-carrying boundary (T957 endpoints, T1215 channels), re-verified at deploy and at `publish`. What it does not buy: the *semantic* obligations of each regulation (what HIPAA requires operationally) are the adopter's shield/flow design — AXON gives the mechanism (NOM151 → `axonstore` sealed audit chains; LFPDPPP / LGPD / LEY1581 → `shield` redaction and κ-coverage), the adopter supplies the policy. The audit engine maps controls to evidence with that qualifier stated, and its FIPS 140-3 posture is *algorithmically conformant, not formally validated* — CAVP/CMVP are laboratory engagements no compiler can close.
+
 ### Reference programs
 
 - [`examples/healthcare_reference.axon`](examples/healthcare_reference.axon) — HIPAA + GDPR + GxP + SOC 2
@@ -233,7 +245,7 @@ AXON v2.3.0 is **production-ready**. The full stack is cross-validated, 100% Rus
 - ✅ **Multiparty projection (v2.3.0)** — `GlobalType` + `project_all` (Honda–Yoshida–Carbone safe-realizability gate) for n-agent skill/tool topologies
 - ✅ `axonendpoint` as a first-class HTTP REST primitive — typed routes, body + output schema validation, `Idempotency-Key`, auth scopes
 - ✅ `axonstore` cognitive data plane — epistemically typed rows, HMAC-Merkle audit chains, `Stream<Row>`, capability-typed access
-- ✅ Compile-time regulatory compliance for HIPAA / PCI_DSS / GDPR / SOX / SOC 2 / ISO 27001 / FIPS / CC EAL 4+
+- ✅ Compile-time regulatory compliance — closed Κ of 15 classes (US + EU + LATAM: LGPD, LFPDPPP, NOM151, LEY1581), vocabulary closed by `axon-T1214`, coverage enforced at endpoints (`axon-T957`) and channels (`axon-T1215`) with a fail-closed re-check at `publish`; audit engine targets SOC 2 / ISO 27001 / FIPS 140-3 / CC EAL 4+
 - ✅ Cognitive immune system (anomaly detection + reflex + heal) paper-faithful
 - ✅ Post-Quantum signatures: HMAC-SHA256 baseline + Ed25519 + ML-DSA-65 + Hybrid (NIST SP 800-208)
 - ✅ **`axon-csys` C23 kernels** — FIPS-routable SHA-256 / HMAC-SHA256 / SIMD G.711 / BPE tokeniser / FSM dispatch (computed gotos) / buffer pool (207× faster than Vec<u8>) — standalone C23 with sanitizer-clean + valgrind-clean CI lanes
@@ -4823,7 +4835,7 @@ know {
 | Immune     | `immune`      | 5     | KL-divergence + Free-Energy anomaly sensor with temporal decay (paper §5.2–5.3) |
 | Reflex     | `reflex`      | 5     | Deterministic O(1) LLM-free motor response with HMAC-signed traces + idempotency (paper §4.2) |
 | Heal       | `heal`        | 5     | Linear-Logic one-shot patch kernel with `audit_only` / `human_in_loop` / `adversarial` modes (paper §6–7) |
-| Compliance | `compliance`  | 6.1   | κ regulatory class annotation (HIPAA, PCI_DSS, GDPR, SOX, SOC2, ISO27001, FISMA, GxP, CCPA, NIST_800_53) enforced at compile time |
+| Compliance | `compliance`  | 6.1   | κ regulatory class annotation — closed vocabulary Κ of 15 (HIPAA, PCI_DSS, GDPR, SOX, FINRA, ISO27001, SOC2, FISMA, GxP, CCPA, NIST_800_53, LGPD, LFPDPPP, NOM151, LEY1581), unknown labels refused with a suggestion (`axon-T1214`) |
 | Endpoint   | `axonendpoint`| 6.1   | HTTP boundary with compile-time `shield.compliance ⊇ type.compliance` coverage rule (Regulatory Type Theory) |
 | Component  | `component`   | 9     | Reusable UI fragment with `renders` + `via_shield` + `on_interact` — regulated types require shield coverage at compile time |
 | View       | `view`        | 9     | Top-level UI screen composing declared components with optional `route` + session-typed reactivity (deferred to §9.3.b/§9.4.b renderers) |
