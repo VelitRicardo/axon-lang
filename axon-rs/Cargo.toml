@@ -1,6 +1,6 @@
 [package]
 name = "axon-lang"
-version = "3.0.0"
+version = "4.0.0"
 authors = ["AXON Project", "Ricardo Velit"]
 edition = "2021"
 rust-version = "1.95"
@@ -64,7 +64,7 @@ path = "src/main.rs"
 # without dragging tokio/axum/sqlx/aws. Path is used for in-tree builds;
 # `version` makes the dep cargo-publishable (crates.io requires non-path
 # deps to carry a version specifier).
-axon-frontend = { path = "../axon-frontend", version = "=2.0.0" }
+axon-frontend = { path = "../axon-frontend", version = "=3.0.0" }
 # §Fase 116.a — the axon-agora protocol layer (the first official library):
 # Platform/Operation enums, the SocialConnector seam, scope/protocol/posture/
 # quota single-source-of-truth. Pure data + traits (serde only) — the network
@@ -206,7 +206,7 @@ bytes = "1"
 #   C toolchain a hard REQUIREMENT of `cargo install axon-lang` — not a slow
 #   install, a FAILED one (verified: exit 101, "ToolNotFound"). Turn the
 #   kernels back on with `--features csys-native`.
-axon-csys = { path = "../axon-csys", version = "=0.3.0", default-features = false }
+axon-csys = { path = "../axon-csys", version = "=0.4.0", default-features = false }
 # §Fase 101.e — the IDP-E sidecar's hostile image DECODE (PNG/JPEG/BMP/TIFF).
 # OPTIONAL + behind the `idpe-sidecar` feature so the main runtime NEVER links a
 # CVE-prone image parser: decode runs ONLY in the isolated `idpe-sidecar` binary

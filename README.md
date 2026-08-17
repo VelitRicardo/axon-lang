@@ -1,5 +1,5 @@
 <p align="center">
-  <strong>AXON</strong> <em>v3.0.0</em><br>
+  <strong>AXON</strong> <em>v4.0.0</em><br>
   Axon is the Cognitive Runtime for Enterprise Software.<br><br>
   Build AI systems with deterministic execution, formal guarantees and
   native cognitive primitives.
@@ -7,12 +7,12 @@
 
 <p align="center">
   <a href="https://www.ricardovelit.com/axon-docs"><img src="https://img.shields.io/badge/docs-ricardovelit.com%2Faxon--docs-blue" alt="Documentation"></a>
-  <img src="https://img.shields.io/badge/version-v3.0.0-informational" alt="Version">
+  <img src="https://img.shields.io/badge/version-v4.0.0-informational" alt="Version">
   <img src="https://img.shields.io/badge/status-production-brightgreen" alt="Status: Production">
   <img src="https://img.shields.io/badge/runtime-100%25%20Rust%20%2B%20C23-orange" alt="100% Rust + C23">
   <img src="https://img.shields.io/badge/streaming-SSE%20%7C%20NDJSON%20%7C%20WebSocket-brightgreen" alt="Streaming">
   <img src="https://img.shields.io/badge/realtime-session--typed-purple" alt="Session types">
-  <img src="https://img.shields.io/badge/tests-5661%20axon--lang%20%2B%201700%20frontend-brightgreen" alt="Tests">
+  <img src="https://img.shields.io/badge/tests-5700%20axon--lang%20%2B%201725%20frontend-brightgreen" alt="Tests">
   <img src="https://img.shields.io/badge/compliance-%CE%9A%20%3D%2015%20classes%20%C2%B7%20compile--time-blueviolet" alt="Compliance">
   <img src="https://img.shields.io/badge/audit-SOC2%20%7C%20ISO27001%20%7C%20FIPS%20140--3%20%7C%20CC%20EAL4%2B-9cf" alt="Audit frameworks">
   <img src="https://img.shields.io/badge/persistence-postgresql-blue" alt="PostgreSQL">
@@ -82,11 +82,11 @@ three.
 
 > **Two repositories, two version lines.** This repo (`axon-lang`,
 > AGPL-3.0-or-later, public) ships the **language + runtime + compiler + 7 LLM
-> backends + Cognitive I/O + WebSocket session types** — currently **v3.0.0**.
+> backends + Cognitive I/O + WebSocket session types** — currently **v4.0.0**.
 > The commercial control plane (`axon-enterprise`, EULA, private) layers
 > multi-tenant identity / RBAC / SSO / metering / audit / vertical compliance
 > **on top of** this language via a pinned Cargo dependency — currently
-> **v3.100.0**. The version numbers diverge by design (enterprise iterates on
+> **v4.x**. The version numbers diverge by design (enterprise iterates on
 > the SaaS surface independently of the language). If you don't run a
 > commercial Axon deployment, this repo is all you need; the badge above is
 > the only version that matters for you.
