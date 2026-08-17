@@ -241,6 +241,31 @@ fn main() {
     build.file(c_src.join("crypto").join("util.c"));
     build.file(c_src.join("crypto").join("continuity.c"));
 
+    // ─── UBSan wiring — owned HERE, beside the two-archive split ───────────
+    //
+    // The CI's UBSan lane used to inject `-fsanitize=undefined` through the
+    // global CFLAGS env, which cc applies LAST ("to allow these to override
+    // everything else" — cc-rs 1.4.2), so no per-archive `-fno-sanitize` in
+    // this script could win, and a runtime suppressions file proved fragile
+    // in practice (orlp's ge.c trap was followed by sc.c on the rerun).
+    //
+    // So the sanitizer's SCOPE is decided where the two-standards split
+    // already lives: `AXON_CSYS_UBSAN=1` instruments the STRICT archive —
+    // every kernel this project writes — and never the vendored one.
+    // Vendored reference code left-shifts negative signed values in its
+    // constant-time selects (defined in C23, UB before it, upstream idiom);
+    // it is provenance-pinned byte-identical to upstream (D124.6), so it is
+    // not patched, and its correctness is held by KATs + cross-
+    // implementation interop, not by sanitizing code we must not edit.
+    println!("cargo:rerun-if-env-changed=AXON_CSYS_UBSAN");
+    let ubsan = std::env::var_os("AXON_CSYS_UBSAN").is_some_and(|v| v == "1");
+    if ubsan {
+        // GNU-style flags: silently dropped on MSVC by flag_if_supported,
+        // which is correct — the CI lane pinning this is linux × clang.
+        build.flag_if_supported("-fsanitize=undefined");
+        build.flag_if_supported("-fno-sanitize-recover=undefined");
+    }
+
     build.compile("axon_csys");
 
     // ─── §Fase 124.b — the VENDORED half of the cryptographic boundary ────────

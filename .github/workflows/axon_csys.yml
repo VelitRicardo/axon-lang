@@ -306,23 +306,31 @@ jobs:
       - name: cargo test with C-side UBSan
         working-directory: axon-csys
         env:
-          CFLAGS: "-fsanitize=undefined -fno-omit-frame-pointer -O1 -g"
+          # §124.b — the sanitizer is NOT injected via global CFLAGS any
+          # more: cc applies env CFLAGS last, so it reached the VENDORED
+          # archive too, and upstream reference crypto trips shift-base by
+          # idiom (constant-time selects left-shift negative values —
+          # defined in C23, UB before it). A runtime suppressions file
+          # proved fragile (ge.c suppressed, sc.c trapped on rerun).
+          # `AXON_CSYS_UBSAN=1` makes build.rs instrument the STRICT
+          # archive — every kernel we write — and never the vendored one,
+          # whose correctness is held by KATs + interop. The scope decision
+          # lives in build.rs beside the two-archive split it belongs to.
+          AXON_CSYS_UBSAN: "1"
+          CFLAGS: "-fno-omit-frame-pointer -O1 -g"
           # rustc does not implement the `undefined` sanitizer (only
           # address / leak / thread / memory / hwaddress). The C
-          # kernels are compiled with `-fsanitize=undefined` via
-          # `CFLAGS`; that pulls in `__ubsan_handle_*` runtime symbols
-          # that the final link must resolve. Default rust-lld does
-          # not auto-link the libubsan runtime — explicitly route the
-          # final link through clang-17 (which adds `-lubsan` when it
-          # sees `-fsanitize=undefined`). `-Clink-arg=-fsanitize=
-          # undefined` propagates the flag from rustc to the wrapped
-          # linker; `-Clinker=clang-17` swaps rust-lld out.
+          # kernels are compiled with `-fsanitize=undefined` (via
+          # build.rs, see above); that pulls in `__ubsan_handle_*`
+          # runtime symbols that the final link must resolve. Default
+          # rust-lld does not auto-link the libubsan runtime —
+          # explicitly route the final link through clang-17 (which
+          # adds `-lubsan` when it sees `-fsanitize=undefined`).
+          # `-Clink-arg=-fsanitize=undefined` propagates the flag from
+          # rustc to the wrapped linker; `-Clinker=clang-17` swaps
+          # rust-lld out.
           RUSTFLAGS: "-Clinker=clang-17 -Clink-arg=-fsanitize=undefined -Cforce-frame-pointers=yes"
-          # §124.b — `suppressions=` covers exactly one known finding in
-          # VENDORED code (orlp ge.c's constant-time select; defined in C23,
-          # UB before it). See ubsan.supp for the full rationale; our own
-          # kernels get no suppression.
-          UBSAN_OPTIONS: "print_stacktrace=1:abort_on_error=1:halt_on_error=1:suppressions=${{ github.workspace }}/axon-csys/ubsan.supp"
+          UBSAN_OPTIONS: "print_stacktrace=1:abort_on_error=1:halt_on_error=1"
         run: cargo test --release --verbose
 
   # Valgrind exercises a separate-binary code path that ASan can't —
