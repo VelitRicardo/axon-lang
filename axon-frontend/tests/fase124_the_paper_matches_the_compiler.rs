@@ -99,29 +99,40 @@ fn the_papers_regulatory_vocabulary_is_the_compilers() {
     );
 }
 
-/// The paper must not reassert, in the present tense, the two things §124 has
-/// not built yet.
+/// The paper must not claim, in the present tense, what §124 has not built.
 ///
-/// This is narrower than it looks: it forbids exactly the phrasings that were
-/// removed, not the topics. The paper is expected to DISCUSS post-quantum
-/// signing and the LATAM vocabulary — it is expected to mark them as pending
-/// while they are, which the surrounding text does.
+/// # The history of this test IS its argument
+///
+/// Its first version required the paper to say the hybrid signature was
+/// *"diseñado y no construido"* — because it was. §124.b then built it:
+/// vendored kernels, KATs, cross-implementation interop, and the
+/// `evidence-package` wiring. Removing the "not built" phrase made THIS TEST
+/// FAIL, which is the gate working — and this edit updates it in the same
+/// change that made the claim true, which is the only honest order.
+///
+/// What the paper may now assert: the hybrid scheme, implemented and verified,
+/// producing a detached signature over the package bytes. What it still may
+/// NOT assert: non-repudiation (per-package keys prove integrity, not durable
+/// identity — custody is named pending work) and CAVP validation.
 #[test]
 fn the_paper_does_not_claim_the_unbuilt_as_delivered() {
-    // The PQC scheme is designed and feature-gated; `FIPS.KAT_ED25519` carries
-    // the literal locator "PENDING".
+    // The delivered scope, stated precisely — both anchors must survive.
     assert!(
-        PAPER.contains("diseñado y no construido"),
-        "§4.2 must keep stating that the hybrid post-quantum signature is designed and not \
-         built. `esk/provenance.rs` says `future §Fase 6.3 work`; a cryptographic guarantee \
-         asserted in a document aimed at regulated buyers is the single most refutable claim \
-         a paper can carry, and the easiest for an assessor to check."
+        PAPER.contains("integridad del paquete desde su empaquetado"),
+        "§4.2 must state the guarantee the signature actually delivers: package integrity \
+         since packaging."
+    );
+    assert!(
+        PAPER.contains("ni, por tanto, no repudio"),
+        "§4.2 must keep the explicit disclaimer: per-package keys do not constitute durable \
+         signer identity, and therefore not non-repudiation. NOM-151's retention argument \
+         leans on non-repudiation, which makes THIS the overclaim a regulated reader would \
+         act on."
     );
     assert!(
         !PAPER.contains("Inmutabilidad Post-Cuántica"),
-        "the Conclusions must not list post-quantum immutability as a delivered guarantee \
-         until Ed25519 + ML-DSA-65 are implemented and their NIST CAVP known-answer vectors \
-         run in the suite (§124-B)."
+        "the Conclusions must not resurrect the old blanket heading — the delivered claim \
+         is the hybrid signature with its scope stated, not 'immutability'."
     );
 
     // §111 retracted `taint:` with its own diagnostic.

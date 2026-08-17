@@ -3,10 +3,12 @@
 //! Direct port of `axon/runtime/esk/provenance.py`.
 //!
 //! Signed ΛD envelopes + Merkle-hash audit chain. HMAC-SHA256 is the
-//! always-available baseline; Ed25519 / ML-DSA-65 (Dilithium3) / Hybrid
-//! are feature-gated (future §Fase 6.3 work). Canonical serialization
-//! guarantees the Python golden and Rust output produce byte-identical
-//! `data_hash` and `payload_hash` values.
+//! always-available baseline; the hybrid Ed25519 ‖ ML-DSA-65 signer landed
+//! in §Fase 124.b as `esk::hybrid_signer::HybridSigner` — plain text, not an
+//! intra-doc link, because that module is gated on `csys-native` and a link to
+//! it breaks rustdoc under the default features. Canonical
+//! serialization guarantees the Python golden and Rust output produce
+//! byte-identical `data_hash` and `payload_hash` values.
 
 #![allow(dead_code)]
 

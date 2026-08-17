@@ -140,21 +140,25 @@ El expediente regulatorio (axon dossier) genera una estructura JSON determinista
 
 La lista de materiales de software (axon sbom) construye la estructura de dependencias en formatos CycloneDX y SPDX, detallando los paquetes de aplicación, las bibliotecas vinculadas y la integridad de los módulos C23 del núcleo axon-csys. Por su parte, el informe de auditoría (axon audit --framework all) evalúa el código fuente frente a una matriz de 108 controles mapeados:
 
-4.2 Frontera Criptográfica: Núcleo Nativo C23 y Hoja de Ruta Post-Cuántica (PQC)
+4.2 Frontera Criptográfica: Núcleo Nativo C23 y Firma Híbrida Post-Cuántica (PQC)
 
 **Frontera criptográfica.** El sistema distribuye las primitivas criptográficas entre dos módulos, y la distinción es relevante para cualquier evaluación bajo FIPS 140-3, que exige una frontera declarada:
 
 - El **hashing y la tokenización** residen en la biblioteca nativa axon-csys. Diseñada bajo el estándar C23, implementa SHA-256 (`sha256.c`), HMAC-SHA256 (`hmac.c`) y tokenización BPE (`bpe.c`), utilizando construcciones _Generic para evitar sobrecostes por despacho dinámico, anotaciones [[nodiscard]] para impedir la omisión del análisis de retornos de funciones de seguridad, y ejecuciones limpias de análisis estático y dinámico mediante Valgrind y sanitizadores de memoria. Estas implementaciones son algorítmicamente conformes con FIPS 180-4 y FIPS 198-1, y no están formalmente validadas (§3.2).
 - La **firma de envolturas y la cadena Merkle de procedencia** residen en el runtime Rust (`esk/provenance.rs`), sobre un rasgo `Signer` que abstrae el algoritmo empleado.
 
-**Estado actual del esquema de firma.** La línea base entregada y verificable es **HMAC-SHA256 sobre una cadena Merkle de anexado exclusivo**, que es hoy el único implementador del rasgo `Signer`. Sobre esa base, el diseño contempla el siguiente esquema de firma ágil y resistente a la computación cuántica:
+**Estado del esquema de firma.** La línea base siempre disponible es **HMAC-SHA256 sobre una cadena Merkle de anexado exclusivo**. Sobre ella, la Fase 124.b implementó el esquema de firma ágil y resistente a la computación cuántica:
 
 $$\text{Signature}_{\text{bundle}} = \text{Ed25519}(H) \parallel \text{ML-DSA-65}(H)$$
 ![alt text](image-8.png)
 
 donde $H = \text{SHA-256}(\text{Artefacto})$, y ML-DSA-65 corresponde al estándar de firma basada en redes cristalinas NIST FIPS 204 (Dilithium).
 
-Este esquema híbrido se encuentra **diseñado y no construido**: los algoritmos Ed25519 y ML-DSA-65 están definidos tras banderas de compilación y el control `FIPS.KAT_ED25519` del motor de auditoría declara su propia ausencia con el localizador `PENDING`. Su implementación, junto con los vectores de prueba conocidos (KAT) del programa NIST CAVP, constituye el objeto de la Fase 124. Hasta que dichos vectores se ejecuten en la suite, este documento no afirma no repudio post-cuántico: una garantía criptográfica declarada y no ejecutada es precisamente la clase de afirmación que la arquitectura descrita en este trabajo existe para eliminar.
+Las tres primitivas residen como implementaciones de referencia vendorizadas dentro de la frontera C23 — FIPS 202 y ML-DSA-65 desde PQClean, Ed25519 de linaje ref10/SUPERCOP — fijadas por commit y por hash SHA-256 de cada archivo en un manifiesto de procedencia cuya verificación forma parte de la suite: una copia editada localmente falla la compilación. La verificación de cada primitiva es doble: **vectores publicados** (FIPS 202 para SHAKE; RFC 8032 §7.1 byte-exacto para Ed25519, incluida la derivación semilla→clave pública) y **contraste con implementaciones independientes** (byte-identidad de firmas Ed25519 con `ed25519-dalek`; interoperabilidad bidireccional con la implementación FIPS 204 de RustCrypto para ML-DSA-65, cuyo firmado con cobertura aleatoria — *hedged* — no admite vectores fijos). Un par de implementaciones equivocadas de la misma manera se valida a sí mismo indefinidamente; el contraste cruzado es lo que lo excluye.
+
+El comando `axon evidence-package` emite la firma híbrida **separada del paquete** (detached), sobre los bytes exactos del ZIP: el paquete conserva su determinismo byte-a-byte y el archivo de firma transporta las claves públicas necesarias para verificarlo sin acceso al firmante.
+
+**Alcance preciso de la garantía.** Las claves se generan por paquete, de modo que la firma prueba la **integridad del paquete desde su empaquetado** y no constituye identidad durable del firmante ni, por tanto, no repudio. La identidad durable exige custodia de claves (la integración con la infraestructura de custodia de §94 es trabajo nombrado de esta línea), y el sellado de tiempo ante un Prestador de Servicios de Certificación (NOM-151) exige un servicio externo aún no integrado. La validación CAVP/CMVP sigue pendiente (§3.2). Cada uno de estos límites está escrito en el propio archivo de firma que el comando emite.
 
 5. Verificación Formal y Principio de "Attested Ledger" (Fases 121, 122 y 123)
 
@@ -212,7 +216,7 @@ El modelo proporciona las siguientes garantías fundamentales:
 
 2. Soporte Transjurisdiccional: clases regulatorias validadas en tiempo de compilación para Europa (GDPR, ISO 27001) y Norteamérica (SOC 2, HIPAA, PCI DSS, SOX, FINRA, FISMA, NIST SP 800-53, GxP, CCPA), y primitivas de ejecución que sostienen los controles exigidos por EU AI Act, FIPS 140-3, Ley 1581 (Colombia), Ley 25.326 (Argentina) y PIPEDA (Canadá). La incorporación de México (NOM-151-SCFI-2016, LFPDPPP), Brasil (LGPD) y Centroamérica al vocabulario cerrado $\mathrm{K}$ constituye el objeto de la Fase 124 y no se declara aquí como entregada.
 
-3. Cadena de Evidencias Determinista: generación reproducible de paquetes de evidencia (dossier, sbom, audit, evidence-package) encadenados mediante HMAC-SHA256 sobre una estructura Merkle de anexado exclusivo, con hashing SHA-256 ejecutado en C23 (axon-csys). El esquema de firma híbrido post-cuántico (Ed25519 ‖ ML-DSA-65, NIST FIPS 204) está diseñado y pendiente de implementación y verificación por vectores CAVP; hasta entonces no se afirma no repudio post-cuántico.
+3. Cadena de Evidencias Determinista con Firma Híbrida Post-Cuántica: generación reproducible de paquetes de evidencia (dossier, sbom, audit, evidence-package) encadenados mediante HMAC-SHA256 sobre una estructura Merkle de anexado exclusivo, y firmados por `axon evidence-package` con el esquema híbrido Ed25519 ‖ ML-DSA-65 (NIST FIPS 204) en forma separada sobre los bytes exactos del paquete — primitivas vendorizadas dentro de la frontera C23, verificadas por vectores publicados e interoperabilidad con implementaciones independientes. La garantía entregada es integridad desde el empaquetado; la identidad durable del firmante (custodia de claves) y la validación CAVP permanecen pendientes y nombradas (§4.2).
 
 4. Verificación de Capacidades en Despliegue: Aplicación del principio de Attested Ledger (Fase 122), rechazando programas cuya ejecución requiera capacidades no soportadas por la infraestructura de destino.
 
