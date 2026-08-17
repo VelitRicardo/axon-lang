@@ -27,6 +27,7 @@ use axon::runtime::channels::{TypedChannelError, TypedEventBus};
 
 const COVERED: &str = "tests/fixtures/fase124_c_channel_kappa/phi_relay.axon";
 const UNCOVERED: &str = "tests/fixtures/fase124_c_channel_kappa/phi_relay_uncovered.axon";
+const GHOST: &str = "tests/fixtures/fase124_c_channel_kappa/phi_relay_ghost_shield.axon";
 
 fn read_fixture(rel: &str) -> String {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(rel);
@@ -87,6 +88,31 @@ fn the_uncovered_declaration_is_refused_at_check_time() {
          offending shield — got: {:?}",
         errors.iter().map(|e| &e.message).collect::<Vec<_>>()
     );
+}
+
+/// 🎯 The fail-closed branch: a channel whose `shield:` names something the
+/// IR cannot resolve, carrying regulated κ. The checker refuses this as an
+/// undefined reference — but IR that never met the checker reaches `publish`
+/// with it, and an unresolvable control covers NOTHING. This test exists
+/// because the first mutation round flipped `None => false` to `None => true`
+/// in the predicate and every other test stayed green.
+#[tokio::test]
+async fn a_shield_the_ir_cannot_resolve_covers_nothing() {
+    let src = read_fixture(GHOST);
+    let ir = ir_unchecked(&src, GHOST);
+    let bus = TypedEventBus::from_ir_program(&ir);
+
+    let err = bus
+        .publish("PhiFeed", "GhostGate")
+        .await
+        .expect_err("GhostGate is declared by no shield — it must fail closed");
+    match &err {
+        TypedChannelError::CapabilityGate(msg) => assert!(
+            msg.contains("does not cover compliance"),
+            "the refusal must come from the compliance predicate — got: {msg}"
+        ),
+        other => panic!("expected CapabilityGate, got {other:?}"),
+    }
 }
 
 /// 🎯 Door 2 — the SAME source, lowered past the checker, still cannot

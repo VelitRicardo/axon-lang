@@ -1,0 +1,9 @@
+type PatientRecord compliance [HIPAA, PCI_DSS] {
+  id: String
+  chart: String
+}
+
+channel PhiFeed {
+  message: PatientRecord
+  shield: GhostGate
+}
