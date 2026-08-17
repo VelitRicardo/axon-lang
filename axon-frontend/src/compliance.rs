@@ -164,6 +164,47 @@ fn edit_distance_at_most_1(a: &str, b: &str) -> bool {
     true
 }
 
+/// Peel the type constructors that are transparent to κ:
+/// `FlowEnvelope<T>` / `List<T>` / `Stream<T>` carry the κ of `T`, and `?`
+/// (optionality) is orthogonal to what the data IS.
+///
+/// §Fase 124.c — hoisted here from `type_checker`'s private helper because a
+/// THIRD consumer arrived (the audit engine's coverage rule, joining T957 and
+/// the typed-bus predicate) and three private copies of "what wraps a type
+/// without changing its κ" is how the copies drift — §122.e paid for exactly
+/// that with a law written three times.
+pub fn peel_type_constructors(type_ref: &str) -> &str {
+    let mut t = type_ref.trim();
+    t = t.strip_suffix('?').unwrap_or(t).trim();
+    loop {
+        let peeled = ["FlowEnvelope<", "List<", "Stream<"].iter().find_map(|ctor| {
+            t.strip_prefix(*ctor)
+                .and_then(|rest| rest.strip_suffix('>'))
+                .map(|inner| inner.trim())
+        });
+        match peeled {
+            Some(inner) => t = inner.strip_suffix('?').unwrap_or(inner).trim(),
+            None => return t,
+        }
+    }
+}
+
+/// Peel a channel `message:` spelling to its payload leaf.
+///
+/// `Channel<…<T>>` peels to `T` — a second-order channel relays the same
+/// payload, so it carries the same κ — then the ordinary constructors peel
+/// via [`peel_type_constructors`].
+pub fn peel_channel_payload(spelling: &str) -> &str {
+    let mut leaf = spelling.trim();
+    while let Some(inner) = leaf
+        .strip_prefix("Channel<")
+        .and_then(|rest| rest.strip_suffix('>'))
+    {
+        leaf = inner.trim();
+    }
+    peel_type_constructors(leaf)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

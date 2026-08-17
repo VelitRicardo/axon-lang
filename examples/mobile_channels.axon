@@ -39,11 +39,15 @@ channel OrdersCreated {
 }
 
 // Second-order channel — carries OrdersCreated *handles* (mobility).
+// A handle to a regulated channel is regulated REACH: `Channel<Order>`
+// carries Order's κ through the wrapper, so this channel needs a
+// covering shield too (axon-T1215, §Fase 124.c — the dual of T957).
 channel BrokerHandoff {
     message:     Channel<Order>
     qos:         exactly_once
     lifetime:    affine
     persistence: persistent_axonstore  // handle survives reboots (§AS)
+    shield:      PublicBroker          // covers κ(Order) = [PCI_DSS]
 }
 
 // Consumer — receives a channel via BrokerHandoff, then listens on it.

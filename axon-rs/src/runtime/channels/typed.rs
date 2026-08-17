@@ -331,6 +331,55 @@ fn default_compliance_check() -> ShieldComplianceFn {
     Arc::new(|_, _| true)
 }
 
+/// §Fase 124.c — derive the compliance predicate from the SAME
+/// `IRProgram` the bus is built from: κ(payload type) must be covered
+/// by κ(shield) before `publish` extrudes a capability (D8).
+///
+/// This is the runtime enforcement of the rule `axon-T1215` decides at
+/// check time. Both exist deliberately: the checker refuses the
+/// declaration before the program ever runs, and THIS predicate is the
+/// fail-closed backstop for IR that never went through the checker
+/// (hand-assembled programs, older compiled artifacts). Before §124.c,
+/// `from_ir_program` handed every caller the permissive default — the
+/// two production doors (`daemon.rs`, `runner.rs`) built buses where a
+/// shield covering NOTHING satisfied a channel carrying PHI. That is
+/// the presence-vs-exercise defect §122 spent a fase on, in the one
+/// seam that extrudes capabilities to outside parties.
+///
+/// Semantics, fail-closed on the right side:
+/// - payload type unknown to the IR, or κ(payload) empty → pass
+///   (nothing regulated is carried; the shield-identity gate in
+///   `publish` still applies).
+/// - κ(payload) non-empty and the shield is unknown to the IR → REFUSE
+///   (an unresolvable control covers nothing).
+/// - otherwise → κ(payload) ⊆ κ(shield).
+fn compliance_check_from_ir(ir: &IRProgram) -> ShieldComplianceFn {
+    let type_kappa: HashMap<String, Vec<String>> = ir
+        .types
+        .iter()
+        .map(|t| (t.name.clone(), t.compliance.clone()))
+        .collect();
+    let shield_kappa: HashMap<String, Vec<String>> = ir
+        .shields
+        .iter()
+        .map(|s| (s.name.clone(), s.compliance.clone()))
+        .collect();
+    Arc::new(move |shield, handle| {
+        // Same peel the checker applies for T1215 — one definition,
+        // `axon_frontend::compliance`, so the two ends of this rule
+        // cannot drift on what wraps a payload without changing its κ.
+        let leaf = axon_frontend::compliance::peel_channel_payload(&handle.message);
+        let required = match type_kappa.get(leaf) {
+            Some(k) if !k.is_empty() => k,
+            _ => return true,
+        };
+        match shield_kappa.get(shield) {
+            Some(provided) => required.iter().all(|k| provided.contains(k)),
+            None => false,
+        }
+    })
+}
+
 // ═══════════════════════════════════════════════════════════════════
 //  PER-CHANNEL TRANSPORT — single-consumer FIFO
 // ═══════════════════════════════════════════════════════════════════
@@ -446,8 +495,14 @@ impl TypedEventBus {
 
     /// Bootstrap a bus from a fully-lowered `IRProgram` (post-13.c).
     /// Every `IRChannel` becomes a registered runtime handle.
+    ///
+    /// §Fase 124.c — the compliance predicate is derived from the SAME
+    /// IR (see [`compliance_check_from_ir`]): `publish` refuses a
+    /// shield whose κ does not cover the channel's payload κ. Callers
+    /// needing a different policy inject it via
+    /// [`from_ir_program_with`](Self::from_ir_program_with).
     pub fn from_ir_program(ir: &IRProgram) -> Self {
-        Self::from_ir_program_with(ir, default_compliance_check())
+        Self::from_ir_program_with(ir, compliance_check_from_ir(ir))
     }
 
     /// Same as [`from_ir_program`](Self::from_ir_program) but with a

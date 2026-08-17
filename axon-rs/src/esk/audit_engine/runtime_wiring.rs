@@ -246,7 +246,7 @@ const UNENFORCED_FEATURES: &[&str] = &[
 /// Is this program feature backed by a kernel that actually runs?
 ///
 /// `has_shield`, `has_endpoint`, `has_topology`, `has_manifest` and
-/// `has_compliance_annotation` are compile-time or genuinely-wired surfaces
+/// `compliance_coverage_holds` are compile-time or genuinely-wired surfaces
 /// and remain enforceable; the Cognitive-I/O family does not.
 pub fn feature_is_enforced(feature: &str) -> bool {
     !UNENFORCED_FEATURES.contains(&feature)
@@ -394,7 +394,10 @@ mod tests {
             );
         }
         // …and the genuinely-wired surfaces still count, as they always did.
-        for f in ["has_shield", "has_endpoint", "has_compliance_annotation"] {
+        // §124.c renamed `has_compliance_annotation` → `compliance_coverage_holds`
+        // when its meaning changed from presence to the coverage rule holding —
+        // enforced at check time (T957/T1215) and at the typed bus's `publish`.
+        for f in ["has_shield", "has_endpoint", "compliance_coverage_holds"] {
             assert!(feature_is_enforced(f), "`{f}` is wired and must still count");
         }
     }

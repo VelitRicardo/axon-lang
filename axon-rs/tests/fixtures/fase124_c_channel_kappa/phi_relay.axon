@@ -1,0 +1,16 @@
+type PatientRecord compliance [HIPAA, PCI_DSS] {
+  id: String
+  chart: String
+}
+
+shield PhiGate {
+  scan: [pii_leak]
+  on_breach: halt
+  severity: high
+  compliance: [HIPAA, PCI_DSS]
+}
+
+channel PhiFeed {
+  message: PatientRecord
+  shield: PhiGate
+}

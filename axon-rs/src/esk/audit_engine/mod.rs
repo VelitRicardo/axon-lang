@@ -6,6 +6,7 @@
 //! step that can precede an accredited lab or CPA engagement.
 
 pub mod control_statements;
+pub mod coverage;
 #[cfg(feature = "documents")]
 pub mod evidence_packager;
 pub mod frameworks;

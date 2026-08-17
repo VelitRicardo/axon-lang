@@ -794,10 +794,43 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     // unrepresentable, so the coverage law keeps its exact logic and stops
     // being satisfiable by nonsense. T957 was not edited.
     //
-    // What is still true, and is why this is `Partial` and not `Attested`: a
-    // declared framework still obliges the runtime to NOTHING. The values are
-    // now real, and they are still a label.
-    ("compliance", Partial { gap: "§123 — the VALUES are now a closed catalog (`axon-T1214`: `[NOT_A_FRAMEWORK]` and `[HIPPA]` are refused on all four declarations that carry the field), which also makes a symmetric typo unable to satisfy `axon-T957`. What remains: nothing ties a DECLARED framework to an obligation the runtime enforces. `axon-T957` proves `κ(shield) ⊇ κ(body) ∪ κ(output)` at compile time — a real set difference — but the channel seam that would check a shield covers a channel's κ at egress (`TypedEventBus::from_ir_program_with`) is reached only through a caller that hands it `|_,_| true`, and the audit engine still scores `has_compliance_annotation` by PRESENCE. An adopter reads `[PCI_DSS, SOX, HIPAA]` as an assertion about behaviour; today it is an assertion about vocabulary" }),
+    // §Fase 124 — the second half is closed, and the row is `Attested`.
+    //
+    // The three defects the §123 gap named, each with its fix:
+    //
+    // 1. THE CHANNEL SEAM. `TypedEventBus::from_ir_program` handed both
+    //    production callers (`daemon.rs`, `runner.rs`) the permissive
+    //    `|_,_| true` — a shield covering NOTHING satisfied a channel
+    //    carrying PHI at `publish`, the operation that extrudes a capability
+    //    to outside parties (D8). §124.c derives the predicate from the SAME
+    //    IR the bus registers channels from, and adds the missing dual of
+    //    T957 at CHECK time: `axon-T1215` refuses the uncovered DECLARATION
+    //    (a mid-flow refusal is the §122.c shape). Both doors are exercised
+    //    from the same `.axon` sources in the cited gate. T1215's first
+    //    catch was our own published example: `mobile_channels.axon`
+    //    documented "compliance MUST cover" in a comment and then declared a
+    //    second-order channel relaying κ=PCI_DSS with no shield at all.
+    //
+    // 2. PRESENCE SCORING. The audit engine granted
+    //    `has_compliance_annotation` on `!compliance.is_empty()` anywhere,
+    //    and on that feature the risk register asserted MITIGATION and the
+    //    gap analyzer marked C1.1/P1.1/P6.1/A.5.34 satisfied. The feature is
+    //    now `compliance_coverage_holds` — granted iff at least one
+    //    regulated boundary exists and EVERY one names a shield whose κ
+    //    covers the data's κ (`esk::audit_engine::coverage`, one definition
+    //    shared by both scorers). A label nothing carries grants nothing.
+    //
+    // 3. THE VOCABULARY (§123, recorded above): closed catalog, T1214.
+    //
+    // What a declared framework now OBLIGES, stated precisely: κ classes are
+    // machine-checked coverage obligations — refused at declaration when
+    // uncovered (T957 endpoints, T1215 channels), refused at publish for IR
+    // that never met the checker, and scored by the audit engine only when
+    // the rule HOLDS. What it still does not oblige, deliberately: the
+    // SEMANTIC content of each regulation (what HIPAA requires operationally)
+    // is the adopter's shield/flow design, not something a compiler can
+    // infer — the ESK maps controls to evidence with that qualifier stated.
+    ("compliance", Attested { fixture: "tests/fixtures/fase124_c_channel_kappa/phi_relay.axon", gate: "tests/fase124_c_channel_kappa.rs" }),
     ("component", Partial { gap: "§111 — the compile-time shield-coverage law over regulated κ IS genuinely enforced (a real set difference). But the component renders NOTHING; the README itself defers the renderer" }),
     ("view", Partial { gap: "§111 — only referential integrity is checked. No `route` check, no session-typed-reactivity check, and it renders nothing" }),
     // ── Enterprise I/O (Fases 80–85)

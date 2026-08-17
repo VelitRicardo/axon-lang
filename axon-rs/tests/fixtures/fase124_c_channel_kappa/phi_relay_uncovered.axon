@@ -1,0 +1,16 @@
+type PatientRecord compliance [HIPAA, PCI_DSS] {
+  id: String
+  chart: String
+}
+
+shield WeakGate {
+  scan: [pii_leak]
+  on_breach: halt
+  severity: high
+  compliance: [HIPAA]
+}
+
+channel PhiFeed {
+  message: PatientRecord
+  shield: WeakGate
+}

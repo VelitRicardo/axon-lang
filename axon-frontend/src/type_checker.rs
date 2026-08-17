@@ -12931,6 +12931,83 @@ impl<'a> TypeChecker<'a> {
                 _ => {}
             }
         }
+
+        // §Fase 124.c — axon-T1215: κ-coverage for the channel egress
+        // boundary. The exact dual of axon-T957: an axonendpoint carries
+        // regulated data across a TRUST boundary; a published channel
+        // carries it across a VISIBILITY boundary (D8 — publish extrudes
+        // a capability to parties outside the flow).
+        //
+        // WHY AT CHECK TIME AND NOT ONLY AT PUBLISH. The typed bus also
+        // refuses an uncovering shield at runtime (§124.c wires that
+        // predicate), but a refusal that arrives mid-flow is the §122.c
+        // shape — the program had already acted by the time it was told
+        // no. The declaration carries everything needed to decide
+        // statically (`message:` → κ, `shield:` → shield κ), so the
+        // decision is made here; the runtime check remains the
+        // fail-closed backstop for IR assembled outside this checker.
+        //
+        // WHY THE SHIELD AND NOT A LABEL — same doctrine as T957: a κ
+        // class is covered when something can ACT on a breach of it, and
+        // the shield (`scan:`, `on_breach:`) is the control. Channels
+        // deliberately carry no `compliance:` field: there is no label
+        // to mistake for coverage.
+        {
+            let base = crate::compliance::peel_channel_payload(&node.message);
+            let channel_kappa: std::collections::HashSet<&str> =
+                find_type_by_name(self.program, base)
+                    .map(|t| t.compliance.iter().map(|s| s.as_str()).collect())
+                    .unwrap_or_default();
+
+            if !channel_kappa.is_empty() {
+                let mut kappa_sorted: Vec<&str> = channel_kappa.iter().copied().collect();
+                kappa_sorted.sort_unstable();
+
+                if node.shield_ref.is_empty() {
+                    self.emit(
+                        format!(
+                            "axon-T1215 channel '{}' carries regulated data \
+                             (kappa = {{{}}}) but declares no `shield:`. A channel \
+                             without a shield is not publishable (D8), and a \
+                             regulated payload that can never be published is a \
+                             declaration contradiction — ESK Fase 6.1 coverage \
+                             rule, dual of axon-T957. Declare `shield: <Name>` on \
+                             the channel, where that shield lists at least [{}] in \
+                             its `compliance:`.",
+                            node.name,
+                            kappa_sorted.join(", "),
+                            kappa_sorted.join(", "),
+                        ),
+                        &node.loc,
+                    );
+                } else if let Some(shield) = find_shield_by_name(self.program, &node.shield_ref) {
+                    // An unknown `shield:` name is already reported by the
+                    // reference-integrity check above — do not double-report.
+                    let shield_kappa: std::collections::HashSet<&str> =
+                        shield.compliance.iter().map(|s| s.as_str()).collect();
+                    let mut missing: Vec<&str> =
+                        channel_kappa.difference(&shield_kappa).copied().collect();
+                    missing.sort_unstable();
+                    if !missing.is_empty() {
+                        self.emit(
+                            format!(
+                                "axon-T1215 channel '{}' declares `shield: {}`, but \
+                                 that shield does not cover kappa = {{{}}} carried by \
+                                 its message type — ESK Fase 6.1 coverage rule, dual \
+                                 of axon-T957. Add [{}] to shield '{}'s `compliance:` \
+                                 list, or name a shield that already covers them.",
+                                node.name,
+                                node.shield_ref,
+                                missing.join(", "),
+                                missing.join(", "),
+                                node.shield_ref,
+                            ),
+                            &node.loc,
+                        );
+                    }
+                }
+            }
+        }
     }
 
     /// Recursively validate a `message:` spelling.  `Channel<T>` peels
@@ -13641,22 +13718,10 @@ fn fmt_type_expr(t: &TypeExpr) -> String {
 /// regulatory classes. Mirrors the constructor set [`declared_cardinality`]
 /// recognises, and is total — an unrecognised or empty reference peels to
 /// itself, so a caller that finds no matching `type` simply contributes no κ.
-fn peel_type_constructors(type_ref: &str) -> &str {
-    let mut t = type_ref.trim();
-    // `?` marks an optional declaration — orthogonal to κ.
-    t = t.strip_suffix('?').unwrap_or(t).trim();
-    loop {
-        let peeled = ["FlowEnvelope<", "List<", "Stream<"].iter().find_map(|ctor| {
-            t.strip_prefix(*ctor)
-                .and_then(|rest| rest.strip_suffix('>'))
-                .map(|inner| inner.trim())
-        });
-        match peeled {
-            Some(inner) => t = inner.strip_suffix('?').unwrap_or(inner).trim(),
-            None => return t,
-        }
-    }
-}
+// §Fase 124.c — hoisted to `crate::compliance` when the audit engine became
+// the third consumer; re-imported here so every T957/T1215 call site keeps
+// its exact spelling.
+use crate::compliance::peel_type_constructors;
 
 fn find_type_by_name<'a>(program: &'a Program, name: &str) -> Option<&'a TypeDefinition> {
     for decl in &program.declarations {
@@ -14335,6 +14400,81 @@ mod fase13_typecheck_tests {
             errs.iter().any(|e| e.message.contains("not a shield")),
             "got: {:?}",
             errs
+        );
+    }
+
+    /// 🎯 §Fase 124.c — axon-T1215: a channel carrying regulated κ must name
+    /// a shield whose κ covers it, decided at CHECK time (the dual of T957).
+    #[test]
+    fn t1215_uncovered_regulated_channel_rejected() {
+        let src = r#"
+            type Phi compliance [HIPAA, PCI_DSS] { x: String }
+            shield Sieve { scan: [pii_leak] compliance: [HIPAA] }
+            channel PhiFeed { message: Phi shield: Sieve }
+        "#;
+        let errs = check_errors(src);
+        assert!(
+            errs.iter().any(|e| e.message.contains("axon-T1215")
+                && e.message.contains("PCI_DSS")
+                && !e.message.contains("HIPAA,")),
+            "must name exactly the MISSING classes (PCI_DSS, not the covered HIPAA) — got: {:?}",
+            errs
+        );
+    }
+
+    /// 🎯 axon-T1215 — a regulated payload with NO shield at all is a
+    /// declaration contradiction: it can never be published (D8).
+    #[test]
+    fn t1215_regulated_channel_without_shield_rejected() {
+        let src = r#"
+            type Phi compliance [HIPAA] { x: String }
+            channel PhiFeed { message: Phi }
+        "#;
+        let errs = check_errors(src);
+        assert!(
+            errs.iter()
+                .any(|e| e.message.contains("axon-T1215") && e.message.contains("no `shield:`")),
+            "got: {:?}",
+            errs
+        );
+    }
+
+    /// axon-T1215 peels `Channel<…<T>>` — a second-order channel relays the
+    /// same payload and carries the same κ.
+    #[test]
+    fn t1215_sees_through_second_order_channels() {
+        let src = r#"
+            type Phi compliance [HIPAA] { x: String }
+            shield Sieve { scan: [pii_leak] }
+            channel Relay { message: Channel<Phi> shield: Sieve }
+        "#;
+        let errs = check_errors(src);
+        assert!(
+            errs.iter().any(|e| e.message.contains("axon-T1215")),
+            "`Channel<Phi>` carries Phi's κ and Sieve covers nothing — got: {:?}",
+            errs
+        );
+    }
+
+    /// axon-T1215 stays silent when the shield covers the payload's κ — and
+    /// when the payload carries no κ at all (the pre-§124 tests above keep
+    /// passing for that reason, and this pins it explicitly).
+    #[test]
+    fn t1215_covered_or_unregulated_channels_stay_clean() {
+        let covered = r#"
+            type Phi compliance [HIPAA] { x: String }
+            shield Sieve { scan: [pii_leak] compliance: [HIPAA, SOC2] }
+            channel PhiFeed { message: Phi shield: Sieve }
+        "#;
+        assert!(check_errors(covered).is_empty(), "covering shield must satisfy T1215");
+
+        let unregulated = r#"
+            type Plain { x: String }
+            channel Feed { message: Plain }
+        "#;
+        assert!(
+            check_errors(unregulated).is_empty(),
+            "a κ-free payload obliges nothing — no shield required"
         );
     }
 

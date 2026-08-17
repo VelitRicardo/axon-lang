@@ -139,12 +139,14 @@ fn declared_features(program: &IRProgram) -> HashSet<String> {
     if !program.topologies.is_empty()   { features.insert("has_topology".into()); }
     if !program.endpoints.is_empty()    { features.insert("has_endpoint".into()); }
 
-    let has_any_compliance = program.types.iter().any(|t| !t.compliance.is_empty())
-        || program.shields.iter().any(|s| !s.compliance.is_empty())
-        || program.endpoints.iter().any(|e| !e.compliance.is_empty())
-        || program.manifests.iter().any(|m| !m.compliance.is_empty());
-    if has_any_compliance {
-        features.insert("has_compliance_annotation".into());
+    // §124.c — was `has_compliance_annotation`, granted on the mere PRESENCE
+    // of a label anywhere; C1.1 / P1.1 / P6.1 / A.5.34 counted as satisfied
+    // by a κ-annotated type flowing through a shield that covered nothing.
+    // The feature now means the coverage rule HOLDS: every regulated
+    // boundary names a shield whose κ covers the data's κ. One definition,
+    // `coverage.rs`, shared with the risk register (§120.e).
+    if super::coverage::compliance_coverage_holds(program) {
+        features.insert("compliance_coverage_holds".into());
     }
     features
 }
@@ -187,17 +189,17 @@ fn feature_requirements() -> HashMap<&'static str, HashSet<&'static str>> {
     m.insert("CC7.3",  HashSet::from(["has_immune"]));
     m.insert("CC7.4",  HashSet::from(["has_reflex", "has_heal"]));
     m.insert("CC7.5",  HashSet::from(["has_reconcile"]));
-    m.insert("C1.1",   HashSet::from(["has_compliance_annotation"]));
+    m.insert("C1.1",   HashSet::from(["compliance_coverage_holds"]));
     m.insert("PI1.4",  HashSet::from(["has_ensemble"]));
-    m.insert("P1.1",   HashSet::from(["has_compliance_annotation"]));
-    m.insert("P6.1",   HashSet::from(["has_shield", "has_compliance_annotation"]));
+    m.insert("P1.1",   HashSet::from(["compliance_coverage_holds"]));
+    m.insert("P6.1",   HashSet::from(["has_shield", "compliance_coverage_holds"]));
     // ISO 27001
     m.insert("A.5.2",  HashSet::from(["has_heal"]));
     m.insert("A.5.7",  HashSet::from(["has_immune"]));
     m.insert("A.5.23", HashSet::new());
     m.insert("A.5.24", HashSet::from(["has_immune", "has_reflex", "has_heal"]));
     m.insert("A.5.30", HashSet::from(["has_reconcile"]));
-    m.insert("A.5.34", HashSet::from(["has_compliance_annotation"]));
+    m.insert("A.5.34", HashSet::from(["compliance_coverage_holds"]));
     m.insert("A.8.2",  HashSet::from(["has_lease"]));
     m.insert("A.8.7",  HashSet::from(["has_immune", "has_reflex"]));
     m.insert("A.8.8",  HashSet::from(["has_heal"]));
@@ -503,6 +505,43 @@ mod tests {
                 );
             }
         }
+    }
+
+    /// 🎯 §124.c — C1.1 (confidentiality commitments) is satisfied by the
+    /// coverage rule HOLDING, not by a label being present. Pre-§124.c both
+    /// programs below scored identically on every control that named
+    /// `has_compliance_annotation`.
+    #[test]
+    fn c11_requires_coverage_not_presence() {
+        let status_of = |ir: &IRProgram| {
+            analyze_gaps(ir, FrameworkId::Soc2TypeII)
+                .assessments
+                .iter()
+                .find(|a| a.control_id == "C1.1")
+                .expect("SOC2 catalog carries C1.1")
+                .status
+                .clone()
+        };
+
+        let label_only = compile("type Phi compliance [HIPAA] { x: String }");
+        assert_ne!(
+            status_of(&label_only),
+            "ready",
+            "a κ label that crosses no boundary satisfies no confidentiality control"
+        );
+
+        let covered = compile(
+            r#"
+            type Phi compliance [HIPAA] { x: String }
+            shield Gate { scan: [pii_leak] compliance: [HIPAA] }
+            channel PhiFeed { message: Phi shield: Gate }
+            "#,
+        );
+        assert_eq!(
+            status_of(&covered),
+            "ready",
+            "coverage holding at every regulated boundary is what `ready` means here"
+        );
     }
 
     /// The other half of fail-closed: a control whose runtime kernel IS wired

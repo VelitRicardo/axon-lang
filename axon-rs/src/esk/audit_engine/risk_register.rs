@@ -150,7 +150,10 @@ fn template_threats() -> Vec<Template> {
             controls: &["CC6.6", "FDP_ACC.1", "A.5.36"],
             treatment: Treatment::Mitigate,
             primitive: "Compile-time Compliance (RTT)",
-            feature_gate: Some("has_compliance_annotation"),
+            // §124.c — gated on the coverage rule HOLDING, not on a label
+            // being present: this row asserts the risk is MITIGATED, and
+            // presence of an annotation mitigates nothing.
+            feature_gate: Some("compliance_coverage_holds"),
         },
         Template {
             threat: "Prompt injection subverts intended flow behavior",
@@ -292,12 +295,13 @@ fn program_features(program: &IRProgram) -> HashSet<String> {
     if !program.topologies.is_empty()   { features.insert("has_topology".into()); }
     if !program.endpoints.is_empty()    { features.insert("has_endpoint".into()); }
 
-    let has_any_compliance = program.types.iter().any(|t| !t.compliance.is_empty())
-        || program.shields.iter().any(|s| !s.compliance.is_empty())
-        || program.endpoints.iter().any(|e| !e.compliance.is_empty())
-        || program.manifests.iter().any(|m| !m.compliance.is_empty());
-    if has_any_compliance {
-        features.insert("has_compliance_annotation".into());
+    // §124.c — was `has_compliance_annotation`, granted on the mere PRESENCE
+    // of a label anywhere. The rows that lean on this feature assert
+    // mitigation, so the feature now means the coverage rule HOLDS — every
+    // regulated boundary names a shield whose κ covers the data's κ. The
+    // rule lives once, in `coverage.rs` (§120.e: a rule duplicated drifts).
+    if super::coverage::compliance_coverage_holds(program) {
+        features.insert("compliance_coverage_holds".into());
     }
     features
 }
@@ -438,6 +442,44 @@ mod tests {
             m.len(),
             f.len()
         );
+    }
+
+    /// 🎯 §124.c — the regulated-boundary row asserts MITIGATION, and it
+    /// appears exactly when the coverage rule holds. Pre-§124.c, all three
+    /// programs below scored identically: any label anywhere granted the gate.
+    #[test]
+    fn the_regulated_boundary_risk_requires_coverage_not_presence() {
+        let boundary_row =
+            |ir: &IRProgram| generate_risk_register(ir).iter().any(|r| r.threat.contains("uncovered boundary"));
+
+        let label_only = compile("type Phi compliance [HIPAA] { x: String }");
+        assert!(
+            !boundary_row(&label_only),
+            "a κ label nothing carries mitigates nothing — this row asserting \
+             'Mitigate' over it was the presence defect"
+        );
+
+        let uncovered = compile(
+            r#"
+            type Phi compliance [HIPAA, PCI_DSS] { x: String }
+            shield Weak { scan: [pii_leak] compliance: [HIPAA] }
+            channel PhiFeed { message: Phi shield: Weak }
+            "#,
+        );
+        assert!(
+            !boundary_row(&uncovered),
+            "an UNCOVERED regulated boundary is the risk UNMITIGATED — the row \
+             may not claim otherwise"
+        );
+
+        let covered = compile(
+            r#"
+            type Phi compliance [HIPAA] { x: String }
+            shield Gate { scan: [pii_leak] compliance: [HIPAA] }
+            channel PhiFeed { message: Phi shield: Gate }
+            "#,
+        );
+        assert!(boundary_row(&covered), "coverage holding is what earns the row");
     }
 
     #[test]
