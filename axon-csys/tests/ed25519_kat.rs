@@ -152,18 +152,30 @@ fn any_tampered_byte_fails_verification() {
 
     let mut bad = sig;
     bad[0] ^= 1;
-    assert!(!verify(&bad, msg, &kp.public), "flipped first sig byte (R) must fail");
+    assert!(
+        !verify(&bad, msg, &kp.public),
+        "flipped first sig byte (R) must fail"
+    );
     let mut bad = sig;
     bad[63] ^= 1;
-    assert!(!verify(&bad, msg, &kp.public), "flipped last sig byte (S) must fail");
+    assert!(
+        !verify(&bad, msg, &kp.public),
+        "flipped last sig byte (S) must fail"
+    );
 
     let mut bad_msg = msg.to_vec();
     bad_msg[0] ^= 1;
-    assert!(!verify(&sig, &bad_msg, &kp.public), "flipped message must fail");
+    assert!(
+        !verify(&sig, &bad_msg, &kp.public),
+        "flipped message must fail"
+    );
 
     let mut bad_pk = kp.public;
     bad_pk[5] ^= 1;
     assert!(!verify(&sig, msg, &bad_pk), "flipped pk must fail");
 
-    assert!(!verify(&sig[..63], msg, &kp.public), "truncated signature must fail");
+    assert!(
+        !verify(&sig[..63], msg, &kp.public),
+        "truncated signature must fail"
+    );
 }

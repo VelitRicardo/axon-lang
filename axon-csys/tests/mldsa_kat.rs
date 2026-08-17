@@ -50,7 +50,10 @@ fn sign_verify_roundtrip() {
     let (pk, sk) = keypair().expect("OS RNG available");
     let msg = b"axon: evidencia que se firma";
     let sig = sign(msg, &sk).expect("OS RNG available");
-    assert!(verify(&sig, msg, &pk), "a signature this kernel just produced must verify");
+    assert!(
+        verify(&sig, msg, &pk),
+        "a signature this kernel just produced must verify"
+    );
 }
 
 /// Hedged signing: two signatures over one message differ, and both verify.
@@ -82,22 +85,38 @@ fn any_tampered_byte_fails_verification() {
 
     let mut bad_msg = msg.to_vec();
     bad_msg[0] ^= 1;
-    assert!(!verify(&sig, &bad_msg, &pk), "a flipped message bit must fail");
+    assert!(
+        !verify(&sig, &bad_msg, &pk),
+        "a flipped message bit must fail"
+    );
 
     // Flip a byte at the front, middle and back of the signature — the three
     // regions encode different algebraic objects (c-tilde, z, hints) and a
     // verifier could plausibly check some and not others.
-    for pos in [0usize, MLDSA65_SIGNATURE_BYTES / 2, MLDSA65_SIGNATURE_BYTES - 1] {
+    for pos in [
+        0usize,
+        MLDSA65_SIGNATURE_BYTES / 2,
+        MLDSA65_SIGNATURE_BYTES - 1,
+    ] {
         let mut bad_sig = sig;
         bad_sig[pos] ^= 1;
-        assert!(!verify(&bad_sig, msg, &pk), "a flipped signature byte at {pos} must fail");
+        assert!(
+            !verify(&bad_sig, msg, &pk),
+            "a flipped signature byte at {pos} must fail"
+        );
     }
 
     let mut bad_pk = pk;
     bad_pk[7] ^= 1;
-    assert!(!verify(&sig, msg, &bad_pk), "a flipped public-key byte must fail");
+    assert!(
+        !verify(&sig, msg, &bad_pk),
+        "a flipped public-key byte must fail"
+    );
 
-    assert!(!verify(&sig[..100], msg, &pk), "a truncated signature must fail");
+    assert!(
+        !verify(&sig[..100], msg, &pk),
+        "a truncated signature must fail"
+    );
 }
 
 // ── The interop gates ───────────────────────────────────────────────────────

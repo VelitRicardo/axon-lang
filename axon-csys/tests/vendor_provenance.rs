@@ -32,7 +32,9 @@
 use std::path::{Path, PathBuf};
 
 fn vendor_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("c-src").join("vendor")
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("c-src")
+        .join("vendor")
 }
 
 /// `(path, sha256, bytes)` for every file the manifest pins.
@@ -100,9 +102,8 @@ fn vendored_files_match_their_recorded_hashes() {
 
     for (rel, expected, expected_bytes) in files {
         let path = vendor_dir().join(&rel);
-        let content = std::fs::read(&path).unwrap_or_else(|e| {
-            panic!("PROVENANCE.toml pins `{rel}`, which cannot be read: {e}")
-        });
+        let content = std::fs::read(&path)
+            .unwrap_or_else(|e| panic!("PROVENANCE.toml pins `{rel}`, which cannot be read: {e}"));
 
         assert_eq!(
             content.len() as u64,
@@ -142,13 +143,19 @@ fn no_vendored_file_is_unaccounted_for() {
     let mut stack = vec![vendor_dir()];
     let mut orphans = Vec::new();
     while let Some(dir) = stack.pop() {
-        for entry in std::fs::read_dir(&dir).expect("vendor dir readable").flatten() {
+        for entry in std::fs::read_dir(&dir)
+            .expect("vendor dir readable")
+            .flatten()
+        {
             let path = entry.path();
             if path.is_dir() {
                 stack.push(path);
                 continue;
             }
-            let name = path.file_name().and_then(|n| n.to_str()).unwrap_or_default();
+            let name = path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or_default();
             // The manifest itself is not vendored code.
             if name == "PROVENANCE.toml" {
                 continue;

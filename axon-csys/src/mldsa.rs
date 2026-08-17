@@ -68,10 +68,7 @@ extern "C" {
 /// It is not collapsed into a panic because the caller (the evidence signer)
 /// must be able to refuse loudly rather than abort a server.
 #[cfg(feature = "native")]
-pub fn keypair() -> Option<(
-    [u8; MLDSA65_PUBLICKEY_BYTES],
-    [u8; MLDSA65_SECRETKEY_BYTES],
-)> {
+pub fn keypair() -> Option<([u8; MLDSA65_PUBLICKEY_BYTES], [u8; MLDSA65_SECRETKEY_BYTES])> {
     let mut pk = [0u8; MLDSA65_PUBLICKEY_BYTES];
     let mut sk = [0u8; MLDSA65_SECRETKEY_BYTES];
     // SAFETY: both buffers are exactly the lengths api.h declares for this

@@ -318,7 +318,11 @@ jobs:
           # undefined` propagates the flag from rustc to the wrapped
           # linker; `-Clinker=clang-17` swaps rust-lld out.
           RUSTFLAGS: "-Clinker=clang-17 -Clink-arg=-fsanitize=undefined -Cforce-frame-pointers=yes"
-          UBSAN_OPTIONS: "print_stacktrace=1:abort_on_error=1:halt_on_error=1"
+          # §124.b — `suppressions=` covers exactly one known finding in
+          # VENDORED code (orlp ge.c's constant-time select; defined in C23,
+          # UB before it). See ubsan.supp for the full rationale; our own
+          # kernels get no suppression.
+          UBSAN_OPTIONS: "print_stacktrace=1:abort_on_error=1:halt_on_error=1:suppressions=${{ github.workspace }}/axon-csys/ubsan.supp"
         run: cargo test --release --verbose
 
   # Valgrind exercises a separate-binary code path that ASan can't —
@@ -430,6 +434,16 @@ jobs:
           #   • `assignBoolToPointer:dispatch.c` — labels-as-values
           #     are GCC extensions that cppcheck mis-parses (see
           #     extended comment above).
+          # §124.b / D124.6 — `-i c-src/vendor` excludes the VENDORED
+          # reference implementations (PQClean ML-DSA-65, orlp/ed25519).
+          # They are provenance-pinned byte-identical to upstream
+          # (c-src/vendor/PROVENANCE.toml), so they are not patched to our
+          # house standards and not held to this analyzer's bar — their
+          # correctness is held by KATs + cross-implementation interop
+          # instead. Concretely: cppcheck flags orlp sha512.c's RND macro
+          # (shift-by-64 on a path whose rotation constants are all 1..63)
+          # and PQClean's signed `>> 31` masks (implementation-defined
+          # pre-C23, the reference idiom for constant-time selection).
           cppcheck \
             --error-exitcode=2 \
             --enable=warning,performance,portability \
@@ -440,6 +454,7 @@ jobs:
             --inline-suppr \
             --quiet \
             -I c-src \
+            -i c-src/vendor \
             c-src
 
   clang-tidy:
@@ -496,7 +511,10 @@ jobs:
           # (length-tracked + capacity-checked); the check is
           # signal-poor on cross-platform C.
           checks+=',-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling'
-          for f in $(find c-src -name '*.c' | sort); do
+          # §124.b / D124.6 — vendor/ excluded for the same reason as the
+          # cppcheck lane: provenance-pinned upstream code is not patched
+          # to house style, and its correctness is held by KATs + interop.
+          for f in $(find c-src -name '*.c' -not -path '*/vendor/*' | sort); do
             echo ""
             echo "→ clang-tidy: $f"
             clang-tidy-17 \

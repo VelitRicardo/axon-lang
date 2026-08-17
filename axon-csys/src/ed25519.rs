@@ -103,7 +103,10 @@ pub fn keypair_from_seed(seed: &[u8; ED25519_SEED_BYTES]) -> Ed25519Keypair {
     // SAFETY: all three buffers are exactly the lengths the kernel contracts;
     // it writes pk and sk fully and retains nothing.
     unsafe { ed25519_create_keypair(pk.as_mut_ptr(), sk.as_mut_ptr(), seed.as_ptr()) };
-    Ed25519Keypair { public: pk, expanded: sk }
+    Ed25519Keypair {
+        public: pk,
+        expanded: sk,
+    }
 }
 
 /// Sign `msg`, detached. Deterministic: same keypair + message ⇒ same bytes.
