@@ -80,6 +80,13 @@ tiktoken-rs = "0.6"
 # pure-Rust twins in `crypto::portable`. The toolchain-free build is measured
 # by the gate that was written to judge the C.
 sha2 = "0.10"
+# §Fase 124.b — drift gate for the VENDORED FIPS 202 kernel. Same posture as
+# `sha2` above: an independent implementation used only to cross-validate the C
+# in the test target, never linked into production. A published NIST vector
+# proves the kernel computes the standard; this proves it agrees with another
+# implementation across arbitrary inputs, which is what catches a length- or
+# padding-edge the fixed vectors do not reach.
+sha3 = "0.10"
 hmac = "0.12"
 base64 = "0.22"
 subtle = "2"

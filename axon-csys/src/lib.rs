@@ -42,6 +42,9 @@ pub mod effects;
 pub mod envelope;
 #[cfg(feature = "native")]
 pub mod probe;
+/// §Fase 124.b — FIPS 202 (SHA-3 / SHAKE) bound from the VENDORED kernel.
+/// Implements nothing itself; see `c-src/vendor/PROVENANCE.toml`.
+pub mod shake;
 pub mod tokens;
 
 // §Fase 39.c.x — re-export the epistemic envelope public surface.
