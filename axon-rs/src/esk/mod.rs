@@ -14,4 +14,10 @@
 pub mod attestation;
 pub mod audit_engine;
 pub mod compliance;
+/// §Fase 124.b — the hybrid evidence signer, `Ed25519(H) ‖ ML-DSA-65(H)`.
+/// Gated on `csys-native`: its cryptography is the C module boundary, and
+/// §119.h made the C toolchain opt-in. Without the feature, the HMAC-SHA256
+/// baseline in [`provenance`] remains the signer.
+#[cfg(feature = "csys-native")]
+pub mod hybrid_signer;
 pub mod provenance;
