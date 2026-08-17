@@ -1,0 +1,19 @@
+# §Fase 124.b — vendored source is stored and checked out BYTE-FOR-BYTE.
+#
+# `axon-csys/c-src/vendor/` holds third-party cryptography inside the FIPS
+# module boundary, pinned by SHA-256 in `PROVENANCE.toml` and verified on every
+# build by `axon-csys/tests/vendor_provenance.rs`.
+#
+# Those hashes are of the bytes UPSTREAM PUBLISHED. Git's automatic
+# line-ending conversion would rewrite LF to CRLF on checkout under Windows,
+# producing files that differ from upstream by every line — and the gate would
+# fail on a clean clone and in CI, reporting tampering where there was none,
+# which is the fastest way to teach someone to disable the gate.
+#
+# `-text` disables all conversion for this tree. It is also the semantically
+# correct answer: vendored source that has been reformatted, even invisibly, is
+# no longer the implementation whose lineage its header claims.
+axon-csys/c-src/vendor/** -text
+
+# The provenance manifest is ours, not upstream's, and may follow normal rules.
+axon-csys/c-src/vendor/PROVENANCE.toml text
