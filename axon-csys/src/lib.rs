@@ -41,6 +41,9 @@ pub mod crypto;
 pub mod effects;
 pub mod envelope;
 #[cfg(feature = "native")]
+/// §Fase 124.b — ML-DSA-65 (FIPS 204) bound from the VENDORED kernel.
+/// Implements nothing itself; see `c-src/vendor/PROVENANCE.toml`.
+pub mod mldsa;
 pub mod probe;
 /// §Fase 124.b — FIPS 202 (SHA-3 / SHAKE) bound from the VENDORED kernel.
 /// Implements nothing itself; see `c-src/vendor/PROVENANCE.toml`.

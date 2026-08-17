@@ -69,3 +69,145 @@ path = "pqclean/fips202.h"
 source = "common/fips202.h"
 sha256 = "bf99a54bc1988380418054a18bd5a14d059770e70c1aac23b6d9c914539168e0"
 bytes = 5566
+
+# ── ML-DSA-65 (FIPS 204) + the module's entropy source ────────────────────────
+#
+# Same upstream, same pinned commit as fips202 above. The scheme directory
+# carries its own LICENSE (CC0 public domain), vendored alongside the code —
+# a provenance claim without its license text is half a claim.
+#
+# randombytes.{c,h} come from PQClean's common/: keypair generation and
+# FIPS 204's default hedged signing consume OS randomness, and the entropy
+# source is PART of a cryptographic module, not something injected across its
+# boundary. On Windows it uses the classic CryptoAPI (CryptAcquireContextA /
+# CryptGenRandom), which is why the build links advapi32 there — established
+# from the linker's unresolved-symbol list, after a first draft of this note
+# claimed BCrypt and was wrong.
+#
+# All ML-DSA symbols are prefixed (PQCLEAN_MLDSA65_CLEAN_*) — unlike
+# fips202's bare shake256, these cannot collide with anything.
+[[upstream.file]]
+path = "pqclean/ml-dsa-65/LICENSE"
+source = "crypto_sign/ml-dsa-65/clean/LICENSE"
+sha256 = "5d7798eec4d8c8ef0a72dfe805ec54dfd7b212d3928bf9695fda4095d22829ab"
+bytes = 210
+
+[[upstream.file]]
+path = "pqclean/ml-dsa-65/api.h"
+source = "crypto_sign/ml-dsa-65/clean/api.h"
+sha256 = "9a52812131eb17f815fb742e85dc676f7c822450caec9195aa79a61ea57cea30"
+bytes = 1797
+
+[[upstream.file]]
+path = "pqclean/ml-dsa-65/ntt.c"
+source = "crypto_sign/ml-dsa-65/clean/ntt.c"
+sha256 = "5b996157805d2b5b6ac83b57af350e42397d409c859c80e41cb011365325cc41"
+bytes = 4838
+
+[[upstream.file]]
+path = "pqclean/ml-dsa-65/ntt.h"
+source = "crypto_sign/ml-dsa-65/clean/ntt.h"
+sha256 = "8858cc04b1a2b4bd66b16d29454f2f26b1a66eee25a63f16c6dbbdc40e6f5ea9"
+bytes = 224
+
+[[upstream.file]]
+path = "pqclean/ml-dsa-65/packing.c"
+source = "crypto_sign/ml-dsa-65/clean/packing.c"
+sha256 = "39050b86013556909cfcf09fa16c38ea7e0f324300d60e678dd4bcbabe037ef5"
+bytes = 8482
+
+[[upstream.file]]
+path = "pqclean/ml-dsa-65/packing.h"
+source = "crypto_sign/ml-dsa-65/clean/packing.h"
+sha256 = "2242c5b64ec063c6be015ade9d40df27d1088d3a87ad30ac8cb1bd3cb2434eb5"
+bytes = 1618
+
+[[upstream.file]]
+path = "pqclean/ml-dsa-65/params.h"
+source = "crypto_sign/ml-dsa-65/clean/params.h"
+sha256 = "9a8cbfeb0f0573d8e0bfe1bd14ffaf0e342ba1adf48d09b49f9d5f4b7eab6928"
+bytes = 986
+
+[[upstream.file]]
+path = "pqclean/ml-dsa-65/poly.c"
+source = "crypto_sign/ml-dsa-65/clean/poly.c"
+sha256 = "d4b88b41ba9754a3ba09db2722d0ac86131e5d312e3dada63cba760740989def"
+bytes = 28456
+
+[[upstream.file]]
+path = "pqclean/ml-dsa-65/poly.h"
+source = "crypto_sign/ml-dsa-65/clean/poly.h"
+sha256 = "a71de330d5a896f89094acbdfd96546b91ab10330d0cf4229d85a653c95013c1"
+bytes = 2179
+
+[[upstream.file]]
+path = "pqclean/ml-dsa-65/polyvec.c"
+source = "crypto_sign/ml-dsa-65/clean/polyvec.c"
+sha256 = "71becebe740254b33da42ceeec0b83223bf17fc3353ce1523b52a295a77a1569"
+bytes = 14770
+
+[[upstream.file]]
+path = "pqclean/ml-dsa-65/polyvec.h"
+source = "crypto_sign/ml-dsa-65/clean/polyvec.h"
+sha256 = "c0cbfb2c9082f63777fd1f8feeb187faf7b6b6153e8e5454243340430dcc4069"
+bytes = 2626
+
+[[upstream.file]]
+path = "pqclean/ml-dsa-65/reduce.c"
+source = "crypto_sign/ml-dsa-65/clean/reduce.c"
+sha256 = "a5e8f91cfd93c551b7573eb6dc76db04fa5e94c68ec87cfc0e35fadd5bddab8e"
+bytes = 1941
+
+[[upstream.file]]
+path = "pqclean/ml-dsa-65/reduce.h"
+source = "crypto_sign/ml-dsa-65/clean/reduce.h"
+sha256 = "1fb6330353027ea3f846fb0238c92a4a84bbbcb9bf94ad96bb90afcc1942f149"
+bytes = 416
+
+[[upstream.file]]
+path = "pqclean/ml-dsa-65/rounding.c"
+source = "crypto_sign/ml-dsa-65/clean/rounding.c"
+sha256 = "e9d14eeb963064239f76a53a7a4f6bcdf9443d1c3945f2700ac0e812739cb943"
+bytes = 2758
+
+[[upstream.file]]
+path = "pqclean/ml-dsa-65/rounding.h"
+source = "crypto_sign/ml-dsa-65/clean/rounding.h"
+sha256 = "144965279a28f50e25014888854a2ad0aeede1d7ec20f263603f8dcb707cab5d"
+bytes = 406
+
+[[upstream.file]]
+path = "pqclean/ml-dsa-65/sign.c"
+source = "crypto_sign/ml-dsa-65/clean/sign.c"
+sha256 = "dced10c875fd1dc6a3683a13f377e13f2a71b33c763e3f5b9ef5429de94dcd68"
+bytes = 14354
+
+[[upstream.file]]
+path = "pqclean/ml-dsa-65/sign.h"
+source = "crypto_sign/ml-dsa-65/clean/sign.h"
+sha256 = "a8d2d12690ada6129c470e9a04417b0b59b6d7402283eb6a4a9033cb9b0ab97f"
+bytes = 1637
+
+[[upstream.file]]
+path = "pqclean/ml-dsa-65/symmetric-shake.c"
+source = "crypto_sign/ml-dsa-65/clean/symmetric-shake.c"
+sha256 = "688d85949cbfb3307135fede18dca46fd40b07e8a2e65ce05d599050af222ab1"
+bytes = 814
+
+[[upstream.file]]
+path = "pqclean/ml-dsa-65/symmetric.h"
+source = "crypto_sign/ml-dsa-65/clean/symmetric.h"
+sha256 = "e89fb0432e8eb80b0088ae5f756dee656baccd9ce83645b9e9eeb1a099eeaa91"
+bytes = 1235
+
+[[upstream.file]]
+path = "pqclean/randombytes.c"
+source = "common/randombytes.c"
+sha256 = "892d5d9ea9f5623f863f170c829827e936bb96609fb11d7e53a3d8413f07f8c1"
+bytes = 10776
+
+[[upstream.file]]
+path = "pqclean/randombytes.h"
+source = "common/randombytes.h"
+sha256 = "7ae401d4d5eeb41bfa738d1281d57da3f78f915ca94388d89f4f33cbe6a3fe1e"
+bytes = 450

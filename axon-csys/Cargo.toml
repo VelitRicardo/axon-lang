@@ -87,6 +87,14 @@ sha2 = "0.10"
 # implementation across arbitrary inputs, which is what catches a length- or
 # padding-edge the fixed vectors do not reach.
 sha3 = "0.10"
+# §Fase 124.b — INTEROP gate for the vendored ML-DSA-65 kernel (RustCrypto's
+# independent FIPS 204 implementation). A signature scheme cannot be proven by
+# fixed vectors alone here — PQClean signs HEDGED, so its signatures are not
+# reproducible — and a roundtrip only proves self-consistency: a signer and
+# verifier wrong in the same way pass it forever. Cross-implementation
+# verification is the proof that the bytes are FIPS 204: the C kernel's
+# signatures must verify under this crate, and this crate's under the C kernel.
+ml-dsa = "0.1.1"
 hmac = "0.12"
 base64 = "0.22"
 subtle = "2"

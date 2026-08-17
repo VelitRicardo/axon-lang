@@ -292,7 +292,42 @@ fn main() {
     // FIPS 202 (SHA-3 / SHAKE). A prerequisite of ML-DSA-65, which derives its
     // sampling and challenges from SHAKE-128/256 and never from SHA-256.
     vendored.file(vendor.join("pqclean").join("fips202.c"));
+    // §Fase 124.b — ML-DSA-65 (FIPS 204), same upstream, same pinned commit.
+    //
+    // The scheme's headers include each other flatly (`#include "params.h"`),
+    // so its directory joins the include path. Its symbols are all prefixed
+    // (`PQCLEAN_MLDSA65_CLEAN_*`) — unlike fips202's bare `shake256`, these
+    // cannot collide with anything in the link graph.
+    let mldsa = vendor.join("pqclean").join("ml-dsa-65");
+    vendored.include(&mldsa);
+    for unit in [
+        "ntt.c",
+        "packing.c",
+        "poly.c",
+        "polyvec.c",
+        "reduce.c",
+        "rounding.c",
+        "sign.c",
+        "symmetric-shake.c",
+    ] {
+        vendored.file(mldsa.join(unit));
+    }
+    // The module's entropy source. Keypair generation and FIPS 204's default
+    // hedged signing consume OS randomness, and a cryptographic module's RNG
+    // is part of the module — injecting entropy across the boundary from the
+    // Rust side would invert the D124.3 architecture.
+    vendored.file(vendor.join("pqclean").join("randombytes.c"));
     vendored.compile("axon_csys_vendor");
+
+    // randombytes on Windows uses the classic CryptoAPI (CryptAcquireContextA /
+    // CryptGenRandom), which lives in advapi32.lib — cc compiles the calls but
+    // only the linker knows the library. Established from the linker's own
+    // unresolved-symbol list, not from assumptions about which Windows RNG a
+    // 2026 upstream "surely" uses: the first draft here said BCrypt and was
+    // wrong.
+    if cfg!(target_os = "windows") {
+        println!("cargo:rustc-link-lib=advapi32");
+    }
 
     // ─── Math library link (resample.c uses floor / round) ────────────────
     //
