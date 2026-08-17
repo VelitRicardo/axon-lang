@@ -41,6 +41,9 @@ pub mod crypto;
 pub mod effects;
 pub mod envelope;
 #[cfg(feature = "native")]
+/// §Fase 124.b — Ed25519 (RFC 8032) bound from the VENDORED kernel.
+/// Implements nothing itself; see `c-src/vendor/PROVENANCE.toml`.
+pub mod ed25519;
 /// §Fase 124.b — ML-DSA-65 (FIPS 204) bound from the VENDORED kernel.
 /// Implements nothing itself; see `c-src/vendor/PROVENANCE.toml`.
 pub mod mldsa;

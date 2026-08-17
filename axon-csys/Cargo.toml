@@ -95,6 +95,11 @@ sha3 = "0.10"
 # verification is the proof that the bytes are FIPS 204: the C kernel's
 # signatures must verify under this crate, and this crate's under the C kernel.
 ml-dsa = "0.1.1"
+# §Fase 124.b — interop + byte-identity gate for the vendored Ed25519 kernel.
+# Ed25519 is DETERMINISTIC, so this gate is stronger than ML-DSA's: same seed +
+# message must yield the SAME 64 bytes from both implementations, on top of the
+# RFC 8032 published vectors.
+ed25519-dalek = "2"
 hmac = "0.12"
 base64 = "0.22"
 subtle = "2"

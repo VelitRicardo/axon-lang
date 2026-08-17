@@ -317,6 +317,24 @@ fn main() {
     // is part of the module — injecting entropy across the boundary from the
     // Rust side would invert the D124.3 architecture.
     vendored.file(vendor.join("pqclean").join("randombytes.c"));
+    // §Fase 124.b — Ed25519 (orlp/ed25519, ref10 lineage), the CLASSICAL half
+    // of the hybrid evidence signature. Ships its own internal SHA-512.
+    // seed.c is deliberately absent — seeds come from the module's
+    // randombytes above — and the X25519 units (add_scalar, key_exchange)
+    // are out of scope: a smaller boundary is a smaller audit.
+    let ed = vendor.join("orlp-ed25519");
+    vendored.include(&ed);
+    for unit in [
+        "fe.c",
+        "ge.c",
+        "sc.c",
+        "sha512.c",
+        "keypair.c",
+        "sign.c",
+        "verify.c",
+    ] {
+        vendored.file(ed.join(unit));
+    }
     vendored.compile("axon_csys_vendor");
 
     // randombytes on Windows uses the classic CryptoAPI (CryptAcquireContextA /

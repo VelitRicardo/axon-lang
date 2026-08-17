@@ -211,3 +211,117 @@ path = "pqclean/randombytes.h"
 source = "common/randombytes.h"
 sha256 = "7ae401d4d5eeb41bfa738d1281d57da3f78f915ca94388d89f4f33cbe6a3fe1e"
 bytes = 450
+
+# ══════════════════════════════════════════════════════════════════════════════
+
+[[upstream]]
+name = "orlp/ed25519"
+repository = "https://github.com/orlp/ed25519"
+commit = "b1f19fab4aebe607805620d25a5e42566ce46a0e"
+imported = "2026-08-17"
+license = "zlib"
+# license.txt vendored alongside. Clause 2 of zlib requires altered versions to
+# be plainly marked; this import satisfies it structurally — the provenance gate
+# refuses alteration outright, so there is never an altered version to mark.
+license_note = "zlib; ref10 (SUPERCOP) lineage — the same family fips202.c's header cites."
+why = """
+Ed25519 + its internal SHA-512 — the CLASSICAL half of the hybrid evidence
+signature (Ed25519 ‖ ML-DSA-65). Chosen over larger libraries because it is
+single-purpose: only the signing path enters the module boundary. seed.c
+(OS entropy) is deliberately NOT vendored — seeds come from the module's own
+randombytes — and add_scalar.c / key_exchange.c (X25519) are out of scope.
+
+API conventions that differ from PQClean, established by reading the source:
+ed25519_verify returns 1=valid / 0=invalid (PQClean: 0=ok); the private key is
+the 64-byte expanded form, not the 32-byte RFC 8032 seed; signing requires the
+public key as an argument. The Rust shim normalises all three.
+"""
+[[upstream.file]]
+path = "orlp-ed25519/license.txt"
+source = "license.txt"
+sha256 = "f68d76b9c1c2271422e55134ea94cf71f2ac3fc3ed6a7ec6b83a1a0538753214"
+bytes = 874
+
+[[upstream.file]]
+path = "orlp-ed25519/ed25519.h"
+source = "src/ed25519.h"
+sha256 = "8b09800605ac592c1f7d6e701f3526f84156db15bbd68904d39ad398e7d7c8ce"
+bytes = 1251
+
+[[upstream.file]]
+path = "orlp-ed25519/fe.c"
+source = "src/fe.c"
+sha256 = "71082937da43def6ecaf7811c23410bd8ea763969dfec67383f8129b12b1926d"
+bytes = 38843
+
+[[upstream.file]]
+path = "orlp-ed25519/fe.h"
+source = "src/fe.h"
+sha256 = "0476ae2ebb86978d1e0b9fbeb63dcddd7566d6b74806db47dda7688df74aaafb"
+bytes = 980
+
+[[upstream.file]]
+path = "orlp-ed25519/fixedint.h"
+source = "src/fixedint.h"
+sha256 = "451fd529865e7fc69156f4cbe7c548857704ae4913768ad9ed7103656efdfc17"
+bytes = 2518
+
+[[upstream.file]]
+path = "orlp-ed25519/ge.c"
+source = "src/ge.c"
+sha256 = "c3bb834817edea83d843828a75af19867b93144d15140eadfd9784d40cf11409"
+bytes = 10373
+
+[[upstream.file]]
+path = "orlp-ed25519/ge.h"
+source = "src/ge.h"
+sha256 = "b16be2ea1731d9212933e7beeaef6882145fdcdaebdff9996efb5cf97faa2651"
+bytes = 1683
+
+[[upstream.file]]
+path = "orlp-ed25519/keypair.c"
+source = "src/keypair.c"
+sha256 = "a9fd88cc4558f52d5fabf03b1b54c1c38a105a03753dd7ca4e0249687be0ebcc"
+bytes = 380
+
+[[upstream.file]]
+path = "orlp-ed25519/precomp_data.h"
+source = "src/precomp_data.h"
+sha256 = "c7d63a8b7ecd7bc6a3ac2b826a540a69dee0fc7e8bf3b00ef5dd98ce00a7c224"
+bytes = 97800
+
+[[upstream.file]]
+path = "orlp-ed25519/sc.c"
+source = "src/sc.c"
+sha256 = "c1bdb840416b34e79ceb7472d1a4ac4b1407c47b4c982cad981c72142ef42407"
+bytes = 22867
+
+[[upstream.file]]
+path = "orlp-ed25519/sc.h"
+source = "src/sc.h"
+sha256 = "b0ef537b4d4dad7bd2910e2a663a02a7ac25b473511a929c3c609d82f9bdf87d"
+bytes = 267
+
+[[upstream.file]]
+path = "orlp-ed25519/sha512.c"
+source = "src/sha512.c"
+sha256 = "b34128b950036777c299943d624bd830a234a65932c394fdf455e4948258fb6d"
+bytes = 11088
+
+[[upstream.file]]
+path = "orlp-ed25519/sha512.h"
+source = "src/sha512.h"
+sha256 = "647ed5784d4dcd682b9c42add2e39107582efb4df9e1362c8e5120613eb9a0ce"
+bytes = 489
+
+[[upstream.file]]
+path = "orlp-ed25519/sign.c"
+source = "src/sign.c"
+sha256 = "af693a4a59430cc06d4b07f82e30bf266897ecc9c75265c7fa49cfa4159cf5ec"
+bytes = 827
+
+[[upstream.file]]
+path = "orlp-ed25519/verify.c"
+source = "src/verify.c"
+sha256 = "a2ca7197c5f6d193c9f526d432429dfb44a65853a7ec18e10a5761334bdcf48c"
+bytes = 1367
