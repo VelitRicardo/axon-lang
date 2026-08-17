@@ -206,7 +206,7 @@ bytes = "1"
 #   C toolchain a hard REQUIREMENT of `cargo install axon-lang` — not a slow
 #   install, a FAILED one (verified: exit 101, "ToolNotFound"). Turn the
 #   kernels back on with `--features csys-native`.
-axon-csys = { path = "../axon-csys", version = "=0.4.0", default-features = false }
+axon-csys = { path = "../axon-csys", version = "=0.4.1", default-features = false }
 # §Fase 101.e — the IDP-E sidecar's hostile image DECODE (PNG/JPEG/BMP/TIFF).
 # OPTIONAL + behind the `idpe-sidecar` feature so the main runtime NEVER links a
 # CVE-prone image parser: decode runs ONLY in the isolated `idpe-sidecar` binary

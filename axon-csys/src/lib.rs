@@ -40,16 +40,27 @@ pub mod crypto;
 #[cfg(feature = "native")]
 pub mod effects;
 pub mod envelope;
-#[cfg(feature = "native")]
+// ⚠️ Every module that binds C symbols carries its OWN `#[cfg]`, attribute
+// directly above the `pub mod` line. §124.b inserted `ed25519` between an
+// existing cfg and the `probe` it guarded — the attribute silently moved to
+// the new module and `mldsa`/`probe`/`shake` compiled in non-native builds,
+// referencing C that was never built. The local workspace linked anyway
+// (nothing reached the dead wrappers); the packaged `axon-lang` verify did
+// not. axon-csys 0.4.0 shipped with that defect and is yanked; 0.4.1 is the
+// corrected build.
 /// §Fase 124.b — Ed25519 (RFC 8032) bound from the VENDORED kernel.
 /// Implements nothing itself; see `c-src/vendor/PROVENANCE.toml`.
+#[cfg(feature = "native")]
 pub mod ed25519;
 /// §Fase 124.b — ML-DSA-65 (FIPS 204) bound from the VENDORED kernel.
 /// Implements nothing itself; see `c-src/vendor/PROVENANCE.toml`.
+#[cfg(feature = "native")]
 pub mod mldsa;
+#[cfg(feature = "native")]
 pub mod probe;
 /// §Fase 124.b — FIPS 202 (SHA-3 / SHAKE) bound from the VENDORED kernel.
 /// Implements nothing itself; see `c-src/vendor/PROVENANCE.toml`.
+#[cfg(feature = "native")]
 pub mod shake;
 pub mod tokens;
 

@@ -34,9 +34,6 @@
 
 #![allow(dead_code)]
 
-// Only the `native`-gated extern block below names `c_int` — the import
-// carries the same cfg so the default (non-native) build stays warning-free.
-#[cfg(feature = "native")]
 use core::ffi::c_int;
 
 /// FIPS 204 ML-DSA-65 public key length.

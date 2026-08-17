@@ -74,11 +74,16 @@ impl HybridSigner {
     /// whether an unsigned evidence run is abortable or retryable — this
     /// constructor only refuses to pretend it has keys.
     pub fn generate() -> Option<Self> {
-        let seed = axon_csys::ed25519::generate_seed()?;
+        let mut seed = axon_csys::ed25519::generate_seed()?;
         let ed = keypair_from_seed(&seed);
-        // The seed is a second copy of the Ed25519 secret; it dies here, now,
-        // rather than living on the stack until the frame is reused.
-        drop(seed);
+        // The seed is a second copy of the Ed25519 secret. The first version
+        // wrote `drop(seed)` here — a no-op on a `Copy` array (rustc said so;
+        // the bytes stay in the frame until it is reused), which would have
+        // made "it dies here" one more claim the code does not keep. Wipe it
+        // in place instead, same volatile discipline as `Drop`.
+        for b in seed.iter_mut() {
+            unsafe { core::ptr::write_volatile(b, 0) };
+        }
         let (mldsa_public, mldsa_secret) = axon_csys::mldsa::keypair()?;
         Some(HybridSigner { ed, mldsa_public, mldsa_secret })
     }
