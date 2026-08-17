@@ -243,6 +243,57 @@ fn main() {
 
     build.compile("axon_csys");
 
+    // ─── §Fase 124.b — the VENDORED half of the cryptographic boundary ────────
+    //
+    // D124.3 put the whole cryptographic module boundary in axon-csys; D124.6
+    // settled that it is populated with vetted reference implementations rather
+    // than hand-written lattice crypto. `c-src/vendor/PROVENANCE.toml` records
+    // repository, commit and per-file SHA-256 for every one of them, and
+    // `tests/vendor_provenance.rs` recomputes those hashes on every build.
+    //
+    // THIS IS A SECOND `cc::Build`, DELIBERATELY.
+    //
+    // The build above runs `-Werror -Wconversion -Wpedantic -Wshadow
+    // -Wcast-align -Wstrict-prototypes`, which is the right posture for code
+    // this project writes and an impossible one for portable reference
+    // cryptography: field and lattice arithmetic narrows integers constantly
+    // and intentionally, so `-Wconversion` alone rejects it wholesale.
+    //
+    // The tempting shortcut is to relax a flag on the shared build. That would
+    // silently lower the bar for every kernel AXON owns — the exact shape of
+    // defect this project keeps finding, where a guarantee is weakened to
+    // accommodate one caller and nobody notices the other callers it covered.
+    // So the vendored translation units get their own relaxed build and the
+    // strict posture above is untouched. Two archives, two standards of proof,
+    // and `the_strict_build_keeps_its_werror` pins the split.
+    //
+    // Warnings stay ON (just not fatal): upstream noise is worth reading when
+    // an import is refreshed, even though it must not fail the build.
+    let vendor = c_src.join("vendor");
+    let mut vendored = cc::Build::new();
+    vendored
+        .include(&vendor)
+        .include(vendor.join("pqclean"))
+        .warnings(true)
+        .warnings_into_errors(false);
+    if cfg!(target_env = "msvc") {
+        vendored.flag_if_supported("/std:clatest");
+    } else {
+        vendored.flag_if_supported("-std=c23");
+        vendored.flag_if_supported("-std=c2x");
+        // Reference cryptography narrows deliberately; these two are the
+        // reason a shared build is not an option.
+        vendored.flag_if_supported("-Wno-conversion");
+        vendored.flag_if_supported("-Wno-sign-conversion");
+    }
+    if !cfg!(target_env = "msvc") && !cfg!(target_os = "macos") {
+        vendored.define("_POSIX_C_SOURCE", "200809L");
+    }
+    // FIPS 202 (SHA-3 / SHAKE). A prerequisite of ML-DSA-65, which derives its
+    // sampling and challenges from SHAKE-128/256 and never from SHA-256.
+    vendored.file(vendor.join("pqclean").join("fips202.c"));
+    vendored.compile("axon_csys_vendor");
+
     // ─── Math library link (resample.c uses floor / round) ────────────────
     //
     // Modern glibc inlines libm functions into libc.so but musl, BSD, and

@@ -131,4 +131,30 @@ fn the_paper_does_not_claim_the_unbuilt_as_delivered() {
          axon-T936, so the trust lattice may be described as a discipline but not as a \
          mechanism that annotation drives."
     );
+
+    // §Fase 124 — FIPS 140-3 conformance is not a property you write.
+    //
+    // The paper claimed the C23 structures were "validadas por el programa CAVP
+    // del NIST". There is no CAVP certificate. Validation requires an
+    // accredited laboratory under CMVP and a per-algorithm CAVP certificate;
+    // implementing the algorithm correctly is necessary and nowhere near
+    // sufficient.
+    //
+    // The project's own build system already had the honest phrasing —
+    // `build.rs`: "algorithmically compliant; not formally validated" — and the
+    // audit engine already models FIPS as a SUBMISSION: `FIPS.BOUNDARY` and
+    // `FIPS.FSM` carry `ManualPolicy` evidence pointing at a submission
+    // template. The paper was the only artifact claiming otherwise.
+    assert!(
+        PAPER.contains("no se encuentran formalmente validadas"),
+        "§3.2 must keep the FIPS qualification: the cryptographic implementations are \
+         algorithmically conformant and NOT formally validated. Asserting CAVP validation \
+         without the certificates is the one claim in this paper an assessor can refute in \
+         a single search of the NIST public list."
+    );
+    assert!(
+        !PAPER.contains("validadas por el programa CAVP"),
+        "the paper must not reassert CAVP validation of the C23 structures. If certificates \
+         are ever obtained, cite them by number — that is what makes the claim checkable."
+    );
 }

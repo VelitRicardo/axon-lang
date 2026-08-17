@@ -1,0 +1,71 @@
+# §Fase 124.b — provenance of every third-party source file inside the
+# cryptographic module boundary (CMB).
+#
+# ## Why this file exists
+#
+# D124.3 ratified a SINGLE cryptographic boundary in `axon-csys`: a FIPS 140-3
+# evaluation requires a declared boundary, and splitting crypto between C23 and
+# Rust crates doubles the surface an assessor must examine — the Rust runtime,
+# the `Cargo.lock` closure, and the FFI bindings all enter scope.
+#
+# D124.6 then settled HOW that boundary is populated. Hand-writing a lattice
+# signature scheme is months of work and is the first thing a CMVP assessor
+# questions; the boundary argument is about what is INSIDE it, not about who
+# typed the code. So vetted reference implementations are vendored in, and this
+# file is what makes "vetted" checkable rather than asserted.
+#
+# ## What it records, and what enforces it
+#
+# Every entry pins a repository, a COMMIT (never a branch or a tag that can
+# move), a license, and the SHA-256 of each file as imported.
+# `axon-csys/tests/vendor_provenance.rs` recomputes those hashes on every build.
+#
+# That gate is the point. Vendored cryptography that anyone can edit locally is
+# precisely the supply-chain hole a single boundary is meant to close: the code
+# would still look like the upstream a reviewer trusts, and would no longer be
+# it. A local edit — well-intentioned or not — fails the build.
+#
+# ## Updating an entry
+#
+# Re-import from the new commit, update `commit`, `imported`, and every hash in
+# the same change, and say in the commit message what moved upstream and why.
+# Bumping a hash without bumping the commit means someone edited vendored
+# cryptography in place, which is never the right answer.
+
+[[upstream]]
+name = "PQClean"
+repository = "https://github.com/PQClean/PQClean"
+commit = "0586a824fc0d49df0b6b6e9179d8d15d06d0974f"
+imported = "2026-08-17"
+license = "Public Domain"
+# PQClean's README §License: "The files in `common` contain licensing
+# information at the top of the file (and are currently either public domain or
+# MIT)." `fips202.c`'s own header records the lineage: the public-domain
+# SUPERCOP `crypto_hash/keccakc512/simple` by Ronny Van Keer, and the
+# public-domain TweetFips202 by Gilles Van Assche, Daniel J. Bernstein and
+# Peter Schwabe.
+license_note = "Per-file public domain; lineage stated in fips202.c's header."
+why = """
+FIPS 202 (SHA-3 / SHAKE). ML-DSA-65 does not use SHA-256: its sampling,
+challenge derivation and expansion are all built on SHAKE-128 and SHAKE-256, so
+this is a prerequisite of the signature work rather than an independent
+addition. `axon-csys` had no Keccak of any kind.
+
+PQClean was chosen because it exists for exactly this use: portable C with no
+dynamic allocation, no platform assumptions, and constant-time discipline,
+maintained for embedding into products that pursue validation. That lineage is
+what a CAVP laboratory recognises; a from-scratch implementation is what it
+questions.
+"""
+
+[[upstream.file]]
+path = "pqclean/fips202.c"
+source = "common/fips202.c"
+sha256 = "4871baddebf2d4771d86b5088719123e2e43addce1a3c0eca75b4d18970ffc1f"
+bytes = 29026
+
+[[upstream.file]]
+path = "pqclean/fips202.h"
+source = "common/fips202.h"
+sha256 = "bf99a54bc1988380418054a18bd5a14d059770e70c1aac23b6d9c914539168e0"
+bytes = 5566
