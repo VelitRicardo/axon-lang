@@ -1,5 +1,5 @@
 /*
- * §Fase 25.h — HMAC-SHA256 (FIPS 198-1) implementation.
+ * v1.19.0 — HMAC-SHA256 (FIPS 198-1) implementation.
  *
  * See hmac.h for spec citations. Comments below mirror FIPS 198-1
  * sections so an auditor can read this file alongside the standard.
@@ -21,15 +21,15 @@ void axon_csys_hmac_sha256_init(
         return;
     }
 
-    /* §5 — derive the block-sized key K'. */
+    /* section 5 — derive the block-sized key K'. */
     uint8_t k_prime[AXON_CSYS_SHA256_BLOCK_SIZE];
     if (key_len > AXON_CSYS_SHA256_BLOCK_SIZE) {
-        /* §5 step 1 + §5 step 2 — long key: pre-hash, then zero-pad. */
+        /* section 5 step 1 + section 5 step 2 — long key: pre-hash, then zero-pad. */
         axon_csys_sha256(key, key_len, k_prime);
         memset(k_prime + AXON_CSYS_SHA256_DIGEST_SIZE, 0,
                AXON_CSYS_SHA256_BLOCK_SIZE - AXON_CSYS_SHA256_DIGEST_SIZE);
     } else {
-        /* §5 step 3 — short key: zero-pad in place. The NULL-guard
+        /* section 5 step 3 — short key: zero-pad in place. The NULL-guard
          * above permits `(key == NULL, key_len == 0)`; standards-
          * compliant memcpy is a no-op at len 0 even with NULL but
          * clang-analyzer's NonNullParamChecker flags the call
@@ -40,7 +40,7 @@ void axon_csys_hmac_sha256_init(
         memset(k_prime + key_len, 0, AXON_CSYS_SHA256_BLOCK_SIZE - key_len);
     }
 
-    /* §4 step 1 — derive ipad / opad and seed the inner hash with
+    /* section 4 step 1 — derive ipad / opad and seed the inner hash with
      * ipad. Save the opad bytes for the outer hash at finalise. */
     uint8_t ipad[AXON_CSYS_SHA256_BLOCK_SIZE];
     for (size_t i = 0; i < AXON_CSYS_SHA256_BLOCK_SIZE; ++i) {
@@ -87,11 +87,11 @@ void axon_csys_hmac_sha256_final(
         return;
     }
 
-    /* §4 step 5 — finalise the inner hash. */
+    /* section 4 step 5 — finalise the inner hash. */
     uint8_t inner_digest[AXON_CSYS_SHA256_DIGEST_SIZE];
     axon_csys_sha256_final(&ctx->inner_ctx, inner_digest);
 
-    /* §4 step 6 — outer hash: SHA256(opad || inner_digest). */
+    /* section 4 step 6 — outer hash: SHA256(opad || inner_digest). */
     AxonCsysSha256Ctx outer;
     axon_csys_sha256_init(&outer);
     axon_csys_sha256_update(&outer, ctx->opad, AXON_CSYS_SHA256_BLOCK_SIZE);

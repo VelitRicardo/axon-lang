@@ -1,14 +1,14 @@
-//! §Fase 52.c.2 — the single-node `daemon` runtime: cron scheduling + the
+//! v2.4.0 — the single-node `daemon` runtime: cron scheduling + the
 //! handler-body executor.
 //!
-//! §52.b parsed + validated `listen "cron:<expr>"` listeners; §52.c.1 made the
+//! v2.4.0 parsed + validated `listen "cron:<expr>"` listeners; v2.4.0 made the
 //! handler body executable flow-steps (incl. `run <Flow>`). This module is the
 //! engine that makes a `daemon` actually FIRE on a single node:
 //!
 //!   1. [`next_fire_after`] — given a validated [`CronSchedule`] (its fields
-//!      already expanded to value sets by §52.b) and an instant, the next
+//! already expanded to value sets by v2.4.0) and an instant, the next
 //!      wall-clock minute that matches. Pure + exhaustively tested; the timer
-//!      and the §52.d enterprise HA scheduler both compute fire times with it.
+//! and the v2.4.0 enterprise HA scheduler both compute fire times with it.
 //!   2. [`cron_listeners`] — extract a daemon's cron listeners (schedule + body)
 //!      from its IR.
 //!   3. [`run_invocations`] — the `run <Flow>` steps a handler body invokes.
@@ -17,7 +17,7 @@
 //!      by name with default persona/context — no top-level `run` required).
 //!   5. [`run_daemon`] — the async driver: per cron listener, sleep to the next
 //!      fire and execute the body, until cancelled. Single-node (the OSS
-//!      privilege); the §52.d enterprise layer adds multi-tenant mount + HA
+//! privilege); the v2.4.0 enterprise layer adds multi-tenant mount + HA
 //!      fire-once-across-replicas on top of this same scheduling math.
 //!
 //! **dom/dow semantics (honest v1):** matching is AND across all five fields.
@@ -126,7 +126,7 @@ pub fn cron_listeners(daemon: &IRDaemon) -> Vec<CronListener<'_>> {
         .collect()
 }
 
-/// §Fase 74.a — one EVENT (non-cron) listener of a daemon: the channel /
+/// v2.31.0 — one EVENT (non-cron) listener of a daemon: the channel /
 /// topic it subscribes to, its event alias, and its handler body. The
 /// complement of [`CronListener`].
 pub struct EventListener<'a> {
@@ -139,12 +139,12 @@ pub struct EventListener<'a> {
     pub body: &'a [IRFlowNode],
 }
 
-/// §Fase 74.a — extract a daemon's EVENT listeners: every `listen` whose
+/// v2.31.0 — extract a daemon's EVENT listeners: every `listen` whose
 /// channel is NOT a `cron:<expr>` schedule (a typed `channel` or a topic
 /// string). The exact complement of [`cron_listeners`] — those fire on the
-/// timer, these fire on the event bus (the producer's `emit`). Before §74
-/// these were silently dropped (the §52.g `axon-W009` honesty boundary);
-/// §74 delivers to them.
+/// timer, these fire on the event bus (the producer's `emit`). Before v2.31.0
+/// these were silently dropped (the v2.4.0 `axon-W009` honesty boundary);
+/// v2.31.0 delivers to them.
 pub fn event_listeners(daemon: &IRDaemon) -> Vec<EventListener<'_>> {
     daemon
         .listeners
@@ -158,9 +158,9 @@ pub fn event_listeners(daemon: &IRDaemon) -> Vec<EventListener<'_>> {
         .collect()
 }
 
-/// §Fase 71.c — the `window` primitive a daemon binds via `window:`, resolved
+/// v2.27.0 — the `window` primitive a daemon binds via `window:`, resolved
 /// against the program's window declarations. `None` when the daemon has no
-/// temporal guard (the common case — behaviour is byte-identical to pre-§71).
+/// temporal guard (the common case — behaviour is byte-identical to pre-v2.27.0).
 /// A dangling `window_ref` (rejected by `axon-T825` at compile time) resolves
 /// to `None` here, so the daemon fires unguarded rather than panicking.
 pub fn bound_window<'a>(
@@ -197,7 +197,7 @@ pub fn execute_listener_body(
     body: &[IRFlowNode],
     backend: &str,
     source_file: &str,
-    // §Fase 72.c — the daemon's linear-effect budget gate (shared across ticks so
+    // v2.28.0 — the daemon's linear-effect budget gate (shared across ticks so
     // bucket/window state is cumulative). `None` for a budgetless daemon.
     budget: Option<std::sync::Arc<std::sync::Mutex<crate::runtime::budget_kernel::BudgetGate>>>,
 ) -> Vec<(String, Result<crate::runner::ServerRunnerMetrics, String>)> {
@@ -209,11 +209,11 @@ pub fn execute_listener_body(
                 ir,
                 &run.flow_name,
                 backend,
-                // §Fase 95.f — the OSS in-process daemon runs under the
+                // v2.49.0 — the OSS in-process daemon runs under the
                 // request/default tenant scope (self-hosted is single-tenant;
                 // the ENT multi-tenant path is the supervisor).
                 //
-                // §Fase 122.e — the old wording, *"bridge the task-local to the
+                // v2.89.0 — the old wording, *"bridge the task-local to the
                 // executor's explicit tenant"*, described something that cannot
                 // happen here. This read is inside `run_daemon`'s
                 // `tokio::spawn`, and a spawned task inherits no task-local, so
@@ -234,42 +234,42 @@ pub fn execute_listener_body(
                 &empty,
                 &empty,
                 None,
-                // §Fase 24.g.2 — OSS daemon: env/default LLM endpoint
+                // v1.18.0 — OSS daemon: env/default LLM endpoint
                 // (per-tenant override is the enterprise supervisor's path).
                 None,
                 None,
-                // §Fase 72.c — the daemon's effect budget gate.
+                // v2.28.0 — the daemon's effect budget gate.
                 budget.clone(),
-                // §Fase 114.e — the daemon path carries no channel semaphores (the
+                // v2.69.0 — the daemon path carries no channel semaphores (the
                 // HTTP vendor-concurrency case is the server path's; a daemon's tool
                 // calls are single-threaded per tick). Owed if daemons ever fan out.
                 None,
-                // §Fase 114.f — likewise no tool leases on the daemon path.
+                // v2.69.0 — likewise no tool leases on the daemon path.
                 None,
-                // §Fase 74.f — the OSS single-node daemon keeps `emit` in-process;
+                // v2.31.0 — the OSS single-node daemon keeps `emit` in-process;
                 // the durable per-tenant outbox is the enterprise supervisor path.
                 None,
-                None, // §Fase 92.c — no minter on the OSS daemon path (mint fails closed)
-                None, // §Fase 94.d — no custody on the OSS daemon path (rotate/secrets fail closed)
-                        None, // §Fase 108.b — no engine on the OSS daemon path yet (data-plane verbs fail closed — honest refusal; wiring is deferred §108.x surface)
-                        None, // §Fase 102 scrape_overrides
+                None, // v2.46.0 — no minter on the OSS daemon path (mint fails closed)
+                None, // v2.48.0 — no custody on the OSS daemon path (rotate/secrets fail closed)
+                        None, // v2.63.0 — no engine on the OSS daemon path yet (data-plane verbs fail closed — honest refusal; wiring is deferred v2.63.0 surface)
+                        None, // v2.56.0 scrape_overrides
 );
             (run.flow_name.clone(), result)
         })
         .collect()
 }
 
-/// §Fase 74.a — deliver one emitted event to every daemon `listen`er on
+/// v2.31.0 — deliver one emitted event to every daemon `listen`er on
 /// `channel`. For each matching listener body's `run <Flow>` invocation,
 /// run the flow with the event `payload` bound as its REQUEST BODY (so the
 /// consumer flow's declared parameters bind from the event's same-named
-/// fields — the §37.b Request Binding Contract). Returns the per-(daemon,
+/// fields — the v1.32.0 Request Binding Contract). Returns the per-(daemon,
 /// flow) results in declaration order.
 ///
 /// This is the π-calculus `(Comm)` reduction made executable — the
-/// CONSUMER side of durable event delivery. §74.a establishes the contract
+/// CONSUMER side of durable event delivery. v2.31.0 establishes the contract
 /// in-process; at-least-once + the durable outbox + the running supervisor
-/// loop are §74.b/c/f. A channel with no matching listener delivers to
+/// loop are v2.31.0. A channel with no matching listener delivers to
 /// nobody (an empty result — not an error; a fan-out of zero is valid).
 #[allow(clippy::type_complexity)]
 pub fn deliver_typed_event(
@@ -292,12 +292,12 @@ pub fn deliver_typed_event(
                     ir,
                     &run.flow_name,
                     backend,
-                    // §Fase 95.f — bridge the daemon's tenant scope explicitly.
+                    // v2.49.0 — bridge the daemon's tenant scope explicitly.
                     &crate::tenant_context::current_tenant_id(),
                     source_file,
                     None,
-                    // §74.a — the event payload binds to the consumer flow's
-                    // parameters (the §37.b Request Binding Contract).
+                    // v2.31.0 — the event payload binds to the consumer flow's
+                    // parameters (the v1.32.0 Request Binding Contract).
                     Some(payload),
                     &empty,
                     &empty,
@@ -305,15 +305,15 @@ pub fn deliver_typed_event(
                     None,
                     None,
                     budget.clone(),
-                    // §Fase 114.e — daemon path: no channel semaphores (server path's concern).
-                    None, // §Fase 114.f — daemon path: no tool leases (server path's concern).
+                    // v2.69.0 — daemon path: no channel semaphores (server path's concern).
+                    None, // v2.69.0 — daemon path: no tool leases (server path's concern).
                     None,
-                    // §Fase 74.f — OSS single-node delivery stays in-process.
+                    // v2.31.0 — OSS single-node delivery stays in-process.
                     None,
-                    None, // §Fase 92.c — no minter on the OSS daemon path (mint fails closed)
-                    None, // §Fase 94.d — no custody on the OSS daemon path (rotate/secrets fail closed)
-                                None, // §Fase 108.b — no engine on the OSS daemon path yet (data-plane verbs fail closed — honest refusal; wiring is deferred §108.x surface)
-                                None, // §Fase 102 scrape_overrides
+                    None, // v2.46.0 — no minter on the OSS daemon path (mint fails closed)
+                    None, // v2.48.0 — no custody on the OSS daemon path (rotate/secrets fail closed)
+                                None, // v2.63.0 — no engine on the OSS daemon path yet (data-plane verbs fail closed — honest refusal; wiring is deferred v2.63.0 surface)
+                                None, // v2.56.0 scrape_overrides
 );
                 out.push((daemon.name.clone(), run.flow_name.clone(), result));
             }
@@ -322,13 +322,13 @@ pub fn deliver_typed_event(
     out
 }
 
-/// §Fase 74.b — the bounded retry ceiling for at-least-once delivery. A
+/// v2.31.0 — the bounded retry ceiling for at-least-once delivery. A
 /// listener body that keeps failing past this many attempts is DEAD-
 /// LETTERED rather than redelivered forever (no infinite-redelivery storm
 /// — the `delivery_is_a_kept_promise` doctrine keeps delivery TOTAL).
 pub const MAX_DELIVERY_ATTEMPTS: u32 = 5;
 
-/// §Fase 74.b — the outcome of delivering one event to one listener under
+/// v2.31.0 — the outcome of delivering one event to one listener under
 /// its channel's `qos`. Total: every delivery terminates in exactly one of
 /// these — acked, dead-lettered, or (at_most_once) dropped.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -344,7 +344,7 @@ pub enum DeliveryOutcome {
     Dropped { error: String },
 }
 
-/// §Fase 74.b — at-least-once delivery of ONE event to ONE listener body,
+/// v2.31.0 — at-least-once delivery of ONE event to ONE listener body,
 /// honoring `qos`. Pure policy (the body executor is injected as `run`):
 ///
 /// - `at_least_once` (default + `exactly_once` + `queue` + `broadcast`):
@@ -377,18 +377,18 @@ pub fn deliver_with_retry(
     DeliveryOutcome::DeadLettered { attempts: cap, last_error }
 }
 
-/// §Fase 74.d — the qos FAN-OUT rule for daemon delivery: how many of the
+/// v2.31.0 — the qos FAN-OUT rule for daemon delivery: how many of the
 /// `matching` listeners on a channel actually receive an event.
 ///
 /// - `broadcast` → ALL of them (pub/sub fan-out: every listener gets it).
 /// - everything else (`at_least_once` / `at_most_once` / `exactly_once` /
-///   `queue`) → SINGLE-CONSUMER: at most ONE listener receives it (the §13
+/// `queue`) → SINGLE-CONSUMER: at most ONE listener receives it (the v1.6.0
 ///   transport spec — these modes are a single-consumer FIFO).
 ///
 /// (Fair round-robin balancing across competing `queue` consumers is a
 /// refinement; the load-bearing semantic — `queue`/FIFO ⇒ one, `broadcast`
 /// ⇒ all — is what this enforces. `exactly_once`'s no-double-apply-across-a-
-/// crash guarantee needs an ATOMIC ack and is §74.f; here `exactly_once`
+/// crash guarantee needs an ATOMIC ack and is v2.31.0; here `exactly_once`
 /// is single-consumer + the outbox's offset-keyed `mark_processed` dedup.)
 pub fn fan_out_count(qos: &str, matching: usize) -> usize {
     if qos == "broadcast" {
@@ -398,15 +398,15 @@ pub fn fan_out_count(qos: &str, matching: usize) -> usize {
     }
 }
 
-/// §Fase 74.b — RELIABLE (at-least-once) delivery of one event to every
+/// v2.31.0 — RELIABLE (at-least-once) delivery of one event to every
 /// daemon `listen`er on `channel`, honoring the channel's declared `qos`.
 /// Per listener, the body (all its `run <Flow>` invocations, each with the
-/// event `payload` bound as its §37.b request body) is run with
+/// event `payload` bound as its v1.32.0 request body) is run with
 /// [`deliver_with_retry`]; a body that exhausts its retries is dead-
 /// lettered (logged, surfaced in the outcome), never silently lost. This
 /// is the Q3 guarantee on the in-process substrate — at-least-once with
-/// bounded redelivery. (Survive-a-crash durability is the §74.c
-/// transactional outbox + §74.f per-tenant store.) Returns the
+/// bounded redelivery. (Survive-a-crash durability is the v2.31.0
+/// transactional outbox + v2.31.0 per-tenant store.) Returns the
 /// per-(daemon) outcome in declaration order.
 #[allow(clippy::type_complexity)]
 pub fn deliver_typed_event_reliable(
@@ -426,9 +426,9 @@ pub fn deliver_typed_event_reliable(
         .map(|c| c.qos.clone())
         .unwrap_or_else(|| "at_least_once".to_string());
 
-    // §74.d — collect the matching listeners, then apply the qos FAN-OUT:
+    // v2.31.0 — collect the matching listeners, then apply the qos FAN-OUT:
     // `broadcast` delivers to EVERY listener; every other mode is
-    // SINGLE-CONSUMER (one listener), per the §13 transport spec.
+    // SINGLE-CONSUMER (one listener), per the v1.6.0 transport spec.
     let mut matching: Vec<(String, EventListener)> = Vec::new();
     for daemon in &ir.daemons {
         for listener in event_listeners(daemon) {
@@ -447,14 +447,14 @@ pub fn deliver_typed_event_reliable(
                 // The body runs ALL its invocations; a single failure fails
                 // the body run (→ a retry of the whole body — re-running a
                 // succeeded invocation is the at-least-once cost; idempotent
-                // dedup is §74.d `exactly_once`).
+                // dedup is v2.31.0 `exactly_once`).
                 for run in run_invocations(listener.body) {
                     let r = crate::runner::execute_server_flow(
                         ir,
                         &run.flow_name,
                         backend,
-                        // §Fase 95.f — the daemon's tenant scope.
-                        // §Fase 122.e — likewise inside `run_event_listeners`'s
+                        // v2.49.0 — the daemon's tenant scope.
+                        // v2.89.0 — likewise inside `run_event_listeners`'s
                         // `tokio::spawn`: nothing is bridged, this is always
                         // `"default"`, and for a single-tenant OSS daemon that
                         // is the right answer. See the note in
@@ -469,15 +469,15 @@ pub fn deliver_typed_event_reliable(
                         None,
                         None,
                         budget.clone(),
-                        // §Fase 114.e — daemon path: no channel semaphores (server path's concern).
-                        None, // §Fase 114.f — daemon path: no tool leases (server path's concern).
+                        // v2.69.0 — daemon path: no channel semaphores (server path's concern).
+                        None, // v2.69.0 — daemon path: no tool leases (server path's concern).
                         None,
-                        // §Fase 74.f — OSS single-node delivery stays in-process.
+                        // v2.31.0 — OSS single-node delivery stays in-process.
                         None,
-                        None, // §Fase 92.c — no minter on the OSS daemon path (mint fails closed)
-                    None, // §Fase 94.d — no custody on the OSS daemon path (rotate/secrets fail closed)
-                                        None, // §Fase 108.b — no engine on the OSS daemon path yet (data-plane verbs fail closed — honest refusal; wiring is deferred §108.x surface)
-                                        None, // §Fase 102 scrape_overrides
+                        None, // v2.46.0 — no minter on the OSS daemon path (mint fails closed)
+                    None, // v2.48.0 — no custody on the OSS daemon path (rotate/secrets fail closed)
+                                        None, // v2.63.0 — no engine on the OSS daemon path yet (data-plane verbs fail closed — honest refusal; wiring is deferred v2.63.0 surface)
+                                        None, // v2.56.0 scrape_overrides
 );
                     if let Err(e) = r {
                         return Err(format!("flow '{}': {e}", run.flow_name));
@@ -497,11 +497,11 @@ pub fn deliver_typed_event_reliable(
     out
 }
 
-/// §Fase 74.b — the single-node OSS event-delivery driver: per the
+/// v2.31.0 — the single-node OSS event-delivery driver: per the
 /// program's daemon EVENT listeners, spawn a task that loops
 /// `bus.receive(channel).await` → reliable (at-least-once) delivery, until
 /// cancelled. The complement of [`run_daemon`] (cron). Single-node by
-/// construction (it delivers once PER PROCESS); the §74.f enterprise layer
+/// construction (it delivers once PER PROCESS); the v2.31.0 enterprise layer
 /// adds the durable per-tenant outbox + fire-once-across-replicas on top.
 /// `bus` is shared with the producer flows (their `emit` feeds it).
 pub async fn run_event_listeners(
@@ -509,8 +509,8 @@ pub async fn run_event_listeners(
     bus: std::sync::Arc<crate::runtime::channels::TypedEventBus>,
     backend: String,
     cancel: crate::cancel_token::CancellationFlag,
-    // §Fase 74.e — optional replay/audit-chain sink: each delivery records a
-    // `deliver:<channel>` ReplayToken. `None` → no recording (pre-§74.e).
+    // v2.31.0 — optional replay/audit-chain sink: each delivery records a
+    // `deliver:<channel>` ReplayToken. `None` → no recording (pre-v2.31.0).
     replay_log: Option<std::sync::Arc<dyn crate::replay_token::ReplayLog>>,
 ) {
     // The distinct channels any daemon event-listens on (one receive loop
@@ -538,11 +538,11 @@ pub async fn run_event_listeners(
                         let Ok(event) = received else { return }; // sender dropped → stop
                         let payload = match event.payload {
                             crate::runtime::channels::TypedPayload::Scalar(v) => v,
-                            // Channel mobility (handle payload) delivery is §13 §3.3,
-                            // deferred (§74 deferred scope) — skip, don't crash.
+                            // Channel mobility (handle payload) delivery is v1.6.0 section 3.3,
+                            // deferred (v2.31.0 deferred scope) — skip, don't crash.
                             crate::runtime::channels::TypedPayload::Handle(_) => continue,
                         };
-                        // §74.e — reliable delivery + record the deliver token.
+                        // v2.31.0 — reliable delivery + record the deliver token.
                         let _ = deliver_and_record(
                             &ir, &channel, &payload, &backend, "<daemon-event>", None,
                             replay_log.as_deref(),
@@ -558,7 +558,7 @@ pub async fn run_event_listeners(
     }
 }
 
-/// §Fase 74.e — mint a `ReplayToken` for a typed-channel event (paper §5.4:
+/// v2.31.0 — mint a `ReplayToken` for a typed-channel event (paper section 5.4:
 /// "every Chan-Input reduction emits a ReplayToken" — and, symmetrically,
 /// every Chan-Output). `effect_name` is `emit:<channel>` (the producer's
 /// output prefix) or `deliver:<channel>` (the consumer's input prefix);
@@ -566,7 +566,7 @@ pub async fn run_event_listeners(
 /// indexes by; `outputs` is the delivery outcome (Null for a bare emit).
 /// The model slug is the stable deterministic `axon.builtin.channel.v1` —
 /// channel delivery is MECHANICAL (dispatch, not cognition), so it replays
-/// bit-for-bit. The receipt puts an event in the §11.c audit/replay chain.
+/// bit-for-bit. The receipt puts an event in the v1.4.0 audit/replay chain.
 pub fn mint_channel_event_token(
     effect_name: &str,
     flow_id: &str,
@@ -581,7 +581,7 @@ pub fn mint_channel_event_token(
         .mint()
 }
 
-/// §Fase 74.e — deliver an event (reliable, at-least-once, §74.b) AND
+/// v2.31.0 — deliver an event (reliable, at-least-once, v2.31.0) AND
 /// record a `deliver:<channel>` [`ReplayToken`] per listener outcome to the
 /// attached [`ReplayLog`], so each Chan-Input reduction is in the replay/
 /// audit chain. Async (the log sink may be Postgres / the audit chain).
@@ -619,7 +619,7 @@ pub async fn deliver_and_record(
             );
             // A token-sink failure must not lose the delivery — log + carry on
             // (the delivery already happened; the receipt is best-effort here,
-            // hardened in the §74.f durable audit-chain sink).
+            // hardened in the v2.31.0 durable audit-chain sink).
             if let Err(e) = log.append(token).await {
                 eprintln!("deliver token append failed for '{channel}': {e}");
             }
@@ -628,8 +628,8 @@ pub async fn deliver_and_record(
     outcomes
 }
 
-/// §Fase 74.c — drain a channel's unprocessed OUTBOX and deliver each
-/// event at-least-once (§74.b), acking every entry whose delivery reaches
+/// v2.31.0 — drain a channel's unprocessed OUTBOX and deliver each
+/// event at-least-once (v2.31.0), acking every entry whose delivery reaches
 /// a TERMINAL outcome (acked / dead-lettered / dropped) so it is not
 /// redelivered. An entry only stays redeliverable while NO drain has been
 /// run for it — so a supervisor that was DOWN when the event was emitted
@@ -667,13 +667,13 @@ pub fn drain_outbox(
     out
 }
 
-/// §52.c.2 — the single-node daemon driver. For each cron listener, loops:
+/// v2.4.0 — the single-node daemon driver. For each cron listener, loops:
 /// compute the next fire from the clock, sleep until then, execute the body.
 /// Returns when `cancel` is triggered. Each listener is driven on its own
 /// spawned task so independent schedules don't block each other.
 ///
 /// Single-node by construction: it fires once PER PROCESS. A multi-replica
-/// deploy must NOT run this directly (it would double-fire) — the §52.d
+/// deploy must NOT run this directly (it would double-fire) — the v2.4.0
 /// enterprise supervisor adds the fire-once-across-replicas guard on top of the
 /// same [`next_fire_after`] math.
 pub async fn run_daemon(
@@ -684,10 +684,10 @@ pub async fn run_daemon(
     cancel: crate::cancel_token::CancellationFlag,
 ) {
     // Snapshot the daemon's cron schedules + bodies (owned, so the spawned
-    // per-listener tasks don't borrow `ir`'s daemon list). §Fase 71.c also
+    // per-listener tasks don't borrow `ir`'s daemon list). v2.27.0 also
     // snapshots the bound `window` (cloned once — it is the same guard for every
     // listener of the daemon).
-    // §Fase 72.c also builds the daemon's `budget { … }` gate ONCE (shared
+    // v2.28.0 also builds the daemon's `budget { … }` gate ONCE (shared
     // `Arc<Mutex>` across every listener + tick, so the rate buckets / max windows
     // accumulate across the daemon's whole lifetime — a daily `max` spans ticks).
     type SharedBudget = Option<std::sync::Arc<std::sync::Mutex<crate::runtime::budget_kernel::BudgetGate>>>;
@@ -736,7 +736,7 @@ pub async fn run_daemon(
                 tokio::select! {
                     _ = cancel.cancelled() => return,
                     _ = tokio::time::sleep(wait) => {
-                        // §Fase 71.c — the temporal guard. `next` is the wall-clock
+                        // v2.27.0 — the temporal guard. `next` is the wall-clock
                         // minute the tick fires at; evaluate the bound window there.
                         if let Some(w) = &window {
                             match decide(next, w) {
@@ -760,7 +760,7 @@ pub async fn run_daemon(
                                 WindowAction::Defer { open_at } => {
                                     // The OSS single-process supervisor cannot persist a
                                     // defer ledger; it degrades `defer` to a logged skip.
-                                    // True coalesced fire-once-when-open is the §71.d
+                                    // True coalesced fire-once-when-open is the v2.27.0
                                     // enterprise defer-ledger.
                                     eprintln!(
                                         "daemon '{daemon_name}' tick at {next} is OUTSIDE \
@@ -873,7 +873,7 @@ mod tests {
         assert_eq!(invs[0].flow_name, "HibernateSession");
     }
 
-    // ── §Fase 74.a — event listeners + in-process delivery ───────────
+    // ── v2.31.0 — event listeners + in-process delivery ───────────
 
     #[test]
     fn event_listeners_are_the_complement_of_cron() {
@@ -898,11 +898,11 @@ mod tests {
 
     #[tokio::test]
     async fn emit_reaches_a_daemon_listener_in_process() {
-        // §74.a — the headline: a producer emits on a typed channel, the bus
+        // v2.31.0 — the headline: a producer emits on a typed channel, the bus
         // carries it, and the consumer daemon's `listen Channel` body RUNS
         // with the event payload bound to the consumer flow's parameters.
-        // This is the flow→daemon delivery the §52.g `axon-W009` said did not
-        // exist — now it does (in-process; durable at-least-once is §74.b/f).
+        // This is the flow→daemon delivery the v2.4.0 `axon-W009` said did not
+        // exist — now it does (in-process; durable at-least-once is v2.31.0).
         let ir = ir_with_daemon(
             "type Hib { tenant_id: String  session_id: String }\n\
              channel HibCh { message: Hib  qos: at_least_once  persistence: persistent_axonstore }\n\
@@ -944,11 +944,11 @@ mod tests {
         );
     }
 
-    // ── §Fase 74.b — at-least-once delivery (retry / dead-letter / qos) ──
+    // ── v2.31.0 — at-least-once delivery (retry / dead-letter / qos) ──
 
     #[test]
     fn deliver_with_retry_acks_on_a_later_attempt() {
-        // §74.b — at_least_once retries; a body that fails twice then
+        // v2.31.0 — at_least_once retries; a body that fails twice then
         // succeeds is Acked on the 3rd attempt.
         let mut n = 0;
         let outcome = deliver_with_retry("at_least_once", 5, || {
@@ -960,7 +960,7 @@ mod tests {
 
     #[test]
     fn deliver_with_retry_dead_letters_after_the_ceiling() {
-        // §74.b — a body that always fails is dead-lettered after exactly
+        // v2.31.0 — a body that always fails is dead-lettered after exactly
         // MAX_DELIVERY_ATTEMPTS (no infinite redelivery).
         let mut n = 0;
         let outcome = deliver_with_retry("at_least_once", MAX_DELIVERY_ATTEMPTS, || {
@@ -979,7 +979,7 @@ mod tests {
 
     #[test]
     fn deliver_with_retry_at_most_once_drops_without_retry() {
-        // §74.b — at_most_once runs ONCE; a failure is dropped (the
+        // v2.31.0 — at_most_once runs ONCE; a failure is dropped (the
         // best-effort qos the program declared), never retried.
         let mut n = 0;
         let outcome = deliver_with_retry("at_most_once", 5, || {
@@ -1040,11 +1040,11 @@ mod tests {
         assert!(matches!(out[0].1, DeliveryOutcome::Dropped { .. }), "{:?}", out[0].1);
     }
 
-    // ── §Fase 74.c — durable outbox: drain + redelivery-after-down ───────
+    // ── v2.31.0 — durable outbox: drain + redelivery-after-down ───────
 
     #[tokio::test]
     async fn outbox_event_redelivers_after_the_consumer_was_down() {
-        // The headline §74.c guarantee: a producer appends to the durable
+        // The headline v2.31.0 guarantee: a producer appends to the durable
         // outbox while the consumer/supervisor is DOWN (no drain runs). The
         // event WAITS in the persisted log; when a drain runs, it delivers.
         use crate::event_outbox::{EventOutbox, InMemoryEventOutbox};
@@ -1088,7 +1088,7 @@ mod tests {
         assert!(outbox.unprocessed("HibCh").is_empty(), "dead-lettered entries are acked");
     }
 
-    // ── §Fase 74.d — qos fan-out (broadcast = all / else = single-consumer) ──
+    // ── v2.31.0 — qos fan-out (broadcast = all / else = single-consumer) ──
 
     #[test]
     fn fan_out_count_broadcast_is_all_else_one() {
@@ -1134,11 +1134,11 @@ mod tests {
         assert_eq!(out.len(), 1, "single-consumer → exactly one fired: {out:?}");
     }
 
-    // ── §Fase 74.e — ReplayToken integration ─────────────────────────────
+    // ── v2.31.0 — ReplayToken integration ─────────────────────────────
 
     #[test]
     fn channel_event_token_captures_the_causal_receipt() {
-        // §74.e — an `emit`/`deliver` mints a ReplayToken: the effect name,
+        // v2.31.0 — an `emit`/`deliver` mints a ReplayToken: the effect name,
         // the payload (+ flow_id) as inputs, a deterministic channel slug.
         let tok = mint_channel_event_token(
             "deliver:HibCh",
@@ -1227,7 +1227,7 @@ mod tests {
         assert_eq!(w.timezone, "America/Bogota");
         assert_eq!(w.on_outside, "skip");
 
-        // A daemon with no `window:` resolves to None (unguarded — pre-§71).
+        // A daemon with no `window:` resolves to None (unguarded — pre-v2.27.0).
         let unguarded = ir_with_daemon(
             "flow Send() -> Unit { step S { ask: \"x\" output: Unit } }\n\
              daemon Plain {\n\
@@ -1240,7 +1240,7 @@ mod tests {
 
     #[test]
     fn budget_gate_builds_from_a_parsed_daemon_and_enforces() {
-        // §Fase 72.c — parse → IR → BudgetGate, end to end. A daemon whose budget
+        // v2.28.0 — parse → IR → BudgetGate, end to end. A daemon whose budget
         // allows 1 TelnyxCall/hour: the first emission is granted, the second is
         // denied under the (default) `block` policy.
         let ir = ir_with_daemon(

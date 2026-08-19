@@ -1,6 +1,6 @@
 name: CI
 
-# §Fase 39.i — v2.0.0 Pure Silicon Cognition. The CI is now
+# v2.0.0 Pure Silicon Cognition. The CI is now
 # Rust-canonical: there is no Python language stack to test. The
 # gate exercises the three Rust crates (axon-frontend, axon-csys via
 # its own workflow, axon-rs) + builds the native binary + validates
@@ -52,17 +52,17 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      # §Fase 39.i — the frontend lib carries the lexer / parser /
+      # v2.0.0 — the frontend lib carries the lexer / parser /
       # type-checker / IR generator + the FlowEnvelope type system
       # (39.a) + axon-E039 wire-shape gate (39.e). Test it explicitly.
       #
-      # §Fase 117.a — this step is ALSO where the shop window is gated. Two
+      # v2.81.0 — this step is ALSO where the shop window is gated. Two
       # suites here are build inputs, not unit tests:
-      #   - fase117_a_examples_compile.rs  — EVERY examples/**/*.axon compiles.
-      #     Before §117.a the only example CI ever compiled was
+      #   - examples_compile.rs  — EVERY examples/**/*.axon compiles.
+      # Before v2.81.0 the only example CI ever compiled was
       #     contract_analyzer.axon (see the CLI step below), and 6 of 12 were
       #     broken against the shipped compiler without anything noticing.
-      #   - fase117_a_readme_snippets.rs   — every ```axon block in README.md is
+      #   - readme_snippets.rs   — every ```axon block in README.md is
       #     compiled, against a checked-in ledger of known-uncompilable blocks
       #     that may only SHRINK. The README is an input to the build.
       # Do not narrow this step to a filtered test list.
@@ -74,23 +74,23 @@ jobs:
         working-directory: axon-rs
         run: cargo test --verbose
 
-      # §Fase 122.d — the lane that lights the dark targets.
+      # v2.89.0 — the lane that lights the dark targets.
       #
-      # `cargo test` above runs the DEFAULT feature set (`cli`). §120.g pinned
+      # `cargo test` above runs the DEFAULT feature set (`cli`). v2.87.0 pinned
       # 104 test targets that compile to ZERO tests under it — 88 behind
       # `server`, 15 behind `postgres`, 1 behind `documents` — and its ratchet
       # says, in its own failure message: *going dark is allowed; going dark
       # SILENTLY is not*, and asks that something actually run them.
       #
-      # Nothing did. Not here. For entire fases the only thing running them was
+      # Nothing did. Not here. For entire cycles the only thing running them was
       # a developer's local `--features server,csys-native`, so CI was green
       # over a subset of the suite while the full run was ~5.6k tests. That is
-      # §120.g's own finding — "860 tests reporting green without executing" —
+      # v2.87.0's own finding — "860 tests reporting green without executing" —
       # one level up, in the place nobody had looked.
       #
       # `postgres` is deliberately NOT in this list: those 15 targets need a
-      # live database and have their own workflows (fase_37x, fase_65,
-      # fase_38_i). This lane covers the 88 + 1 that need only a feature flag.
+      # live database and have their own workflows (fase_37x, the design plan,
+      # i_2). This lane covers the 88 + 1 that need only a feature flag.
       - name: Run cargo test (axon-rs, server + csys-native)
         working-directory: axon-rs
         run: cargo test --verbose --features server,csys-native,documents
@@ -135,7 +135,7 @@ jobs:
           if-no-files-found: error
 
   # ── Cat 3 CLI contract tests (subprocess against the binary) ──────
-  # §Fase 39.g — the 2 surviving Python tests anchor the public CLI
+  # v2.0.0 — the 2 surviving Python tests anchor the public CLI
   # contract. They subprocess-invoke the native binary (no Python
   # language runtime). Run on Linux only (the contract is platform-
   # agnostic; the rust-native job already validates the binary on
@@ -163,9 +163,9 @@ jobs:
         working-directory: axon-rs
         run: cargo build
 
-      # §Fase 122.d — was `pytest tests/test_cli_mvp_smoke.py
+      # v2.89.0 — was `pytest tests/test_cli_mvp_smoke.py
       # tests/test_frontend_contract_golden.py`. Both files were DELETED by
-      # §116.c.5 ("retire the PyPI distribution shim — 5 of 6 .py files gone")
+      # v2.77.0 ("retire the PyPI distribution shim — 5 of 6 .py files gone")
       # and this step was not updated, so the job has failed on every push
       # since.
       #
@@ -176,14 +176,14 @@ jobs:
       # was v2.75.0 while the tags ran to v2.88.0. Nobody connected a deleted
       # Python file to a missing releases page.
       #
-      # The coverage was never lost. `fase39f_cli_binary_parity` was written to
+      # The coverage was never lost. `cli_binary_parity` was written to
       # replicate that exact harness — it subprocess-invokes the built binary
       # across all eight plan-vivo commands — and it asserts the version
       # against `axon::runner::AXON_VERSION` rather than a literal, so it can
       # never go stale the way the Python assert did.
       - name: Run the CLI contract against the native binary
         working-directory: axon-rs
-        run: cargo test --test fase39f_cli_binary_parity -- --nocapture
+        run: cargo test --test cli_binary_parity -- --nocapture
 
   # ── Release ───────────────────────────────────────────────────────
   # Triggered only on version tags (v*). Downloads native binaries
