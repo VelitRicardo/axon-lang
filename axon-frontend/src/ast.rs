@@ -1401,6 +1401,16 @@ pub struct AgentDefinition {
     pub max_tokens: Option<i64>,
     pub max_time: String,
     pub max_cost: Option<f64>,
+    /// The declared result type of the agent — `return: T` inside the block,
+    /// or the `-> T` position after the name. Empty when undeclared. Checked
+    /// against the declared types (axon-T1219) and against the `output:` of
+    /// the step that calls the agent.
+    pub return_type: String,
+    /// The `step … { … }` sequence written inside the agent block — the control
+    /// policy of `strategy: custom`. Empty for every other strategy (a body
+    /// under `react`/`reflexion`/`plan_and_execute` is axon-T1217). Until 4.1.0
+    /// the parser discarded these blocks and `custom` was refused at dispatch.
+    pub body: Vec<StepNode>,
     pub loc: Loc,
     /// Fase 14.b — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the

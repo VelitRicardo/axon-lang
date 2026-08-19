@@ -49,6 +49,9 @@ fn declared_agent(name: &str, max_iterations: Option<i64>) -> IRAgent {
         max_tokens: None,
         max_cost: None,
         max_time: String::new(),
+        return_type: String::new(),
+        return_schema: Vec::new(),
+        body: Vec::new(),
     }
 }
 

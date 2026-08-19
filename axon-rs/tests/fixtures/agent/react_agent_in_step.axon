@@ -1,0 +1,24 @@
+// The README's canonical agent shape: a declared tool, a bounded react agent,
+// and a flow step that CALLS the agent in its body and then asks over the
+// result. This fixture is read from disk by the attestation gate and driven
+// through both execution doors (the unified server engine and the CLI stub
+// walker) — an adopter could have written every line of it.
+
+tool Calculator { provider: native }
+
+agent Calc {
+    goal: "add numbers"
+    tools: [Calculator]
+    strategy: react
+    max_iterations: 3
+    on_stuck: retry
+}
+
+flow F(q: String) -> String {
+    step Responder {
+        Calc(q)
+        ask: "Answer ${q}"
+    }
+}
+
+run F("2+2")

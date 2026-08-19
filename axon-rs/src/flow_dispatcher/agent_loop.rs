@@ -55,27 +55,52 @@
 //! **`max_iterations` is REQUIRED.** An agent without it is refused before the
 //! first token is spent. A default would be a number nobody wrote deciding how
 //! much of an adopter's money to spend, and "unbounded" is not a default a
-//! cognitive runtime may pick on someone's behalf.
+//! cognitive runtime may pick on someone's behalf. Since 4.1.0 the COMPILER
+//! refuses it first (`axon-T1216`, the same predicate `savant` has carried as
+//! `axon-T877`); the refusal below is defence in depth for IR that bypassed
+//! `axon check`, the same posture the channel κ-coverage law takes at `publish`.
+//!
+//! # The fourth strategy and the fourth bound (4.1.0)
+//!
+//! - `custom` — the step sequence written inside the agent block IS the
+//!   policy (README: "follows a user-defined step sequence, not a generic
+//!   loop"). Each step is one deliberation through the ordinary step handler,
+//!   so `max_iterations` bounds it exactly as it bounds the others:
+//!   `min(body.len(), max_iterations)`. The parser used to DROP that body and
+//!   this module refused `custom` by name; both halves are gone.
+//! - `max_time` — a wall-clock ceiling (`30s`, `2m`), checked before every
+//!   deliberation against the instant the run started. It used to be parsed,
+//!   lowered, and read by nothing; a bound declared and not enforced is the
+//!   defect class this module exists to end, so it is enforced or refused
+//!   (`axon-T1220` refuses what the shared duration grammar cannot read).
+//! - `return: T` — when `T` is a declared struct type, the final answer must
+//!   be a JSON object carrying T's fields; a non-conforming answer is a
+//!   STUCK outcome (`bound: "return"`) routed through `on_stuck`, never a
+//!   free-text success wearing a type's name.
 
 use crate::flow_dispatcher::{DispatchCtx, DispatchError, NodeOutcome};
 use crate::ir_nodes::IRAgent;
 
 /// The resolved, affine spend envelope of ONE agent run — the paper's
-/// `Budget(n)`, made concrete over the three quantities the language actually
-/// declares.
+/// `Budget(n)`, made concrete over the four quantities the language declares.
 ///
 /// Every field here is CONSUMED. A bound that is declared and not enforced is
-/// the §111 defect this fase exists to end, so `max_time` is deliberately
-/// absent: nothing in this loop reads a wall clock, and pretending otherwise
-/// would put a fourth unenforced bound in the struct.
+/// the defect class this module exists to end: `max_time` was absent from this
+/// struct for exactly that reason until the loop learned to read a clock
+/// (`Spend::affords` checks it before every deliberation).
 #[derive(Debug, Clone, Copy)]
 pub struct AgentBounds {
-    /// Hard iteration ceiling. The termination proof of all three strategies.
+    /// Hard iteration ceiling. The termination proof of every strategy.
     pub max_iterations: u32,
     /// Cumulative output-token ceiling across the run. `None` ⇒ not declared.
     pub max_tokens: Option<u64>,
     /// Cumulative USD ceiling across the run. `None` ⇒ not declared.
     pub max_cost: Option<f64>,
+    /// Wall-clock ceiling for the whole run, measured from `run_agent` entry.
+    /// `None` ⇒ not declared. Parsed by the ONE duration grammar the checker
+    /// uses (`axon_frontend::type_checker::parse_duration_ms`), so an agent
+    /// that passed `axon check` cannot reach here with an unreadable value.
+    pub max_time: Option<std::time::Duration>,
 }
 
 impl AgentBounds {
@@ -113,10 +138,30 @@ impl AgentBounds {
                 })
             }
         };
+        let max_time = if agent.max_time.trim().is_empty() {
+            None
+        } else {
+            match crate::type_checker::parse_duration_ms(&agent.max_time) {
+                Some(ms) => Some(std::time::Duration::from_millis(ms)),
+                None => {
+                    return Err(DispatchError::BackendError {
+                        name: format!("agent:{}", agent.name),
+                        message: format!(
+                            "agent '{}' declares `max_time: {}`, which is not a duration \
+                             (`500ms`, `30s`, `2m`, `1h`). axon-T1220 refuses this at \
+                             check time; refused here too rather than run with a bound \
+                             that cannot be read.",
+                            agent.name, agent.max_time
+                        ),
+                    })
+                }
+            }
+        };
         Ok(AgentBounds {
             max_iterations,
             max_tokens: agent.max_tokens.filter(|n| *n > 0).map(|n| n as u64),
             max_cost: agent.max_cost.filter(|c| *c > 0.0),
+            max_time,
         })
     }
 }
@@ -139,6 +184,8 @@ struct Spend {
     iterations: u32,
     tokens: u64,
     pricing: crate::cost_estimator::PricingModel,
+    /// When the run started — the origin `max_time` is measured from.
+    started: std::time::Instant,
 }
 
 impl Spend {
@@ -146,6 +193,7 @@ impl Spend {
         Spend {
             iterations: 0,
             tokens: 0,
+            started: std::time::Instant::now(),
             // The §101 doctrine applies: this is the OSS reference price, used
             // to enforce a ceiling the adopter declared, never to advertise a
             // cost. Enterprise resolves the real per-tenant model.
@@ -175,6 +223,11 @@ impl Spend {
         if let Some(cap) = b.max_cost {
             if self.usd() >= cap {
                 return Some("max_cost");
+            }
+        }
+        if let Some(cap) = b.max_time {
+            if self.started.elapsed() >= cap {
+                return Some("max_time");
             }
         }
         None
@@ -261,25 +314,10 @@ pub async fn run_agent(
         "plan_and_execute" => run_plan_and_execute(agent, input, &bounds, &mut spend, ctx).await?,
         "reflexion" => run_reflexion(agent, input, &bounds, &mut spend, ctx).await?,
         // `custom` means "the control policy is the step list I wrote inside
-        // the agent block" — README §agent writes `step Greet { … }` there.
-        // Those steps are DROPPED AT PARSE TIME: `AgentDefinition` has no body
-        // field. So dispatching `custom` would have to silently substitute one
-        // of the other three policies, and an agent that runs a policy its
-        // author did not write is worse than an agent that refuses.
-        "custom" => {
-            return Err(DispatchError::BackendError {
-                name: format!("agent:{}", agent.name),
-                message: format!(
-                    "agent '{}' declares `strategy: custom`, whose control policy is the \
-                     `step` list written inside the agent block — and that body is \
-                     discarded by the parser (`AgentDefinition` has no body field). \
-                     Running it would mean silently substituting a policy you did not \
-                     write. Refused until the agent body survives parsing; use react, \
-                     reflexion or plan_and_execute meanwhile.",
-                    agent.name
-                ),
-            })
-        }
+        // the agent block" — README writes `step Greet { … }` there. The body
+        // survives parsing since 4.1.0 (`IRAgent.body`); an EMPTY body under
+        // `custom` is `axon-T1217` at check time and refused here as well.
+        "custom" => run_custom(agent, input, &bounds, &mut spend, ctx).await?,
         other => {
             return Err(DispatchError::BackendError {
                 name: format!("agent:{}", agent.name),
@@ -292,6 +330,24 @@ pub async fn run_agent(
                 ),
             })
         }
+    };
+
+    // `return: T` over a declared struct type — the answer must inhabit it.
+    // Checked on the ANSWERED path only: a stuck run's partial state is already
+    // labelled as not-an-answer by `on_stuck`, and double-refusing it would
+    // hide which bound bit.
+    let end = match end {
+        AgentEnd::Answered if !agent.return_schema.is_empty() => {
+            match return_schema_defect(&agent.return_schema, &output) {
+                None => AgentEnd::Answered,
+                Some(why) => {
+                    ctx.let_bindings
+                        .insert(format!("{}_return_defect", agent.name), why);
+                    AgentEnd::Stuck { bound: "return" }
+                }
+            }
+        }
+        other => other,
     };
 
     let output = match end {
@@ -366,6 +422,108 @@ async fn deliberate(
     }
 }
 
+/// The ReAct framing. `pub` because the stub backend recognises it: a stub
+/// that answers `"(stub)"` to a ReAct prompt never terminates the protocol on
+/// its own, so `run --tool-mode stub` showed no iteration and no dispatch. The
+/// stub answers the PROTOCOL instead (`ACT:` once, then `ANSWER:`), and the
+/// loop still does every parse, grant check and dispatch itself.
+pub const REACT_FRAMING: &str = "You are acting under the ReAct policy. Think, then do exactly ONE \
+                       of two things. To use a tool, reply with a single line \
+                       `ACT: <ToolName>`. To finish, reply `ANSWER: <your answer>`. Name \
+                       only tools from the list you were given.";
+/// The Reflexion critique framing (see [`REACT_FRAMING`] for why it is public).
+pub const REFLEXION_CRITIQUE_FRAMING: &str = "You are self-critiquing under the Reflexion policy. If the attempt meets the \
+             goal, reply exactly `ACCEPT`. Otherwise reply with the single most important \
+             defect, and nothing else.";
+/// The prompt line that names the granted tools; the stub backend reads the
+/// first tool from it.
+pub const TOOLS_LINE_PREFIX: &str = "TOOLS YOU MAY USE: ";
+/// The prompt line that lists observations; `(none yet)` ⇒ first iteration.
+pub const NO_OBSERVATIONS_YET: &str = "(none yet)";
+
+/// The rendering of a declared `return:` schema inside the ANSWER instruction.
+fn return_schema_instruction(agent: &IRAgent) -> String {
+    if agent.return_schema.is_empty() {
+        return String::new();
+    }
+    let fields: Vec<String> = agent
+        .return_schema
+        .iter()
+        .map(|f| {
+            let t = if f.generic_param.is_empty() {
+                f.type_name.clone()
+            } else {
+                format!("{}<{}>", f.type_name, f.generic_param)
+            };
+            format!("{}{}: {t}", f.name, if f.optional { "?" } else { "" })
+        })
+        .collect();
+    format!(
+        " Your ANSWER must be a single JSON object of type {} with fields {{ {} }} — \
+         no prose around it.",
+        agent.return_type,
+        fields.join(", ")
+    )
+}
+
+/// Does `answer` inhabit the declared return schema? `None` when it does; a
+/// diagnostic naming the first defect otherwise. The check is structural and
+/// total: every required field present, each field's JSON shape matching its
+/// declared primitive (`String` ⇒ string, `Integer` ⇒ integer number, `Float`
+/// ⇒ number, `Boolean` ⇒ bool, `List<…>` ⇒ array, anything else ⇒ present).
+/// Public so a gate can read the decision without a live loop.
+pub fn return_schema_defect(schema: &[crate::ir_nodes::IRTypeField], answer: &str) -> Option<String> {
+    let text = answer.trim();
+    // A model may fence the object; strip one ``` fence if present.
+    let text = text
+        .strip_prefix("```json")
+        .or_else(|| text.strip_prefix("```"))
+        .map(|t| t.trim_end_matches("```").trim())
+        .unwrap_or(text);
+    let value: serde_json::Value = match serde_json::from_str(text) {
+        Ok(v) => v,
+        Err(e) => return Some(format!("the answer is not a JSON object ({e})")),
+    };
+    let obj = match value.as_object() {
+        Some(o) => o,
+        None => return Some("the answer is JSON but not an object".to_string()),
+    };
+    for f in schema {
+        match obj.get(&f.name) {
+            None | Some(serde_json::Value::Null) if f.optional => {}
+            None | Some(serde_json::Value::Null) => {
+                return Some(format!("required field `{}` is missing", f.name))
+            }
+            Some(v) => {
+                let ok = match f.type_name.as_str() {
+                    "String" => v.is_string(),
+                    "Integer" => v.as_i64().is_some() || v.as_u64().is_some(),
+                    "Float" => v.is_number(),
+                    "Boolean" => v.is_boolean(),
+                    "List" => v.is_array(),
+                    _ => true,
+                };
+                if !ok {
+                    return Some(format!(
+                        "field `{}` is declared `{}` but the answer carries {}",
+                        f.name,
+                        f.type_name,
+                        match v {
+                            serde_json::Value::String(_) => "a string",
+                            serde_json::Value::Number(_) => "a number",
+                            serde_json::Value::Bool(_) => "a boolean",
+                            serde_json::Value::Array(_) => "an array",
+                            serde_json::Value::Object(_) => "an object",
+                            serde_json::Value::Null => "null",
+                        }
+                    ));
+                }
+            }
+        }
+    }
+    None
+}
+
 /// The tool catalog the agent is ALLOWED to reach, rendered for the prompt.
 fn tool_catalog(agent: &IRAgent) -> String {
     if agent.tools.is_empty() {
@@ -437,21 +595,17 @@ async fn run_react(
 
     while spend.affords(bounds).is_none() {
         let prompt = format!(
-            "GOAL: {}\n\nINPUT: {}\n\nTOOLS YOU MAY USE: {}\n\nOBSERVATIONS SO FAR:\n{}",
+            "GOAL: {}\n\nINPUT: {}\n\n{TOOLS_LINE_PREFIX}{}\n\nOBSERVATIONS SO FAR:\n{}",
             agent.goal,
             input,
             tool_catalog(agent),
             if observations.is_empty() {
-                "(none yet)".to_string()
+                NO_OBSERVATIONS_YET.to_string()
             } else {
                 observations.join("\n")
             }
         );
-        let framing = "You are acting under the ReAct policy. Think, then do exactly ONE \
-                       of two things. To use a tool, reply with a single line \
-                       `ACT: <ToolName>`. To finish, reply `ANSWER: <your answer>`. Name \
-                       only tools from the list you were given."
-            .to_string();
+        let framing = format!("{REACT_FRAMING}{}", return_schema_instruction(agent));
 
         last = deliberate(&format!("{}:react", agent.name), prompt, framing, spend, ctx).await?;
 
@@ -630,10 +784,7 @@ async fn run_reflexion(
                 "GOAL: {}\n\nATTEMPT:\n{attempt}",
                 agent.goal
             ),
-            "You are self-critiquing under the Reflexion policy. If the attempt meets the \
-             goal, reply exactly `ACCEPT`. Otherwise reply with the single most important \
-             defect, and nothing else."
-                .to_string(),
+            REFLEXION_CRITIQUE_FRAMING.to_string(),
             spend,
             ctx,
         )
@@ -676,6 +827,72 @@ async fn run_reflexion(
 /// (`VALID_ON_STUCK_POLICIES`), and every member either DOES something here or
 /// is refused by name — a policy that silently collapses into another is the
 /// §111 defect wearing a field.
+// ────────────────────────────────────────────────────────────────────
+//  custom — the step sequence written inside the agent block
+// ────────────────────────────────────────────────────────────────────
+
+/// Walk the agent's own `step` sequence, one deliberation per step, through
+/// the ordinary step handler (`dispatch_node` on an `IRFlowNode::Step`) — so
+/// an agent step gets the same body-statement elevation, the same `ask:`
+/// generation, the same wire events and audit row as a flow step. Bounded by
+/// `min(body.len(), max_iterations)` plus the token/cost/time ceilings, checked
+/// BEFORE each step like every other strategy. The result is the last step's
+/// output; every step's output is also bound under its own name, as in a flow.
+async fn run_custom(
+    agent: &IRAgent,
+    input: &str,
+    bounds: &AgentBounds,
+    spend: &mut Spend,
+    ctx: &mut DispatchCtx,
+) -> Result<(AgentEnd, String), DispatchError> {
+    if agent.body.is_empty() {
+        return Err(DispatchError::BackendError {
+            name: format!("agent:{}", agent.name),
+            message: format!(
+                "agent '{}' declares `strategy: custom` with no `step` blocks — the custom \
+                 policy IS the step sequence inside the agent block (axon-T1217 refuses \
+                 this at check time); refused here rather than run an empty policy.",
+                agent.name
+            ),
+        });
+    }
+    // The agent's input is visible to its steps under its own name and as
+    // `input`, the way a flow's parameters are visible to the flow's steps.
+    ctx.let_bindings.insert("input".to_string(), input.to_string());
+    ctx.let_bindings
+        .insert(format!("{}_input", agent.name), input.to_string());
+    let mut last = String::new();
+    for node in &agent.body {
+        if let Some(bound) = spend.affords(bounds) {
+            return Ok((AgentEnd::Stuck { bound }, last));
+        }
+        if ctx.cancel.is_cancelled() {
+            return Err(DispatchError::UpstreamCancelled);
+        }
+        match Box::pin(super::dispatch_node(node, ctx)).await? {
+            NodeOutcome::Completed {
+                output,
+                tokens_emitted,
+                ..
+            } => {
+                spend.iterations += 1;
+                spend.tokens += tokens_emitted;
+                last = output;
+            }
+            other => {
+                return Err(DispatchError::BackendError {
+                    name: format!("agent:{}", agent.name),
+                    message: format!(
+                        "a `custom` agent step returned {other:?}, a flow-walk sentinel with \
+                         no meaning inside an agent body"
+                    ),
+                })
+            }
+        }
+    }
+    Ok((AgentEnd::Answered, last))
+}
+
 async fn apply_on_stuck(
     agent: &IRAgent,
     bound: &'static str,
@@ -683,13 +900,29 @@ async fn apply_on_stuck(
     spend: &Spend,
     ctx: &mut DispatchCtx,
 ) -> Result<String, DispatchError> {
-    let context = format!(
-        "agent '{}' hit `{bound}` after {} iteration(s) (~{} output tokens, ~${:.4})",
-        agent.name,
-        spend.iterations,
-        spend.tokens,
-        spend.usd()
-    );
+    let context = if bound == "return" {
+        format!(
+            "agent '{}' answered, but the answer does not inhabit its declared `return: {}` \
+             ({}) after {} iteration(s) (~{} output tokens, ~${:.4})",
+            agent.name,
+            agent.return_type,
+            ctx.let_bindings
+                .get(&format!("{}_return_defect", agent.name))
+                .cloned()
+                .unwrap_or_default(),
+            spend.iterations,
+            spend.tokens,
+            spend.usd()
+        )
+    } else {
+        format!(
+            "agent '{}' hit `{bound}` after {} iteration(s) (~{} output tokens, ~${:.4})",
+            agent.name,
+            spend.iterations,
+            spend.tokens,
+            spend.usd()
+        )
+    };
     match agent.on_stuck.as_str() {
         // README §agent, verbatim: "raises `AgentStuckError` with full context,
         // so the human reviews exactly where the agent got stuck".

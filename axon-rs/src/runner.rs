@@ -176,6 +176,16 @@ struct CompiledStep {
     /// keeps the compiled-plan wire shape byte-identical.
     #[serde(skip)]
     structural_node: Option<crate::ir_nodes::IRFlowNode>,
+    /// The statements written INSIDE a `step { }` body (`<Agent>(args)`,
+    /// `probe`, `use_tool … with`, `retrieve`, `validate`, …) — the same
+    /// `IRStep.pix_ops` the unified dispatcher elevates before a step
+    /// generates. This executor used to ignore them: a `step Research {
+    /// MarketResearcher(sector) }` — the README's canonical agent call — was
+    /// one LLM ask reading "Execute step: Research", and the agent loop ran
+    /// for nobody on this path. They are dispatched through the bridge, in
+    /// order, before the step's own generation. Runtime-only: `#[serde(skip)]`.
+    #[serde(skip)]
+    body_statements: Vec<crate::ir_nodes::IRFlowNode>,
     /// §Fase 65.D — for a `return <expr>` step: the value expression, so the
     /// non-streaming executor RESOLVES it (binding lookup → literal fallback,
     /// mirroring the dispatcher's `run_return`) instead of dispatching it to the
@@ -463,6 +473,10 @@ fn build_compiled_steps(run: &IRRun, ir: &IRProgram) -> Vec<CompiledStep> {
         } else {
             None
         };
+        let body_statements = match node {
+            IRFlowNode::Step(s) => s.pix_ops.clone(),
+            _ => Vec::new(),
+        };
 
         // §Fase 65.D — carry the return value expression so the executor
         // resolves it instead of LLM-dispatching the `return` step.
@@ -500,6 +514,7 @@ fn build_compiled_steps(run: &IRRun, ir: &IRProgram) -> Vec<CompiledStep> {
             tool_named_args,
             tool_param_types,
             structural_node,
+            body_statements,
             return_value_expr,
             now_tz,
         });
@@ -762,6 +777,7 @@ fn execute_stub(
     units: &[ExecutionUnit],
     use_color: bool,
     trace: bool,
+    nav_dispatch: Option<&NavDispatch>,
 ) -> (bool, Vec<TraceEvent>) {
     let mut events: Vec<TraceEvent> = Vec::new();
 
@@ -828,6 +844,82 @@ fn execute_stub(
                 step.step_type,
                 &step.user_prompt
             );
+
+            // An agent — top-level `<Agent>(args)` or written inside a step
+            // body — is a bounded loop with its own tool grant and bounds. The
+            // stub walker used to print "Execute step: X" and move on, so an
+            // adopter without an API key saw neither an iteration nor a tool
+            // dispatch (and a typo'd bound passed unnoticed). It now runs the
+            // REAL loop through the dispatcher bridge against the stub backend,
+            // which answers the agent protocol (`ACT:` once, then `ANSWER:`)
+            // — so what prints is what the loop did, not a placeholder.
+            let agent_nodes: Vec<&crate::ir_nodes::IRFlowNode> = step
+                .structural_node
+                .iter()
+                .chain(step.body_statements.iter())
+                .filter(|n| matches!(n, crate::ir_nodes::IRFlowNode::AgentCall(_)))
+                .collect();
+            if let (Some(nd), false) = (nav_dispatch, agent_nodes.is_empty()) {
+                let mut pins = std::collections::HashMap::new();
+                let histories = std::sync::Arc::new(std::sync::Mutex::new(
+                    std::collections::HashMap::new(),
+                ));
+                for node in agent_nodes {
+                    let (agent_name, outcome) = match node {
+                        crate::ir_nodes::IRFlowNode::AgentCall(a) => (
+                            a.agent_name.clone(),
+                            block_on_store(dispatch_structural(
+                                node,
+                                &mut stub_ctx,
+                                &unit.flow_name,
+                                "stub",
+                                None,
+                                &unit.system_prompt,
+                                &mut pins,
+                                nd,
+                                &histories,
+                            )),
+                        ),
+                        _ => unreachable!("filtered to AgentCall above"),
+                    };
+                    match outcome {
+                        Ok(out) => {
+                            println!(
+                                "    {} {}",
+                                c("🤖", "\x1b[34m", use_color),
+                                c(
+                                    &format!("agent {agent_name} → {}", truncate(&out, 100)),
+                                    "\x1b[34m",
+                                    use_color,
+                                ),
+                            );
+                            if trace {
+                                events.push(TraceEvent {
+                                    event: "agent_run".to_string(),
+                                    unit: unit.flow_name.clone(),
+                                    step: step.step_name.clone(),
+                                    detail: format!("{agent_name}: {out}"),
+                                });
+                            }
+                        }
+                        Err(e) => {
+                            println!(
+                                "    {} {}",
+                                c("✗", "\x1b[31m", use_color),
+                                c(&format!("agent {agent_name} — {e}"), "\x1b[31m", use_color),
+                            );
+                            if trace {
+                                events.push(TraceEvent {
+                                    event: "agent_refused".to_string(),
+                                    unit: unit.flow_name.clone(),
+                                    step: step.step_name.clone(),
+                                    detail: format!("{agent_name}: {e}"),
+                                });
+                            }
+                        }
+                    }
+                }
+            }
 
             // Fase 15.c — `lambda_data_apply` is the only primitive the
             // stub executor implements semantically: it's a pure binding
@@ -1585,6 +1677,60 @@ struct NavDispatch {
 /// — it fabricates output that does not exist. Set `AXON_UNIFIED_EXECUTOR` to
 /// `0`/`off`/`false`/`no` to revert to the legacy behavior (escape hatch only,
 /// until the §65.E cutover removes it).
+/// Build the dispatcher bridge's catalogues from a compiled program: the MDN
+/// corpora (declared + store-sourced + adaptive), the scopes / observables /
+/// compute / agent / mandate / lambda / ots catalogues and the cache plan.
+/// ONE builder for every door: the non-streaming server executor used to build
+/// this inline while `axon run --tool-mode real` passed `None` — so on the CLI
+/// every bridged verb (navigate, mint, grad, an agent call …) silently fell to
+/// the LLM fallthrough. Same program, same catalogues, both doors.
+fn build_nav_dispatch(
+    ir: &crate::ir_nodes::IRProgram,
+    store_registry: std::sync::Arc<StoreRegistry>,
+    dataspace_engine: Option<crate::dataspace_engine::SharedDataspaceEngine>,
+) -> NavDispatch {
+    let mut corpora: std::collections::HashMap<String, crate::mdn::Corpus> =
+        std::collections::HashMap::new();
+    let mut store_sources: std::collections::HashMap<
+        String,
+        crate::ir_nodes::IRCorpusStoreSource,
+    > = std::collections::HashMap::new();
+    let mut adaptive: std::collections::HashSet<String> = std::collections::HashSet::new();
+    for cspec in &ir.corpus_specs {
+        if !cspec.relations.is_empty() {
+            let rels: Vec<(String, String, String, f64)> = cspec
+                .relations
+                .iter()
+                .map(|r| (r.etype.clone(), r.from.clone(), r.to.clone(), r.weight))
+                .collect();
+            if let Ok(corpus) = crate::mdn::Corpus::from_declaration(&cspec.documents, &rels) {
+                corpora.insert(cspec.name.clone(), corpus);
+            }
+        }
+        if let Some(src) = &cspec.store_source {
+            store_sources.insert(cspec.name.clone(), src.clone());
+        }
+        if cspec.adaptive && (!cspec.relations.is_empty() || cspec.store_source.is_some()) {
+            adaptive.insert(cspec.name.clone());
+        }
+    }
+    NavDispatch {
+        store_registry,
+        corpora: std::sync::Arc::new(corpora),
+        store_sources: std::sync::Arc::new(store_sources),
+        adaptive: std::sync::Arc::new(adaptive),
+        dataspace_engine,
+        scopes: std::sync::Arc::new(ir.scopes.clone()),
+        observables: std::sync::Arc::new(ir.observables.clone()),
+        compute_specs: std::sync::Arc::new(ir.compute_specs.clone()),
+        agent_specs: std::sync::Arc::new(ir.agents.clone()),
+        cache_plan: std::sync::Arc::new(crate::cache_runtime::CachePlan::from_ir(ir)),
+        mandate_specs: std::sync::Arc::new(ir.mandate_specs.clone()),
+        lambda_data_specs: std::sync::Arc::new(ir.lambda_data_specs.clone()),
+        ots_specs: std::sync::Arc::new(ir.ots_specs.clone()),
+    }
+}
+
 fn structural_dispatch_enabled() -> bool {
     match std::env::var("AXON_UNIFIED_EXECUTOR") {
         Ok(v) => !matches!(
@@ -1640,6 +1786,13 @@ fn routes_through_dispatcher(node: &crate::ir_nodes::IRFlowNode) -> bool {
             // evaluates it. An LLM fallthrough would narrate a number that
             // was never computed — same law as everything above.
             | N::Grad(_)
+            // An `<Agent>(args)` call is a BOUNDED LOOP of deliberations with
+            // its own tool grant, bounds and `on_stuck` policy. Handed to the
+            // LLM as "Run agent: X(args)" it became ONE call narrating a run
+            // that never happened — the worst possible reading of "executed by
+            // nothing". The dispatcher's agent loop is the only executor; this
+            // executor reaches it through the bridge like every verb above.
+            | N::AgentCall(_)
     )
 }
 
@@ -1673,6 +1826,7 @@ async fn dispatch_structural(
     exec_ctx: &mut ExecContext,
     flow_name: &str,
     backend_name: &str,
+    api_key: Option<&str>,
     system_prompt: &str,
     pinned_conns: &mut std::collections::HashMap<
         String,
@@ -1698,6 +1852,11 @@ async fn dispatch_structural(
         crate::cancel_token::CancellationFlag::new(),
         tx,
     )
+    // The cognitive verbs (an agent's deliberations) call the LLM through
+    // the dispatcher's `pure_shape`; without the key they would resolve the
+    // backend from the environment — wrong for a per-tenant key. The
+    // structural verbs ignore it.
+    .with_api_key(api_key.map(str::to_string))
     .with_store_registry(nd.store_registry.clone())
     .with_mdn_corpora(nd.corpora.clone())
     .with_mdn_adaptive(nd.adaptive.clone())
@@ -2545,6 +2704,89 @@ async fn execute_real_async(
                 continue; // Skip LLM call
             }
 
+            // ── Step-body statements via the flow dispatcher ─────────────
+            // `step X { <Agent>(args) … }`, `probe`, `use_tool … with`,
+            // `retrieve`, `validate` — the statements written inside the step
+            // body. The unified dispatcher elevates them before the step
+            // generates; this executor ignored them, so the README's own
+            // `step Research { MarketResearcher(sector) }` was one LLM ask
+            // reading "Execute step: Research" and no agent ever ran here.
+            // They go through the same bridge as the structural verbs, in
+            // source order, binding their results into the runner context so
+            // the step's own `ask:` (below) can interpolate them.
+            if structural_dispatch_enabled() && !step.body_statements.is_empty() {
+                if let Some(nd) = nav_dispatch {
+                    let mut statement_failed = false;
+                    for stmt in &step.body_statements {
+                        match dispatch_structural(
+                            stmt,
+                            &mut ctx,
+                            &unit.flow_name,
+                            backend_name,
+                            Some(api_key.as_str()),
+                            &unit.system_prompt,
+                            pinned_conns,
+                            nd,
+                            &nav_histories,
+                        )
+                        .await
+                        {
+                            Ok(out) => {
+                                if trace {
+                                    events.push(TraceEvent {
+                                        event: "step_statement".to_string(),
+                                        unit: unit.flow_name.clone(),
+                                        step: step.step_name.clone(),
+                                        detail: format!("{} char(s)", out.len()),
+                                    });
+                                }
+                            }
+                            Err(e) => {
+                                // A statement that fails closed (an unbounded agent, an
+                                // undeclared store port) is the step's result: generating
+                                // on top of it would narrate an outcome the statement
+                                // never produced. Recorded, bound, and the step's own
+                                // generation is SKIPPED — the same shape the temporal
+                                // context error below takes.
+                                let msg = format!("{} — {e}", step.step_name);
+                                if !json {
+                                    println!(
+                                        "  {} {}",
+                                        c("✗", "\x1b[31m", use_color),
+                                        c(&msg, "\x1b[31m", use_color)
+                                    );
+                                }
+                                ctx.set_result(&step.step_name, &msg);
+                                report.record_step(StepReport {
+                                    name: step.step_name.clone(),
+                                    step_type: step.step_type.clone(),
+                                    result: msg,
+                                    duration_ms: 0,
+                                    input_tokens: 0,
+                                    output_tokens: 0,
+                                    anchor_breaches: 0,
+                                    chain_activations: 0,
+                                    was_retried: false,
+                                });
+                                if trace {
+                                    events.push(TraceEvent {
+                                        event: "step_statement_failed".to_string(),
+                                        unit: unit.flow_name.clone(),
+                                        step: step.step_name.clone(),
+                                        detail: e,
+                                    });
+                                }
+                                statement_failed = true;
+                                break;
+                            }
+                        }
+                    }
+                    if statement_failed {
+                        continue;
+                    }
+                }
+            }
+
             // ── §Fase 65.A/B — structural verbs via the flow dispatcher ────
             // navigate / drill / trail are PURE EFFECTS over the live corpus /
             // PIX state: they must run the dispatcher's REAL handler (signed-EPR
@@ -2559,6 +2801,7 @@ async fn execute_real_async(
                         &mut ctx,
                         &unit.flow_name,
                         backend_name,
+                        Some(api_key.as_str()),
                         &unit.system_prompt,
                         pinned_conns,
                         nd,
@@ -2936,6 +3179,7 @@ fn execute_real(
     store_registry: &StoreRegistry,
     pinned_conns: &mut std::collections::HashMap<String, crate::pinned_conn::PinnedConn>,
     api_key_override: Option<&str>,
+    nav_dispatch: Option<&NavDispatch>,
 ) -> Result<(bool, Vec<TraceEvent>), backend::BackendError> {
     block_on_store(execute_real_async(
         units,
@@ -2950,9 +3194,7 @@ fn execute_real(
         store_registry,
         pinned_conns,
         api_key_override,
-        // §Fase 65.A — the CLI path does not yet unify on the dispatcher;
-        // `navigate` there keeps the legacy behavior (no structural bridge).
-        None,
+        nav_dispatch,
     ))
 }
 
@@ -3724,6 +3966,14 @@ async fn collect_via_dispatcher(
     // §Fase 119.c — attach the ΛD + ots catalogs.
     ctx = ctx.with_lambdas(nav_dispatch.lambda_data_specs.clone());
     ctx = ctx.with_ots(nav_dispatch.ots_specs.clone());
+    // The agent catalog. Measured absent on THIS engine (the non-streaming
+    // server path, the one the enterprise executor calls): the SSE twin
+    // attached it, the bridge attached it, and the default engine did not —
+    // so every `<Agent>(…)` on a deployed endpoint failed closed with "0
+    // agent(s) in this catalog". Caught by the fixture-driven gate in
+    // tests/agent_loop_closes_its_promises.rs, which drives the README's own
+    // agent-in-a-step shape through this exact function.
+    ctx = ctx.with_agents(nav_dispatch.agent_specs.clone());
     // §Fase 72.c — attach the linear-effect budget gate (daemon path only).
     if let Some(gate) = budget {
         ctx = ctx.with_budget(gate);
@@ -4207,69 +4457,7 @@ pub fn execute_server_flow(
     // SAME structural MDN traversal as the SSE path (instead of hallucinating via
     // the LLM). Static §63 graphs + dynamic §64 store-sourced corpora + the
     // adaptive set are all wired.
-    let nav_dispatch = {
-        let mut corpora: std::collections::HashMap<String, crate::mdn::Corpus> =
-            std::collections::HashMap::new();
-        let mut store_sources: std::collections::HashMap<
-            String,
-            crate::ir_nodes::IRCorpusStoreSource,
-        > = std::collections::HashMap::new();
-        let mut adaptive: std::collections::HashSet<String> = std::collections::HashSet::new();
-        for cspec in &ir.corpus_specs {
-            if !cspec.relations.is_empty() {
-                let rels: Vec<(String, String, String, f64)> = cspec
-                    .relations
-                    .iter()
-                    .map(|r| (r.etype.clone(), r.from.clone(), r.to.clone(), r.weight))
-                    .collect();
-                if let Ok(corpus) = crate::mdn::Corpus::from_declaration(&cspec.documents, &rels) {
-                    corpora.insert(cspec.name.clone(), corpus);
-                }
-            }
-            if let Some(src) = &cspec.store_source {
-                store_sources.insert(cspec.name.clone(), src.clone());
-            }
-            if cspec.adaptive && (!cspec.relations.is_empty() || cspec.store_source.is_some()) {
-                adaptive.insert(cspec.name.clone());
-            }
-        }
-        NavDispatch {
-            store_registry: store_registry.clone(),
-            corpora: std::sync::Arc::new(corpora),
-            store_sources: std::sync::Arc::new(store_sources),
-            adaptive: std::sync::Arc::new(adaptive),
-            // §Fase 108.b — thread the deployment's columnar engine (the OSS
-            // deploy hook's / enterprise executor's) to the dispatcher.
-            dataspace_engine: dataspace_engine.clone(),
-            // §Fase 111.c — thread the compiled `scope` declarations so a
-            // `warden` block can resolve its authorization envelope. Before
-            // §111 these were extracted only for the enterprise HTTP route
-            // (`POST /api/v1/warden/{scope}`); the LANGUAGE primitive could not
-            // reach them, which is why it was a no-op.
-            scopes: std::sync::Arc::new(ir.scopes.clone()),
-            // §Fase 111.d — same story as scopes: the observable catalog was
-            // extracted only for the enterprise `POST /api/v1/quant/{name}`
-            // route; the LANGUAGE primitive could not reach it.
-            observables: std::sync::Arc::new(ir.observables.clone()),
-            // §Fase 111.f — the deterministic muscle finally has something to flex.
-            compute_specs: std::sync::Arc::new(ir.compute_specs.clone()),
-            // §Fase 119.m.3 — the agent catalog, from the SAME IR the flow came from.
-            agent_specs: std::sync::Arc::new(ir.agents.clone()),
-            // §Fase 122.d — the memoisation plan, from the same IR. §85 shipped
-            // the cache core and deferred wiring it (§85.h); §122.a measured
-            // that `CacheRuntime::dispatch` had ZERO production callers, so
-            // `ttl:`, `key_params:` and `invalidate_on:` were inert and
-            // `backend: redis` named a tier that did not exist. This line is
-            // where the declaration starts reaching the runtime.
-            cache_plan: std::sync::Arc::new(crate::cache_runtime::CachePlan::from_ir(ir)),
-            // §Fase 119.b — the mandate declarations reach dispatch: the cage
-            // stops being a name the handler discards.
-            mandate_specs: std::sync::Arc::new(ir.mandate_specs.clone()),
-            // §Fase 119.c — ΛD + ots reach dispatch too.
-            lambda_data_specs: std::sync::Arc::new(ir.lambda_data_specs.clone()),
-            ots_specs: std::sync::Arc::new(ir.ots_specs.clone()),
-        }
-    };
+    let nav_dispatch = build_nav_dispatch(ir, store_registry.clone(), dataspace_engine.clone());
 
     // §Fase 37.x.j (D1) — Eager acquire one PoolConnection per
     // postgresql-backed axonstore referenced in the flow body BEFORE
@@ -4468,7 +4656,7 @@ pub fn execute_server_flow(
     }
 
     let (success, _events) = if backend == "stub" {
-        let result = execute_stub(&execution_units, false, false);
+        let result = execute_stub(&execution_units, false, false, Some(&nav_dispatch));
         // §Fase 33.b Layer 1 — close the steps_executed:0 hollow-wire bug.
         //
         // execute_stub prints step results to stdout and updates its
@@ -4888,7 +5076,7 @@ pub fn run_run(
         &ir_program.leases,
         &crate::resource_resolver::EnvResourceResolver,
     ) {
-        Ok(r) => r,
+        Ok(r) => std::sync::Arc::new(r),
         Err(e) => {
             eprintln!(
                 "{}  {e}",
@@ -4897,6 +5085,10 @@ pub fn run_run(
             return 1;
         }
     };
+    // The dispatcher bridge for this program — the SAME catalogues the server
+    // executor builds, so `axon run` (real and stub) reaches the real handler
+    // for every bridged verb instead of the LLM fallthrough.
+    let nav_dispatch = build_nav_dispatch(&ir_program, store_registry.clone(), None);
 
     if !json && !registry.program_names().is_empty() {
         println!(
@@ -4930,7 +5122,7 @@ pub fn run_run(
         crate::pinned_conn::PinnedConn,
     > = std::collections::HashMap::new();
     let (success, events) = if tool_mode == "real" {
-        match execute_real(&units, backend, file, use_color, trace, stream, output_fmt, &mut report, &registry, &store_registry, &mut cli_pinned_conns, None) {
+        match execute_real(&units, backend, file, use_color, trace, stream, output_fmt, &mut report, &registry, &store_registry, &mut cli_pinned_conns, None, Some(&nav_dispatch)) {
             Ok((s, e)) => (s, e),
             Err(err) => {
                 eprintln!(
@@ -4941,7 +5133,7 @@ pub fn run_run(
             }
         }
     } else {
-        let (s, e) = execute_stub(&units, use_color, trace);
+        let (s, e) = execute_stub(&units, use_color, trace, Some(&nav_dispatch));
         // For stub mode, build minimal unit reports
         for unit in &units {
             report.begin_unit(&unit.flow_name, &unit.persona_name);
@@ -5532,7 +5724,7 @@ mod fase65_navigate_bridge {
         let mut pins = std::collections::HashMap::new();
         let hist = std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new()));
         let out = dispatch_structural(
-            &nav, &mut ctx, "RecallLTM", "kimi", "", &mut pins, &nd, &hist,
+            &nav, &mut ctx, "RecallLTM", "kimi", None, "", &mut pins, &nd, &hist,
         )
         .await
         .expect("structural navigate returns Ok (honest empty), not an LLM call");
@@ -5564,7 +5756,7 @@ mod fase65_navigate_bridge {
         let mut pins = std::collections::HashMap::new();
         let hist = std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new()));
         let out = dispatch_structural(
-            &drill, &mut ctx, "F", "kimi", "", &mut pins, &nd, &hist,
+            &drill, &mut ctx, "F", "kimi", None, "", &mut pins, &nd, &hist,
         )
         .await
         .expect("structural drill returns Ok, never an LLM call");

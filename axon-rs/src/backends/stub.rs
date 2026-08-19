@@ -93,6 +93,56 @@ impl StubBackend {
     fn effective_chunk(&self) -> &str {
         self.chunk_content.as_deref().unwrap_or(STUB_CONTENT)
     }
+
+    /// What this stub answers to `request`.
+    ///
+    /// For every ordinary prompt it is [`STUB_CONTENT`] — byte-compat with the
+    /// v1.24.0 wire. For an AGENT deliberation it answers the protocol the
+    /// agent loop speaks, recognised by the framing constants the loop itself
+    /// publishes (`agent_loop::REACT_FRAMING` …): ReAct gets `ACT: <first
+    /// granted tool>` on the first iteration (no observations yet) and
+    /// `ANSWER: (stub)` afterwards — when the agent grants no tool at all it
+    /// stays `(stub)`, so the declared bound terminates the run; a Reflexion
+    /// critique gets `ACCEPT`. The
+    /// loop still does every parse, grant check, tool dispatch and bound
+    /// check itself — the stub only stops being an answer that can never
+    /// terminate the protocol, so `axon run --tool-mode stub` shows the
+    /// iterations and the dispatch an adopter came to see.
+    pub fn answer_for(&self, request: &ChatRequest) -> String {
+        if self.chunk_content.is_some() {
+            return self.effective_chunk().to_string();
+        }
+        let system = request.system.as_deref().unwrap_or("");
+        let user = request
+            .messages
+            .last()
+            .map(|m| m.content.as_str())
+            .unwrap_or("");
+        if system.contains(crate::flow_dispatcher::agent_loop::REFLEXION_CRITIQUE_FRAMING) {
+            return "ACCEPT".to_string();
+        }
+        if system.contains(crate::flow_dispatcher::agent_loop::REACT_FRAMING) {
+            let first_iteration = user
+                .contains(crate::flow_dispatcher::agent_loop::NO_OBSERVATIONS_YET);
+            let first_tool = user
+                .lines()
+                .find_map(|l| l.strip_prefix(crate::flow_dispatcher::agent_loop::TOOLS_LINE_PREFIX))
+                .and_then(|rest| rest.split(',').next())
+                .map(|t| t.trim())
+                .filter(|t| !t.is_empty() && !t.starts_with('('));
+            // With nothing to dispatch the stub has nothing to demonstrate and
+            // cannot honestly claim an answer: it stays the unstructured
+            // `(stub)`, the protocol violation the loop records, and the
+            // declared bound is what terminates the run — which is exactly
+            // the property the bound tests exercise.
+            return match (first_iteration, first_tool) {
+                (true, Some(tool)) => format!("ACT: {tool}"),
+                (false, Some(_)) => format!("ANSWER: {STUB_CONTENT}"),
+                (_, None) => STUB_CONTENT.to_string(),
+            };
+        }
+        self.effective_chunk().to_string()
+    }
 }
 
 #[async_trait]
@@ -106,9 +156,10 @@ impl Backend for StubBackend {
     }
 
     async fn complete(&self, request: ChatRequest) -> Result<ChatResponse, BackendError> {
+        let content = self.answer_for(&request);
         let trace_id = request.trace_id.unwrap_or_else(|| "stub-trace".to_string());
         Ok(ChatResponse {
-            content: self.effective_chunk().to_string(),
+            content,
             model_name: STUB_DEFAULT_MODEL.to_string(),
             provider_name: STUB_PROVIDER_NAME.to_string(),
             finish_reason: FinishReason::Stop,
@@ -131,7 +182,7 @@ impl Backend for StubBackend {
         // stream terminates promptly. Uniform behavior across the
         // 8-backend dispatch keeps downstream tests authoritative.
         let chunk = ChatChunk {
-            delta: self.effective_chunk().to_string(),
+            delta: self.answer_for(&request),
             finish_reason: Some(FinishReason::Stop),
             usage: Some(Usage::default()),
         };

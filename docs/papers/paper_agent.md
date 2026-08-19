@@ -177,6 +177,8 @@ pub fn validate_agent_node(
     Ok(TypedAgentExpr::new(agent_node, static_budget, delimited_cps))
 }
 
+> **Estado de implementación (axon-lang 4.1.0).** De los dos invariantes de esta puerta, el primero está implementado en `type_checker.rs` como reglas cerradas: `axon-T1216` exige un `max_iterations` positivo (el mismo predicado que `axon-T877` aplica a `savant`), `axon-T1217` exige que `strategy: custom` lleve su secuencia de pasos y que ninguna otra estrategia la lleve, `axon-T1218` exige que toda llamada `<Agente>(…)` resuelva a un agente declarado, `axon-T1219` tipa `return:` y lo contrasta con el `output:` del paso que llama, y `axon-T1220` exige que `max_time:` sea una duración legible. El presupuesto afín $	ext{Budget}(n)$ se consume en el runtime antes de cada deliberación (iteraciones, tokens, costo y reloj de pared). El segundo invariante — la transformación a continuaciones delimitadas (shift/reset) — es diseño, no implementación: el bucle se ejecuta como un walker sobre `pure_shape` y no serializa su pila; `on_stuck: hibernate` se rehúsa por nombre precisamente porque esa continuación no existe todavía.
+
 Puerta de Deriva 2: Fase Runtime (flow_dispatcher)
 
 En la capa de ejecución nativa, el módulo flow_dispatcher procesa cada transición de paso asegurando reproducibilidad absoluta. Cada reducción emite un ReplayToken canónico encadenado dinámicamente.

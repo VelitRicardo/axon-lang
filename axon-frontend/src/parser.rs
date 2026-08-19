@@ -7145,6 +7145,8 @@ impl Parser {
             max_tokens: None,
             max_time: String::new(),
             max_cost: None,
+            return_type: String::new(),
+            body: Vec::new(),
             loc: Loc {
                 line: tok.line,
                 column: tok.column,
@@ -7152,32 +7154,76 @@ impl Parser {
             leading_trivia: Vec::new(),
             trailing_trivia: Vec::new(),
         };
-        // Skip optional parameters/return type before brace
-        while !self.check(TokenType::LBrace) && !self.check(TokenType::Eof) {
+        // Optional signature position: `agent Name(params…) -> T {`. The
+        // parameter list is accepted and not modelled (an agent takes its input
+        // from the call site); the return type IS modelled — it used to be
+        // skipped here, which is how `return:` became a promise the README made
+        // and nothing read.
+        if self.check(TokenType::LParen) {
+            let mut depth = 0usize;
+            while !self.check(TokenType::Eof) {
+                if self.check(TokenType::LParen) {
+                    depth += 1;
+                } else if self.check(TokenType::RParen) {
+                    depth -= 1;
+                    if depth == 0 {
+                        self.advance();
+                        break;
+                    }
+                }
+                self.advance();
+            }
+        }
+        if self.check(TokenType::Arrow) {
             self.advance();
+            node.return_type = self.parse_output_type_string()?;
         }
         self.consume(TokenType::LBrace)?;
+        // The block is a CLOSED catalogue. An unknown field used to be skipped
+        // in silence, so a typo (`max_iteration: 6`) parsed clean and the agent
+        // ran unbounded until the dispatcher refused it — the opposite of what
+        // a type error is for. Every field the runtime reads is listed here;
+        // `step … { … }` blocks form the `custom` policy's body.
         while !self.check(TokenType::RBrace) && !self.check(TokenType::Eof) {
+            if self.check(TokenType::Step) {
+                let step = self.parse_step()?;
+                node.body.push(step);
+                continue;
+            }
             let field = self.current().clone();
             let field_name = field.value.clone();
             self.advance();
-            if self.check(TokenType::Colon) {
-                self.advance();
-                match field_name.as_str() {
-                    "goal" => node.goal = self.consume(TokenType::StringLit)?.value.clone(),
-                    "tools" => node.tools = self.parse_bracketed_identifiers()?,
-                    "memory" => node.memory_ref = self.consume_any_ident_or_kw()?.value.clone(),
-                    "strategy" => node.strategy = self.consume_any_ident_or_kw()?.value.clone(),
-                    "on_stuck" => node.on_stuck = self.consume_any_ident_or_kw()?.value.clone(),
-                    "shield" => node.shield_ref = self.consume_any_ident_or_kw()?.value.clone(),
-                    "max_iterations" => node.max_iterations = self.parse_optional_int(),
-                    "max_tokens" => node.max_tokens = self.parse_optional_int(),
-                    "max_time" => node.max_time = self.consume_any_ident_or_kw()?.value.clone(),
-                    "max_cost" => node.max_cost = self.parse_optional_float(),
-                    _ => self.skip_value(),
+            if !self.check(TokenType::Colon) {
+                return Err(self.error(&format!(
+                    "unexpected `{field_name}` inside `agent {}` — an agent block holds \
+                     `field: value` pairs and `step Name {{ … }}` blocks; valid fields: \
+                     goal, tools, memory, strategy, on_stuck, shield, max_iterations, \
+                     max_tokens, max_time, max_cost, return",
+                    node.name
+                )));
+            }
+            self.advance();
+            match field_name.as_str() {
+                "goal" => node.goal = self.consume(TokenType::StringLit)?.value.clone(),
+                "tools" => node.tools = self.parse_bracketed_identifiers()?,
+                "memory" => node.memory_ref = self.consume_any_ident_or_kw()?.value.clone(),
+                "strategy" => node.strategy = self.consume_any_ident_or_kw()?.value.clone(),
+                "on_stuck" => node.on_stuck = self.consume_any_ident_or_kw()?.value.clone(),
+                "shield" => node.shield_ref = self.consume_any_ident_or_kw()?.value.clone(),
+                "max_iterations" => node.max_iterations = self.parse_optional_int(),
+                "max_tokens" => node.max_tokens = self.parse_optional_int(),
+                "max_time" => node.max_time = self.consume_any_ident_or_kw()?.value.clone(),
+                "max_cost" => node.max_cost = self.parse_optional_float(),
+                "return" => node.return_type = self.parse_output_type_string()?,
+                other => {
+                    return Err(self.error(&format!(
+                        "unknown agent field `{other}` in `agent {}` — the agent block is a \
+                         closed catalog; valid fields: goal, tools, memory, strategy, \
+                         on_stuck, shield, max_iterations, max_tokens, max_time, max_cost, \
+                         return (plus `step Name {{ … }}` blocks for `strategy: custom`)",
+                        node.name
+                    )));
                 }
-            } else if self.check(TokenType::LBrace) {
-                self.skip_braced_block()?;
             }
         }
         self.consume(TokenType::RBrace)?;

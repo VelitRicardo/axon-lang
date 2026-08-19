@@ -4714,7 +4714,116 @@ impl<'a> TypeChecker<'a> {
 
     // ── Tier 2 declaration checks ───────────────────────────────────
 
+    /// The ONE definition of "a bounded autonomous loop": `max_iterations`
+    /// declared and positive. `savant` (axon-T877) and `agent` (axon-T1216)
+    /// are the same rule — a long-horizon or goal-seeking loop with no
+    /// iteration ceiling is unbounded spend, and no default the compiler picks
+    /// is a number the author wrote. Returns the message to emit, or `None`
+    /// when the ceiling holds. Both call sites format THEIR code and subject
+    /// around it so neither can drift from the other.
+    fn iteration_ceiling_defect(declared: Option<i64>, what_is_missing: &str) -> Option<String> {
+        match declared {
+            None => Some(format!(
+                "declares no {what_is_missing} — an autonomous loop MUST carry an enforced \
+                 iteration ceiling (the linear-budget discipline); an unbounded loop is \
+                 unbounded spend, refused before the first token rather than after"
+            )),
+            Some(n) if n <= 0 => Some(format!(
+                "{what_is_missing} is {n} — an agent that may not think at all is a \
+                 declaration with no execution; declare a positive bound"
+            )),
+            Some(_) => None,
+        }
+    }
+
     fn check_agent(&mut self, node: &AgentDefinition) {
+        // axon-T1216 — the termination proof of every strategy is a positive
+        // `max_iterations`. This used to be checked only when present (the
+        // `>= 1` rule below) and REQUIRED only by the dispatcher, so an agent
+        // with a typo'd or missing bound passed `axon check` and was refused at
+        // run time — the compiler promising less than the runtime demanded.
+        if let Some(defect) = Self::iteration_ceiling_defect(node.max_iterations, "`max_iterations:`") {
+            self.emit(
+                format!("axon-T1216 agent '{}' {defect}", node.name),
+                &node.loc,
+            );
+        }
+
+        // axon-T1217 — the body belongs to `custom` and `custom` needs a body.
+        // `strategy: custom` means "the control policy is the step sequence I
+        // wrote inside the block"; a `custom` agent with no steps has no policy,
+        // and steps under react/reflexion/plan_and_execute would be silently
+        // ignored by those loops, which is the one thing a declaration must
+        // never be.
+        if node.strategy == "custom" && node.body.is_empty() {
+            self.emit(
+                format!(
+                    "axon-T1217 agent '{}' declares `strategy: custom` but no `step … {{ … }}` \
+                     blocks — the custom policy IS the step sequence written inside the \
+                     agent block; write at least one step, or pick react, reflexion or \
+                     plan_and_execute",
+                    node.name
+                ),
+                &node.loc,
+            );
+        }
+        if node.strategy != "custom" && !node.body.is_empty() {
+            self.emit(
+                format!(
+                    "axon-T1217 agent '{}' carries {} `step` block(s) but its strategy is `{}` — \
+                     only `strategy: custom` executes a step sequence; under {} the steps \
+                     would be ignored, so they are refused rather than silently dropped",
+                    node.name,
+                    node.body.len(),
+                    if node.strategy.is_empty() { "react (the default)" } else { node.strategy.as_str() },
+                    if node.strategy.is_empty() { "react" } else { node.strategy.as_str() },
+                ),
+                &node.loc,
+            );
+        }
+
+        // axon-T1219 (declaration half) — `return: T` must not name a non-type
+        // symbol. An undeclared name is accepted: the house soft-type discipline
+        // (builtins, imported types). The call-site half — the calling step's
+        // `output:` must agree — lives in `check_step_body_statements`.
+        if !node.return_type.is_empty() {
+            let base = crate::compliance::peel_type_constructors(&node.return_type);
+            if let Some(sym) = self.symbols.lookup(base) {
+                if sym.kind != "type" {
+                    self.emit(
+                        format!(
+                            "axon-T1219 agent '{}' declares `return: {}`, which is a {}, not a \
+                             type — the agent's result must inhabit a declared `type`",
+                            node.name, node.return_type, sym.kind
+                        ),
+                        &node.loc,
+                    );
+                }
+            }
+        }
+
+        // axon-T1220 — `max_time:` is a duration or it is nothing. The runtime
+        // enforces it per iteration; a value it cannot read would be a bound
+        // that is declared and not enforced, which is the defect class this
+        // whole block exists to end.
+        if !node.max_time.is_empty() && parse_duration_ms(&node.max_time).is_none() {
+            self.emit(
+                format!(
+                    "axon-T1220 agent '{}' declares `max_time: {}`, which is not a duration — \
+                     write digits plus a unit: `500ms`, `30s`, `2m`, `1h`",
+                    node.name, node.max_time
+                ),
+                &node.loc,
+            );
+        }
+
+        // The body of a `custom` agent is checked as the step sequence it is:
+        // the same walk a flow body gets, so an undeclared tool or store
+        // inside an agent step is the same error it is inside a flow step.
+        for step in &node.body {
+            self.check_step_body_statements(step, &format!("agent {}", node.name));
+        }
+
         // BDI requirement: every agent must declare a goal
         if node.goal.is_empty() {
             self.emit(
@@ -4809,18 +4918,8 @@ impl<'a> TypeChecker<'a> {
             }
         }
 
-        // Budget constraints (linear logic: resources must be positive)
-        if let Some(v) = node.max_iterations {
-            if v < 1 {
-                self.emit(
-                    format!(
-                        "max_iterations must be >= 1, got {} in agent '{}'",
-                        v, node.name
-                    ),
-                    &node.loc,
-                );
-            }
-        }
+        // Budget constraints (linear logic: resources must be positive).
+        // `max_iterations` is axon-T1216 above (required AND positive).
         if let Some(v) = node.max_tokens {
             if v < 0 {
                 self.emit(
@@ -6225,34 +6324,21 @@ impl<'a> TypeChecker<'a> {
         // autonomous loop that can run for weeks, write code and self-execute it
         // with NO enforced ceiling is uninsurable. §87.k binds this to a real
         // `RateLease`; §87.c makes the ceiling non-optional at the type level.
+        // axon-T877 — the same predicate as the agent's axon-T1216
+        // (`iteration_ceiling_defect`): one definition of "bounded".
         match &node.budget {
-            None => self.emit(
-                format!(
-                    "axon-T877 savant '{}' declares no `budget {{ max_iterations: N }}` — a \
-                     long-horizon autonomous agent MUST carry an enforced compute ceiling \
-                     (the linear-budget discipline); an unbounded loop is fail-open",
-                    node.name
-                ),
-                &node.loc,
-            ),
-            Some(b) => match b.max_iterations {
-                None => self.emit(
-                    format!(
-                        "axon-T877 savant '{}' `budget` declares no `max_iterations:` — the \
-                         FEP-loop iteration ceiling is mandatory",
-                        node.name
-                    ),
-                    &b.loc,
-                ),
-                Some(n) if n <= 0 => self.emit(
-                    format!(
-                        "axon-T877 savant '{}' `budget.max_iterations: {}` must be > 0",
-                        node.name, n
-                    ),
-                    &b.loc,
-                ),
-                Some(_) => {}
-            },
+            None => {
+                let defect = Self::iteration_ceiling_defect(None, "`budget { max_iterations: N }`")
+                    .expect("a missing budget is a defect");
+                self.emit(format!("axon-T877 savant '{}' {defect}", node.name), &node.loc);
+            }
+            Some(b) => {
+                if let Some(defect) =
+                    Self::iteration_ceiling_defect(b.max_iterations, "`budget.max_iterations:`")
+                {
+                    self.emit(format!("axon-T877 savant '{}' {defect}", node.name), &b.loc);
+                }
+            }
         }
 
         // axon-T878 — if a mandate's `output:` type resolves to a DECLARED symbol,
@@ -10565,6 +10651,37 @@ impl<'a> TypeChecker<'a> {
     /// D9; the two walks must keep agreeing about what "a step body" contains.
     fn check_step_body_statements(&mut self, s: &crate::ast::StepNode, flow_name: &str) {
         self.check_flow_steps(&s.pix_ops, flow_name);
+        // axon-T1219 (call-site half) — a step that calls an agent and declares
+        // `output: T` must agree with the agent's `return:`. README writes
+        // `step Research { MarketResearcher(sector) output: CompetitiveReport }`
+        // against `return: CompetitiveReport`; a disagreement is a contract the
+        // two halves of one program make with each other and break.
+        if !s.output_type.is_empty() {
+            for stmt in &s.pix_ops {
+                if let FlowStep::AgentCall(call) = stmt {
+                    let declared = self
+                        .program
+                        .declarations
+                        .iter()
+                        .find_map(|d| match d {
+                            Declaration::Agent(a) if a.name == call.agent_name => Some(a.return_type.clone()),
+                            _ => None,
+                        })
+                        .unwrap_or_default();
+                    if !declared.is_empty() && declared.trim() != s.output_type.trim() {
+                        self.emit(
+                            format!(
+                                "axon-T1219 step '{}' in {} declares `output: {}` but calls `{}(…)`, \
+                                 whose declared `return:` is `{}` — the step's output is the \
+                                 agent's result, so the two types must agree",
+                                s.name, flow_name, s.output_type, call.agent_name, declared
+                            ),
+                            &call.loc,
+                        );
+                    }
+                }
+            }
+        }
         if let Some(sb) = &s.stream {
             for arm in [&sb.on_chunk, &sb.on_complete, &sb.on_error]
                 .into_iter()
@@ -11611,6 +11728,30 @@ impl<'a> TypeChecker<'a> {
                 FlowStep::Listen(l) if !l.body.is_empty() => {
                     self.check_flow_steps(&l.body, flow_name);
                 }
+                // axon-T1218 — `<Agent>(args)` must name a declared agent. This
+                // arm did not exist: a call to an undeclared agent passed `axon
+                // check` and was refused by the dispatcher, which is where the
+                // bounds live — so the compiler let through exactly the program
+                // the runtime could not run.
+                FlowStep::AgentCall(n) => match self.symbols.lookup(&n.agent_name) {
+                    None => self.emit(
+                        format!(
+                            "axon-T1218 `{}(…)` in {} calls an agent that is not declared — \
+                             declare `agent {} {{ goal: … max_iterations: N }}` (its bounds \
+                             live on the declaration, so an undeclared agent is an unbounded one)",
+                            n.agent_name, flow_name, n.agent_name
+                        ),
+                        &n.loc,
+                    ),
+                    Some(sym) if sym.kind != "agent" => self.emit(
+                        format!(
+                            "axon-T1218 `{}(…)` in {} calls a {}, not an agent",
+                            n.agent_name, flow_name, sym.kind
+                        ),
+                        &n.loc,
+                    ),
+                    _ => {}
+                },
                 // §Fase 86 — Directed Creative Synthesis laws (T868–T872).
                 FlowStep::Forge(n) => self.check_forge(n, flow_name),
                 // §Fase 88.c — the warden authorization binding (scope resolves)
@@ -13714,6 +13855,29 @@ fn fmt_type_expr(t: &TypeExpr) -> String {
 // the third consumer; re-imported here so every T957/T1215 call site keeps
 // its exact spelling.
 use crate::compliance::peel_type_constructors;
+
+/// An agent's `max_time:` is a duration literal — digits followed by `ms`,
+/// `s`, `m` or `h` (`500ms`, `30s`, `2m`, `1h`). Returns milliseconds. ONE
+/// definition, read by the checker (axon-T1220 refuses what this cannot parse)
+/// and by the runtime (the loop enforces exactly what this parses), so the
+/// two can never disagree about what a duration is.
+pub fn parse_duration_ms(text: &str) -> Option<u64> {
+    let t = text.trim();
+    if t.is_empty() {
+        return None;
+    }
+    let split = t.find(|c: char| !c.is_ascii_digit()).unwrap_or(t.len());
+    let (num, unit) = t.split_at(split);
+    let n: u64 = num.parse().ok()?;
+    let mult = match unit {
+        "ms" => 1,
+        "s" => 1_000,
+        "m" => 60_000,
+        "h" => 3_600_000,
+        _ => return None,
+    };
+    n.checked_mul(mult)
+}
 
 fn find_type_by_name<'a>(program: &'a Program, name: &str) -> Option<&'a TypeDefinition> {
     for decl in &program.declarations {

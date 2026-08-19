@@ -1782,6 +1782,15 @@ impl IRGenerator {
     // ── Tier 2 visitors ───────────────────────────────────────────
 
     fn visit_agent(&self, n: &AgentDefinition) -> IRAgent {
+        // `return: T` with `T` a declared struct type: carry the field schema on
+        // the agent itself, so the loop can validate the final answer without
+        // the dispatcher having to resolve the program's type table (the parked
+        // continuation of a hibernated flow carries the agent, not the program).
+        let return_schema: Vec<IRTypeField> = self
+            .type_defs
+            .get(crate::compliance::peel_type_constructors(&n.return_type))
+            .map(|t| t.fields.clone())
+            .unwrap_or_default();
         IRAgent {
             node_type: "agent",
             source_line: n.loc.line,
@@ -1797,6 +1806,9 @@ impl IRGenerator {
             max_tokens: n.max_tokens,
             max_time: n.max_time.clone(),
             max_cost: n.max_cost,
+            return_type: n.return_type.clone(),
+            return_schema,
+            body: n.body.iter().map(|s| IRFlowNode::Step(self.lower_step(s))).collect(),
         }
     }
 

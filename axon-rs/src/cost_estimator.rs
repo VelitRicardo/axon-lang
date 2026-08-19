@@ -193,7 +193,11 @@ fn classify_node(node: &IRFlowNode) -> StepKind {
     }
 }
 
-/// Count steps by kind, recursively walking nested blocks.
+/// Count steps by kind, recursively walking nested blocks — including the
+/// statements written INSIDE a step body (`step Research {
+/// MarketResearcher(sector) }` is one Ask AND one agent call; it used to be
+/// counted as the Ask alone, which is how an agent that may iterate six times
+/// estimated as ~1,200 tokens).
 fn count_steps(nodes: &[IRFlowNode]) -> Vec<(StepKind, u32)> {
     let mut counts = std::collections::HashMap::new();
 
@@ -209,6 +213,7 @@ fn count_steps(nodes: &[IRFlowNode]) -> Vec<(StepKind, u32)> {
                     walk(&c.else_body, counts);
                 }
                 IRFlowNode::ForIn(f) => walk(&f.body, counts),
+                IRFlowNode::Step(st) => walk(&st.pix_ops, counts),
                 // Par, Deliberate, Consensus, Forge, Stream, Transact are stub
                 // structs without body fields in current IR — no recursion needed.
                 _ => {}
@@ -245,6 +250,13 @@ pub struct StepCountEntry {
 }
 
 /// Full cost report for an AXON program.
+///
+/// Two numbers, not one. The `estimated_*` fields are the FLOOR: every step
+/// counted once at its kind's per-call estimate. An `<Agent>(…)` call is a
+/// bounded loop, so the floor understates it by construction; the `ceiling_*`
+/// fields charge every agent call at `max_iterations × per-iteration` — the
+/// most the declared bounds allow it to spend. A program with no agents has
+/// ceiling = floor.
 #[derive(Debug, Clone, Serialize)]
 pub struct CostReport {
     pub pricing: PricingModel,
@@ -253,6 +265,54 @@ pub struct CostReport {
     pub total_output_tokens: u64,
     pub total_tokens: u64,
     pub estimated_cost_usd: f64,
+    /// Upper bound: agent calls at their declared `max_iterations`.
+    pub ceiling_input_tokens: u64,
+    pub ceiling_output_tokens: u64,
+    pub ceiling_total_tokens: u64,
+    pub ceiling_cost_usd: f64,
+}
+
+/// Σ over every `<Agent>(…)` call in `nodes` (step bodies included) of
+/// `(max_iterations − 1) × per-iteration` — the tokens ABOVE the one call the
+/// floor already charged. An agent the program does not declare, or one with
+/// no bound, adds nothing here (the checker refuses both; the runtime refuses
+/// the second before the first token).
+fn agent_iteration_surplus(nodes: &[IRFlowNode], agents: &[crate::ir_nodes::IRAgent]) -> (u64, u64) {
+    let per_iteration = default_estimate(StepKind::MultiAgent);
+    let mut input: u64 = 0;
+    let mut output: u64 = 0;
+    fn walk(
+        nodes: &[IRFlowNode],
+        agents: &[crate::ir_nodes::IRAgent],
+        per: &StepEstimate,
+        input: &mut u64,
+        output: &mut u64,
+    ) {
+        for node in nodes {
+            match node {
+                IRFlowNode::AgentCall(call) => {
+                    let bound = agents
+                        .iter()
+                        .find(|a| a.name == call.agent_name)
+                        .and_then(|a| a.max_iterations)
+                        .filter(|n| *n > 1)
+                        .map(|n| n as u64 - 1)
+                        .unwrap_or(0);
+                    *input += per.input_tokens * bound;
+                    *output += per.output_tokens * bound;
+                }
+                IRFlowNode::Conditional(c) => {
+                    walk(&c.then_body, agents, per, input, output);
+                    walk(&c.else_body, agents, per, input, output);
+                }
+                IRFlowNode::ForIn(f) => walk(&f.body, agents, per, input, output),
+                IRFlowNode::Step(st) => walk(&st.pix_ops, agents, per, input, output),
+                _ => {}
+            }
+        }
+    }
+    walk(nodes, agents, &per_iteration, &mut input, &mut output);
+    (input, output)
 }
 
 /// Estimate cost for an entire IR program.
@@ -260,6 +320,8 @@ pub fn estimate_program(ir: &IRProgram, pricing: &PricingModel) -> CostReport {
     let mut flows = Vec::new();
     let mut total_input: u64 = 0;
     let mut total_output: u64 = 0;
+    let mut ceiling_input: u64 = 0;
+    let mut ceiling_output: u64 = 0;
 
     for flow in &ir.flows {
         let step_counts = count_steps(&flow.steps);
@@ -287,6 +349,9 @@ pub fn estimate_program(ir: &IRProgram, pricing: &PricingModel) -> CostReport {
 
         total_input += flow_input;
         total_output += flow_output;
+        let (surplus_in, surplus_out) = agent_iteration_surplus(&flow.steps, &ir.agents);
+        ceiling_input += flow_input + surplus_in;
+        ceiling_output += flow_output + surplus_out;
 
         flows.push(FlowCostEstimate {
             flow_name: flow.name.clone(),
@@ -299,6 +364,7 @@ pub fn estimate_program(ir: &IRProgram, pricing: &PricingModel) -> CostReport {
     }
 
     let cost = pricing.compute_cost(total_input, total_output);
+    let ceiling_cost = pricing.compute_cost(ceiling_input, ceiling_output);
 
     CostReport {
         pricing: pricing.clone(),
@@ -307,6 +373,10 @@ pub fn estimate_program(ir: &IRProgram, pricing: &PricingModel) -> CostReport {
         total_output_tokens: total_output,
         total_tokens: total_input + total_output,
         estimated_cost_usd: cost,
+        ceiling_input_tokens: ceiling_input,
+        ceiling_output_tokens: ceiling_output,
+        ceiling_total_tokens: ceiling_input + ceiling_output,
+        ceiling_cost_usd: ceiling_cost,
     }
 }
 
@@ -348,6 +418,15 @@ pub fn format_text(report: &CostReport) -> String {
     out.push_str(&format!("Total: ~{} tokens ({} in + {} out)\n",
         report.total_tokens, report.total_input_tokens, report.total_output_tokens));
     out.push_str(&format!("Estimated cost: ${:.6} USD\n", report.estimated_cost_usd));
+    if report.ceiling_total_tokens > report.total_tokens {
+        out.push_str(&format!(
+            "Ceiling (agents at max_iterations): ~{} tokens ({} in + {} out) — ${:.6} USD\n",
+            report.ceiling_total_tokens,
+            report.ceiling_input_tokens,
+            report.ceiling_output_tokens,
+            report.ceiling_cost_usd
+        ));
+    }
 
     out
 }
@@ -801,6 +880,10 @@ mod tests {
             total_output_tokens: 500,
             total_tokens: 1500,
             estimated_cost_usd: pricing.compute_cost(1000, 500),
+            ceiling_input_tokens: 1000,
+            ceiling_output_tokens: 500,
+            ceiling_total_tokens: 1500,
+            ceiling_cost_usd: pricing.compute_cost(1000, 500),
         };
 
         let json = serde_json::to_string(&report).unwrap();

@@ -703,7 +703,7 @@ run Analyze() as Expert within Deep constrained_by [Facts]
 #[test]
 fn ir_tier2_declarations() {
     let ir = compile_json(r#"
-agent Bot { goal: "research" strategy: "react" }
+agent Bot { goal: "research" strategy: "react" max_iterations: 4 }
 shield Guard { scan: ["prompt_injection"] strategy: "pattern" on_breach: "halt" severity: "high" }
 pix Graph { source: "data.kg" depth: 3 }
 mandate Quality { constraint: "accuracy > 0.9" kp: 1.0 on_violation: "retry" }

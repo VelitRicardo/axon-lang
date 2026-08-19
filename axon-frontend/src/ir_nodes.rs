@@ -2154,6 +2154,21 @@ pub struct IRAgent {
     pub max_tokens: Option<i64>,
     pub max_time: String,
     pub max_cost: Option<f64>,
+    /// `return: T` — the declared result type. The loop's final answer is
+    /// validated against it when `T` is a declared struct type (4.1.0). Skipped
+    /// when empty so every pre-4.1.0 IR JSON stays byte-identical.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub return_type: String,
+    /// The declared fields of `return_type` when it names a declared struct
+    /// `type` — resolved at lowering so the loop validates the final answer
+    /// against them with no type table in hand. Empty for builtin / undeclared
+    /// / generic return types (the answer is then free text, as before).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub return_schema: Vec<IRTypeField>,
+    /// The `custom` policy's step sequence, lowered exactly as a flow body is.
+    /// Empty for every other strategy (the checker refuses a body there).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub body: Vec<IRFlowNode>,
 }
 
 /// §Fase 71.a — the lowered temporal execution-window guard. The runtime

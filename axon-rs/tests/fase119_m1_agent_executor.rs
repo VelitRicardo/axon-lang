@@ -39,7 +39,13 @@ fn agent(strategy: &str, max_iterations: Option<i64>, on_stuck: &str) -> IRAgent
         source_column: 0,
         name: "Researcher".into(),
         goal: "Produce a competitive analysis".into(),
-        tools: vec!["WebSearch".into()],
+        // Tool-less on purpose: the stub backend answers the agent protocol
+        // when there is a tool to demonstrate (`ACT:` once, then `ANSWER:`),
+        // and stays the unstructured `(stub)` when there is none — so a
+        // tool-less agent is the one whose run only the BOUND can end, which
+        // is the property m2.* and m5.* exercise. The tool-bearing shape has
+        // its own suite (agent_protocol_stub.rs).
+        tools: Vec::new(),
         memory_ref: String::new(),
         strategy: strategy.into(),
         on_stuck: on_stuck.into(),
@@ -48,6 +54,9 @@ fn agent(strategy: &str, max_iterations: Option<i64>, on_stuck: &str) -> IRAgent
         max_tokens: None,
         max_cost: None,
         max_time: String::new(),
+        return_type: String::new(),
+        return_schema: Vec::new(),
+        body: Vec::new(),
     }
 }
 
@@ -396,23 +405,115 @@ async fn m5_4_forge_recovery_runs_the_real_forge() {
     );
 }
 
-// ── §6 — custom is refused, because its body is dropped at parse time ──────
+// ── §6 — custom: the step sequence inside the agent block IS the policy ────
+
+fn agent_step(name: &str, ask: &str) -> axon::ir_nodes::IRFlowNode {
+    axon::ir_nodes::IRFlowNode::Step(axon::ir_nodes::IRStep {
+        node_type: "step",
+        source_line: 0,
+        source_column: 0,
+        name: name.into(),
+        persona_ref: String::new(),
+        given: String::new(),
+        ask: ask.into(),
+        use_tool: None,
+        probe: None,
+        reason: None,
+        weave: None,
+        output_type: String::new(),
+        confidence_floor: None,
+        navigate_ref: String::new(),
+        apply_ref: String::new(),
+        requires_context: None,
+        now_tz: None,
+        guards: Vec::new(),
+        pix_ops: Vec::new(),
+        stream: None,
+        performs: Vec::new(),
+        body: Vec::new(),
+    })
+}
+
+/// Like [`starts`], but for custom-agent steps — which go through the
+/// ordinary step handler and therefore carry the `step` slug, not `agent`.
+fn step_starts(rx: &mut mpsc::UnboundedReceiver<FlowExecutionEvent>) -> Vec<String> {
+    let mut out = Vec::new();
+    while let Ok(ev) = rx.try_recv() {
+        if let FlowExecutionEvent::StepStart { step_name, .. } = ev {
+            out.push(step_name);
+        }
+    }
+    out
+}
 
 #[tokio::test]
-async fn m6_1_custom_is_refused_and_says_why() {
-    // `strategy: custom` means "the control policy is the `step` list inside
-    // the agent block" — and `AgentDefinition` has no body field, so those
-    // steps never reach the AST. Running it would silently substitute a policy
-    // the author did not write.
+async fn m6_1_custom_with_no_body_is_refused_naming_the_rule() {
+    // An EMPTY custom policy has nothing to run. The checker refuses it as
+    // axon-T1217; the loop refuses it too (IR that bypassed `axon check`).
     let (mut c, _rx) = ctx();
     let err = run_agent(&agent("custom", Some(5), "escalate"), "x", &mut c)
         .await
-        .expect_err("custom must be refused");
+        .expect_err("an empty custom body must be refused");
     let msg = format!("{err:?}");
     assert!(
-        msg.contains("discarded by the parser") || msg.contains("body"),
-        "the refusal must name the real cause — the dropped agent body. Got: {msg}"
+        msg.contains("T1217") && msg.contains("step"),
+        "the refusal must name the rule and the missing step sequence. Got: {msg}"
     );
+}
+
+#[tokio::test]
+async fn m6_2_custom_walks_its_own_steps_once_each_through_the_step_handler() {
+    // README: "the agent follows a user-defined step sequence (Greet →
+    // Configure → Train), not a generic loop". Each step is ONE deliberation
+    // through the ordinary step handler, so it shows up as a StepStart under
+    // the step's own name, and `max_iterations` bounds the count.
+    let (mut c, mut rx) = ctx();
+    let mut a = agent("custom", Some(5), "escalate");
+    a.body = vec![
+        agent_step("Greet", "Welcome the user"),
+        agent_step("Configure", "Recommend a configuration"),
+        agent_step("Train", "Generate a tutorial"),
+    ];
+    let out = run_agent(&a, "acme industries", &mut c)
+        .await
+        .expect("a bodied custom agent runs");
+    let names = step_starts(&mut rx);
+    assert_eq!(
+        names,
+        vec!["Greet", "Configure", "Train"],
+        "the policy is the written sequence, in order, once. Got: {names:?}"
+    );
+    match out {
+        NodeOutcome::Completed { output, .. } => {
+            assert_eq!(output, "(stub)", "the result is the last step's output");
+        }
+        other => panic!("expected Completed, got {other:?}"),
+    }
+    assert_eq!(
+        c.let_bindings.get("Researcher").map(String::as_str),
+        Some("(stub)"),
+        "bound under the agent's name like every other strategy"
+    );
+}
+
+#[tokio::test]
+async fn m6_3_custom_is_bounded_by_max_iterations_like_every_strategy() {
+    let (mut c, mut rx) = ctx();
+    let mut a = agent("custom", Some(2), "retry");
+    a.body = vec![
+        agent_step("Greet", "a"),
+        agent_step("Configure", "b"),
+        agent_step("Train", "c"),
+    ];
+    let out = run_agent(&a, "x", &mut c).await.expect("bounded run completes");
+    assert_eq!(step_starts(&mut rx).len(), 2, "two of three steps, then the bound bites");
+    match out {
+        NodeOutcome::Completed { output, .. } => assert!(
+            output.contains("[retry]") && output.contains("max_iterations"),
+            "the stuck outcome names the bound. Got: {output}"
+        ),
+        other => panic!("expected Completed, got {other:?}"),
+    }
 }
 
 // ── §7 — the agent binds its result under its own name ────────────────────

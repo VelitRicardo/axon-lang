@@ -377,13 +377,22 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     // instead of substituting another policy. `on_stuck: hibernate` is refused
     // for the same reason in the other direction — §119.d parks a flow walk's
     // remaining nodes and an agent loop has no such list.
-    ("agent", Partial {
-        gap: "§119.m.1 — react / reflexion / plan_and_execute run with per-strategy \
-              termination proofs (gate: fase119_m1_agent_executor.rs). `strategy: custom` \
-              is REFUSED, not substituted: its policy is the `step` list inside the agent \
-              block and `AgentDefinition` has no body field, so the parser drops it. \
-              `on_stuck: hibernate` is refused likewise — an agent loop has no \
-              remaining-node list for §119.d to park.",
+    // 4.1.0 — the two halves the §119.m.1 row named as gaps are closed:
+    // `custom` executes the step sequence written inside the agent block
+    // (the parser keeps it now), and the COMPILER refuses what the loop used
+    // to refuse at dispatch (axon-T1216..T1220: the termination bound, the
+    // body/strategy agreement, the undeclared callee, the return type, the
+    // duration grammar). `max_time` is enforced, `return:` is validated. The
+    // fixture is the README's own agent-in-a-step shape, read from disk and
+    // driven through BOTH doors (the default server engine and the CLI stub
+    // walker) by the gate — which is how the gate found the default server
+    // engine had never attached the agent catalog at all. `on_stuck:
+    // hibernate` remains refused by name — an agent loop has no
+    // remaining-node list to park — and the refusal is documented behaviour,
+    // not a gap.
+    ("agent", Attested {
+        fixture: "tests/fixtures/agent/react_agent_in_step.axon",
+        gate: "tests/agent_loop_closes_its_promises.rs",
     }),
     ("shield", Partial { gap: "§111 — the scanner registry IS consulted and a Reject really fails the step, but OSS ships ZERO registered scanners, so an OSS adopter's shield is an identity pass-through until one is mounted" }),
     // ── Security & autonomous analysis

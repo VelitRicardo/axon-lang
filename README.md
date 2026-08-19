@@ -818,8 +818,13 @@ B(agent) = (max_iter, max_tokens, max_time, max_cost)
 Terminate when: ∃ b ∈ B(agent) : consumed(b) ≥ limit(b)
 ```
 
-The compiler rejects agents with unbounded budgets (`max_iterations = 0` without
-an explicit `on_stuck` policy), preventing runaway execution by construction.
+The compiler rejects an agent with no termination bound: `max_iterations` is
+required and must be positive (`axon-T1216`) — whatever the `on_stuck` policy,
+an unbounded loop does not compile. `max_time` must be a duration it can read
+(`axon-T1220`: `500ms`, `30s`, `2m`, `1h`), and the runtime then enforces every
+declared bound before each deliberation — iterations, tokens, cost and wall
+clock alike. The `agent { }` block is a closed catalogue: a misspelled field is
+a parse error, not a silently ignored setting.
 
 **Strategy Dispatch.** The `strategy` parameter selects the BDI loop variant at
 compile time. Each strategy maps to a specific deliberation/action sequence:
@@ -877,25 +882,40 @@ run CompetitiveIntelligence("electric vehicles")
 
 What the compiler does:
 
-1. **IR Generation** — the `agent` block compiles to an `IRAgent` node containing
-   goal, tools, budget (15 iter / 50k tokens / $2.50), strategy (`react`), and
-   recovery policy (`forge`). The `IRAgent` is embedded as a step inside
-   `IRFlow`, preserving compositional semantics.
-2. **Backend Compilation** — the backend (Anthropic, Gemini) generates a
-   `CompiledStep` with `step_name: "agent:MarketResearcher"` and full agent
-   metadata in its `metadata["agent"]` dictionary. The system prompt includes
-   persona traits, tool availability, and epistemic constraints.
-3. **Runtime Execution** — the executor detects `agent:` prefix and dispatches
-   to the BDI loop. Each cycle: deliberate (epistemic assessment via JSON),
-   act (execute step or invoke tool), observe (update beliefs). The loop
-   respects the budget 4-tuple and applies `on_stuck` when `Diverge` fires.
-4. **Trace Events** — every BDI cycle emits `STEP_START`, `MODEL_CALL`, and
-   `STEP_END` trace events, giving full observability into the agent's
-   reasoning trajectory.
+1. **Type checking** — the declaration must carry a positive `max_iterations`
+   (`axon-T1216`), every tool in `tools:` must be declared, `strategy:` and
+   `on_stuck:` come from closed catalogues, a `custom` strategy must carry the
+   step sequence it runs (`axon-T1217`), `return:` must name a type and agree
+   with the calling step's `output:` (`axon-T1219`), and `max_time:` must be a
+   duration (`axon-T1220`). The call site `MarketResearcher(sector)` must name a
+   declared agent (`axon-T1218`).
+2. **IR Generation** — the `agent` block compiles to an `IRAgent` node carrying
+   goal, tools, the bounds (15 iter / 50k tokens / $2.50), strategy (`react`),
+   recovery policy (`forge`), the return type and — for a declared struct type
+   — its field schema; the call compiles to an `agent_call` node inside the
+   step's body, preserving compositional semantics.
+3. **Runtime Execution** — the dispatcher's agent loop resolves the
+   declaration (an undeclared agent is refused before any spend), then runs
+   the strategy's control shape. Every deliberation goes through the same step
+   core as any cognitive step (same wire events, audit row, cancellation and
+   effect policy). Under `react` the model answers `ACT: <Tool>` or `ANSWER:
+   <text>`; a tool outside the agent's declared grant is refused and recorded,
+   never dispatched. Every bound — iterations, tokens, cost, wall clock — is
+   checked **before** each deliberation; when one bites, `on_stuck` decides.
+   A declared return type is validated on the final answer.
+4. **Trace Events** — every deliberation is a step in the flow's wire events
+   (`StepStart` / `StepComplete` under `<Agent>:<move>`, e.g.
+   `MarketResearcher:react`), and every tool dispatch the agent makes is a
+   step of its own, giving full observability into the reasoning trajectory.
 
 **Why this matters:** The agent is not a Python class that wraps `while True`.
 It is a **compiled cognitive primitive** — the compiler verifies its budget
-boundedness, the type checker validates its return type, the backend generates
+boundedness (`axon-T1216`), refuses a call to an agent nobody declared
+(`axon-T1218`), and checks its return type (`axon-T1219`: `return:` must name a
+type, and the step that calls the agent must declare the same `output:`); when
+the return type is a declared `type`, the runtime validates the agent's final
+answer against its fields and routes a non-conforming answer through
+`on_stuck` rather than calling it a result. The backend generates
 strategy-specific prompts, and the runtime executes a formally-defined BDI loop
 with epistemic convergence criteria. This is the difference between duct-taping
 an LLM into a loop and engineering an autonomous system with mathematical
@@ -999,6 +1019,12 @@ persona OnboardingSpecialist {
     confidence_threshold: 0.80
 }
 
+type OnboardingReport {
+    workspace: String
+    tutorial_steps: List<String>
+    confidence: Float
+}
+
 agent OnboardingGuide {
     goal: "Complete the customer's onboarding checklist with
            personalized recommendations for their industry"
@@ -1020,8 +1046,14 @@ agent OnboardingGuide {
 - `on_stuck: forge` — if the agent can't personalize recommendations (e.g.,
   unknown industry), it triggers creative synthesis to propose novel onboarding
   paths instead of failing
-- The `return: OnboardingReport` type is validated by the semantic type checker
-  — the agent must produce a structurally valid report, not just free text
+- `custom` is the one strategy that carries a body: `strategy: custom` with no
+  steps, or steps under any other strategy, is a compile error (`axon-T1217`)
+  — a step sequence is never silently ignored
+- The `return: OnboardingReport` type is checked by the type checker (it must
+  name a type, and a step calling the agent must agree on `output:`), and
+  because `OnboardingReport` is a declared `type`, the runtime validates the
+  agent's final answer against its fields — a structurally valid report, not
+  just free text
 
 ### VI. Compile-Time Security — the `shield` Primitive
 
