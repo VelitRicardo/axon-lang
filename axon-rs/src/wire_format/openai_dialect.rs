@@ -1,4 +1,4 @@
-//! §Fase 33.z.k.e (v1.28.0) — `openai` Chat Completions streaming
+//! v1.28.0 — `openai` Chat Completions streaming
 //! dialect adapter.
 //!
 //! Matches the OpenAI Chat Completions streaming wire verbatim per
@@ -115,18 +115,18 @@ pub struct OpenAIDialectAdapter {
     /// Tracks how the stream terminated for adopter visibility on
     /// the axon_metadata frame.
     saw_terminal_reason: TerminalReason,
-    /// §Fase 33.z.k.h — Algebraic-policy envelope stashed at
+    /// v1.24.0 — Algebraic-policy envelope stashed at
     /// FlowComplete time so `flush_terminator()` can emit a
     /// POPULATED `axon_metadata` frame. `None` pre-FlowComplete
     /// (defensive — flush before FlowComplete is unreachable in
     /// the production producer but legal per the trait contract).
     /// Adopters consuming the openai wire receive per-step
     /// provenance (PCI DSS Req 10 / FedRAMP AU-2 / FRE 502 /
-    /// 21 CFR Part 11 §11.10) via this extension frame even
+    /// 21 CFR Part 11 section 11.10) via this extension frame even
     /// though OpenAI's `chat.completion.chunk` shape doesn't
     /// model multi-step flows.
     stashed_envelope: Option<CompleteEnvelope>,
-    /// §Fase 37.e (D6) — the `FlowError.error` diagnostic, stashed when
+    /// v1.32.0 (D6) — the `FlowError.error` diagnostic, stashed when
     /// a `FlowError` is translated so `build_axon_metadata_frame()` can
     /// surface it as the metadata frame's `error` field. Without this
     /// the openai (and kimi / glm) wire signalled `terminal_reason:
@@ -199,7 +199,7 @@ impl OpenAIDialectAdapter {
         )
     }
 
-    /// §Q7 + §Fase 33.z.k.h — Build the `axon_metadata` extension
+    /// Q7 + v1.24.0 — Build the `axon_metadata` extension
     /// frame carrying the full algebraic-policy side-channel data
     /// + flow envelope. Adopters on the openai wire (litellm,
     /// langchain, vercel/ai, instructor, llama_index) ignore unknown
@@ -256,7 +256,7 @@ impl OpenAIDialectAdapter {
                 serde_json::json!(envelope.latency_ms),
             );
 
-            // §Fase 33.e — stream_policies (elided when empty).
+            // v1.24.0 — stream_policies (elided when empty).
             if !envelope.effect_policies.is_empty() {
                 let arr: Vec<serde_json::Value> = envelope
                     .effect_policies
@@ -268,7 +268,7 @@ impl OpenAIDialectAdapter {
                     serde_json::Value::Array(arr),
                 );
             }
-            // §Fase 33.x.d — enforcement_summary (elided when empty).
+            // v1.24.0 — enforcement_summary (elided when empty).
             if !envelope.enforcement_summaries.is_empty() {
                 let mut obj = serde_json::Map::new();
                 for (step, summary) in &envelope.enforcement_summaries {
@@ -282,7 +282,7 @@ impl OpenAIDialectAdapter {
                     serde_json::Value::Object(obj),
                 );
             }
-            // §Fase 33.x.g — runtime_warnings (elided when empty).
+            // v1.24.0 — runtime_warnings (elided when empty).
             if !envelope.runtime_warnings.is_empty() {
                 let arr: Vec<serde_json::Value> = envelope
                     .runtime_warnings
@@ -294,7 +294,7 @@ impl OpenAIDialectAdapter {
                     serde_json::Value::Array(arr),
                 );
             }
-            // §Fase 33.x.f — step_audit (elided when empty).
+            // v1.24.0 — step_audit (elided when empty).
             if !envelope.step_audit_records.is_empty() {
                 let arr: Vec<serde_json::Value> = envelope
                     .step_audit_records
@@ -316,7 +316,7 @@ impl OpenAIDialectAdapter {
             "terminal_reason".to_string(),
             serde_json::json!(terminal_str),
         );
-        // §Fase 37.e (D6) — honest failure: when the flow errored,
+        // v1.32.0 (D6) — honest failure: when the flow errored,
         // the metadata frame names WHY, not just THAT. The diagnostic
         // string carries the failing node + cause (e.g. `flow node
         // 'Lookup' failed: …`). Elided on a non-erroring flow.
@@ -334,7 +334,7 @@ impl WireFormatAdapter for OpenAIDialectAdapter {
         "openai"
     }
 
-    /// §Fase 33.z.k.h — Stash the full envelope so flush_terminator()
+    /// v1.24.0 — Stash the full envelope so flush_terminator()
     /// can populate the axon_metadata frame with real algebraic-policy
     /// data, then emit the final chunk with `finish_reason: "stop"`
     /// per OpenAI spec.
@@ -405,7 +405,7 @@ impl WireFormatAdapter for OpenAIDialectAdapter {
             FlowExecutionEvent::FlowError { error, .. } => {
                 self.terminal_emitted = true;
                 self.saw_terminal_reason = TerminalReason::Error;
-                // §Fase 37.e (D6) — stash the diagnostic so the
+                // v1.32.0 (D6) — stash the diagnostic so the
                 // axon_metadata frame can surface it (the openai wire
                 // has no native error event).
                 self.error_detail = Some(error.clone());
@@ -427,7 +427,7 @@ impl WireFormatAdapter for OpenAIDialectAdapter {
     }
 
     fn flush_terminator(&mut self) -> Vec<Event> {
-        // §Q7 — emit the axon_metadata frame BEFORE the [DONE]
+        // Q7 — emit the axon_metadata frame BEFORE the [DONE]
         // sentinel so adopters parsing the full stream see the
         // algebraic-policy side-channels in order. The metadata
         // frame is a non-OpenAI extension; openai-compat clients
@@ -435,10 +435,10 @@ impl WireFormatAdapter for OpenAIDialectAdapter {
         // (they don't recognize the top-level `axon_metadata` key
         // and skip the frame).
         //
-        // §Fase 33.z.k.e ships the metadata frame as a placeholder
+        // v1.24.0 ships the metadata frame as a placeholder
         // (empty fields). 33.z.k.h wires the actual data through.
         //
-        // §D5 — emit the [DONE] sentinel per OpenAI spec. This is
+        // D5 — emit the [DONE] sentinel per OpenAI spec. This is
         // a non-JSON literal; the adapter emits it via
         // `Event::default().data("[DONE]")` so the wire bytes
         // come out as `data: [DONE]\n\n` per W3C SSE framing.

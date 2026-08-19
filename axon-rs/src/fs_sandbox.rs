@@ -1,17 +1,17 @@
-//! §Fase 100.b — the filesystem capability + path sandbox: the read-only,
-//! agent-reachable disk surface, designed EXACTLY ONCE (D100.2). Before §100
+//! v2.54.0 — the filesystem capability + path sandbox: the read-only,
+//! agent-reachable disk surface, designed EXACTLY ONCE. Before v2.54.0
 //! axon had no filesystem capability at all — `fs::*` existed only as host
-//! plumbing (never flow-invocable). §100 invents the agent-reachable read
-//! surface, and it is a *capability*, not an effect (D100.3): a set of allowed
+//! plumbing (never flow-invocable). v2.54.0 invents the agent-reachable read
+//! surface, and it is a *capability*, not an effect: a set of allowed
 //! roots a `DocumentReader` may read under, with every escape refused BEFORE
 //! any byte is read.
 //!
-//! **Read-only, and local-only (D100.4).** The old `FileReader` description
+//! **Read-only, and local-only.** The old `FileReader` description
 //! ("Read local or remote files") conflated a sandboxed disk read with a remote
-//! fetch (`network`, SSRF — the §98 problem). This sandbox governs the local
-//! half only; remote fetch stays where §98 put it.
+//! fetch (`network`, SSRF — the v2.52.0 problem). This sandbox governs the local
+//! half only; remote fetch stays where v2.52.0 put it.
 //!
-//! **Every escape is a typed refusal (D100.13 / §6):** a path outside every
+//! **Every escape is a typed refusal (the design decision / section 6):** a path outside every
 //! root, a `..` traversal, a symlink that escapes the root, or a
 //! device/special file is `SandboxError`, never a silent read of the wrong
 //! file.
@@ -50,7 +50,7 @@ impl std::fmt::Display for SandboxError {
 }
 impl std::error::Error for SandboxError {}
 
-/// §100.b — the read-only path sandbox. Holds the allowed roots; `resolve`
+/// v2.54.0 — the read-only path sandbox. Holds the allowed roots; `resolve`
 /// validates a requested path against them, canonicalizing to defeat symlink
 /// and `..` escapes.
 #[derive(Debug, Clone, Default)]
@@ -75,7 +75,7 @@ impl PathSandbox {
         !self.roots.is_empty()
     }
 
-    /// §100.b — the pure syntactic check: does the requested path string contain
+    /// v2.54.0 — the pure syntactic check: does the requested path string contain
     /// a `..` traversal segment? Applied BEFORE any filesystem touch, so a
     /// hostile relative path is refused without a stat. Checks the RAW string
     /// (split on both `/` and `\`) rather than `Path::components`, because a
@@ -91,7 +91,7 @@ impl PathSandbox {
                 .any(|c| matches!(c, Component::ParentDir))
     }
 
-    /// §100.b — resolve a requested path to a canonical, in-sandbox, regular
+    /// v2.54.0 — resolve a requested path to a canonical, in-sandbox, regular
     /// file — or a typed refusal. The canonicalization is what defeats a
     /// symlink escape: the resolved real path must still be under a root.
     pub fn resolve(&self, requested: &str) -> Result<PathBuf, SandboxError> {

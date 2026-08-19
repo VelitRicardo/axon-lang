@@ -7,7 +7,7 @@
 //!   - String literals with escape sequences
 //!   - Integer / Float / Duration literals
 //!   - Arrow (->), DotDot (..), comparison operators
-//!   - **Lossless comment lexing (Fase 14.a)** — comments are emitted
+//! - **Lossless comment lexing (v1.5.2)** — comments are emitted
 //!     as discriminated `LineComment` / `BlockComment` /
 //!     `DocLineComment` / `DocBlockComment` tokens preserving full
 //!     text + position. The parser materialises them into `Trivia`
@@ -37,7 +37,7 @@ pub struct Lexer {
     line: u32,
     column: u32,
     tokens: Vec<Token>,
-    /// Fase 14.a — when `true`, comment tokens are not emitted (legacy
+    /// v1.5.2 — when `true`, comment tokens are not emitted (legacy
     /// pre-14.a behaviour). Default `false` preserves comments as
     /// discriminated tokens so the parser can build the trivia channel.
     strip_comments: bool,
@@ -137,7 +137,7 @@ impl Lexer {
         });
     }
 
-    // ── whitespace & comments (Fase 14.a — lossless) ─────────────
+    // ── whitespace & comments (v1.5.2 — lossless) ─────────────
 
     /// Consume whitespace + emit comment tokens until next non-trivia.
     /// Pre-14.a this routine was named `skip_whitespace` and silently
@@ -164,11 +164,11 @@ impl Lexer {
 
     /// Lex a `// …`, `/// …` or `//! …` line comment.
     ///
-    /// Outer-doc heuristic (Fase 14.a): a line is an outer doc comment
+    /// Outer-doc heuristic (v1.5.2): a line is an outer doc comment
     /// iff it starts with EXACTLY three slashes (`///` followed by a
     /// non-`/`). `////` (4+ slashes) is a regular line comment.
     ///
-    /// Inner-doc heuristic (Fase 14.c): a line is an inner doc comment
+    /// Inner-doc heuristic (v1.5.2): a line is an inner doc comment
     /// iff it starts with `//!` (two slashes + bang). Inner doc
     /// comments document the *enclosing* module/file rather than the
     /// next sibling — same convention as Rust.
@@ -204,11 +204,11 @@ impl Lexer {
 
     /// Lex a `/* … */`, `/** … */` or `/*! … */` block comment.
     ///
-    /// Outer-doc heuristic (Fase 14.a): a block is an outer doc comment
+    /// Outer-doc heuristic (v1.5.2): a block is an outer doc comment
     /// iff it starts with exactly `/**` followed by a non-`/` character.
     /// `/**/` (empty block) is a regular block, not a doc.
     ///
-    /// Inner-doc heuristic (Fase 14.c): a block is an inner doc comment
+    /// Inner-doc heuristic (v1.5.2): a block is an inner doc comment
     /// iff it starts with `/*!` — same Rust convention as `//!`.
     fn consume_block_comment(&mut self) -> Result<(), LexerError> {
         let line = self.line;
@@ -268,7 +268,7 @@ impl Lexer {
             '@' => self.emit(TokenType::At, "@", line, col),
             '+' => self.emit(TokenType::Plus, "+", line, col),
             '*' => self.emit(TokenType::Star, "*", line, col),
-            // §Fase 70.a — modulo operator for the pure expression engine.
+            // v2.26.0 — modulo operator for the pure expression engine.
             '%' => self.emit(TokenType::Percent, "%", line, col),
 
             '.' => {
@@ -329,7 +329,7 @@ impl Lexer {
             c if c.is_ascii_digit() => self.scan_number(line, col, c, false)?,
             c if c.is_alphabetic() || c == '_' => self.scan_identifier(line, col, c),
 
-            // §Fase 54.b — `$` is only meaningful as interpolation, and
+            // v2.7.0 — `$` is only meaningful as interpolation, and
             // interpolation in Axon canonically lives INSIDE a string
             // literal (`"${name}"` / `"$name"`) — the same form used for
             // prompt text, `persist` field values, and the `use <Tool> on
@@ -482,8 +482,8 @@ impl Lexer {
 }
 
 #[cfg(test)]
-mod fase_1_to_5_end_to_end {
-    //! Lexer integration tests covering the new Fase 1–5 keywords end-to-end.
+mod to_5_end_to_end {
+    //! Lexer integration tests covering the new v1.1.0–v1.1.0 keywords end-to-end.
     //! These feed real source text through the lexer and assert the emitted
     //! TokenTypes — closing the loop beyond the unit tests in `tokens.rs`.
     use super::*;
@@ -581,10 +581,10 @@ mod fase_1_to_5_end_to_end {
     }
 }
 
-// ── §Fase 14.a — Lossless lexing tests ─────────────────────────────────────
+// ── v1.5.2 — Lossless lexing tests ─────────────────────────────────────
 
 #[cfg(test)]
-mod fase14a_trivia_tests {
+mod trivia_tests {
     use super::*;
 
     fn lex(src: &str) -> Vec<Token> {
@@ -664,7 +664,7 @@ mod fase14a_trivia_tests {
         }
     }
 
-    // ── Fase 14.c — inner doc comments (`//!`, `/*!`) ──
+    // ── v1.5.2 — inner doc comments (`//!`, `/*!`) ──
 
     #[test]
     fn inner_doc_line_comment_emitted_with_inner_doc_kind() {

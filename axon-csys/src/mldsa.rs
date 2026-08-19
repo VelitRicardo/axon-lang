@@ -1,11 +1,11 @@
-//! §Fase 124.b — ML-DSA-65 (FIPS 204), bound from the vendored kernel.
+//! v4.0.0 — ML-DSA-65 (FIPS 204), bound from the vendored kernel.
 //!
 //! # What this is, and what it is not
 //!
 //! Thin bindings over `c-src/vendor/pqclean/ml-dsa-65/` — **this module
 //! implements nothing**, same posture as [`crate::shake`] and for the same
-//! reason: the cryptographic module boundary lives in `axon-csys` (D124.3) and
-//! is populated with vetted reference implementations (D124.6), because a
+//! reason: the cryptographic module boundary lives in `axon-csys` and
+//! is populated with vetted reference implementations, because a
 //! from-scratch lattice scheme is the first thing a CMVP assessor questions.
 //! Upstream is pinned by commit and per-file SHA-256 in
 //! `c-src/vendor/PROVENANCE.toml`; the provenance gate recomputes the hashes on
@@ -27,7 +27,7 @@
 //!
 //! The functions here hand the caller raw key material and do nothing else with
 //! it. Lifecycle — zeroization, custody, never logging — is the SIGNER's
-//! responsibility (the §124.b `Signer` implementation in axon-rs), not this
+//! responsibility (the v4.0.0 `Signer` implementation in axon-rs), not this
 //! binding's: a binding that quietly wipes buffers it does not own would be a
 //! surprise, and a binding that clones them into managed wrappers would put
 //! policy inside the module boundary where an assessor least wants it.

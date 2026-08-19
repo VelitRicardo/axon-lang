@@ -1,6 +1,6 @@
 //! `axon-server` — the AXON runtime daemon.
 //!
-//! §Fase 118.b.2, D118.1 (RATIFIED 2026-08-04, option (c)). The second binary of
+//! v2.81.0, the design decision (RATIFIED 2026-08-04, option (c)). The second binary of
 //! the `axon-lang` crate, built only when the `server` feature is on.
 //!
 //! **This is a ROLE boundary, not the open-core boundary.** `axon` and
@@ -59,7 +59,7 @@ struct Cli {
     /// PostgreSQL connection URL (also reads DATABASE_URL env var).
     #[arg(long)]
     database_url: Option<String>,
-    /// §Fase 31.f (D6 + D9) — Type-Driven Wire Inference activation.
+    /// v1.22.0 (D6 + D9) — Type-Driven Wire Inference activation.
     ///
     /// When set, `POST /v1/execute` promotes to SSE for any flow the
     /// type-checker inferred as stream-producing (D1) regardless of the
@@ -71,7 +71,7 @@ struct Cli {
     /// flag wins when both are set.
     #[arg(long)]
     strict_type_driven_transport: bool,
-    /// §Fase 36.g (D7) — Server-wide default execution backend.
+    /// v1.31.0 (D7) — Server-wide default execution backend.
     ///
     /// Rung 3 of the Backend Resolution Contract: an `axonendpoint` that
     /// declares no `backend:` of its own inherits this server default. Valid
@@ -83,7 +83,7 @@ struct Cli {
     /// when both are set.
     #[arg(long)]
     backend: Option<String>,
-    /// §Fase 38.j (D3 + D7 + D8) — Directory containing declared store-schema
+    /// v1.31.0 (D3 + D7 + D8) — Directory containing declared store-schema
     /// manifests (`*.axon-schema.json`).
     ///
     /// When set, `POST /v1/deploy` loads and merges every manifest under the
@@ -102,7 +102,7 @@ fn main() {
 
     // The same three-rung resolution order `axon serve` uses (CLI flag > env var
     // > default), against the same canonical truthy parser the Python CLI shares
-    // (§31.f D7). Two entry points, one contract — a second binary that resolved
+    // (v1.22.0 D7). Two entry points, one contract — a second binary that resolved
     // its configuration differently would be a second product.
     let exit_code = axon_server::run_serve(axon_server::ServerConfig {
         host: cli.host,

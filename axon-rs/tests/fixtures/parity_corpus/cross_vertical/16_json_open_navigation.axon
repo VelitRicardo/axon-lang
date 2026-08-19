@@ -1,0 +1,30 @@
+// META: flow_name=JsonOpenNavigation, mode=count_only
+//
+// v2.89.0 (group A) — the FIRST `.axon` in this repository to use the open
+// `Json` type. Measured 2026-08-13: none of the 107 existing `.axon` files
+// mentions it, so v2.26.0's totality guarantee — navigation that yields `null`
+// rather than panicking, and coercions that are honest about a type mismatch —
+// had no published program standing on it.
+//
+// Both forms appear: open `Json` (any document, totally navigable) and the
+// `Json<T>` lens, where the compiler VIEWS the same bytes as the declared shape
+// without changing the physical value.
+
+type UserEvent {
+  kind: String
+}
+
+flow JsonOpenNavigation(payload: Json, profile: Json<UserEvent>) -> Unit {
+  step Classify {
+    given: payload
+    ask: "Classify the event from the payload"
+    output: Stream<Token>
+  }
+}
+
+axonendpoint JsonOpenNavigationEndpoint {
+  method: POST
+  path: "/cross/json-open-navigation"
+  execute: JsonOpenNavigation
+  transport: sse public: true
+}

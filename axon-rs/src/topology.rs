@@ -1,8 +1,8 @@
-//! §Fase 87.f — the `TopologyBackend` port + the OSS reference TDA engine.
+//! v2.42.0 — the `TopologyBackend` port + the OSS reference TDA engine.
 //!
 //! The savant maps the *shape* of the ingested corpus so it can steer its
 //! research toward epistemic gaps rather than toward semantic look-alikes (the
-//! failure mode of vector-similarity RAG — paper §4). It approximates the corpus
+//! failure mode of vector-similarity RAG — paper section 4). It approximates the corpus
 //! as a Vietoris–Rips simplicial complex and reads its homology.
 //!
 //! The OSS reference computes the low-dimensional Betti numbers exactly over the
@@ -13,12 +13,12 @@
 //!     of association with a "hole" in the middle).
 //!   - a **cycle-participation centrality**: per vertex, the number of incident
 //!     edges that lie on a cycle (i.e. survive 2-core reduction). This is the
-//!     reference proxy for Persistent-Homology Centrality (PHC, paper §4.2).
+//! reference proxy for Persistent-Homology Centrality (PHC, paper section 4.2).
 //!
 //! Honest bound: the full persistence pairing across a filtration and the `β₂`
 //! (void) analysis the paper leans on require the boundary-matrix reduction of
-//! the enterprise engine (§87.i); the OSS reference is exact for `β₀`/`β₁` on the
-//! graph and is the differential-test oracle. No advantage is claimed (§69) —
+//! the enterprise engine (v2.42.0); the OSS reference is exact for `β₀`/`β₁` on the
+//! graph and is the differential-test oracle. No advantage is claimed (v2.23.0) —
 //! these are exact combinatorial invariants.
 
 /// The low-dimensional Betti numbers of a graph (1-skeleton).
@@ -97,7 +97,7 @@ impl UnionFind {
 }
 
 /// The TDA port (charter split R1). Enterprise mounts the full persistent-
-/// homology engine (β₂ voids, persistence pairing) behind this trait (§87.i).
+/// homology engine (β₂ voids, persistence pairing) behind this trait (v2.42.0).
 pub trait TopologyBackend {
     /// `β₀`/`β₁` of the graph on `n_vertices` with the given edges.
     fn betti(&self, n_vertices: usize, edges: &[(usize, usize)]) -> BettiNumbers;

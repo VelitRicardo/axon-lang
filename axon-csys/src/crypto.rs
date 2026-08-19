@@ -1,4 +1,4 @@
-//! §Fase 25.h — Crypto kernels (Rust shim).
+//! v1.19.0 — Crypto kernels (Rust shim).
 //!
 //! Safe Rust wrappers around the C23 SHA-256 / HMAC-SHA256 /
 //! base64url / hex / continuity-wire primitives in
@@ -299,7 +299,7 @@ pub fn hex_decode(hex: &str) -> Option<Vec<u8>> {
 // Base64url-no-pad codec
 // ──────────────────────────────────────────────────────────────────────
 
-/// Encode `data` to base64url-no-pad (RFC 4648 §5 with padding stripped).
+/// Encode `data` to base64url-no-pad (RFC 4648 section 5 with padding stripped).
 #[cfg(feature = "native")]
 pub fn b64url_encode(data: &[u8]) -> String {
     let cap = unsafe { axon_csys_b64url_encoded_len(data.len()) };
@@ -505,7 +505,7 @@ impl ContinuityWire {
 }
 
 // ══════════════════════════════════════════════════════════════════════
-// §Fase 119.h — the toolchain-free twin
+// v2.83.0 — the toolchain-free twin
 // ══════════════════════════════════════════════════════════════════════
 //
 // Everything below is the SAME surface with no C behind it, for builds
@@ -526,7 +526,7 @@ impl ContinuityWire {
 //    `cargo test --no-default-features` runs the NIST CAVS vectors and
 //    the `sha2`/`hmac`/`base64`/`subtle` cross-checks against these
 //    functions instead of against the C. Fidelity is measured, not
-//    asserted. (§Fase 119.h added the no-default-features lane so this
+// asserted. (v2.83.0 added the no-default-features lane so this
 //    is not a claim about a suite nobody runs.)
 //
 // 3. **It costs no dependency.** This module's own doc calls the crate
@@ -548,7 +548,7 @@ mod portable {
 
     // ── SHA-256 — FIPS 180-4, mirroring c-src/crypto/sha256.c ────────
 
-    /// §4.2.2 — the first 32 bits of the fractional parts of the cube
+    /// section 4.2.2 — the first 32 bits of the fractional parts of the cube
     /// roots of the first 64 primes.
     const K: [u32; 64] = [
         0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4,
@@ -563,7 +563,7 @@ mod portable {
         0xc67178f2,
     ];
 
-    /// §5.3.3 — the first 32 bits of the fractional parts of the square
+    /// section 5.3.3 — the first 32 bits of the fractional parts of the square
     /// roots of the first 8 primes.
     const INITIAL_H: [u32; 8] = [
         0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab,
@@ -588,7 +588,7 @@ mod portable {
             }
         }
 
-        /// §6.2.2 — compress one 512-bit block into the state.
+        /// section 6.2.2 — compress one 512-bit block into the state.
         fn compress(&mut self, block: &[u8; SHA256_BLOCK_SIZE]) {
             let mut w = [0u32; 64];
             for (i, word) in w.iter_mut().take(16).enumerate() {
@@ -663,7 +663,7 @@ mod portable {
             }
         }
 
-        /// §5.1.1 — append 0x80, pad with zeros to 56 mod 64, then the
+        /// section 5.1.1 — append 0x80, pad with zeros to 56 mod 64, then the
         /// 64-bit big-endian message length in bits.
         pub fn finalize(mut self) -> [u8; SHA256_DIGEST_SIZE] {
             let bits = self.total_bits;
@@ -799,7 +799,7 @@ mod portable {
         Some(out)
     }
 
-    /// RFC 4648 §5 with padding stripped.
+    /// RFC 4648 section 5 with padding stripped.
     const B64URL: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 
     pub fn b64url_encoded_len(byte_count: usize) -> usize {
@@ -1081,7 +1081,7 @@ pub fn hex_decode(hex: &str) -> Option<Vec<u8>> {
     portable::hex_decode(hex.as_bytes())
 }
 
-/// Encode `data` to base64url-no-pad (RFC 4648 §5 with padding stripped).
+/// Encode `data` to base64url-no-pad (RFC 4648 section 5 with padding stripped).
 #[cfg(not(feature = "native"))]
 pub fn b64url_encode(data: &[u8]) -> String {
     portable::b64url_encode(data)

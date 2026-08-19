@@ -1,16 +1,16 @@
-//! §Fase 101.d — the active-inference foveation planner.
+//! v2.54.0 — the active-inference foveation planner.
 //!
-//! **The real efficiency win is fewer pixels, not cheaper pixels (D101.15).**
+//! **The real efficiency win is fewer pixels, not cheaper pixels.**
 //! Reading a whole 4K page uniformly wastes the budget. Instead the planner keeps
 //! a generative belief about where the answer lives and spends the recognizer
-//! (§101.c) only on the regions with the highest **information scent** — the
+//! (v2.54.0) only on the regions with the highest **information scent** — the
 //! expected information gain about the caller's target — until the answer is
-//! resolved or the declared `budget` (§72) is exhausted.
+//! resolved or the declared `budget` (v2.28.0) is exhausted.
 //!
 //! **Pure and deterministic.** The plan is a total function of the candidate
 //! regions + the query + the budget. Every foveation is recorded as a
-//! [`FoveationStep`] the runtime sinks to the `ledger` (§62) — the exact,
-//! **replayable** reasoning path (D101.16): *why* the engine looked where it did.
+//! [`FoveationStep`] the runtime sinks to the `ledger` (v2.12.0) — the exact,
+//! **replayable** reasoning path: *why* the engine looked where it did.
 //!
 //! This module does **no** pixel work; it decides *where* the recognizer looks.
 //! A coarse first pass supplies [`RegionCandidate`]s (cheap features — ink
@@ -45,9 +45,9 @@ impl RegionCandidate {
     }
 }
 
-/// The budget a foveation may spend — composes with §72's linear `budget`. The
+/// The budget a foveation may spend — composes with v2.28.0's linear `budget`. The
 /// planner stops when EITHER the confidence target is reached OR the budget is
-/// exhausted (D101.15). At least one visit is always attempted (`min_visits`),
+/// exhausted. At least one visit is always attempted (`min_visits`),
 /// so a tiny budget still reads the single most promising region.
 #[derive(Debug, Clone, Copy)]
 pub struct FoveationBudget {
@@ -90,7 +90,7 @@ pub fn information_scent(region: &RegionCandidate) -> f64 {
     r * (binary_entropy(r) + 0.1 * r)
 }
 
-/// One recorded foveation — a `ledger` trail entry (D101.16). Says which region
+/// One recorded foveation — a `ledger` trail entry. Says which region
 /// was visited, in what order, its scent, and the running resolved mass.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FoveationStep {
@@ -111,7 +111,7 @@ pub struct FoveationPlan {
     pub visits: Vec<FoveationStep>,
     /// Region ids NOT read, because the budget ran out or the target mass was
     /// reached. Surfaced so a caller (and an auditor) sees what was left unread
-    /// (D101.15 — no silent truncation).
+    /// (the design decision — no silent truncation).
     pub skipped: Vec<String>,
     pub total_cost: u64,
     pub resolved_mass: f64,
@@ -123,7 +123,7 @@ pub struct FoveationPlan {
 /// reached or the budget is exhausted — but always make `min_visits` progress.
 ///
 /// Deterministic: candidates are ranked by `(scent desc, id asc)`, a total
-/// order, so the same inputs always yield the same plan (D101.16).
+/// order, so the same inputs always yield the same plan.
 pub fn plan_foveation(candidates: &[RegionCandidate], budget: &FoveationBudget) -> FoveationPlan {
     let mut ranked: Vec<(f64, &RegionCandidate)> =
         candidates.iter().map(|c| (information_scent(c), c)).collect();
@@ -201,7 +201,7 @@ mod tests {
     #[test]
     fn budget_bounds_the_read_and_records_skips() {
         // Budget for ~2 regions of cost 10 each; the third is skipped, not
-        // silently dropped (D101.15).
+        // silently dropped.
         let regions = vec![
             region("r1", 0.5, 10),
             region("r2", 0.45, 10),
@@ -217,7 +217,7 @@ mod tests {
     #[test]
     fn early_stop_when_target_mass_reached() {
         // A single high-relevance region resolves the target; the rest are
-        // skipped even with budget to spare (fewer pixels, D101.15).
+        // skipped even with budget to spare (fewer pixels, the design decision).
         let regions = vec![
             region("answer", 0.95, 10),
             region("elsewhere1", 0.3, 10),
@@ -242,7 +242,7 @@ mod tests {
 
     #[test]
     fn plan_is_deterministic_including_ties() {
-        // Equal scents → ranked by id, so the plan is reproducible (D101.16).
+        // Equal scents → ranked by id, so the plan is reproducible.
         let regions = vec![region("z", 0.5, 1), region("a", 0.5, 1), region("m", 0.5, 1)];
         let budget = FoveationBudget { max_cost: u64::MAX, target_mass: 2.0, min_visits: 3 };
         let p1 = plan_foveation(&regions, &budget);

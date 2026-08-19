@@ -1,20 +1,20 @@
-//! §Fase 110.b — Governed Human Notification: the canonical contract.
+//! v2.66.0 — Governed Human Notification: the canonical contract.
 //!
-//! The third egress dual (`deliver` §105 = systems of record, `document`
-//! §106 = artifacts, **`notify` = human attention**) — and the most
+//! The third egress dual (`deliver` v2.60.0 = systems of record, `document`
+//! v2.62.0 = artifacts, **`notify` = human attention**) — and the most
 //! dangerous: a notification interrupts a human and asks for action NOW.
 //! Everything here serves the three laws:
 //!
-//! - **Evidence (T933/D110.2)** — a bound flow value crosses to the human
-//!   WITH its epistemic label; a §108 query envelope appends its evidence
+//! - **Evidence (T933/the design decision)** — a bound flow value crosses to the human
+//! WITH its epistemic label; a v2.63.0 query envelope appends its evidence
 //!   line ("computed over N rows, taint: untrusted"). A guess arrives
 //!   labeled as a guess, or the compile refused it.
-//! - **Recipient custody (T934/D110.3)** — this module NEVER sees a phone
-//!   number or chat id. The plan carries the §94 secret-CLASS ref; the
+//! - **Recipient custody (T934/the design decision)** — this module NEVER sees a phone
+//! number or chat id. The plan carries the v2.48.0 secret-CLASS ref; the
 //!   enterprise transducer resolves it at dispatch, tenant-scoped.
-//! - **Attention (T935/D110.4)** — the plan carries the declared window;
+//! - **Attention (T935/the design decision)** — the plan carries the declared window;
 //!   the durable at-most-once enforcement lives in the ENT ledger
-//!   (§110.d). Fire-on-resolution (D110.1): an unresolved KEY ref makes
+//! (v2.66.0). Fire-on-resolution: an unresolved KEY ref makes
 //!   the notification a WITNESSED no-op, never an empty message.
 //!
 //! The provider port follows the house injection pattern (`mint`/`rotate`/
@@ -30,7 +30,7 @@ use crate::ir_nodes::IRNotify;
 //  The canonical plan
 // ─────────────────────────────────────────────────────────────────────
 
-/// How epistemic labels cross to the human (D110.2).
+/// How epistemic labels cross to the human.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProvenanceMode {
     /// Every bound value arrives with its label; envelope refs append
@@ -56,7 +56,7 @@ pub struct BoundSlot {
     pub name: String,
     pub value: String,
     /// The label appended under `attached` — the value's epistemic status
-    /// plus, for a §108 envelope, its evidence line. Empty under a
+    /// plus, for a v2.63.0 envelope, its evidence line. Empty under a
     /// vouched `cleared`.
     pub label: String,
 }
@@ -68,7 +68,7 @@ pub struct NotificationPlan {
     pub name: String,
     /// `sms | whatsapp | telegram` (closed, T934).
     pub channel: String,
-    /// The §94 secret-class ref (resolved by the ENT transducer at
+    /// The v2.48.0 secret-class ref (resolved by the ENT transducer at
     /// dispatch — never here).
     pub recipient_ref: String,
     /// The rendered message: template with slots substituted and (under
@@ -87,15 +87,15 @@ pub struct NotificationReceipt {
     pub name: String,
     pub channel: String,
     /// Vendor-assigned id when available (an accepted API call is NOT a
-    /// read message — the honest §8 perimeter).
+    /// read message — the honest section 8 perimeter).
     pub vendor_ref: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NotificationError {
-    /// No transducer mounted — fail CLOSED (the §108.a posture).
+    /// No transducer mounted — fail CLOSED (the v2.63.0 posture).
     NoProvider,
-    /// The KEY ref did not resolve — fire-on-resolution (D110.1): a
+    /// The KEY ref did not resolve — fire-on-resolution: a
     /// witnessed no-op, distinct from an error.
     RefUnresolved { slot: String },
     /// Transducer/vendor failure (network, auth, vendor 4xx/5xx).
@@ -123,7 +123,7 @@ impl std::fmt::Display for NotificationError {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-//  The provider port (the §92.c/§94/§105 injection shape)
+// The provider port (the v2.46.0/v2.48.0/v2.60.0 injection shape)
 // ─────────────────────────────────────────────────────────────────────
 
 /// The channel transducer. The ENTERPRISE side implements it (generic
@@ -186,8 +186,8 @@ pub fn template_slots(template: &str) -> Vec<String> {
     out
 }
 
-/// The evidence label for a resolved value (D110.2, the "conscious"
-/// half): if the value parses as a §108 query envelope, its evidence
+/// The evidence label for a resolved value (the design decision, the "conscious"
+/// half): if the value parses as a v2.63.0 query envelope, its evidence
 /// line; otherwise the generic untrusted-provenance label. Empty under
 /// a vouched `cleared` plan (the caller decides).
 pub fn evidence_label(value: &str) -> String {
@@ -205,7 +205,7 @@ pub fn evidence_label(value: &str) -> String {
 }
 
 /// Build the canonical plan from the compiled declaration + the run's
-/// bindings. **Fire-on-resolution (D110.1):** if ANY template slot does
+/// bindings. **Fire-on-resolution:** if ANY template slot does
 /// not resolve, the notification is a witnessed no-op
 /// ([`NotificationError::RefUnresolved`]) — the flow's own logic (an
 /// `if` around producing the binding) IS the trigger.
@@ -306,7 +306,7 @@ mod tests {
 
     #[test]
     fn attached_plan_appends_evidence_labels() {
-        // A §108 envelope ref gets its evidence line — the notification
+        // A v2.63.0 envelope ref gets its evidence line — the notification
         // that explains itself.
         let envelope = r#"{"rows":[{"sum_monto":12400.0}],"taint":"untrusted","stats":{"rows_scanned":1204,"rows_matched":7,"batches_total":3,"batches_pruned":2}}"#;
         let plan = plan_notification(
@@ -326,7 +326,7 @@ mod tests {
 
     #[test]
     fn fire_on_resolution_unresolved_ref_is_a_witnessed_noop() {
-        // D110.1 — the flow didn't bind `alerta` (its condition didn't
+        // the design decision — the flow didn't bind `alerta` (its condition didn't
         // hold): the notification is a NO-OP, distinct from an error.
         let err = plan_notification(&ir("x: ${alerta}", "attached", ""), &binds(&[]))
             .unwrap_err();

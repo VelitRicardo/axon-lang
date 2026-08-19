@@ -45,10 +45,10 @@ axonendpoint RecordObservation {
 
 ## What the compiler enforces statically
 
-| 21 CFR Part 11 §  | AXON enforcement |
+| 21 CFR Part 11   | AXON enforcement |
 |---|---|
 | 11.10(a) — validation | Out of scope (validation deliverables). |
-| 11.10(b) — accurate records | A GxP-tagged `axonendpoint` whose body type has refinements requires the §40 D4 body schema validation. |
+| 11.10(b) — accurate records | A GxP-tagged `axonendpoint` whose body type has refinements requires the v2.0.0 D4 body schema validation. |
 | 11.10(c) — record protection | A GxP-tagged `axonstore` requires `encryption: at_rest` AND `retention:` ≥ project minimum (configurable; default 7y). |
 | 11.10(d) — access limitation | A GxP-tagged endpoint requires `requires:` capability list (no wildcard, no anonymous). |
 | 11.10(e) — secure, computer-generated audit trail | All GxP-tagged emissions land in the hash-linked audit chain (always-on). |
@@ -65,7 +65,7 @@ axonendpoint RecordObservation {
 | Control | AXON runtime enforcement |
 |---|---|
 | 11.10(e) — secure audit trail | Hash-linked + signed audit chain; any post-hoc modification breaks the head. |
-| 11.10(e) — timestamping | Audit rows carry a runtime-issued, monotonic UTC timestamp; clock-skew is bounded by the §40 deploy gate. |
+| 11.10(e) — timestamping | Audit rows carry a runtime-issued, monotonic UTC timestamp; clock-skew is bounded by the v2.0.0 deploy gate. |
 | 11.10(k) — system controls / change management | Configuration changes to GxP-tagged stores emit `system:config_change` audit rows with full diff hashes. |
 | 11.50 — signature manifestation | The runtime renders the signature with the actor's printed name, the signing reason, and the UTC timestamp on every signed record. |
 | 11.70 — signature/record linking | The signature's cryptographic binding includes the record's content hash; tampering with the record invalidates the signature on next verification. |
@@ -84,7 +84,7 @@ axonendpoint RecordObservation {
   intended use.
 - **Training records** for every user role.
 - **Periodic review** + **change-control board** sign-offs.
-- **Annex 11 §1 risk management** documentation (EU).
+- **Annex 11 section 1 risk management** documentation (EU).
 
 ## Common patterns
 
@@ -113,15 +113,15 @@ flow RecordSignedObservation(req: SignedObservation) {
 }
 ```
 
-The §11.70 record-signature binding happens automatically because
+The v1.4.0 record-signature binding happens automatically because
 the type carries a `SignatureRef`.
 
-### Pattern 2 — Two-person review (Annex 11 §5)
+### Pattern 2 — Two-person review (Annex 11 section 5)
 
 ```axon
 mandate IndependentReview
     requires: capability("trial.review")
-    excludes_requester: true        # Annex 11 §5 — second person
+    excludes_requester: true # Annex 11 section 5 — second person
     on_breach: raise
 
 axonendpoint FinalizeRecord {
@@ -165,5 +165,5 @@ verify the chain integrity independently.
   endpoint can use a lighter compliance set.
 
 For combined GxP + HIPAA scenarios (clinical-trial PHI), declare
-both: `compliance: [GxP, HIPAA]`. The §40 legal-basis catalogue
+both: `compliance: [GxP, HIPAA]`. The section 40 legal-basis catalogue
 includes both `HIPAA.<section>` and `GxP.<section>` qualifiers.

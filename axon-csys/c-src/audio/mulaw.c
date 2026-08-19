@@ -1,5 +1,5 @@
 /*
- * §Fase 25.c — G.711 μ-law ↔ PCM16 transcoder (scalar baseline).
+ * v1.19.0 — G.711 μ-law ↔ PCM16 transcoder (scalar baseline).
  *
  * Direct port of `axon-rs/src/ots/native/mulaw.rs`. The byte-identical
  * drift gate in `axon-csys/tests/audio.rs` re-implements the Rust

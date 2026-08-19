@@ -1,4 +1,4 @@
-//! §Fase 6.d — drift gate for the Tier 3 primitive docs.
+//! v1.2.0 — drift gate for the Tier 3 primitive docs.
 //!
 //! Every primitive doc shipped under `src/knowledge/primitives/` for
 //! Tier 3 (`axonendpoint`, `axpoint`, `daemon`, `mcp`, `listen`,
@@ -8,13 +8,13 @@
 //! `axon-frontend` pipeline the `axon` CLI uses.
 //!
 //! `taint` and `logic` were never in this batch — both were reserved
-//! lexer tokens with no parser production (see the §Fase 6.c commit
-//! and the §Fase 6.d registry note). §Fase 111 finished the job the
+//! lexer tokens with no parser production (see the v1.2.0 commit
+//! and the v1.2.0 registry note). v2.67.0 finished the job the
 //! registry started: both are now RETRACTED from the language and
 //! from the README that still advertised them.
 //!
-//! §Fase 111 also removed `transact` from this batch. It HAD a parser
-//! production — so §6.c's rule ("an entry without a parser production
+//! v2.67.0 also removed `transact` from this batch. It HAD a parser
+//! production — so section 6.c's rule ("an entry without a parser production
 //! lies") never caught it — and it lied anyway: it opened no
 //! transaction. Its canonical program is kept below, inverted into a
 //! retraction guard. The widened rule: an entry whose SUMMARY the
@@ -196,8 +196,8 @@ shield PHIShield {
 
 #[test]
 fn window_canonical_program_compiles() {
-    // §Fase 71 — a timezone-aware temporal window with a holiday exclusion,
-    // bound by a scheduled daemon. The §71.e compile-gated corpus example.
+    // v2.27.0 — a timezone-aware temporal window with a holiday exclusion,
+    // bound by a scheduled daemon. The v2.27.0 compile-gated corpus example.
     let src = r#"
 flow SendBatch() -> Unit {
     step S { ask: "send the outbound batch" output: Unit }
@@ -328,7 +328,7 @@ psyche AnalyticalDisposition {
     dimensions:         [analytical, cautious, evidence_seeking, contrarian]
     manifold_noise:     0.1
     manifold_momentum:  0.7
-    // `non_diagnostic` is required by Dependent Type Safety §4.
+    // `non_diagnostic` is required by Dependent Type Safety section 4.
     safety_constraints: [non_diagnostic, no_self_harm, no_deception]
     quantum_enabled:    false
     inference_mode:     active
@@ -428,12 +428,12 @@ heal MitigateExposure {
     must_compile("heal/canonical", src);
 }
 
-// ── Data plane block (1) — `transact` RETRACTED in §Fase 111 ─────────
+// ── Data plane block (1) — `transact` RETRACTED in v2.67.0 ─────────
 
-/// §Fase 111 — this used to be `transact_canonical_program_compiles`, and its
+/// v2.67.0 — this used to be `transact_canonical_program_compiles`, and its
 /// canonical program was **double-entry accounting**: post a journal entry
 /// inside a `transact { }` block. It is the sharpest possible illustration of
-/// the defect §111 found, so it is worth stating plainly rather than quietly
+/// the defect v2.67.0 found, so it is worth stating plainly rather than quietly
 /// deleting.
 ///
 /// `transact` never opened a transaction. The runtime inserted an unread marker
@@ -476,7 +476,7 @@ flow PostJournalEntry(entry: JournalEntry) -> PostReceipt {
     match run(src, "transact/retracted") {
         Outcome::Ok { .. } => panic!(
             "`transact` compiled clean — but it opens no transaction and rolls nothing back. \
-             If real transactional semantics have landed (§111.x), replace this gate with a \
+             If real transactional semantics have landed (v2.67.0), replace this gate with a \
              canonical program AND restore the registry entry + corpus doc; do not simply \
              delete the refusal."
         ),

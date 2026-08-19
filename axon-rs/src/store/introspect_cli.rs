@@ -1,4 +1,4 @@
-//! §Fase 38.h (D10) — `axon store introspect <store>` CLI orchestration.
+//! v1.31.0 (D10) — `axon store introspect <store>` CLI orchestration.
 //!
 //! The IMPURE half of the introspection pipeline. The pure half
 //! lives in `axon_frontend::store_introspect` (manifest building,
@@ -52,7 +52,7 @@ use crate::store_schema_manifest::Manifest;
 /// distinct from per-tenant 38.f sessions.
 pub const INTROSPECT_NAMESPACE: &str = "introspect";
 
-/// §Fase 38.h — open a one-shot connection, run the deep `pg_catalog`
+/// v1.31.0 — open a one-shot connection, run the deep `pg_catalog`
 /// introspection for `store_name`, and assemble the manifest entry
 /// + the per-column omission list. Pure-async — no global state.
 ///
@@ -101,7 +101,7 @@ pub async fn introspect_store(
     Ok((manifest, omissions))
 }
 
-/// §Fase 38.h — convenience: introspect MULTIPLE stores in one
+/// v1.31.0 — convenience: introspect MULTIPLE stores in one
 /// connection, return one merged Manifest. The CLI uses this for
 /// the `--all` / `axon store introspect *` shape.
 pub async fn introspect_stores(
@@ -154,7 +154,7 @@ async fn resolve_table_schema(
     table: &str,
 ) -> Result<Option<String>, StoreError> {
     // Primary — search-path-correct.
-    // §Fase 38.x.a (D1) — `.persistent(false)` on every `sqlx::query` /
+    // v1.31.0 (D1) — `.persistent(false)` on every `sqlx::query` /
     // `sqlx::query_as` call. An adopter who points `axon store introspect`
     // at a transaction-mode pooler endpoint (Supavisor `:6543`) needs the
     // same collision-safety guarantee as the runtime store path. See
@@ -219,7 +219,7 @@ async fn fetch_introspection_rows(
     table: &str,
 ) -> Result<Vec<IntrospectionRow>, StoreError> {
     let qualified = format!("\"{schema}\".\"{table}\"");
-    // §Fase 38.x.c (D1) — added `a.attidentity AS identity_kind` to
+    // v1.31.0 (D1) — added `a.attidentity AS identity_kind` to
     // the SELECT list. Postgres represents auto-fill via TWO channels:
     // `pg_attrdef.adbin` (legacy SERIAL → `nextval(...)` default) and
     // `pg_attribute.attidentity` (`'a'` = ALWAYS, `'d'` = BY DEFAULT,
@@ -309,7 +309,7 @@ fn decode_introspection_row(row: &PgRow) -> Result<IntrospectionRow, StoreError>
         pg_type: "bool".into(),
         source: e.to_string(),
     })?;
-    // §Fase 38.x.c (D1) — `pg_attribute.attidentity` ships as PG's
+    // v1.31.0 (D1) — `pg_attribute.attidentity` ships as PG's
     // single-char `name`/`text`. Empty string ('') = not an identity
     // column; 'a' / 'd' = ALWAYS / BY DEFAULT.
     let identity_kind_text: String =
@@ -334,7 +334,7 @@ fn decode_introspection_row(row: &PgRow) -> Result<IntrospectionRow, StoreError>
     })
 }
 
-/// §Fase 38.h — render the final adopter-facing output: canonical
+/// v1.31.0 — render the final adopter-facing output: canonical
 /// JSON manifest + a tail of `# omitted: …` comment lines. The CLI
 /// shell calls this; the function is pure (no I/O) so the test
 /// surface stays large.

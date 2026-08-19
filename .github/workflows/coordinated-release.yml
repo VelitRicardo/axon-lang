@@ -1,12 +1,12 @@
 name: Coordinated Cross-Stack Release
 
-# ⚠️ §Fase 122.d — THIS WORKFLOW IS BROKEN. Do not dispatch it expecting a
-# release; releases are currently done by hand (see the §122 release for the
+# ⚠️ v2.89.0 — THIS WORKFLOW IS BROKEN. Do not dispatch it expecting a
+# release; releases are currently done by hand (see the v2.89.0 release for the
 # sequence that works).
 #
 # It is dispatch-only, so it produces no red runs and nothing surfaced it. Its
 # last successful run was 2026-06-05. Everything it depends on from the Python
-# era was removed by §116.c.5 ("retire the PyPI distribution shim"):
+# era was removed by v2.77.0 ("retire the PyPI distribution shim"):
 #
 #   - `pyproject.toml`                        — gone; the `pip install` step
 #                                               and `[tool.bumpversion]`, the
@@ -17,7 +17,7 @@ name: Coordinated Cross-Stack Release
 #   - `tests/test_frontend_contract_golden.py`— gone (steps below still call it)
 #
 # Repairing it means re-homing the bump rules somewhere that still exists and
-# swapping the pytest steps for `cargo test --test fase39f_cli_binary_parity`
+# swapping the pytest steps for `cargo test --test cli_binary_parity`
 # (the Rust harness written to replicate them, which asserts against
 # `AXON_VERSION` instead of a literal). That is its own task.
 #
@@ -162,7 +162,7 @@ jobs:
             echo "value=${{ inputs.bump_type }}" >> "$GITHUB_OUTPUT"
           fi
 
-      # §Fase 39.i — the Cat 3 CLI contract tests subprocess-invoke the
+      # v2.0.0 — the Cat 3 CLI contract tests subprocess-invoke the
       # native binary (`axon-rs/target/debug/axon`). Build it before
       # running them. Post-purga there is no Python language runtime;
       # pytest only drives the binary.
@@ -203,7 +203,7 @@ jobs:
             git commit --amend --no-edit
           fi
 
-      # §Fase 39.i — rebuild the binary at the NEW version so the Cat 3
+      # v2.0.0 — rebuild the binary at the NEW version so the Cat 3
       # version-pinning assertions (`axon-lang <new>`) see it.
       - name: Rebuild native binary at new version
         run: cd axon-rs && cargo build

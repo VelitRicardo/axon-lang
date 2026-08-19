@@ -1,0 +1,42 @@
+// v2.89.0 — the program that opened v2.89.0.
+//
+// The external challenge was: *"the compiler accepts `depth: live_network` and
+// the OSS runtime rejects it — a program that compiles and cannot run makes
+// 'it compiles' a claim with no content."*
+//
+// The charge does not survive contact with the code as stated: enterprise
+// implements all three depths, and the OSS runtime refuses LOUDLY
+// (`DepthNotSupported`) rather than silently downgrading — there is a gate
+// proving it does not downgrade. What the charge got right is the TIMING.
+//
+// This file is that program. The `warden` block sits AFTER two steps that emit
+// and persist, which is the whole point: before v2.89.0 this deployed cleanly,
+// ran `Ingest` and `Record`, and only then refused. The audit the program
+// exists for could never have run here, and it found that out after acting.
+
+scope LiveCapture {
+    targets: [ "payments_core" ]
+    depth: live_network
+    approver: "security.lead"
+}
+
+flow AuditWithLiveCapture() -> Unit {
+    step Ingest {
+        ask: "Ingest the payment stream sample"
+        output: Stream<Token>
+    }
+
+    step Record {
+        ask: "Record the intake in the audit trail"
+        output: Stream<Token>
+    }
+
+    let payments_core = "void load(char *in) { char buf[16]; strcpy(buf, in); }"
+
+    warden(payments_core) within LiveCapture {
+        step Fortify {
+            ask: "Propose hardening for the attested findings"
+            output: Stream<Token>
+        }
+    }
+}

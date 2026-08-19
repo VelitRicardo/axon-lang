@@ -1,5 +1,5 @@
-//! §Fase 101.e — the IDP-E image front-end: the deterministic signal-processing
-//! that cleans and analyses a raster BEFORE the recognizer kernel (§101.c) reads
+//! v2.54.0 — the IDP-E image front-end: the deterministic signal-processing
+//! that cleans and analyses a raster BEFORE the recognizer kernel (v2.54.0) reads
 //! it.
 //!
 //! **These are the mathematically substantive, deterministic transforms of the
@@ -16,7 +16,7 @@
 //!   the signal a layout stage uses to find text lines (horizontal energy) and to
 //!   estimate skew, from the sinusoidal phase rather than a heuristic.
 //!
-//! **Bounded (D101.12).** Iterations and kernel radius are capped; the transforms
+//! **Bounded.** Iterations and kernel radius are capped; the transforms
 //! allocate O(pixels) and never more. The CVE-prone step is not here — it is the
 //! image *decode* (PNG/JPEG/PDF), which is why that lives in the isolated sidecar
 //! binary (`src/bin/idpe_sidecar.rs`), feeding this front-end already-decoded
@@ -25,7 +25,7 @@
 use crate::idpe::RasterTile;
 
 /// Max Perona-Malik iterations — a bound so a caller cannot spin the diffusion
-/// forever (D101.12).
+/// forever.
 pub const MAX_PM_ITERATIONS: u32 = 64;
 
 /// Configuration for Perona-Malik anisotropic diffusion.

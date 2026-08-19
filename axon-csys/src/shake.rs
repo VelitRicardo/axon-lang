@@ -1,11 +1,11 @@
-//! §Fase 124.b — FIPS 202 (SHA-3 / SHAKE), bound from the vendored kernel.
+//! v4.0.0 — FIPS 202 (SHA-3 / SHAKE), bound from the vendored kernel.
 //!
 //! # What this is, and what it is not
 //!
 //! Every function here is a thin binding over `c-src/vendor/pqclean/fips202.c`.
 //! **This module implements nothing.** That is deliberate and is the whole
-//! argument of D124.6: the cryptographic module boundary lives in `axon-csys`
-//! (D124.3), and it is populated with vetted reference implementations rather
+//! argument of the design decision: the cryptographic module boundary lives in `axon-csys`
+//!, and it is populated with vetted reference implementations rather
 //! than code written here, because a from-scratch lattice-adjacent primitive is
 //! the first thing a CMVP assessor questions.
 //!

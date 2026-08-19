@@ -44,7 +44,7 @@ const VALID_VIOLATION_ACTIONS: &[&str] = &["escalate", "fallback", "log", "raise
 
 const VALID_RETRIEVAL_STRATEGIES: &[&str] = &["exact", "hybrid", "semantic"];
 
-/// §Fase 63.A — the closed catalog of MDN corpus-graph relation types (paper
+/// v2.13.0 — the closed catalog of MDN corpus-graph relation types (paper
 /// `multi_document.md` Def 2). Positive (trust): cite/elaborate/corroborate;
 /// negative (distrust): contradict/supersede; neutral structural: depend/
 /// implement/exemplify. Any other relation type is a compile error.
@@ -59,7 +59,7 @@ const VALID_CORPUS_RELATIONS: &[&str] = &[
     "supersede",
 ];
 
-// Fase 15.d — reserved primitive / built-in type names that a
+// v1.10.0 — reserved primitive / built-in type names that a
 // `lambda apply ... -> OutputType` MUST NOT shadow. Mirror of
 // axon.compiler.type_checker._RESERVED_OUTPUT_TYPE_NAMES.
 const RESERVED_OUTPUT_TYPE_NAMES: &[&str] = &[
@@ -68,7 +68,7 @@ const RESERVED_OUTPUT_TYPE_NAMES: &[&str] = &[
     "set", "str", "string", "true", "tuple", "void",
 ];
 
-// §λ-L-E Fase 11.a + 11.c + 11.e — `stream` (mandatory backpressure),
+// v1.4.0 — `stream` (mandatory backpressure),
 // `trust` (mandatory proof), `sensitive` (data-category jurisdiction
 // — open taxonomy), `legal` (mandatory legal basis from the closed
 // catalogue in `crate::legal_basis`), `ots` (subkinds `transform:
@@ -85,73 +85,73 @@ const VALID_EFFECTS: &[&str] = &[
     "sensitive",
     "legal",
     "ots",
-    // §Fase 98.c — `web` (native web acquisition). A first-class base
-    // (D98.10), NOT `network`: a `provider: http` call to a TRUSTED API is
+    // v2.52.0 — `web` (native web acquisition). A first-class base
+    //, NOT `network`: a `provider: http` call to a TRUSTED API is
     // `<network>`; a value acquired from the OPEN, ADVERSARIAL web carries
-    // `<web>` and is born epistemically Untrusted (⊥, D98.1). It is what
+    // `<web>` and is born epistemically Untrusted (⊥, the design decision). It is what
     // lets a shield say "web-tainted content must pass `prompt_injection`
-    // before an agent's belief" — the content-injection barrier (§98.d),
-    // the §84 command-injection discipline applied to fetched content.
+    // before an agent's belief" — the content-injection barrier (v2.52.0),
+    // the v2.39.0 command-injection discipline applied to fetched content.
     // Precedented by the `legal`/`ots` additions above.
     "web",
 ];
 
-/// §Fase 85.c — the closed `cache.backend:` catalog. `in_process` is the OSS
+/// v2.40.0 — the closed `cache.backend:` catalog. `in_process` is the OSS
 /// default single-replica tier; `redis` is the enterprise multi-replica tier.
 const VALID_CACHE_BACKENDS: &[&str] = &["in_process", "redis"];
 
-/// §Fase 87.b — the closed `savant.cognition.depth:` catalog. Each tier sets the
+/// v2.42.0 — the closed `savant.cognition.depth:` catalog. Each tier sets the
 /// HRR (holographic reduced representation) dimensionality of the memory codec:
 /// `standard` (baseline), `deep`, `hyper` (hyperbolic). A typo can never
 /// silently select a smaller — or larger, more expensive — memory geometry.
 const VALID_SAVANT_DEPTHS: &[&str] = &["standard", "deep", "hyper"];
 
-/// §Fase 87.b — the closed `savant.cognition.divergence:` catalog. Governs how
+/// v2.42.0 — the closed `savant.cognition.divergence:` catalog. Governs how
 /// aggressively the active-inference loop explores epistemic (β₂) voids versus
 /// exploiting known structure when minimising Expected Free Energy.
 const VALID_SAVANT_DIVERGENCES: &[&str] = &["low", "med", "high"];
 
-/// §Fase 87.d — the closed `synth.risk:` catalog. The risk class a synthesis
+/// v2.42.0 — the closed `synth.risk:` catalog. The risk class a synthesis
 /// policy admits; `high`/`critical` force Coder/Reviewer consensus (T883).
 const VALID_SYNTH_RISKS: &[&str] = &["low", "medium", "high", "critical"];
 
-/// §Fase 87.d — the closed `synth.language:` catalog. All compiled to
-/// `wasm32-wasi` before execution in the enterprise Extism sandbox (§87.j).
+/// v2.42.0 — the closed `synth.language:` catalog. All compiled to
+/// `wasm32-wasi` before execution in the enterprise Extism sandbox (v2.42.0).
 const VALID_SYNTH_LANGUAGES: &[&str] = &["rust", "c", "python"];
 
-/// §Fase 87.d — the closed `synth.review:` catalog: `required` (a Reviewer
+/// v2.42.0 — the closed `synth.review:` catalog: `required` (a Reviewer
 /// sub-agent must ratify before a synthesised tool runs) | `none`.
 const VALID_SYNTH_REVIEWS: &[&str] = &["required", "none"];
 
-/// §Fase 88.b — the closed `scope.depth:` catalog, ordered LEAST→MOST invasive.
+/// v2.43.0 — the closed `scope.depth:` catalog, ordered LEAST→MOST invasive.
 /// `static_artifact` (analyse an operator-provided binary/core/pcap — the safe
 /// default) ⊂ `memory_dump` (a supplied memory image) ⊂ `live_network` (live
 /// capture — the most-restricted, allowlist-bound, enterprise-only depth). A
 /// scope's declared depth is the CEILING it authorises.
 const VALID_SCOPE_DEPTHS: &[&str] = &["static_artifact", "memory_dump", "live_network"];
 
-/// §Fase 86.c — the closed `forge.mode:` catalog: Margaret Boden's three
+/// v2.41.0 — the closed `forge.mode:` catalog: Margaret Boden's three
 /// creativity types (*The Creative Mind*, 1990). Each maps to a distinct
-/// sampling-parameter profile at runtime (D86.3).
+/// sampling-parameter profile at runtime.
 const VALID_FORGE_MODES: &[&str] = &["combinatorial", "exploratory", "transformational"];
 
-/// §Fase 98.d — the closed catalog of web-acquisition providers. A tool whose
+/// v2.52.0 — the closed catalog of web-acquisition providers. A tool whose
 /// `provider:` is one of these acquires content from the open, adversarial web
-/// (born Untrusted, D98.1) and is governed by the §98 scrape laws.
+/// (born Untrusted, the design decision) and is governed by the v2.52.0 scrape laws.
 const VALID_SCRAPE_PROVIDERS: &[&str] = &["scrape_http", "scrape_dom", "scrape_crawl", "scrape_enrich"];
 
-/// §Fase 114.b — the CLOSED `tool.provider` catalog.
+/// v2.69.0 — the CLOSED `tool.provider` catalog.
 ///
 /// Exactly the values the runtime dispatch tables actually handle — the union of
 /// `tool_registry::dispatch` and `tool_dispatch_bridge::resolve_streaming_tool`,
-/// plus `bash` (the §84 technician execve path, validated by `axon-T858`).
+/// plus `bash` (the v2.39.0 technician execve path, validated by `axon-T858`).
 ///
 /// An **empty** provider is deliberately NOT in this list: an empty provider is a
 /// legitimate LLM-routed tool, and it is validated by its absence, not its
 /// presence. `axon-T948` refuses a *non-empty* provider outside this set.
 ///
 /// The catalog is a promise: adding a value here without a dispatch arm behind it
-/// re-creates the very defect §114.b closes.
+/// re-creates the very defect v2.69.0 closes.
 pub const VALID_TOOL_PROVIDERS: &[&str] = &[
     "native",
     "stub",
@@ -163,10 +163,10 @@ pub const VALID_TOOL_PROVIDERS: &[&str] = &[
     "scrape_crawl",
     "scrape_enrich",
     "bash",
-    // §Fase 116.a — the axon-agora governed social connectors (one per platform,
-    // the §98 scrape-family shape). Each routes through `agora_runtime::dispatch_agora`
+    // v2.77.0 — the axon-agora governed social connectors (one per platform,
+    // the v2.52.0 scrape-family shape). Each routes through `agora_runtime::dispatch_agora`
     // in axon-rs to the registered per-platform `SocialConnector`; an unregistered
-    // platform is a TYPED refusal at dispatch (the §104 D104.6 honesty), never a
+    // platform is a TYPED refusal at dispatch (the v2.58.0 the design decision honesty), never a
     // fabrication. The `runtime:` field names the connector OPERATION (read_comments,
     // publish, …) — the same slug role it plays for `http` tools.
     "agora_linkedin",
@@ -175,58 +175,58 @@ pub const VALID_TOOL_PROVIDERS: &[&str] = &[
     "agora_tiktok",
 ];
 
-/// §Fase 98.d — the closed `scrape.engine:` catalog. `impersonate` (HTTP-
+/// v2.52.0 — the closed `scrape.engine:` catalog. `impersonate` (HTTP-
 /// fingerprint stealth, the GA tier — OSS fallback is plain reqwest) |
-/// `browser` (headless-render sidecar, the gray/pilot tier, D98.6).
+/// `browser` (headless-render sidecar, the gray/pilot tier, the design decision).
 const VALID_SCRAPE_ENGINES: &[&str] = &["impersonate", "browser"];
 
-/// §Fase 98.d — the closed `scrape.impersonate:` fingerprint-profile catalog.
+/// v2.52.0 — the closed `scrape.impersonate:` fingerprint-profile catalog.
 /// The declared family; the concrete JA3/JA4 + HTTP/2 profile is resolved by
-/// the enterprise engine (§98.g).
+/// the enterprise engine (v2.52.0).
 const VALID_IMPERSONATE_PROFILES: &[&str] = &["chrome", "firefox", "safari", "edge"];
 
 const VALID_EPISTEMIC_LEVELS: &[&str] = &["believe", "doubt", "know", "speculate"];
 
-// ── §Fase 99 — Native Document Synthesis catalogs ─────────────────────────────
+// ── v2.53.0 — Native Document Synthesis catalogs ─────────────────────────────
 
-/// §Fase 100.d — the closed `ingest:<class>` provenance catalog (D100.1). NOT
-/// an effect base (D100.3) — a provenance MEMBER, like `epistemic:<level>`:
+/// v2.54.0 — the closed `ingest:<class>` provenance catalog. NOT
+/// an effect base — a provenance MEMBER, like `epistemic:<level>`:
 /// `parsed` (a fact about the file, elevatable by a shield) | `inferred` (a
-/// model's belief about pixels, ceiling of `believe`, never `know`). §100 ships
-/// a producer for `parsed` only; `inferred` has no producer until §101.
+/// model's belief about pixels, ceiling of `believe`, never `know`). v2.54.0 ships
+/// a producer for `parsed` only; `inferred` has no producer until v2.54.0.
 const VALID_INGEST_CLASSES: &[&str] = &["parsed", "inferred"];
 
-/// §Fase 99.c — the closed `document.target:` catalog. Each selects a serializer,
-/// not a capability (D99.6 — identical effect rows).
+/// v2.53.0 — the closed `document.target:` catalog. Each selects a serializer,
+/// not a capability (the design decision — identical effect rows).
 const VALID_DOC_TARGETS: &[&str] = &["docx", "pptx", "xlsx"];
 
-/// §Fase 99.c — the closed `document.provenance:` catalog (D99.2). `none` (or
+/// v2.53.0 — the closed `document.provenance:` catalog. `none` (or
 /// empty) = no provenance part; `embedded` = an unsigned custom XML part;
-/// `signed` = a signed part (enterprise, §99.g).
+/// `signed` = a signed part (enterprise, v2.53.0).
 const VALID_DOC_PROVENANCE: &[&str] = &["none", "embedded", "signed"];
 
-/// §Fase 99.c — the bounded chart-kind subset (D99.9). SmartArt, pivots,
+/// v2.53.0 — the bounded chart-kind subset. SmartArt, pivots,
 /// sparklines, 3-D are deferred and named as such.
 const VALID_CHART_KINDS: &[&str] = &["bar", "line", "pie", "scatter"];
 
-/// §Fase 105 — the closed `deliver.target:` catalog (D105.1). `crm` selects the
+/// v2.60.0 — the closed `deliver.target:` catalog. `crm` selects the
 /// system-of-record class; the concrete vendor is the enterprise transducer's
 /// per-tenant config, so the language binds no vendor. Additive: future targets
 /// (`marketing`, `helpdesk`) land here.
 const VALID_DELIVER_TARGETS: &[&str] = &["crm"];
 
-/// §Fase 105 — the closed `deliver.provenance:` catalog (D105.2). `attached`
+/// v2.60.0 — the closed `deliver.provenance:` catalog. `attached`
 /// (or empty) = each delivered field lands with its epistemic origin (level +
 /// confidence + source); `cleared` = bare values, legal ONLY under an
 /// `epistemic { believe|know }` vouch (the T920 barrier).
 const VALID_DELIVER_PROVENANCE: &[&str] = &["attached", "cleared"];
 
-/// §Fase 105 — the closed delivery-operation catalog (D105.1). `upsert_contact`
+/// v2.60.0 — the closed delivery-operation catalog. `upsert_contact`
 /// (idempotent by natural key), `create_deal`, `add_note`. Additive as the
 /// enterprise transducer grows; the language keeps them vendor-agnostic.
 const VALID_DELIVER_OPS: &[&str] = &["upsert_contact", "create_deal", "add_note"];
 
-/// §Fase 99.c — the top-level body block kinds for a `target`.
+/// v2.53.0 — the top-level body block kinds for a `target`.
 fn doc_top_level_kinds(target: &str) -> Vec<&'static str> {
     match target {
         "docx" => vec!["section", "page_break"],
@@ -236,8 +236,8 @@ fn doc_top_level_kinds(target: &str) -> Vec<&'static str> {
     }
 }
 
-/// §Fase 99.c — the block kinds valid as children of `parent` (empty parent =
-/// top level) in a `target` document. The closed per-target vocabulary (D99.6):
+/// v2.53.0 — the block kinds valid as children of `parent` (empty parent =
+/// top level) in a `target` document. The closed per-target vocabulary:
 /// a `slide` inside a `docx` is `axon-T912`.
 fn doc_allowed_child_kinds(target: &str, parent: &str) -> Vec<&'static str> {
     match (target, parent) {
@@ -254,7 +254,7 @@ fn doc_allowed_child_kinds(target: &str, parent: &str) -> Vec<&'static str> {
     }
 }
 
-/// §Fase 99.c — the closed field set for a block kind.
+/// v2.53.0 — the closed field set for a block kind.
 fn doc_allowed_fields(kind: &str) -> Vec<&'static str> {
     match kind {
         "section" => vec!["heading", "name"],
@@ -279,9 +279,9 @@ fn doc_allowed_fields(kind: &str) -> Vec<&'static str> {
     }
 }
 
-/// §Fase 99.d — the ASSERTIVE SLOT of a block kind: the field whose value, if it
+/// v2.53.0 — the ASSERTIVE SLOT of a block kind: the field whose value, if it
 /// is a flow-value binding, occupies an assertive position in the artifact and
-/// is guarded by the assertion-laundering barrier (D99.1). `None` ⇒ the block
+/// is guarded by the assertion-laundering barrier. `None` ⇒ the block
 /// holds no assertive slot (structural: `section`, `slide`, `page_break`, …).
 fn doc_assertive_slot(kind: &str) -> Option<&'static str> {
     match kind {
@@ -296,7 +296,7 @@ fn doc_assertive_slot(kind: &str) -> Option<&'static str> {
     }
 }
 
-/// §Fase 99.c — is `s` a valid A1 cell reference (e.g. `B2`, `AA10`)?
+/// v2.53.0 — is `s` a valid A1 cell reference (e.g. `B2`, `AA10`)?
 fn is_a1_cell(s: &str) -> bool {
     let s = s.trim();
     if s.is_empty() {
@@ -325,7 +325,7 @@ fn is_a1_cell(s: &str) -> bool {
     saw_col && saw_row
 }
 
-/// §Fase 99.c — is `s` a valid A1 range (`B2:B9`) or a single cell?
+/// v2.53.0 — is `s` a valid A1 range (`B2:B9`) or a single cell?
 fn is_a1_range(s: &str) -> bool {
     let s = s.trim();
     match s.split_once(':') {
@@ -373,27 +373,27 @@ const VALID_ON_BREACH_POLICIES: &[&str] = &[
     "sanitize_and_retry",
 ];
 
-/// §Fase 71.a — the closed `window.on_outside` catalog: what to do with a tick
+/// v2.27.0 — the closed `window.on_outside` catalog: what to do with a tick
 /// that falls outside every allowed span.
 const VALID_ON_OUTSIDE: &[&str] = &["skip", "defer", "warn"];
 
-/// §Fase 71.a — the closed weekday-name catalog for `window` day ranges.
+/// v2.27.0 — the closed weekday-name catalog for `window` day ranges.
 const VALID_WEEKDAYS: &[&str] = &["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-/// §Fase 72.a — the closed period catalog for `budget` quotas.
+/// v2.28.0 — the closed period catalog for `budget` quotas.
 const VALID_BUDGET_PERIODS: &[&str] = &["second", "minute", "hour", "day"];
 
-/// §Fase 72.a — the closed exhaustion-policy catalog for `budget`.
+/// v2.28.0 — the closed exhaustion-policy catalog for `budget`.
 const VALID_ON_EXHAUSTED: &[&str] = &["block", "defer", "shed"];
 
 const VALID_SEVERITY_LEVELS: &[&str] = &["critical", "high", "low", "medium"];
 
-/// §Fase 77.a — the closed egress-signing catalog for `shield { sign: }`
+/// v2.34.0 — the closed egress-signing catalog for `shield { sign: }`
 /// (`axon-T846`). One algorithm in v1: HMAC-SHA256 over the raw delivery
-/// body (the receiver-verifiable witness of §77's `egress_is_a_kept_promise`).
+/// body (the receiver-verifiable witness of v2.34.0's `egress_is_a_kept_promise`).
 const VALID_SIGN_ALGORITHMS: &[&str] = &["hmac_sha256"];
 
-/// §Fase 80.c — closed catalogs for `upstream` (fase_80_upstream_design.md §1).
+/// v2.37.0 — closed catalogs for `upstream` (upstream_design.md section 1).
 /// `transport:` is v1-single-member by design: every surveyed 2026 STT/TTS/
 /// realtime vendor dials WebSocket; a catalog member the runtime cannot
 /// honestly drive (gRPC) is named deferred scope, not grammar.
@@ -406,7 +406,7 @@ const VALID_UPSTREAM_ON_EXHAUSTED: &[&str] = &["fail"];
 /// `map:` rule framings.
 const VALID_UPSTREAM_FRAMINGS: &[&str] = &["binary", "json"];
 
-/// §Fase 77.a (`axon-W010`) — the complete `shield` field catalog, quoted in
+/// v2.34.0 (`axon-W010`) — the complete `shield` field catalog, quoted in
 /// the unknown-field warning so the adopter sees what IS accepted. Kept in
 /// sync with `Parser::parse_shield`'s match arms by the
 /// `w010_catalog_matches_parser` test.
@@ -418,7 +418,7 @@ const VALID_OTS_HOMOTOPY: &[&str] = &["deep", "shallow", "speculative"];
 
 const VALID_MANDATE_POLICIES: &[&str] = &["coerce", "halt", "retry"];
 
-// §Fase 36.x.b (D2) — `in_memory` is a first-class declarable
+// v1.31.0 (D2) — `in_memory` is a first-class declarable
 // `axonstore` backend. The runtime `StoreRegistry::classify_backend`
 // already maps `"in_memory"` → `StoreHandle::InMemory` (the
 // key-value path); adding it here makes a source-declared in-memory
@@ -428,11 +428,11 @@ const VALID_MANDATE_POLICIES: &[&str] = &["coerce", "halt", "retry"];
 // `in_memory` store (it is optional for every backend at the
 // type-checker layer — no `connection`-required check exists here).
 //
-// §Fase 113 — `mysql` and `sqlite` are GONE from this catalog.
+// v2.67.0 — `mysql` and `sqlite` are GONE from this catalog.
 //
 // This comment used to read: *"`mysql` / `sqlite` remain type-check-valid but
-// runtime-absent (a documented future fase)"*. Written down, calmly, next to the
-// catalog that let them through — which is the exact disease §111 spent itself
+// runtime-absent (a documented future cycle)"*. Written down, calmly, next to the
+// catalog that let them through — which is the exact disease v2.67.0 spent itself
 // on. `classify_backend` implements THREE backends. This list declared FIVE. So
 // `backend: mysql` type-checked clean and then died at **deploy** with
 // `UnknownBackend`, and the compiler — which knew — said nothing.
@@ -444,28 +444,28 @@ const VALID_MANDATE_POLICIES: &[&str] = &["coerce", "halt", "retry"];
 // **The catalog is a promise, and a promise costs an implementation.** Putting
 // `mysql` back means writing a MySQL backend in the same PR.
 //
-// `secrets` is the metadata VIEW over the tenant's secret custody (§94.a,
+// `secrets` is the metadata VIEW over the tenant's secret custody (v2.48.0,
 // `rotation_without_revelation`): read-only (T897), class-scoped (T900), fixed
 // synthesized schema. A backend in the grammar sense only — no connection string,
 // no adopter table; the runtime binds it to the `axon::secret_custody` port.
 pub const VALID_STORE_BACKENDS: &[&str] = &["in_memory", "postgresql", "secrets"];
 
-/// §Fase 113 — the CLOSED `resource.kind` catalog.
+/// v2.67.0 — the CLOSED `resource.kind` catalog.
 ///
 /// # This did not exist
 ///
-/// Until §113, `resource.kind` was a **free string that nothing validated**.
+/// Until v2.67.0, `resource.kind` was a **free string that nothing validated**.
 /// No `VALID_RESOURCE_KINDS` const existed anywhere in the workspace, and
 /// [`TypeChecker::check_resource`] never read the field. `kind: postgress`
 /// compiled clean and produced a resource the runtime could never reach — the
-/// §111 shape exactly: a declaration that looks governed and governs nothing.
+/// v2.67.0 shape exactly: a declaration that looks governed and governs nothing.
 ///
 /// # Why these five
 ///
 /// The catalog is **what the runtime can actually REACH** — it mirrors
 /// `axon::source_registry`'s default-port table one-for-one. Adding a kind
 /// here without teaching the runtime to reach it would manufacture a fresh
-/// instance of the very defect this fase descends from. **The catalog is a
+/// instance of the very defect this cycle descends from. **The catalog is a
 /// promise, and a promise costs an implementation.**
 const VALID_RESOURCE_KINDS: &[&str] = &["http", "https", "mysql", "postgres", "redis"];
 
@@ -477,7 +477,7 @@ const VALID_RESOURCE_KINDS: &[&str] = &["http", "https", "mysql", "postgres", "r
 /// # One law, one predicate
 ///
 /// This shape is asserted by `axon-T850` (`upstream.resolve`), `axon-T902`
-/// (`tool.secret`) and — since §113 — `axon-T944` (`resource.endpoint`). It was
+/// (`tool.secret`) and — since v2.67.0 — `axon-T944` (`resource.endpoint`). It was
 /// previously **inlined** at each site. Three copies of a law is how the islands
 /// happened in the first place: the copies drift, and the one nobody looks at
 /// stops meaning anything. There is now exactly one definition.
@@ -495,7 +495,7 @@ const VALID_STORE_ISOLATION: &[&str] = &["read_committed", "repeatable_read", "s
 
 const VALID_STORE_ON_BREACH: &[&str] = &["log", "raise", "rollback"];
 
-/// §Fase 107.a — the closed `axonendpoint.method:` catalog. `QUERY` (RFC 10008,
+/// v2.62.0 — the closed `axonendpoint.method:` catalog. `QUERY` (RFC 10008,
 /// Proposed Standard, June 2026) is the safe + idempotent + cacheable method that
 /// CARRIES A REQUEST BODY — the first new HTTP method in two decades, closing the
 /// "GET has no body / POST is not safe" gap for complex reads. The `cors`
@@ -503,7 +503,7 @@ const VALID_STORE_ON_BREACH: &[&str] = &["log", "raise", "rollback"];
 /// endpoint makes it CORS-declarable too (the RFC does NOT safelist QUERY — a
 /// browser preflights it, so an adopter MUST list it).
 ///
-/// **QUERY carries a LAW, not just a route (`axon-T927`).** RFC 10008 §2 says a
+/// **QUERY carries a LAW, not just a route (`axon-T927`).** RFC 10008 section 2 says a
 /// QUERY request MUST be processed "in a safe and idempotent manner". Everywhere
 /// else that is a convention the author may silently violate; here it is a
 /// compile-time proof — see [`TypeChecker::first_declared_write`].
@@ -519,10 +519,10 @@ fn valid_list(set: &[&str]) -> String {
     set.join(", ")
 }
 
-/// §Fase 85.c — is a cache's `apply_to_effects:` set provably-cacheable-forever,
+/// v2.40.0 — is a cache's `apply_to_effects:` set provably-cacheable-forever,
 /// i.e. does it cover ONLY `pure`? An empty set means the implicit default
 /// `[pure]`. Anything with a non-`pure` member is a widening that accepts
-/// staleness and therefore requires a finite `ttl:` (`axon-T865`, D85.9).
+/// staleness and therefore requires a finite `ttl:` (`axon-T865`, the design decision).
 fn cache_effects_are_pure_only(apply_to_effects: &[String]) -> bool {
     apply_to_effects.iter().all(|e| {
         let base = e.split_once(':').map(|(b, _)| b).unwrap_or(e.as_str());
@@ -530,8 +530,8 @@ fn cache_effects_are_pure_only(apply_to_effects: &[String]) -> bool {
     })
 }
 
-/// §Fase 85.c — a tool's declared effect row is provably-`pure` (safe to cache
-/// by construction, D85.1) iff it is exactly `[pure]`. Empty / absent effects
+/// v2.40.0 — a tool's declared effect row is provably-`pure` (safe to cache
+/// by construction, the design decision) iff it is exactly `[pure]`. Empty / absent effects
 /// are NOT pure — an undeclared effect row is unknown, not proven deterministic.
 fn tool_is_pure(effects: &Option<crate::ast::EffectRow>) -> bool {
     match effects {
@@ -540,7 +540,7 @@ fn tool_is_pure(effects: &Option<crate::ast::EffectRow>) -> bool {
     }
 }
 
-/// §Fase 122.d (`axon-T1213`) — does this effect row declare a STREAM?
+/// v2.89.0 (`axon-T1213`) — does this effect row declare a STREAM?
 ///
 /// The base of an effect slug is the part before `:` (`stream:drop_oldest` →
 /// `stream`), the same convention `resolve_tool_cache` and `axon-W013` already
@@ -555,12 +555,12 @@ fn declares_a_streaming_effect(effects: &Option<crate::ast::EffectRow>) -> bool 
     }
 }
 
-/// §Fase 122.d — the one sentence both halves of `axon-T1213` say, so an adopter
+/// v2.89.0 — the one sentence both halves of `axon-T1213` say, so an adopter
 /// who greps the code finds one law rather than two similar ones.
 ///
 /// # Why a stream cannot be memoised
 ///
-/// §122.d cabled `cache` into the dispatch path, and measuring the consumers
+/// v2.89.0 cabled `cache` into the dispatch path, and measuring the consumers
 /// turned up a shape the language accepted and the runtime could never honour.
 /// A tool declaring `<stream:…>` is dispatched by
 /// `pure_shape::run_step_streaming_tool`, whose result is not a value but a
@@ -572,10 +572,10 @@ fn declares_a_streaming_effect(effects: &Option<crate::ast::EffectRow>) -> bool 
 /// destroys the very property the author chose when they declared it — the
 /// first byte would now arrive last. Serving a hit as one fat chunk changes the
 /// chunk granularity observably, so the replay is not the recording. And doing
-/// neither, silently, is the defect §122 exists to remove: a declaration the
+/// neither, silently, is the defect v2.89.0 exists to remove: a declaration the
 /// compiler accepts and the runtime ignores.
 ///
-/// So the language refuses the combination. This follows D122.4 exactly — the
+/// So the language refuses the combination. This follows the design decision exactly — the
 /// ruling that `shield`'s refusal is breaking, correct, and BOUNDED BY THE
 /// DECLARATION: the only programs affected are those that declared both halves,
 /// which is precisely the population that was being told a memoisation was
@@ -585,7 +585,7 @@ const T1213_WHY: &str = "a streaming result is a sequence of chunks, not a value
                          streaming the author asked for) or replay it as one chunk \
                          (a different observable shape than was recorded)";
 
-/// §Fase 84.c (`axon-T860`) — does this session-step sequence contain a
+/// v2.39.0 (`axon-T860`) — does this session-step sequence contain a
 /// **reachable** `branch { approved: […], denied: […] }` confirmation? Walks
 /// the protocol tree: a `branch` step offering BOTH the `approved` and `denied`
 /// labels satisfies it; otherwise it recurses into every labelled sub-protocol
@@ -617,7 +617,7 @@ fn session_has_confirm_branch(steps: &[crate::ast::SessionStep]) -> bool {
     false
 }
 
-/// §Fase 83.c (`axon-T854`) — is `origin` a legal CORS origin glob? Three
+/// v2.38.0 (`axon-T854`) — is `origin` a legal CORS origin glob? Three
 /// accepted shapes, closed/decidable by construction (D5 — no full regex):
 /// (1) the literal any-origin sentinel `"*"` (validity of PAIRING it with
 /// credentials is a separate check, `axon-T853`); (2) an exact origin with
@@ -638,7 +638,7 @@ fn is_valid_origin_glob(origin: &str) -> bool {
     }
 }
 
-/// §Fase 71.e — is `s` a real ISO `YYYY-MM-DD` calendar date? Pure + total (no
+/// v2.27.0 — is `s` a real ISO `YYYY-MM-DD` calendar date? Pure + total (no
 /// chrono — the frontend is zero-dependency): exact `dddd-dd-dd` shape, month
 /// 1..12, day 1..days-in-month with a proleptic-Gregorian leap-year rule. The
 /// runtime compares `now`'s local date as the same `%Y-%m-%d` string, so a date
@@ -678,9 +678,9 @@ pub struct TypeError {
     pub column: u32,
 }
 
-// ── §Fase 38.x.f — Cardinality inference primitive ──────────────────────────
+// ── v1.31.0 — Cardinality inference primitive ──────────────────────────
 
-/// §Fase 38.x.f (D1) — A flow-tail / endpoint-output cardinality.
+/// v1.31.0 (D1) — A flow-tail / endpoint-output cardinality.
 ///
 /// Distinguishes the four cardinality classes the type-checker reasons
 /// about at compile time, plus the disagreement + unknown fallback cases:
@@ -706,7 +706,7 @@ pub struct TypeError {
 ///  - [`Cardinality::Unknown`] — opaque flow tail (e.g. a `Par` block,
 ///    a `LambdaDataApply` whose target resolves dynamically). The gate
 ///    silently passes — the runtime D5 path stays as the final check.
-///  - [`Cardinality::Wrapped`] (§Fase 39 D4) — `FlowEnvelope<T>`
+/// - [`Cardinality::Wrapped`] (v2.0.0 D4) — `FlowEnvelope<T>`
 ///    declares a `transport: json` endpoint whose wire payload is the
 ///    canonical ψ-vector envelope. The compile-time cardinality of the
 ///    wrapper IS the cardinality of T; the type-checker reasons through
@@ -729,14 +729,14 @@ pub(crate) enum Cardinality {
     Disagreed,
     /// Opaque — cannot be inferred at compile time.
     Unknown,
-    /// §Fase 39 (D4) — `FlowEnvelope<T>` wrapping. The compile-time
+    /// v2.0.0 (D4) — `FlowEnvelope<T>` wrapping. The compile-time
     /// cardinality of the wrapper is the cardinality of T preserved
     /// through the wrap. The wire-shape envelope is always a singular
     /// object; the type-checker reasons through the wrap by unwrapping.
     Wrapped(Box<Cardinality>),
 }
 
-/// §Fase 38.x.f (D1) — Compute the cardinality declared by an
+/// v1.31.0 (D1) — Compute the cardinality declared by an
 /// `axonendpoint`'s `output:` string. Pure + total:
 ///
 ///  - `""` → `Unknown` (endpoint didn't declare; gate skips).
@@ -744,7 +744,7 @@ pub(crate) enum Cardinality {
 ///  - `"Any"` → `Disagreed` (degraded acceptance — any tail accepted).
 ///  - `"List<T>"` → `Plural("T")`.
 ///  - `"Stream<T>"` → `StreamCardinality("T")`.
-///  - `"FlowEnvelope<T>"` (§Fase 39 D4) → `Wrapped(Box::new(declared_cardinality(T)))`,
+/// - `"FlowEnvelope<T>"` (v2.0.0 D4) → `Wrapped(Box::new(declared_cardinality(T)))`,
 ///    recursive — `"FlowEnvelope<List<X>>"` yields
 ///    `Wrapped(Box::new(Plural("X")))`.
 ///  - everything else → `Singular(s)`.
@@ -759,7 +759,7 @@ pub(crate) fn declared_cardinality(output_type: &str) -> Cardinality {
     if t == "Any" {
         return Cardinality::Disagreed;
     }
-    // §Fase 39 (D4) — FlowEnvelope<T> wrapping. Recurse on T so nested
+    // v2.0.0 (D4) — FlowEnvelope<T> wrapping. Recurse on T so nested
     // forms like FlowEnvelope<List<X>> and FlowEnvelope<Stream<X>>
     // are recognized end-to-end. Recursion lands ≥ once and terminates
     // when T is a non-wrapping primitive.
@@ -782,7 +782,7 @@ pub(crate) fn declared_cardinality(output_type: &str) -> Cardinality {
     Cardinality::Singular(t.to_string())
 }
 
-/// §Fase 38.x.f (D1) — Infer the cardinality of a flow's tail
+/// v1.31.0 (D1) — Infer the cardinality of a flow's tail
 /// expression. Walks the body from tail backwards, returning the
 /// first FlowStep whose cardinality is determinable, joining branches
 /// on `if`/`else` (and detecting disagreement).
@@ -904,7 +904,7 @@ fn join_cardinalities(a: &Cardinality, b: &Cardinality) -> Cardinality {
         return a.clone();
     }
     // Disagreed cases: cardinality kinds differ → Disagreed.
-    // (We do NOT compare element types here — Fase 37 D2 / T901 handle
+    // (We do NOT compare element types here — v1.32.0 D2 / T901 handle
     // type mismatch; we only care about Singular vs Plural vs Stream
     // vs Unit kind disagreement for D6 W003.)
     let kind = |c: &Cardinality| match c {
@@ -914,7 +914,7 @@ fn join_cardinalities(a: &Cardinality, b: &Cardinality) -> Cardinality {
         Cardinality::Unit => 3,
         Cardinality::Disagreed => 4,
         Cardinality::Unknown => 5,
-        // §Fase 39 (D4) — Wrapped joins by its INNER kind. A
+        // v2.0.0 (D4) — Wrapped joins by its INNER kind. A
         // `FlowEnvelope<List<X>>` branch joining a bare `List<X>`
         // branch agree on plural cardinality through the wrap.
         Cardinality::Wrapped(_) => 6,
@@ -975,15 +975,15 @@ pub struct TypeChecker<'a> {
     program: &'a Program,
     symbols: SymbolTable,
     errors: Vec<TypeError>,
-    /// §λ-L-E Fase 13 D4 — non-fatal diagnostics (deprecation, etc.).
+    /// v1.6.0 D4 — non-fatal diagnostics (deprecation, etc.).
     /// Errors halt compilation; warnings surface in `axon check` output
     /// without failing unless `--strict` is set.  Mirrors the Python
     /// TypeChecker.warnings property.
     warnings: Vec<TypeError>,
-    /// §Fase 38.d (D2) — store-name → ColumnSet built from each
+    /// v1.31.0 (D2) — store-name → ColumnSet built from each
     /// `axonstore` declaration's `schema:` declaration form.
     ///
-    /// §Fase 38.x.d (D2) extends this to ALL THREE forms when a
+    /// v1.31.0 (D2) extends this to ALL THREE forms when a
     /// `manifest` is supplied via [`TypeChecker::with_manifest`]:
     /// form (a) inline (always populated, no manifest needed),
     /// form (b) manifest_ref (populated from `manifest.lookup(qualified_name)`),
@@ -995,19 +995,19 @@ pub struct TypeChecker<'a> {
     /// absolute backwards-compat).
     store_inline_column_sets:
         std::collections::HashMap<String, crate::store_column_proof::ColumnSet>,
-    /// §Fase 38.d (D2) — the current flow's parameter-name → axon-
+    /// v1.31.0 (D2) — the current flow's parameter-name → axon-
     /// language-type-name map, set while `check_flow` runs so
-    /// `check_flow_steps` can run the §38.d D2 proof against
+    /// `check_flow_steps` can run the v1.31.0 D2 proof against
     /// `where:` clauses. Cleared between flows so a parameter in one
     /// flow cannot leak into the proof for another.
     current_flow_params: crate::store_column_proof::FlowParamTypes,
-    /// §Fase 38.x.d (D2) — optional manifest supplied at construction
+    /// v1.31.0 (D2) — optional manifest supplied at construction
     /// for forms (b)/(c) compile-time proof. `None` means form (b)/(c)
     /// silently skip (v1.38.3-compatible default). When `Some`, the
     /// `register_declarations` pass uses it to populate
     /// `store_inline_column_sets` for the non-inline forms.
     manifest: Option<&'a crate::store_schema_manifest::Manifest>,
-    /// §Fase 53.c — extension-declared PROVENANCE members, collected +
+    /// v2.5.0 — extension-declared PROVENANCE members, collected +
     /// validated in a pre-pass (`collect_and_validate_extensions`)
     /// before tool/shield validation. `ext_effect_members` holds full
     /// effect-row entries (e.g. `"epistemic:believe"`) accepted verbatim
@@ -1017,7 +1017,7 @@ pub struct TypeChecker<'a> {
     /// confidence range) — a rejected member is never silently honored.
     ext_effect_members: std::collections::HashSet<String>,
     ext_scan_categories: std::collections::HashSet<String>,
-    /// §Fase 73.e — the `Json<T>` shape-LENS field index: a declared
+    /// v2.26.0 — the `Json<T>` shape-LENS field index: a declared
     /// struct `type`'s name → (field name → (field type name, generic
     /// param)). Built once in `check` (after registration) from every
     /// `type` declaration, so a lens navigation `profile.age` over a
@@ -1027,54 +1027,54 @@ pub struct TypeChecker<'a> {
     /// never a crash; doctrine `open_data_is_total`).
     json_lens_fields:
         std::collections::HashMap<String, std::collections::HashMap<String, (String, String)>>,
-    /// §Fase 73.e — the current flow's parameter-name → FULL type spelling
+    /// v2.26.0 — the current flow's parameter-name → FULL type spelling
     /// (`name` plus `<generic>` when present, e.g. `Json<UserEvent>`). The
     /// `Json<T>` lens needs the generic the bare `current_flow_params` map
-    /// drops; kept SEPARATE so the §38 store proof (which matches the bare
+    /// drops; kept SEPARATE so the v1.31.0 store proof (which matches the bare
     /// column-type name) is unaffected. Cleared between flows.
     current_flow_param_spellings: std::collections::BTreeMap<String, String>,
-    /// §Fase 92.b — the mint bindings seen so far in the CURRENT flow's
+    /// v2.46.0 — the mint bindings seen so far in the CURRENT flow's
     /// walk (source order), for the `axon-T896` never-persisted law.
     /// Cleared between flows.
     current_mint_bindings: std::collections::HashSet<String>,
-    /// §Fase 99.d — the mode of the enclosing `epistemic { mode: … }` block
+    /// v2.53.0 — the mode of the enclosing `epistemic { mode: … }` block
     /// during the declaration walk (empty at top level). The assertion-
     /// laundering barrier reads it: a `document` wrapped in `epistemic { mode:
     /// believe|know }` lets an assertive-slot flow-value binding through
     /// without a per-field `attribute:` (the author vouches the whole block is
     /// ≥ believe). Set/restored around each `Declaration::Epistemic` recursion.
     current_epistemic_mode: String,
-    /// §Fase 74.g — every channel/topic `emit`ted to anywhere in the
+    /// v2.31.0 — every channel/topic `emit`ted to anywhere in the
     /// program (all flow bodies + daemon listener bodies, nested). Built
     /// once in `check`. A daemon `listen`er on a channel NOT in this set has
-    /// no producer → it can never fire (`axon-W009`, the §52.g diagnostic
-    /// reworked: §74 delivers a listener that HAS a producer, so the
+    /// no producer → it can never fire (`axon-W009`, the v2.4.0 diagnostic
+    /// reworked: v2.31.0 delivers a listener that HAS a producer, so the
     /// remaining defect is the unproduced channel — the Kivi brief #39
-    /// case). The compile-time mirror of the §74.g PCC
+    /// case). The compile-time mirror of the v2.31.0 PCC
     /// `ChannelDeliverySoundness`.
     emitted_channels: std::collections::HashSet<String>,
-    /// §Fase 94.a — the names of every `backend: secrets` metadata store
+    /// v2.48.0 — the names of every `backend: secrets` metadata store
     /// in the program, recorded at registration. Read by the write-verb
     /// law (`axon-T897`: `persist`/`mutate`/`purge` against a secrets
     /// store is unrepresentable — custody is written only by the seeding
-    /// API and the mediated `rotate` commit) and by the §94.b `rotate`
+    /// API and the mediated `rotate` commit) and by the v2.48.0 `rotate`
     /// target rule (`axon-T898`: `rotate` targets ONLY a secrets store).
     secrets_backed_stores: std::collections::HashSet<String>,
-    /// §Fase 115.d — the Epistemic Module System's per-module check
-    /// context. `None` (every pre-§115 caller) ⇒ behavior byte-identical
+    /// v2.76.0 — the Epistemic Module System's per-module check
+    /// context. `None` (every pre-v2.76.0 caller) ⇒ behavior byte-identical
     /// to v2.75.0: imports stay inert. `Some` ⇒ **module mode**: imported
     /// names REGISTER in the symbol table with their exported kinds (so
     /// all 71 `symbols.lookup` reference sites resolve), and the
     /// `axon-T953` import laws fire (selective required · `@scope`
     /// reserved · module exists · every name exported · no collision).
     module_ctx: Option<&'a ModuleCheckContext>,
-    /// §Fase 115.d — names registered FROM imports (name → (kind, dotted
+    /// v2.76.0 — names registered FROM imports (name → (kind, dotted
     /// source module)), so a colliding local declaration gets the branded
     /// `axon-T953` collision law instead of the generic duplicate message.
     imported_symbols: std::collections::BTreeMap<String, (String, String)>,
 }
 
-/// §Fase 115.d — what the type-checker's module mode needs to know about
+/// v2.76.0 — what the type-checker's module mode needs to know about
 /// the rest of the project: every resolved module's exports. Built by the
 /// EMS driver (`crate::ems`) from the Phase-1 interfaces.
 #[derive(Debug, Default)]
@@ -1086,9 +1086,9 @@ pub struct ModuleCheckContext {
     >,
 }
 
-// ── §Fase 70.b — static type inference for the pure expression engine ─────────
+// ── v2.26.0 — static type inference for the pure expression engine ─────────
 
-/// The static type of a pure expression (§Fase 70). `Unknown` is the permissive
+/// The static type of a pure expression (v2.26.0). `Unknown` is the permissive
 /// top — a reference whose type the compiler cannot determine stays `Unknown`
 /// and never triggers a type error (no false positives). Only operands with a
 /// KNOWN, incompatible type raise `axon-T81x`.
@@ -1135,7 +1135,7 @@ fn infer_type_from_name(name: &str) -> InferType {
         "Float" | "Double" | "Number" | "Numeric" => InferType::Float,
         "Bool" | "Boolean" => InferType::Bool,
         "String" | "Text" => InferType::Str,
-        // §Fase 73.a — a `Json` (or refined `Json<T>`) value is open,
+        // v2.26.0 — a `Json` (or refined `Json<T>`) value is open,
         // dynamically-shaped data: it is navigable but is NOT a scalar an
         // arithmetic / ordering / equality operator can constrain at
         // compile time. It maps to the permissive `Unknown` so navigation
@@ -1146,7 +1146,7 @@ fn infer_type_from_name(name: &str) -> InferType {
     }
 }
 
-// ── §Fase 70.e — compile-time const-folding (dead-branch detection) ──────────
+// ── v2.26.0 — compile-time const-folding (dead-branch detection) ──────────
 
 /// A fully-constant expression value, produced by [`const_fold`]. Only an
 /// expression with NO references / fields / indices / calls folds (those are
@@ -1202,7 +1202,7 @@ fn const_fold(e: &Expr) -> Option<ConstVal> {
             other => Some(ConstVal::Float(-const_as_num(&other)?)),
         },
         Expr::Binary(op, l, r) => const_binop(*op, &const_fold(l)?, &const_fold(r)?),
-        // §Fase 119.o — a `let` is never constant-folded. The body reaches the
+        // v2.83.0 — a `let` is never constant-folded. The body reaches the
         // binding through a `Ref`, and `Ref` is runtime-dynamic here (the arm
         // below), so folding the value would compute a constant nothing can
         // read. Folding through the binding correctly means an environment,
@@ -1315,7 +1315,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 115.d — enter module mode: imported names will register in
+    /// v2.76.0 — enter module mode: imported names will register in
     /// the symbol table and the `axon-T953` import laws fire. Without
     /// this call, behavior is byte-identical to v2.75.0 (backwards-compat
     /// absolute — the EMS engages only when an entry declares imports).
@@ -1323,7 +1323,7 @@ impl<'a> TypeChecker<'a> {
         self.module_ctx = Some(ctx);
     }
 
-    /// §Fase 38.x.d (D2) — construct a TypeChecker that consults the
+    /// v1.31.0 (D2) — construct a TypeChecker that consults the
     /// supplied manifest when an `axonstore` declares its schema via
     /// form (b) `manifest_ref` or form (c) `env_var`. Form (a) inline
     /// is unaffected (populated identically with or without manifest).
@@ -1371,7 +1371,7 @@ impl<'a> TypeChecker<'a> {
         self.check_with_warnings().0
     }
 
-    /// §Fase 113 — **axon-T945** (sharing discipline) and **axon-T947**
+    /// v2.67.0 — **axon-T945** (sharing discipline) and **axon-T947**
     /// (manifest/fabric coherence).
     ///
     /// # axon-T945 — `lifetime:` finally means something
@@ -1394,7 +1394,7 @@ impl<'a> TypeChecker<'a> {
     /// connection pool whenever their DSNs happen to resolve equal (the
     /// registry caches pools keyed on the resolved DSN). That sharing is
     /// **accidental** — nobody declared it, nobody checked it, and nothing
-    /// tells you it happened. Under §113 it is **declared**, and this law makes
+    /// tells you it happened. Under v2.67.0 it is **declared**, and this law makes
     /// the undeclared case refuse.
     fn check_resource_module_laws(&mut self, decls: &[Declaration]) {
         use std::collections::BTreeMap;
@@ -1411,11 +1411,11 @@ impl<'a> TypeChecker<'a> {
         }
 
         // Every HOLDER — a declaration that names a resource and therefore
-        // opens, holds and pools a connection to it. §113's ratified criterion:
+        // opens, holds and pools a connection to it. v2.67.0's ratified criterion:
         // `deliver`/`document`/`notify` hold nothing, so they are NOT holders
         // and never appear here.
         let mut holders: BTreeMap<&str, Vec<(String, Loc)>> = BTreeMap::new();
-        // §Fase 120 — resources some declaration USES without POOLING a
+        // v2.87.0 — resources some declaration USES without POOLING a
         // connection to. Today that is exactly `lease`. Kept apart from
         // `holders` because the two halves of `axon-T945` ask different
         // questions: "is anything using this?" (consumers count) and "how many
@@ -1430,30 +1430,30 @@ impl<'a> TypeChecker<'a> {
                         .or_default()
                         .push((format!("axonstore '{}'", s.name), s.loc.clone()));
                 }
-                // §Fase 114.f — a `tool` that names a resource is a HOLDER too.
+                // v2.69.0 — a `tool` that names a resource is a HOLDER too.
                 //
-                // Before §114 a tool could not name a resource, so the sharing
+                // Before v2.69.0 a tool could not name a resource, so the sharing
                 // discipline only counted stores. Now that a tool holds a channel,
                 // an `affine` resource shared between a store and a tool — or two
                 // tools — is a breach exactly as two stores would be. Missing this
-                // would have let §114 quietly re-open the sharing hole §113.b closed.
+                // would have let v2.69.0 quietly re-open the sharing hole v2.67.0 closed.
                 Declaration::Tool(t) if !t.resource_ref.is_empty() => {
                     holders
                         .entry(t.resource_ref.as_str())
                         .or_default()
                         .push((format!("tool '{}'", t.name), t.loc.clone()));
                 }
-                // §Fase 114.u — an `upstream` that rides a resource is a HOLDER
+                // v2.69.0 — an `upstream` that rides a resource is a HOLDER
                 // too: it opens, holds and re-dials persistent connections to
-                // it. Missing this would let §114.u quietly re-open the sharing
-                // hole §113.b closed, exactly as §114.f said of tools.
+                // it. Missing this would let v2.69.0 quietly re-open the sharing
+                // hole v2.67.0 closed, exactly as v2.69.0 said of tools.
                 Declaration::Upstream(u) if !u.resource_ref.is_empty() => {
                     holders
                         .entry(u.resource_ref.as_str())
                         .or_default()
                         .push((format!("upstream '{}'", u.name), u.loc.clone()));
                 }
-                // §Fase 120 — a `lease` is a CONSUMER but NOT a pool holder, and
+                // v2.87.0 — a `lease` is a CONSUMER but NOT a pool holder, and
                 // the distinction is the whole of this arm.
                 //
                 // `axon-T945` asks two different questions and they need
@@ -1467,11 +1467,11 @@ impl<'a> TypeChecker<'a> {
                 //     opens nothing. It GOVERNS the holder's use of R in time.
                 //
                 // Counting a lease in `holders` was measured and REFUTED by
-                // §114's own governed shape: `tool Search { resource: Api }` +
+                // v2.69.0's own governed shape: `tool Search { resource: Api }` +
                 // `lease Gone { resource: Api }` over one `affine` resource is
                 // the canonical form the SSE lease-charging path is built on,
                 // and it would have become a sharing breach — the law refusing
-                // the pattern the fase beneath it exists to deliver.
+                // the pattern the cycle beneath it exists to deliver.
                 //
                 // ⚠️ A `manifest` that lists R is NEITHER. It PROVISIONS.
                 // Counting it as a holder would make `manifest` + `axonstore`
@@ -1493,7 +1493,7 @@ impl<'a> TypeChecker<'a> {
 
         for (name, res) in &resources {
             let held_by = holders.get(name).map(Vec::as_slice).unwrap_or(&[]);
-            // §Fase 120 — a `lease` SATISFIES "at least one consumer" without
+            // v2.87.0 — a `lease` SATISFIES "at least one consumer" without
             // COUNTING toward "at most one holder". See `consumers` above.
             let consumed = held_by.is_empty() && consumers.contains(&**name);
 
@@ -1566,7 +1566,7 @@ impl<'a> TypeChecker<'a> {
         // `within:` makes disjointness unrepresentable, but it introduces a new
         // way to contradict yourself: a manifest may name fabric F while
         // listing a resource that lives `within:` G. Two declarations, one
-        // fact, disagreeing — which is the exact disease §113 exists to cure.
+        // fact, disagreeing — which is the exact disease v2.67.0 exists to cure.
         for d in decls {
             let Declaration::Manifest(m) = d else { continue };
             if m.fabric_ref.is_empty() {
@@ -1595,62 +1595,62 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §λ-L-E Fase 13 D4 — return both errors and warnings.
+    /// v1.6.0 D4 — return both errors and warnings.
     /// Callers preferring strict mode promote warnings → errors at the
     /// rendering layer (CLI `--strict` flag).  Mirrors the Python
     /// `(TypeChecker.check(), .warnings)` pair.
-    /// **§Fase 120 — THE ONE PASS LIST.** `check` is a projection of this.
+    /// **v2.87.0 — THE ONE PASS LIST.** `check` is a projection of this.
     ///
     /// # Why this note exists
     ///
     /// These two entry points were SEPARATE COPIES of the pass list, and they
-    /// had drifted. `check` ran `check_resource_module_laws` (§113's `axon-T945`
+    /// had drifted. `check` ran `check_resource_module_laws` (v2.67.0's `axon-T945`
     /// sharing discipline and `axon-T947` manifest/fabric coherence) and this
     /// one did not — and **this one is the entry point `axon check` takes**
-    /// (`crate::checker::run_check`). So the §113 laws had never run for an
+    /// (`crate::checker::run_check`). So the v2.67.0 laws had never run for an
     /// adopter at the command line. Every test that proved them called `check`,
     /// which is the engine, not the path.
     ///
-    /// That is §119's law 4 in the type-checker itself: *a proof that names a
+    /// That is v2.83.0's law 4 in the type-checker itself: *a proof that names a
     /// FUNCTION proves the engine, not the path.* It was found by running the
-    /// BUILT BINARY against a program §120's own gate refuses — `axon check`
+    /// BUILT BINARY against a program v2.87.0's own gate refuses — `axon check`
     /// said `0 errors`, twice.
     ///
     /// ⚠️ **Never add a pass to one of these and not the other.** There is now
     /// only one place to add it, and `two_type_check_entry_points_never_drift`
-    /// in `fase120_a_effect_grammar.rs` fails if the projection is ever
+    /// in `effect_grammar.rs` fails if the projection is ever
     /// re-forked.
     pub fn check_with_warnings(mut self) -> (Vec<TypeError>, Vec<TypeError>) {
         self.register_declarations(&self.program.declarations);
-        // §Fase 73.e — index every declared struct `type`'s fields so the
+        // v2.26.0 — index every declared struct `type`'s fields so the
         // `Json<T>` lens can field-check navigations against them.
         self.index_type_fields(&self.program.declarations);
-        // §Fase 74.g — collect the program's channel producers so a daemon
+        // v2.31.0 — collect the program's channel producers so a daemon
         // `listen`er with no `emit` producer is `axon-W009` (never fires).
         self.collect_emitted_channels(&self.program.declarations);
-        // §Fase 73.a — validate every `Json<T>` shape lens AFTER registration.
+        // v2.26.0 — validate every `Json<T>` shape lens AFTER registration.
         self.check_json_lenses(&self.program.declarations);
-        // §Fase 53.c — validate + collect extensions BEFORE tool/shield
+        // v2.5.0 — validate + collect extensions BEFORE tool/shield
         // validation so the augmented provenance catalogs are populated.
         self.collect_and_validate_extensions(&self.program.declarations);
         self.check_declarations(&self.program.declarations);
-        // §Fase 83.c — cross-declaration CORS pass (needs every axonendpoint's
+        // v2.38.0 — cross-declaration CORS pass (needs every axonendpoint's
         // final `path`/`cors_ref`).
         self.check_cors_cross_method_consistency(&self.program.declarations);
-        // §Fase 85.c — cross-declaration cache laws (single default, effect
+        // v2.40.0 — cross-declaration cache laws (single default, effect
         // widening); needs the full tool + cache set.
         self.check_cache_module_laws(&self.program.declarations);
-        // §Fase 123 (`axon-T1214`) — every regulatory label, on all four
+        // v4.0.0 (`axon-T1214`) — every regulatory label, on all four
         // declarations that can carry one, must be a member of Κ.
         self.check_compliance_vocabulary(&self.program.declarations);
-        // §Fase 113 — the Linear-Logic sharing discipline + manifest/fabric
+        // v2.67.0 — the Linear-Logic sharing discipline + manifest/fabric
         // coherence. Cross-declaration by nature: it counts HOLDERS of a
         // resource, which no per-declaration visit can see.
         //
         // ⚠️ This line is the fix. It was in `check` only, so `axon check`
         // never ran it.
         self.check_resource_module_laws(&self.program.declarations);
-        // §Fase 120 — the algebraic-effect discipline. Cross-declaration by
+        // v2.87.0 — the algebraic-effect discipline. Cross-declaration by
         // NATURE: D9 exhaustiveness propagates each flow's effect row through
         // the call graph, so the answer for `flow A` depends on `flow B` that A
         // runs. An intra-flow approximation would refuse the composition the
@@ -1671,7 +1671,7 @@ impl<'a> TypeChecker<'a> {
         });
     }
 
-    /// §λ-L-E Fase 13 D4 — non-fatal diagnostic.
+    /// v1.6.0 D4 — non-fatal diagnostic.
     fn warn(&mut self, message: String, loc: &Loc) {
         self.warnings.push(TypeError {
             message,
@@ -1692,11 +1692,11 @@ impl<'a> TypeChecker<'a> {
     // ── Phase 1: registration ────────────────────────────────────
 
     fn register_declarations(&mut self, decls: &[Declaration]) {
-        // §Fase 115.d — module mode: register imported names FIRST, with
+        // v2.76.0 — module mode: register imported names FIRST, with
         // their exported kinds, so (a) every `symbols.lookup` reference
         // site resolves an imported symbol exactly like a local one, and
         // (b) a local declaration reusing an imported name collides
-        // against the import (the D115.5 no-shadowing law, branded
+        // against the import (the the design decision no-shadowing law, branded
         // `axon-T953` in the flush loop below). Names the module does
         // not export register nothing here — the validation pass owns
         // that diagnostic (`check_import_laws`).
@@ -1742,7 +1742,7 @@ impl<'a> TypeChecker<'a> {
 
         for decl in decls {
             match decl {
-                // §Fase 114.a — a top-level budget is a named symbol.
+                // v2.69.0 — a top-level budget is a named symbol.
                 Declaration::Budget(n) => {
                     registrations.push((
                         n.name.clone(),
@@ -1751,7 +1751,7 @@ impl<'a> TypeChecker<'a> {
                         n.loc.clone(),
                     ));
                 }
-                // §Fase 120 — an `effect` is a named symbol like any peer, so a
+                // v2.87.0 — an `effect` is a named symbol like any peer, so a
                 // program declaring `effect SSE` twice collides through the same
                 // duplicate-symbol law rather than silently keeping one.
                 Declaration::Effect(n) => {
@@ -1902,12 +1902,12 @@ impl<'a> TypeChecker<'a> {
                         n.loc.line,
                         n.loc.clone(),
                     ));
-                    // §Fase 38.d (D2) — when this axonstore carries an
+                    // v1.31.0 (D2) — when this axonstore carries an
                     // INLINE `schema: { … }` block, build its ColumnSet
                     // now so `check_flow_steps` can prove `where:`
                     // clauses against it.
                     //
-                    // §Fase 38.x.d (D2, D4) — when this axonstore uses
+                    // v1.31.0 (D2, D4) — when this axonstore uses
                     // form (b) `manifest_ref` OR form (c) `env_var`
                     // AND `self.manifest` is set (the adopter passed
                     // `--schemas-dir <path>` to `axon check`), resolve
@@ -1922,13 +1922,13 @@ impl<'a> TypeChecker<'a> {
                     // and forms (b)/(c) silently skip exactly as they
                     // did in v1.38.3 (D5 backwards-compat absolute).
                     //
-                    // §Fase 94.a — a `backend: secrets` metadata store
+                    // v2.48.0 — a `backend: secrets` metadata store
                     // gets the FIXED synthesized schema (key / version /
                     // created_at / expires_at) so `where:` / `order_by:`
                     // / aggregate proofs run against the custody
                     // metadata columns exactly like a declared inline
                     // schema. Recorded in `secrets_backed_stores` for
-                    // the T897 write-verb law + the §94.b `rotate`
+                    // the T897 write-verb law + the v2.48.0 `rotate`
                     // target rule. The synthesized set is inserted
                     // FIRST so it wins even when the adopter ALSO
                     // declared an explicit schema (that declaration is
@@ -1983,8 +1983,8 @@ impl<'a> TypeChecker<'a> {
                             } => {
                                 if let Some(manifest) = self.manifest {
                                     // First-match heuristic mirrors
-                                    // §Fase 38.d's `load_columns_for_schema`
-                                    // + §Fase 38.f's `declared_columns_for`:
+                                    // v1.31.0's `load_columns_for_schema`
+                                    // + v1.31.0's `declared_columns_for`:
                                     // try exact `<var_name>.<store_name>`
                                     // first, then fall back to any
                                     // `*.<store_name>` (the manifest
@@ -2016,7 +2016,7 @@ impl<'a> TypeChecker<'a> {
                             }
                         }
                     }
-                    } // §Fase 94.a — end of the non-secrets schema arm.
+                    } // v2.48.0 — end of the non-secrets schema arm.
                 }
                 Declaration::AxonEndpoint(n) => {
                     registrations.push((
@@ -2134,23 +2134,23 @@ impl<'a> TypeChecker<'a> {
                 Declaration::Socket(n) => {
                     registrations.push((n.name.clone(), "socket".into(), n.loc.line, n.loc.clone()));
                 }
-                // §Fase 80.b — register the outbound vendor connection so
+                // v2.37.0 — register the outbound vendor connection so
                 // `voice`/flow references resolve to it.
                 Declaration::Upstream(n) => {
                     registrations.push((n.name.clone(), "upstream".into(), n.loc.line, n.loc.clone()));
                 }
-                // §Fase 80.g — register the voice agent (its expansion's
+                // v2.37.0 — register the voice agent (its expansion's
                 // session/socket/upstreams register themselves — they are
                 // ordinary declarations in the program by check time).
                 Declaration::Voice(n) => {
                     registrations.push((n.name.clone(), "voice".into(), n.loc.line, n.loc.clone()));
                 }
-                // §Fase 83.a — register the named origin-policy declaration
+                // v2.38.0 — register the named origin-policy declaration
                 // so an `axonendpoint.cors:` reference resolves to it.
                 Declaration::Cors(n) => {
                     registrations.push((n.name.clone(), "cors".into(), n.loc.line, n.loc.clone()));
                 }
-                // §Fase 92.a — register the ephemeral-credential contract so
+                // v2.46.0 — register the ephemeral-credential contract so
                 // a `mint <Credential>` reference resolves to it (axon-T895).
                 Declaration::Credential(n) => {
                     registrations.push((
@@ -2160,14 +2160,14 @@ impl<'a> TypeChecker<'a> {
                         n.loc.clone(),
                     ));
                 }
-                // §Fase 85.a — register the named cache policy so a
+                // v2.40.0 — register the named cache policy so a
                 // `tool.cache:` / `retrieve.cache:` reference resolves to it.
                 Declaration::Cache(n) => {
                     registrations.push((n.name.clone(), "cache".into(), n.loc.line, n.loc.clone()));
                 }
-                // §Fase 87.a — register the savant so a future cross-reference
+                // v2.42.0 — register the savant so a future cross-reference
                 // (and duplicate-name detection) resolves it. Field validation
-                // is §87.b (`check_savant`).
+                // is v2.42.0 (`check_savant`).
                 Declaration::Savant(n) => {
                     registrations.push((
                         n.name.clone(),
@@ -2176,7 +2176,7 @@ impl<'a> TypeChecker<'a> {
                         n.loc.clone(),
                     ));
                 }
-                // §Fase 99.b — register the document so it is a referenceable
+                // v2.53.0 — register the document so it is a referenceable
                 // name (and duplicate-name detection works).
                 Declaration::Document(n) => {
                     registrations.push((
@@ -2186,7 +2186,7 @@ impl<'a> TypeChecker<'a> {
                         n.loc.clone(),
                     ));
                 }
-                // §Fase 105 — register the delivery so it is a referenceable
+                // v2.60.0 — register the delivery so it is a referenceable
                 // name (and duplicate-name detection works).
                 Declaration::Deliver(n) => {
                     registrations.push((
@@ -2196,7 +2196,7 @@ impl<'a> TypeChecker<'a> {
                         n.loc.clone(),
                     ));
                 }
-                // §Fase 110 — register the notification (referenceable name +
+                // v2.66.0 — register the notification (referenceable name +
                 // duplicate detection).
                                 Declaration::Notify(n) => {
                     registrations.push((
@@ -2206,7 +2206,7 @@ impl<'a> TypeChecker<'a> {
                         n.loc.clone(),
                     ));
                 }
-                // §Fase 87.d — register the synth policy so a savant can
+                // v2.42.0 — register the synth policy so a savant can
                 // reference it (and duplicate-name detection works).
                 Declaration::Synth(n) => {
                     registrations.push((
@@ -2216,8 +2216,8 @@ impl<'a> TypeChecker<'a> {
                         n.loc.clone(),
                     ));
                 }
-                // §Fase 88.a — register the authorization scope so a
-                // `warden(t) within <Scope>` reference resolves (§88.c).
+                // v2.43.0 — register the authorization scope so a
+                // `warden(t) within <Scope>` reference resolves (v2.43.0).
                 Declaration::Scope(n) => {
                     registrations.push((
                         n.name.clone(),
@@ -2226,7 +2226,7 @@ impl<'a> TypeChecker<'a> {
                         n.loc.clone(),
                     ));
                 }
-                // §Fase 51.c.2 — register the Pauli-sum observable so a
+                // v2.4.0 — register the Pauli-sum observable so a
                 // `quant(observable: <Name>)` reference resolves to it.
                 Declaration::Observable(n) => {
                     registrations.push((
@@ -2236,7 +2236,7 @@ impl<'a> TypeChecker<'a> {
                         n.loc.clone(),
                     ));
                 }
-                // §Fase 69.a — register the Advantage Witness by name.
+                // v2.23.0 — register the Advantage Witness by name.
                 Declaration::Witness(n) => {
                     registrations.push((
                         n.name.clone(),
@@ -2255,9 +2255,9 @@ impl<'a> TypeChecker<'a> {
                         ));
                     }
                 }
-                // §Fase 53.a — register the extension name as a symbol
+                // v2.5.0 — register the extension name as a symbol
                 // (free duplicate-name detection). Member-level + category
-                // + no-shadowing validation is §53.c.
+                // + no-shadowing validation is v2.5.0.
                 Declaration::Extension(n) => {
                     registrations.push((
                         n.name.clone(),
@@ -2274,8 +2274,8 @@ impl<'a> TypeChecker<'a> {
         }
 
         for (name, kind, line, loc) in registrations {
-            // §Fase 115.d — a local declaration reusing an IMPORTED name is
-            // the D115.5 collision law, branded so the fix is in the message.
+            // v2.76.0 — a local declaration reusing an IMPORTED name is
+            // the the design decision collision law, branded so the fix is in the message.
             if let Some((imp_kind, imp_module)) = self.imported_symbols.get(&name) {
                 let (imp_kind, imp_module) = (imp_kind.clone(), imp_module.clone());
                 self.emit(
@@ -2303,7 +2303,7 @@ impl<'a> TypeChecker<'a> {
 
     // ── Phase 2: validation ──────────────────────────────────────
 
-    /// §Fase 53.c — pre-pass: validate every `extension` declaration and
+    /// v2.5.0 — pre-pass: validate every `extension` declaration and
     /// populate the augmented provenance catalogs the tool/shield checks
     /// consult. Runs BEFORE `check_declarations`. Recurses into
     /// `epistemic` blocks for parity with `register_declarations`.
@@ -2319,7 +2319,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 53.c — validate one `extension` + register its surviving
+    /// v2.5.0 — validate one `extension` + register its surviving
     /// members. Enforces:
     ///  - category ∈ {`effects`, `scan`};
     ///  - INVARIANT #2 (provenance-class): an `effects` member's base
@@ -2395,14 +2395,14 @@ impl<'a> TypeChecker<'a> {
     fn check_declarations(&mut self, decls: &[Declaration]) {
         for decl in decls {
             match decl {
-                // §Fase 114.a — a top-level budget is checked by the SAME laws as a
+                // v2.69.0 — a top-level budget is checked by the SAME laws as a
                 // daemon's (T830–T834). Reused, not re-implemented: a second copy
                 // of a law is how the islands happened.
                 Declaration::Budget(n) => {
                     let scope = format!("budget '{}'", n.name);
                     self.check_budget(n, &scope);
                 }
-                // §Fase 120 — every law about an `effect` declaration and its
+                // v2.87.0 — every law about an `effect` declaration and its
                 // use sites lives in `crate::effect_check`, run once at the end
                 // of `check()`. It is deliberately NOT split across a
                 // per-declaration visit here: D9 is interprocedural, and half
@@ -2419,7 +2419,7 @@ impl<'a> TypeChecker<'a> {
                 Declaration::Run(n) => self.check_run(n),
                 Declaration::Epistemic(eb) => {
                     self.check_epistemic_mode(&eb.mode, &eb.loc);
-                    // §Fase 99.d — thread the enclosing mode so a `document`
+                    // v2.53.0 — thread the enclosing mode so a `document`
                     // inside `epistemic { mode: believe|know }` is barrier-
                     // satisfied without per-field `attribute:`.
                     let prev =
@@ -2435,7 +2435,7 @@ impl<'a> TypeChecker<'a> {
                 Declaration::Ledger(n) => self.check_ledger(n),
                 Declaration::Psyche(n) => self.check_psyche(n),
                 Declaration::Corpus(n) => self.check_corpus(n),
-                Declaration::Dataspace(n) => self.check_dataspace(n), // §108.b — axon-T928
+                Declaration::Dataspace(n) => self.check_dataspace(n), // v2.63.0 — axon-T928
                 Declaration::Ots(n) => self.check_ots(n),
                 Declaration::Mandate(n) => self.check_mandate(n),
                 Declaration::Compute(_) => {} // no Python validation exists
@@ -2456,26 +2456,26 @@ impl<'a> TypeChecker<'a> {
                 Declaration::Voice(n) => self.check_voice(n),
                 Declaration::Cors(n) => self.check_cors(n),
                 Declaration::Cache(n) => self.check_cache(n),
-                // §Fase 92.a — the credential contract's own-field laws
+                // v2.46.0 — the credential contract's own-field laws
                 // (non-empty grants T893, TTL bounds T894).
                 Declaration::Credential(n) => self.check_credential(n),
-                // §Fase 87.b — own-field validation (domain, mandates, cognition
-                // catalogs). Ref resolution (memory backend) + §72 budget binding
-                // + §79 interruptibility land in §87.c.
+                // v2.42.0 — own-field validation (domain, mandates, cognition
+                // catalogs). Ref resolution (memory backend) + v2.28.0 budget binding
+                // + v2.36.0 interruptibility land in v2.42.0.
                 Declaration::Savant(n) => self.check_savant(n),
-                // §Fase 99.c/d — structure validity + the assertion-laundering
+                // v2.53.0 — structure validity + the assertion-laundering
                 // barrier.
                 Declaration::Document(n) => self.check_document(n),
-                // §Fase 105 — CRM delivery structure + the T920 provenance
-                // barrier (egress-dual of the §99 assertion-laundering barrier).
+                // v2.60.0 — CRM delivery structure + the T920 provenance
+                // barrier (egress-dual of the v2.53.0 assertion-laundering barrier).
                 Declaration::Deliver(n) => self.check_deliver(n),
-                Declaration::Notify(n) => self.check_notify(n), // §110 — T933/T934/T935
-                // §Fase 87.d — dynamic tool-synthesis policy discipline.
+                Declaration::Notify(n) => self.check_notify(n), // v2.66.0 — T933/T934/T935
+                // v2.42.0 — dynamic tool-synthesis policy discipline.
                 Declaration::Synth(n) => self.check_synth(n),
-                // §Fase 88.b — the scope's own-field discipline (targets
+                // v2.43.0 — the scope's own-field discipline (targets
                 // non-empty + depth catalog + approver). The `warden`-side
                 // authorization binding (scope resolution + target allowlist) is
-                // §88.c.
+                // v2.43.0.
                 Declaration::Scope(n) => self.check_scope(n),
                 Declaration::Observable(n) => self.check_observable(n),
                 Declaration::Witness(n) => self.check_witness(n),
@@ -2485,11 +2485,11 @@ impl<'a> TypeChecker<'a> {
                 Declaration::Component(n) => self.check_component(n),
                 Declaration::View(n) => self.check_view(n),
                 Declaration::Channel(n) => self.check_channel(n),
-                // §Fase 53.c will implement `check_extension` (category ∈
+                // v2.5.0 will implement `check_extension` (category ∈
                 // {effects,scan}, no-shadowing of canonical bases/categories,
                 // provenance-class members, valid default_confidence range).
                 Declaration::Extension(_) => {}
-                // §Fase 115.d — module mode fires the import laws; without
+                // v2.76.0 — module mode fires the import laws; without
                 // a module context an import stays inert (v2.75.0 parity).
                 Declaration::Import(n) => self.check_import_laws(n),
                 Declaration::Type(_)
@@ -2501,14 +2501,14 @@ impl<'a> TypeChecker<'a> {
 
     // ── Per-construct checks ─────────────────────────────────────
 
-    /// §Fase 115.d — the `axon-T953` import laws (module mode only):
+    /// v2.76.0 — the `axon-T953` import laws (module mode only):
     ///
     /// 1. **Selective import required.** `import a.b` without a `{…}`
     ///    selector is `#include` wearing a module system's clothes — it
-    ///    would flood the namespace (the EMS paper's own §1.3 argument).
+    /// would flood the namespace (the EMS paper's own section 1.3 argument).
     /// 2. **`@scope` reserved.** The scoped form parses but has no
     ///    resolution semantics yet; it is refused loudly rather than
-    ///    granted invented directory semantics (the §111 posture — a form
+    /// granted invented directory semantics (the v2.67.0 posture — a form
     ///    that parses but does nothing must refuse, not stay silent).
     /// 3. **Module exists.** Defense-in-depth: the resolver normally
     ///    refuses first with the searched path; this covers embedded
@@ -2632,10 +2632,10 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 91.a — the `now:` format law (`axon-T892`). Mirrors the §71.a
+    /// v2.46.0 — the `now:` format law (`axon-T892`). Mirrors the v2.27.0
     /// window-timezone posture: the frontend (zero-dependency) checks the
     /// IANA *shape* — `"UTC"` or `Area/Location` with no leading/trailing
-    /// slash — and the runtime (§91.b, chrono-tz) is the authority on actual
+    /// slash — and the runtime (v2.46.0, chrono-tz) is the authority on actual
     /// IANA membership, failing closed on an unresolvable zone.
     fn check_now_tz(&mut self, tz: &str, surface: &str, name: &str, loc: &Loc) {
         let t = tz.trim();
@@ -2703,20 +2703,20 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 84.c — Remote Hands. The technician-command laws for a
+    /// v2.39.0 — Remote Hands. The technician-command laws for a
     /// `tool { target:, risk:, argv: }`. Entirely inert unless the tool opts
     /// into the surface (sets one of those fields), so the entire existing
     /// corpus is unaffected (zero regression). The four load-bearing laws:
     ///
     /// - **axon-T858** — a `target:`-bound `provider: bash` tool with no
     ///   `argv:`. A free-string command would reopen the injection surface the
-    ///   fase exists to close (D84.1), so the argv template is mandatory.
+    /// cycle exists to close, so the argv template is mandatory.
     /// - **axon-T859** — an `argv:` placeholder that is not a whole-element
     ///   `${param}` bound to a declared `parameters:` entry. Whole-element is
     ///   the crux: `"${x}.txt"` is rejected so an argument can never fuse with
-    ///   adjacent text or be split (D84.1).
+    /// adjacent text or be split.
     /// - **axon-T860** — a `risk: destructive` tool whose bound session offers
-    ///   no reachable `branch{ approved / denied }` confirmation (D84.2). The
+    /// no reachable `branch{ approved / denied }` confirmation. The
     ///   human confirm/deny exit must be visible in the protocol's own shape.
     /// - **axon-T861** — `target:` does not resolve to a declared `socket`.
     /// - **axon-T862** — a `risk:` value outside the closed `safe | destructive`
@@ -2847,18 +2847,18 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 85.c — resolve a `tool.cache:` reference and enforce the
+    /// v2.40.0 — resolve a `tool.cache:` reference and enforce the
     /// non-pure-needs-ttl law at the use site:
     /// - `axon-T864` — a non-`none`, non-empty `cache:` must name a declared
     ///   `cache`.
     /// - `axon-T865` — a NON-pure tool memoised by a cache with no finite
     ///   `ttl:` is forbidden (caching a non-deterministic result forever,
-    ///   D85.9). A provably-`pure` tool may reference a ttl-less cache.
+    /// the design decision). A provably-`pure` tool may reference a ttl-less cache.
     fn check_tool_cache_ref(&mut self, node: &ToolDefinition) {
         if node.cache.is_empty() || node.cache == "none" {
             return;
         }
-        // §Fase 122.d (`axon-T1213`, half one of two) — a tool that STREAMS
+        // v2.89.0 (`axon-T1213`, half one of two) — a tool that STREAMS
         // cannot name a cache. See `T1213_WHY`. Checked before the reference
         // resolves, deliberately: `cache: Nonexistent` on a streaming tool is
         // two mistakes, and this is the one the adopter must hear about — fixing
@@ -2927,7 +2927,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 85.c — resolve a `retrieve.cache:` reference. A retrieve is a
+    /// v2.40.0 — resolve a `retrieve.cache:` reference. A retrieve is a
     /// `storage` read (never `pure`), so the referenced cache is always used
     /// for a possibly-stale result and MUST carry a finite `ttl:` (T865); the
     /// reference itself must resolve to a declared `cache` (T864).
@@ -2974,7 +2974,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 98.d — Native Web Acquisition laws. Inert unless the tool is a
+    /// v2.52.0 — Native Web Acquisition laws. Inert unless the tool is a
     /// scrape provider or declares a `scrape:` block. Enforces:
     ///
     /// - **axon-T905** — a `scrape:` block only on a scrape provider; a scrape
@@ -2982,11 +2982,11 @@ impl<'a> TypeChecker<'a> {
     ///   provider applicability (`extract` only on `scrape_dom`, `follow`/
     ///   crawl fields only on `scrape_crawl`, `render_wait` only with the
     ///   `browser` engine).
-    /// - **axon-T904** — effect honesty (D98.2): a scrape provider's `effects:`
+    /// - **axon-T904** — effect honesty: a scrape provider's `effects:`
     ///   MUST carry `web`; `scrape_http`/`scrape_crawl` MUST carry `network`;
     ///   `scrape_dom` MUST NOT carry `network` (it does no I/O — it processes
     ///   already-fetched, already-tainted content); an `adaptive:` DOM tool
-    ///   MUST carry `storage` (the per-tenant selector memory, §98.h).
+    /// MUST carry `storage` (the per-tenant selector memory, v2.52.0).
     /// - **axon-T906** — each `extract` FieldSpec is a single `name=selector`.
     /// - **axon-T907** — `similarity_floor` ∈ [0,1].
     /// - **axon-T909** — `politeness:`/`checkpoint:` resolve to declared
@@ -3186,7 +3186,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 98.d (axon-T904) — the effect-honesty half of §98.d: a scrape
+    /// v2.52.0 (axon-T904) — the effect-honesty half of v2.52.0: a scrape
     /// tool's declared `effects:` row must match the bases it actually
     /// exercises. This is what lets the content-injection barrier (T908) and
     /// the PCC `ScrapeProvenanceSoundness` class reason about `web` at all.
@@ -3224,7 +3224,7 @@ impl<'a> TypeChecker<'a> {
         );
 
         match node.provider.as_str() {
-            // §Fase 104 — `scrape_enrich` performs live vendor I/O too (it POSTs a
+            // v2.58.0 — `scrape_enrich` performs live vendor I/O too (it POSTs a
             // contact query to an enrichment endpoint), so `network` is mandatory.
             "scrape_http" | "scrape_crawl" | "scrape_enrich" => {
                 require(self, "network", "it performs live network I/O");
@@ -3263,9 +3263,9 @@ impl<'a> TypeChecker<'a> {
     }
 
     fn check_tool(&mut self, node: &ToolDefinition) {
-        // ── §Fase 114.b — `provider:` is a CLOSED catalog ────────────────────
+        // ── v2.69.0 — `provider:` is a CLOSED catalog ────────────────────
         //
-        // Until §114 `provider:` was a **free string with no membership check**.
+        // Until v2.69.0 `provider:` was a **free string with no membership check**.
         // The same disease `resource.kind` had — and worse here, because of what
         // the runtime does with an unrecognised value:
         //
@@ -3276,7 +3276,7 @@ impl<'a> TypeChecker<'a> {
         // On the one primitive whose entire purpose is that an action's result is
         // born with an honest epistemic status, a typo produced an invented one.
         // *When the evidence is missing, substitute the belief and report
-        // agreement* — the §112 defect, on the tool surface.
+        // agreement* — the v2.67.0 defect, on the tool surface.
         //
         // An EMPTY provider stays legitimate: it means **LLM-routed** (the tool
         // IS the model — a `Summarize`, a `Classify`). That is a real, declared
@@ -3298,9 +3298,9 @@ impl<'a> TypeChecker<'a> {
             );
         }
 
-        // ── §Fase 114.c — the CHANNEL is governed, not just the action ────────
+        // ── v2.69.0 — the CHANNEL is governed, not just the action ────────
         //
-        // `tool.runtime` was the THIRD island (§113's census). An absolute
+        // `tool.runtime` was the THIRD island (v2.67.0's census). An absolute
         // `runtime: "https://api.vendor.com"` is used VERBATIM as the endpoint
         // (`tool_registry.rs`), opening a real production connection with **no
         // lifetime, no capacity, no shield, no certainty_floor** — and until now
@@ -3352,17 +3352,17 @@ impl<'a> TypeChecker<'a> {
             }
         }
 
-        // §Fase 84.c — Remote Hands technician-command laws (T858–T862). Inert
+        // v2.39.0 — Remote Hands technician-command laws (T858–T862). Inert
         // for any tool that does not set `target:`/`risk:`/`argv:`.
         self.check_technician_tool(node);
-        // §Fase 98.d — Native Web Acquisition laws (T904–T907, T909). Inert
+        // v2.52.0 — Native Web Acquisition laws (T904–T907, T909). Inert
         // for any tool whose `provider:` is not a scrape engine and which
         // declares no `scrape:` block.
         self.check_scrape_tool(node);
-        // §Fase 85.c — cache-reference resolution + non-pure-needs-ttl.
+        // v2.40.0 — cache-reference resolution + non-pure-needs-ttl.
         self.check_tool_cache_ref(node);
-        // §Fase 94.c (axon-T902) — the dispatch-injection `secret:` laws.
-        // Inert when unset (every pre-§94 tool).
+        // v2.48.0 (axon-T902) — the dispatch-injection `secret:` laws.
+        // Inert when unset (every pre-v2.48.0 tool).
         if !node.secret.is_empty() {
             // Key shape — the compile-time SecretKeyPolicy mirror (the T850
             // charset, verbatim): first char `[a-z0-9]`, rest `[a-z0-9_.-]`,
@@ -3406,9 +3406,9 @@ impl<'a> TypeChecker<'a> {
                 );
             }
         }
-        // §Fase 95.a (axon-T903) — the `secret_partition:` laws (doctrine
-        // `selection_without_revelation`). Inert when unset (every §94 and
-        // pre-§94 tool). The partition names one of THIS tool's own
+        // v2.49.0 (axon-T903) — the `secret_partition:` laws (doctrine
+        // `selection_without_revelation`). Inert when unset (every v2.48.0 and
+        // pre-v2.48.0 tool). The partition names one of THIS tool's own
         // parameters whose value is appended as a single key SEGMENT to
         // `secret:` at dispatch — so the resolved custody key stays inside
         // the tool's compile-time-pinned class, and only a bounded,
@@ -3504,7 +3504,7 @@ impl<'a> TypeChecker<'a> {
         }
         if let Some(ref eff) = node.effects {
             for e in &eff.effects {
-                // §Fase 53.c — an extension-declared provenance member is
+                // v2.5.0 — an extension-declared provenance member is
                 // accepted VERBATIM (the full entry, e.g.
                 // "epistemic:believe"). Provenance-class: it carries no
                 // runtime capability (invariant #2), so the canonical
@@ -3517,8 +3517,8 @@ impl<'a> TypeChecker<'a> {
                     Some((b, q)) => (b, Some(q)),
                     None => (e.as_str(), None),
                 };
-                // §Fase 100.d — `ingest:<class>` is the parse/infer provenance
-                // annotation (D100.1), NOT an effect base (D100.3) — accepted
+                // v2.54.0 — `ingest:<class>` is the parse/infer provenance
+                // annotation, NOT an effect base — accepted
                 // verbatim like `epistemic:`, only the class is catalog-checked.
                 if base == "ingest" {
                     match qualifier {
@@ -3548,7 +3548,7 @@ impl<'a> TypeChecker<'a> {
                     );
                     continue;
                 }
-                // §λ-L-E Fase 11.a — qualifier enforcement for the
+                // v1.4.0 — qualifier enforcement for the
                 // stream + trust effects. Both REQUIRE a qualifier
                 // from their closed catalogue. Missing or unknown
                 // qualifiers are compile errors.
@@ -3604,7 +3604,7 @@ impl<'a> TypeChecker<'a> {
                             }
                         }
                     },
-                    // §λ-L-E Fase 11.c — `sensitive:<category>` tags
+                    // v1.4.0 — `sensitive:<category>` tags
                     // effects that touch regulated data. The category
                     // is an open taxonomy (adopters write
                     // `sensitive:health_data`, `sensitive:financial_txn`
@@ -3628,7 +3628,7 @@ impl<'a> TypeChecker<'a> {
                             );
                         }
                     }
-                    // §λ-L-E Fase 11.c — `legal:<basis>` declares the
+                    // v1.4.0 — `legal:<basis>` declares the
                     // legal basis authorising a sensitive effect. The
                     // basis catalogue is CLOSED.
                     "legal" => match qualifier {
@@ -3657,7 +3657,7 @@ impl<'a> TypeChecker<'a> {
                             }
                         }
                     },
-                    // §λ-L-E Fase 11.e — OTS subkinds:
+                    // v1.4.0 — OTS subkinds:
                     //   ots:transform:<from>:<to>  → kind-pair
                     //   ots:backend:<native|ffmpeg> → closed backend catalogue
                     "ots" => match qualifier {
@@ -3736,13 +3736,13 @@ impl<'a> TypeChecker<'a> {
                     &node.loc,
                 );
             }
-            // §Fase 100.d (axon-T1001) — the Inferred ceiling (D100.1): a tool
+            // v2.54.0 (axon-T1001) — the Inferred ceiling: a tool
             // producing `ingest:inferred` content (OCR/vision — a model's belief
             // about pixels) may NEVER declare `epistemic:know`. `know` asserts
             // the value is re-derivable; an inferred read is not — a different
             // engine/version/rotation answers differently. Its hard ceiling is
-            // `believe`. (No producer ships in §100 — this rule stands ready for
-            // §101, D100.14.)
+            // `believe`. (No producer ships in v2.54.0 — this rule stands ready for
+            // v2.54.0, the design decision.)
             if eff.effects.iter().any(|e| e == "ingest:inferred")
                 && eff.epistemic_level == "know"
             {
@@ -3758,7 +3758,7 @@ impl<'a> TypeChecker<'a> {
             }
         }
 
-        // §λ-L-E Fase 11.a — tool output/input trust coherence.
+        // v1.4.0 — tool output/input trust coherence.
         // When a tool's declared effects announce a trust proof, we
         // don't (yet) propagate it into the return-type refinement
         // since tools don't carry explicit return TypeExprs in this
@@ -3769,7 +3769,7 @@ impl<'a> TypeChecker<'a> {
         // flows that use it inherit the obligation — enforced in
         // `check_flow`.
 
-        // §λ-L-E Fase 11.c — tool-level sensitive/legal coherence.
+        // v1.4.0 — tool-level sensitive/legal coherence.
         // A tool declaring `sensitive:<category>` MUST also declare
         // at least one `legal:<basis>` from the closed catalogue.
         // Declaring `legal:<basis>` without a `sensitive:<category>`
@@ -3824,7 +3824,7 @@ impl<'a> TypeChecker<'a> {
                 );
             }
 
-            // §λ-L-E Fase 11.e — HIPAA processing MUST stay in-process.
+            // v1.4.0 — HIPAA processing MUST stay in-process.
             // Spawning ffmpeg crosses a process boundary the auditor
             // cannot observe; the ePHI disclosure the BAA doesn't
             // cover. Rejected at compile time, per the same closed
@@ -3847,7 +3847,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 70.b — infer the static type of a pure expression, emitting
+    /// v2.26.0 — infer the static type of a pure expression, emitting
     /// `axon-T81x` on a type error. `scope` maps in-scope names (flow params)
     /// to their AXON type name; a name not in scope (or an unrecognised type)
     /// is `Unknown` and never errors. Errors are located at the enclosing
@@ -3865,7 +3865,7 @@ impl<'a> TypeChecker<'a> {
             Expr::Lit(ExprLit::Float(_)) => T::Float,
             Expr::Lit(ExprLit::Bool(_)) => T::Bool,
             Expr::Lit(ExprLit::Str(_)) => T::Str,
-            // §Fase 119.o — a `let` types as its BODY, under a scope extended
+            // v2.83.0 — a `let` types as its BODY, under a scope extended
             // with the binding. Inferring the value and then discarding it
             // would leave every reference to the bound name `Unknown`, so a
             // `logic { let ratio = a / b  return ratio * 100 }` would type-check
@@ -3878,7 +3878,7 @@ impl<'a> TypeChecker<'a> {
                 self.infer_expr(body, &inner, loc)
             }
             Expr::Ref(p) => {
-                // §Fase 73.e — per §70.d a plain dotted path stays a FLAT
+                // v2.26.0 — per v2.26.0 a plain dotted path stays a FLAT
                 // `Ref` (`profile.age`, not a Field node). When its ROOT is a
                 // `Json<T>` lens param, walk the segments against `T`'s shape:
                 // a known field resolves to its declared type, an undeclared
@@ -3927,7 +3927,7 @@ impl<'a> TypeChecker<'a> {
                 T::Bool
             }
             Expr::Call(builtin, args) => {
-                // §Fase 70.c — arity (T813) + receiver/arg type (T814) + result.
+                // v2.26.0 — arity (T813) + receiver/arg type (T814) + result.
                 let extra = builtin.extra_arity();
                 let got_extra = args.len().saturating_sub(1);
                 if args.is_empty() || got_extra != extra {
@@ -4007,7 +4007,7 @@ impl<'a> TypeChecker<'a> {
                         }
                         T::Bool
                     }
-                    // §Fase 73.c — the honest coercion accessors. They are
+                    // v2.26.0 — the honest coercion accessors. They are
                     // TOTAL over any value (a type mismatch fail-closes to
                     // null at runtime), so there is no receiver-type error
                     // to raise: the accessor IS the boundary where the
@@ -4022,7 +4022,7 @@ impl<'a> TypeChecker<'a> {
                 }
             }
             Expr::Field(base, field) => {
-                // §Fase 70.d — field access. The field's type is not statically
+                // v2.26.0 — field access. The field's type is not statically
                 // known (JSON/dynamic) → `Unknown` (permissive). Accessing a
                 // field of a known scalar (number/bool) is a type error.
                 let tb = self.infer_expr(base, scope, loc);
@@ -4035,7 +4035,7 @@ impl<'a> TypeChecker<'a> {
                         loc,
                     );
                 }
-                // §Fase 73.e — when the base is a `Json<T>` lens, the field is
+                // v2.26.0 — when the base is a `Json<T>` lens, the field is
                 // checked against `T`'s declared shape: a known field resolves
                 // to its declared scalar type (so `profile.age >= 18` is a
                 // well-typed Int comparison), an undeclared field is
@@ -4069,7 +4069,7 @@ impl<'a> TypeChecker<'a> {
                 T::Unknown
             }
             Expr::Index(base, index) => {
-                // §Fase 70.d — index access. Result type unknown (dynamic).
+                // v2.26.0 — index access. Result type unknown (dynamic).
                 let tb = self.infer_expr(base, scope, loc);
                 let _ = self.infer_expr(index, scope, loc);
                 if matches!(tb, T::Int | T::Float | T::Bool) {
@@ -4171,19 +4171,19 @@ impl<'a> TypeChecker<'a> {
     }
 
     fn check_flow(&mut self, node: &FlowDefinition) {
-        // §Fase 38.d (D2) — capture the flow's parameter-name → type
+        // v1.31.0 (D2) — capture the flow's parameter-name → type
         // map for the duration of this flow's body check. Cleared
         // before/after so one flow's params can't leak into another's
-        // §38.d proof.
+        // v1.31.0 proof.
         self.current_flow_params = crate::store_column_proof::FlowParamTypes::new();
         for param in &node.parameters {
             self.current_flow_params
                 .insert(param.name.clone(), param.type_expr.name.clone());
         }
-        // §Fase 92.b — one flow's mint bindings never leak into another's
+        // v2.46.0 — one flow's mint bindings never leak into another's
         // T896 scan.
         self.current_mint_bindings.clear();
-        // §Fase 73.e — capture the FULL type spelling (incl. the generic the
+        // v2.26.0 — capture the FULL type spelling (incl. the generic the
         // bare map above drops) so the `Json<T>` lens can resolve `T`.
         self.current_flow_param_spellings.clear();
         for param in &node.parameters {
@@ -4225,7 +4225,7 @@ impl<'a> TypeChecker<'a> {
         // Tier 2 flow step reference checks
         self.check_flow_steps(&node.body, &node.name);
 
-        // §λ-L-E Fase 11.a — Temporal Algebraic Effects + Trust
+        // v1.4.0 — Temporal Algebraic Effects + Trust
         // Types. Enforce two contracts at the flow level:
         //
         //   1. Stream<T> in parameter/return obliges the flow's body
@@ -4239,17 +4239,17 @@ impl<'a> TypeChecker<'a> {
         //      without verification.
         self.check_refinement_and_stream_contracts(node);
 
-        // §Fase 98.d (axon-T908) — the content-injection barrier: a
+        // v2.52.0 (axon-T908) — the content-injection barrier: a
         // `web`-tainted value reaching an agent's belief context without an
-        // intervening shield is a compile error (D98.1 — the §84 command-
+        // intervening shield is a compile error (the design decision — the v2.39.0 command-
         // injection discipline applied to fetched content).
         self.check_content_injection_barrier(node);
     }
 
-    /// §Fase 98.d (axon-T908) — the content-injection barrier. The web is
+    /// v2.52.0 (axon-T908) — the content-injection barrier. The web is
     /// adversarial and the type system knows it: if a flow reaches a
     /// web-acquisition tool (a value carrying the `web` effect, born Untrusted
-    /// — D98.1) AND drives a cognitive/agent step (a belief position), then it
+    /// the design decision) AND drives a cognitive/agent step (a belief position), then it
     /// MUST also apply a `shield` — otherwise scraped content reaches the
     /// agent's beliefs unscanned. Sound + conservative (flow-granularity),
     /// mirroring the established `Untrusted<T>` → `trust:<proof>` obligation.
@@ -4263,11 +4263,11 @@ impl<'a> TypeChecker<'a> {
         let mut tool_effects: std::collections::HashMap<String, Vec<String>> =
             std::collections::HashMap::new();
         self.collect_tool_effects(&self.program.declarations, &mut tool_effects);
-        // §Fase 100.d (D100.2) — an ingress producer is a tool that acquires
-        // ADVERSARIAL content the runtime did not author: `web` (scraping, §98)
-        // OR `ingest:*` (an ingested document, §100). Both are born Untrusted
+        // v2.54.0 — an ingress producer is a tool that acquires
+        // ADVERSARIAL content the runtime did not author: `web` (scraping, v2.52.0)
+        // OR `ingest:*` (an ingested document, v2.54.0). Both are born Untrusted
         // and cannot reach an agent's beliefs without a shield — the SAME
-        // barrier (§98.f reused verbatim).
+        // barrier (v2.52.0 reused verbatim).
         let is_web_tool = |name: &str| -> bool {
             tool_effects
                 .get(name)
@@ -4406,7 +4406,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    // ── §λ-L-E Fase 11.a — refinement + stream flow-level checks ─
+    // ── v1.4.0 — refinement + stream flow-level checks ─
 
     fn check_refinement_and_stream_contracts(&mut self, flow: &FlowDefinition) {
         // Scan flow signature for the refinement / stream markers.
@@ -4941,9 +4941,9 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 71.a — validate a temporal execution-window guard. Timezone is
+    /// v2.27.0 — validate a temporal execution-window guard. Timezone is
     /// format-checked here (the frontend is zero-dependency); full IANA
-    /// membership is the runtime's job (§71.b, chrono-tz).
+    /// membership is the runtime's job (v2.27.0, chrono-tz).
     fn check_window(&mut self, node: &WindowDefinition) {
         let tz = node.timezone.trim();
         let tz_ok =
@@ -5005,7 +5005,7 @@ impl<'a> TypeChecker<'a> {
                 &node.loc,
             );
         }
-        // §Fase 71.e — each `exclude:` holiday must be a real ISO `YYYY-MM-DD`
+        // v2.27.0 — each `exclude:` holiday must be a real ISO `YYYY-MM-DD`
         // calendar date. Validated at compile time (no Feb 30, leap-year aware) so
         // the window decision is a pure, replayable function of literal inputs.
         for date in &node.exclude {
@@ -5022,7 +5022,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 72.a — validate a `budget { … }` block: a non-empty set of quotas,
+    /// v2.28.0 — validate a `budget { … }` block: a non-empty set of quotas,
     /// each over a declared tool, a positive limit, a closed-catalog period; plus
     /// a closed-catalog exhaustion policy.
     fn check_budget(&mut self, node: &BudgetBlock, daemon_name: &str) {
@@ -5096,7 +5096,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 86.c — Resolve an anchor declaration by name.
+    /// v2.41.0 — Resolve an anchor declaration by name.
     fn find_anchor(&self, name: &str) -> Option<&'a AnchorConstraint> {
         self.program.declarations.iter().find_map(|d| match d {
             Declaration::Anchor(a) if a.name == name => Some(a),
@@ -5104,7 +5104,7 @@ impl<'a> TypeChecker<'a> {
         })
     }
 
-    /// §Fase 86.c — Directed Creative Synthesis laws for a `forge` block:
+    /// v2.41.0 — Directed Creative Synthesis laws for a `forge` block:
     /// - **axon-T868** — `mode:` must be in the closed Boden catalog (empty ⇒
     ///   the `exploratory` default, allowed).
     /// - **axon-T869** — `novelty:` in `[0.0, 1.0]`.
@@ -5211,11 +5211,11 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 123 (`axon-T1214`) — **every declared regulatory class must be in Κ.**
+    /// v4.0.0 (`axon-T1214`) — **every declared regulatory class must be in Κ.**
     ///
     /// # The promise this keeps
     ///
-    /// The ESK paper §6.1 states it as a compile-time rule: *"Cualquier etiqueta
+    /// The ESK paper section 6.1 states it as a compile-time rule: *"Cualquier etiqueta
     /// fuera de Κ es compile-time error (typos como `HIPPA` rechazados)"*, and
     /// cites a Python test. It was true in the retired interpreter and did not
     /// survive the Rust rewrite — not by decision, but because the canonical
@@ -5225,7 +5225,7 @@ impl<'a> TypeChecker<'a> {
     ///
     /// So `compliance:` became a free-string field while `effects:` in the same
     /// declaration stayed closed. Measured 2026-08-14:
-    /// `compliance: [NOT_A_FRAMEWORK]` compiled clean. §123 moved the vocabulary
+    /// `compliance: [NOT_A_FRAMEWORK]` compiled clean. v4.0.0 moved the vocabulary
     /// to [`crate::compliance`] and this is the law it enables.
     ///
     /// # Why a typo here is worse than a typo elsewhere
@@ -5293,13 +5293,13 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 85.c — validate one `cache { … }` declaration's own fields. The
+    /// v2.40.0 — validate one `cache { … }` declaration's own fields. The
     /// cross-declaration laws (single default `axon-T863`, effect-widening
     /// `axon-W013`) live in [`Self::check_cache_module_laws`]; the reference
     /// checks on `tool.cache:` / `retrieve.cache:` live in [`Self::check_tool`]
     /// and the flow-step walker.
     fn check_cache(&mut self, node: &CacheDefinition) {
-        // §Fase 122.d (`axon-T1213`, half two of two) — `apply_to_effects:` may
+        // v2.89.0 (`axon-T1213`, half two of two) — `apply_to_effects:` may
         // not widen to cover streams.
         //
         // The two halves together are what make the law airtight, and it is
@@ -5310,7 +5310,7 @@ impl<'a> TypeChecker<'a> {
         // the second at the CACHE — and it closes it without re-deriving
         // eligibility here, which matters: duplicating `resolve_tool_cache`'s
         // precedence rules in the checker would create a second copy of the law
-        // that drifts from the first, which is the §120 defect this project has
+        // that drifts from the first, which is the v2.87.0 defect this project has
         // now paid for twice.
         //
         // A streaming tool's effect base is `stream`, and the implicit default
@@ -5361,7 +5361,7 @@ impl<'a> TypeChecker<'a> {
             }
         }
 
-        // axon-T865 — a NON-PURE cache MUST carry a finite `ttl:` (D85.9). You
+        // axon-T865 — a NON-PURE cache MUST carry a finite `ttl:`. You
         // may cache a provably-deterministic (`pure`) result forever; caching a
         // non-deterministic one forever is the footgun the compiler forbids.
         if !cache_effects_are_pure_only(&node.apply_to_effects) && node.ttl.is_none() {
@@ -5377,7 +5377,7 @@ impl<'a> TypeChecker<'a> {
         }
 
         // axon-T864 — every `invalidate_on:` reference resolves to a declared
-        // `channel` (reusing the §13 pub/sub, not a second mechanism).
+        // `channel` (reusing the v1.6.0 pub/sub, not a second mechanism).
         for ch in &node.invalidate_on {
             match self.symbols.lookup(ch) {
                 None => self.emit(
@@ -5399,15 +5399,15 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 83.c — validate one `cors { … }` declaration's own fields
+    /// v2.38.0 — validate one `cors { … }` declaration's own fields
     /// (cross-declaration checks — the undefined-reference check on
     /// `axonendpoint.cors:` and the cross-method path-consistency check —
     /// live in [`Self::check_axonendpoint`] and
-    /// §Fase 92.a — the credential contract's own-field laws. Slug validity
+    /// v2.46.0 — the credential contract's own-field laws. Slug validity
     /// already ran at parse (the `requires:` grammar); here: a contract that
     /// grants nothing is dead (`axon-T893`), and the TTL must be a parseable
     /// duration, > 0, and ≤ the closed 24h ceiling (`axon-T894` — an
-    /// "ephemeral" credential that outlives a day is a §81 service account
+    /// "ephemeral" credential that outlives a day is a v2.46.0 service account
     /// wearing a costume). The mint-time attenuation law
     /// (`grants ⊆ capabilities(minter)`) is the runtime's half.
     fn check_credential(&mut self, node: &crate::ast::CredentialDefinition) {
@@ -5473,8 +5473,8 @@ impl<'a> TypeChecker<'a> {
 
         // axon-T853 — the CORS spec forbids any-origin + credentials;
         // browsers already reject this combination silently at runtime.
-        // Caught here, before deploy, with the spec rule named (D83.2 —
-        // the flagship diagnostic this fase exists to catch).
+        // Caught here, before deploy, with the spec rule named (the design decision —
+        // the flagship diagnostic this cycle exists to catch).
         let any_origin = node.allow_origins.iter().any(|o| o == "*");
         if any_origin && node.allow_credentials {
             self.emit(
@@ -5507,12 +5507,12 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 83.c (`axon-T857`, D83.4) — every `axonendpoint` sharing the
+    /// v2.38.0 (`axon-T857`, the design decision) — every `axonendpoint` sharing the
     /// same `path:` (differing only by `method:`) must reference the SAME
     /// `cors:` declaration, or all leave it unset. A browser's preflight is
     /// per-PATH, not per-method — divergent policies on the same path are
     /// inherently ambiguous (whose `max_age` wins? whose `expose_headers`?);
-    /// v1 requires consistency instead of a merged/union preflight (§5).
+    /// v1 requires consistency instead of a merged/union preflight (section 5).
     /// Cross-declaration, so it runs AFTER the per-declaration walk, once
     /// every endpoint's final `path`/`cors_ref` is known.
     fn check_cors_cross_method_consistency(&mut self, decls: &[Declaration]) {
@@ -5558,9 +5558,9 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    // ── §Fase 99.c/99.d — Native Document Synthesis checker ─────────────────
+    // ── v2.53.0 — Native Document Synthesis checker ─────────────────
 
-    /// §Fase 99.c + 99.d — validate one `document { … }` declaration:
+    /// v2.53.0 — validate one `document { … }` declaration:
     /// (99.c) structure — `target`/`provenance` catalogs, the per-`target` block
     /// vocabulary, chart-kind catalog, required fields, formula/range shape; and
     /// (99.d) the assertion-laundering barrier — an assertive-slot flow-value
@@ -5605,7 +5605,7 @@ impl<'a> TypeChecker<'a> {
             );
         }
 
-        // (T913) sensitive⇒legal propagation on the render's effect row (D99.4).
+        // (T913) sensitive⇒legal propagation on the render's effect row.
         let bases: std::collections::HashSet<String> = node
             .effects
             .as_ref()
@@ -5635,7 +5635,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 108.d — a declared dataspace's columns as OWNED
+    /// v2.63.0 — a declared dataspace's columns as OWNED
     /// `(name, declared_type)` pairs (for the T930 column checks).
     /// `None` ⇒ not declared as a dataspace.
     fn dataspace_columns(&self, name: &str) -> Option<Vec<(String, String)>> {
@@ -5650,7 +5650,7 @@ impl<'a> TypeChecker<'a> {
         })
     }
 
-    /// §Fase 108.d (`axon-T930`, shared law) — the four query verbs read
+    /// v2.63.0 (`axon-T930`, shared law) — the four query verbs read
     /// a DECLARED dataspace. Returns the violation message when the
     /// target does not resolve (owned — no borrow survives).
     fn dataspace_target_error(&self, verb: &str, target: &str) -> Option<String> {
@@ -5680,7 +5680,7 @@ impl<'a> TypeChecker<'a> {
         ))
     }
 
-    /// §Fase 108.b — validate a `dataspace` declaration: the schema law
+    /// v2.63.0 — validate a `dataspace` declaration: the schema law
     /// (`axon-T928`). A dataspace IS its schema — the deterministic engine
     /// materializes one physical columnar buffer per declared column, so a
     /// declaration the engine cannot materialize is refused at compile time:
@@ -5688,7 +5688,7 @@ impl<'a> TypeChecker<'a> {
     ///   1. **empty schema** — a dataspace with no columns can never be
     ///      ingested into or queried; it is a lie-in-waiting.
     ///   2. **duplicate column** — one name, one buffer.
-    ///   3. **unknown column type** — the catalog is CLOSED (D108.1: Text,
+    /// 3. **unknown column type** — the catalog is CLOSED (the design decision: Text,
     ///      Int, Float, Bool, Timestamp, Json — each mapping 1:1 to a
     ///      physical layout). Misses get a smart-suggest hint.
     ///
@@ -5755,7 +5755,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 110 — validate a `notify` declaration: the three laws of
+    /// v2.66.0 — validate a `notify` declaration: the three laws of
     /// governed human notification.
     ///
     ///   T933 (evidence): a `provenance: cleared` notify whose template
@@ -5765,7 +5765,7 @@ impl<'a> TypeChecker<'a> {
     ///   consequence: a human acts immediately).
     ///
     ///   T934 (structure): closed channel catalog; the recipient MUST be
-    ///   a §94 secret-class ref (`to: secret(<class>)`) — a literal
+    /// a v2.48.0 secret-class ref (`to: secret(<class>)`) — a literal
     ///   phone/chat-id in source is PII where PII must never live;
     ///   template non-empty; `effects:` must include `web`.
     ///
@@ -5783,7 +5783,7 @@ impl<'a> TypeChecker<'a> {
                 &node.loc,
             );
         }
-        // (T934) recipient custody — the compile law (D110.3).
+        // (T934) recipient custody — the compile law.
         if !node.to_is_secret {
             self.emit(
                 format!(
@@ -5813,7 +5813,7 @@ impl<'a> TypeChecker<'a> {
                 &node.loc,
             );
         }
-        // (T935) the mandatory window (D110.4).
+        // (T935) the mandatory window.
         let window_ok = {
             let w = node.window.trim();
             !w.is_empty()
@@ -5832,7 +5832,7 @@ impl<'a> TypeChecker<'a> {
                 &node.loc,
             );
         }
-        // (T933) the evidence barrier (D110.2).
+        // (T933) the evidence barrier.
         let binds_flow_values = node.template.contains("${");
         let cleared = node.provenance == "cleared";
         if !node.provenance.is_empty() && !matches!(node.provenance.as_str(), "attached" | "cleared") {
@@ -5853,8 +5853,8 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 105 — validate a `deliver` declaration: structure laws (T921–T926)
-    /// + the provenance-stripping barrier (T920), the egress-dual of the §99
+    /// v2.60.0 — validate a `deliver` declaration: structure laws (T921–T926)
+    /// + the provenance-stripping barrier (T920), the egress-dual of the v2.53.0
     /// assertion-laundering barrier. A CRM write publishes assertions into a
     /// system of record downstream humans treat as fact; a `provenance: cleared`
     /// delivery of a flow value is laundering unless the author vouches (an
@@ -5885,7 +5885,7 @@ impl<'a> TypeChecker<'a> {
             );
         }
         // (T923) a delivery MUST name the per-tenant credential key — a CRM write
-        // authenticates, and the value rides §94 custody (never cognition).
+        // authenticates, and the value rides v2.48.0 custody (never cognition).
         if node.secret.trim().is_empty() {
             self.emit(
                 format!(
@@ -5898,7 +5898,7 @@ impl<'a> TypeChecker<'a> {
             );
         }
         // (T924) the effect row must include `web` — a CRM write crosses the
-        // trust boundary over the network (the §98 discipline, egress form).
+        // trust boundary over the network (the v2.52.0 discipline, egress form).
         let bases: std::collections::HashSet<String> = node
             .effects
             .as_ref()
@@ -5921,7 +5921,7 @@ impl<'a> TypeChecker<'a> {
             );
         }
         // (T913-analog) sensitive⇒legal propagation — a delivery is an egress
-        // boundary (D105.6): sensitive data leaving into a CRM needs a legal basis.
+        // boundary: sensitive data leaving into a CRM needs a legal basis.
         if bases.contains("sensitive") && !bases.contains("legal") {
             self.emit(
                 format!(
@@ -6005,7 +6005,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 99.c/d — recursively validate one document block.
+    /// v2.53.0 — recursively validate one document block.
     fn check_doc_block(
         &mut self,
         doc: &crate::ast::DocumentDefinition,
@@ -6094,7 +6094,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 99.c — per-block-kind structural laws (required fields, catalogs,
+    /// v2.53.0 — per-block-kind structural laws (required fields, catalogs,
     /// cell/range shape). Each a distinct `axon-T9xx`.
     fn check_doc_block_laws(
         &mut self,
@@ -6115,7 +6115,7 @@ impl<'a> TypeChecker<'a> {
         };
         match block.kind.as_str() {
             "chart" => {
-                // (T917) chart kind ∈ the bounded subset (D99.9).
+                // (T917) chart kind ∈ the bounded subset.
                 if let Some(DocScalar::Ref(k)) = block.field("kind") {
                     if !is_valid(k, VALID_CHART_KINDS) {
                         self.emit(
@@ -6188,16 +6188,16 @@ impl<'a> TypeChecker<'a> {
         // binds a `series`. Both are covered by the required-field laws above.
     }
 
-    /// §Fase 87.b — validate one `savant { … }` declaration's own fields. Ref
-    /// resolution (`memory.backend` → a declared `memory`/`corpus`), §72 budget
-    /// binding, and §79 interruptibility are §87.c; the `SavantSoundness` PCC is
-    /// §87.g. Every diagnostic here is a HARD error — a savant governs an
+    /// v2.42.0 — validate one `savant { … }` declaration's own fields. Ref
+    /// resolution (`memory.backend` → a declared `memory`/`corpus`), v2.28.0 budget
+    /// binding, and v2.36.0 interruptibility are v2.42.0; the `SavantSoundness` PCC is
+    /// v2.42.0. Every diagnostic here is a HARD error — a savant governs an
     /// expensive, weeks-long autonomous process, so an under-specified one must
     /// never deploy silently.
     fn check_savant(&mut self, node: &SavantDefinition) {
         // axon-T873 — a savant MUST declare its ontological `domain:` (the
         // generative boundary the free-energy loop minimises surprise over). An
-        // empty domain is an unbounded mandate — the exact footgun §87 forbids.
+        // empty domain is an unbounded mandate — the exact footgun v2.42.0 forbids.
         if node.domain.trim().is_empty() {
             self.emit(
                 format!(
@@ -6288,7 +6288,7 @@ impl<'a> TypeChecker<'a> {
             }
         }
 
-        // ── §87.c — composition binding ──────────────────────────────────────
+        // ── v2.42.0 — composition binding ──────────────────────────────────────
 
         // axon-T875 — a declared `memory.backend:` MUST resolve to a `memory` or
         // `corpus` primitive (the retention layer the savant composes; mirrors
@@ -6320,10 +6320,10 @@ impl<'a> TypeChecker<'a> {
         }
 
         // axon-T877 — a savant MUST declare a compute `budget { max_iterations: N }`
-        // with N > 0. This is the §72 linear-budget discipline (paper §9.2): an
+        // with N > 0. This is the v2.28.0 linear-budget discipline (paper section 9.2): an
         // autonomous loop that can run for weeks, write code and self-execute it
-        // with NO enforced ceiling is uninsurable. §87.k binds this to a real
-        // `RateLease`; §87.c makes the ceiling non-optional at the type level.
+        // with NO enforced ceiling is uninsurable. v2.42.0 binds this to a real
+        // `RateLease`; v2.42.0 makes the ceiling non-optional at the type level.
         // axon-T877 — the same predicate as the agent's axon-T1216
         // (`iteration_ceiling_defect`): one definition of "bounded".
         match &node.budget {
@@ -6345,7 +6345,7 @@ impl<'a> TypeChecker<'a> {
         // it must be a `type` (a report cannot inhabit a flow/memory). Unknown
         // names are accepted silently — they may be builtins (`Text`, `Json`) or
         // imported types (the house "soft type" discipline, type_checker.rs
-        // §8368/§8659). A clearly-wrong declared reference is still caught.
+        // section 8368/section 8659). A clearly-wrong declared reference is still caught.
         for m in &node.mandates {
             if let Some(sym) = self.symbols.lookup(&m.output_type) {
                 if sym.kind != "type" {
@@ -6362,7 +6362,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 87.d — validate one `synth { … }` dynamic tool-synthesis policy.
+    /// v2.42.0 — validate one `synth { … }` dynamic tool-synthesis policy.
     /// Every diagnostic is a HARD error: a synth policy governs arbitrary-code
     /// execution — the highest-stakes surface in the language — so an
     /// under-specified or unsafe one must never compile. The deny-by-default
@@ -6419,7 +6419,7 @@ impl<'a> TypeChecker<'a> {
 
         // axon-T882 — DENY-BY-DEFAULT: `sandbox:` MUST be `wasm`. Executing
         // synthesised code outside a zero-trust WASM sandbox is forbidden; an
-        // empty or non-`wasm` sandbox can never compile (paper §6.2, §8.3). The
+        // empty or non-`wasm` sandbox can never compile (paper section 6.2, section 8.3). The
         // OSS `SynthBackend` reference refuses execution regardless — this gate
         // stops an adopter from *declaring* an unsandboxed policy at all.
         if node.sandbox != "wasm" {
@@ -6463,14 +6463,14 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 88.b — validate one `scope { … }` authorization policy's own
+    /// v2.43.0 — validate one `scope { … }` authorization policy's own
     /// fields. The `warden`-side binding (the scope reference resolves + the
-    /// target is in this allowlist) is §88.c. Every diagnostic is a HARD error:
+    /// target is in this allowlist) is v2.43.0. Every diagnostic is a HARD error:
     /// a scope governs an offensive-capable analysis, so an under-specified one
     /// must never authorise anything.
     fn check_scope(&mut self, node: &ScopeDefinition) {
         // axon-T884 — a scope MUST declare a non-empty `targets:` allowlist. An
-        // empty allowlist is an unbounded authorization — the exact footgun §88
+        // empty allowlist is an unbounded authorization — the exact footgun v2.43.0
         // forbids (a warden could then be pointed at anything).
         if node.targets.is_empty() {
             self.emit(
@@ -6500,7 +6500,7 @@ impl<'a> TypeChecker<'a> {
         }
 
         // axon-T886 — a scope MUST name its `approver:` capability (segregation
-        // of duties, the `mandate` §21 model): who authorised this analysis. An
+        // of duties, the `mandate` v1.13.1 model): who authorised this analysis. An
         // unapproved scope is not an authorization.
         if node.approver.trim().is_empty() {
             self.emit(
@@ -6515,11 +6515,11 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 88.c — the `warden` authorization binding. The grammar already
-    /// forbids an omitted `within` clause (§88.a, fail-closed by construction);
+    /// v2.43.0 — the `warden` authorization binding. The grammar already
+    /// forbids an omitted `within` clause (v2.43.0, fail-closed by construction);
     /// here we enforce that the scope RESOLVES to a declared `scope`. The
     /// target-in-allowlist + depth-ceiling enforcement is a RUNTIME check
-    /// (§88.h): the warden target is a program value whose analysed resource is
+    /// (v2.43.0): the warden target is a program value whose analysed resource is
     /// only known at runtime, so the allowlist match cannot be static — the
     /// honest split (the frontend guarantees a real authorization scope exists;
     /// the enterprise runtime guarantees the resource is inside it).
@@ -6549,13 +6549,13 @@ impl<'a> TypeChecker<'a> {
         self.check_flow_steps(&node.body, flow_name);
     }
 
-    /// §Fase 85.c — the cross-declaration cache laws, run after the
+    /// v2.40.0 — the cross-declaration cache laws, run after the
     /// per-declaration walk (needs the full tool + cache set):
     /// - **axon-T863** — at most one `cache { default: true }` per module.
     /// - **axon-W013** — a widened `default: true` cache (effects beyond
     ///   `[pure]`) names EVERY non-pure tool it ends up auto-covering, so the
-    ///   author sees exactly what determinism they are trusting (D85.2, the
-    ///   §77.a W005 "compiler stops being polite" discipline).
+    /// author sees exactly what determinism they are trusting (the design decision, the
+    /// v2.34.0 W005 "compiler stops being polite" discipline).
     fn check_cache_module_laws(&mut self, decls: &[Declaration]) {
         let defaults: Vec<&CacheDefinition> = decls
             .iter()
@@ -6620,7 +6620,7 @@ impl<'a> TypeChecker<'a> {
     }
 
     fn check_shield(&mut self, node: &ShieldDefinition) {
-        // ── §Fase 111 (T936) — `taint:` is retracted ────────────────────
+        // ── v2.67.0 (T936) — `taint:` is retracted ────────────────────
         //
         // The public README advertised `taint` as a primitive: "Epistemic
         // trust label for untrusted external data sources". It never was one.
@@ -6629,13 +6629,13 @@ impl<'a> TypeChecker<'a> {
         // ever reads it back**. A program that wrote `taint: untrusted`
         // received exactly the protection of a comment.
         //
-        // `primitive_registry` already disowned `taint` in §Fase 6.c ("an
-        // entry without a parser production lies"); §111 makes the language
+        // `primitive_registry` already disowned `taint` in v1.2.0 ("an
+        // entry without a parser production lies"); v2.67.0 makes the language
         // and the advertising agree with the code.
         //
         // The epistemic-taint LAW is real — it just lives somewhere else:
         // values acquired from the outside world are born `Untrusted`
-        // (axon-T908, §98), the lattice degrades on contact, and `shield`
+        // (axon-T908, v2.52.0), the lattice degrades on contact, and `shield`
         // gates egress. That law is enforced whether or not anyone writes
         // this field, which is precisely why the field could rot unnoticed.
         if !node.taint.is_empty() {
@@ -6655,7 +6655,7 @@ impl<'a> TypeChecker<'a> {
 
         // Scan categories
         for cat in &node.scan {
-            // §Fase 53.c — accept an extension-declared scan category as
+            // v2.5.0 — accept an extension-declared scan category as
             // first-class (alongside the canonical catalog).
             if !is_valid(cat, VALID_SCAN_CATEGORIES) && !self.ext_scan_categories.contains(cat) {
                 self.emit(
@@ -6683,12 +6683,12 @@ impl<'a> TypeChecker<'a> {
             );
         }
 
-        // §Fase 114.w — axon-T952: a breach policy must carry its OPERAND, or
+        // v2.69.0 — axon-T952: a breach policy must carry its OPERAND, or
         // it is a promise the runtime cannot run: `deflect` with no message
         // has nothing to emit, `quarantine` with no sink has nowhere to
         // route, `sanitize_and_retry` with no `redact:` fields sanitizes
         // nothing (a retry loop that re-scans the same bytes). Each was
-        // silently accepted before §114.w — and silently `halt`ed.
+        // silently accepted before v2.69.0 — and silently `halt`ed.
         match node.on_breach.as_str() {
             "deflect" if node.deflect_message.is_empty() => self.emit(
                 format!(
@@ -6702,7 +6702,7 @@ impl<'a> TypeChecker<'a> {
             // `quarantine` without a sink is a WARNING, not an error: a large
             // published tail (templates, compliance patterns) declares it, and
             // the runtime has a defined fail-closed meaning for the hole (halt
-            // with a diagnostic naming it) — the pre-§114.w behaviour exactly.
+            // with a diagnostic naming it) — the pre-v2.69.0 behaviour exactly.
             // deflect/sanitize_and_retry differ: without their operand there
             // is NOTHING the runtime could do but halt, so the declaration is
             // pure noise and refusing it costs no working program.
@@ -6785,7 +6785,7 @@ impl<'a> TypeChecker<'a> {
             }
         }
 
-        // §Fase 77.a — `sign:` closed catalog (`axon-T846`). An egress
+        // v2.34.0 — `sign:` closed catalog (`axon-T846`). An egress
         // shield signs with a receiver-verifiable algorithm; anything
         // outside the catalog is an ERROR, not a warning — a misspelled
         // algorithm would ship unsigned deliveries the receiver rejects.
@@ -6801,12 +6801,12 @@ impl<'a> TypeChecker<'a> {
             );
         }
 
-        // §Fase 77.a (`axon-W010`) — fields the parser did not recognize.
+        // v2.34.0 (`axon-W010`) — fields the parser did not recognize.
         // Pre-77 these were silently discarded, so `axon check` blessed
         // programs whose shield grammar the runtime ignores (Kivi brief
-        // #51 §B.3 caught `sign:` this way before it existed). Warning,
+        // #51 B.3 caught `sign:` this way before it existed). Warning,
         // not error: existing adopter programs must keep compiling;
-        // escalation to an error is a major-version decision (D77.5).
+        // escalation to an error is a major-version decision.
         for (field, floc) in &node.unknown_fields {
             self.warn(
                 format!(
@@ -6819,11 +6819,11 @@ impl<'a> TypeChecker<'a> {
             );
         }
 
-        // §Fase 77.a (`axon-W011`) — vacuous shield: an `on_breach:` policy
+        // v2.34.0 (`axon-W011`) — vacuous shield: an `on_breach:` policy
         // with NO enforcement-bearing field can never fire (nothing scans,
         // signs, redacts, or gates — there is no breach to react to). The
         // compile-time mirror of the PCC `shield_halt_guarantee` concern.
-        // A sign-only egress shield is NOT vacuous (D77.6): the signature
+        // A sign-only egress shield is NOT vacuous: the signature
         // is its enforcement.
         let has_enforcement = !node.scan.is_empty()
             || !node.sign.is_empty()
@@ -6881,7 +6881,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 62.0 — `ledger` (the audit chain). Distinct from `check_pix`: the
+    /// v2.12.0 — `ledger` (the audit chain). Distinct from `check_pix`: the
     /// ranges encode AUDIT semantics, not navigation. `depth` is the chain
     /// retention window (≥ 1 row); `branching` is the Merkle factor (0 = flat
     /// linear chain, ≥ 2 = balanced Merkle tree — 1 is degenerate).
@@ -6922,7 +6922,7 @@ impl<'a> TypeChecker<'a> {
     }
 
     fn check_psyche(&mut self, node: &PsycheDefinition) {
-        // §1: ψ ∈ M requires dim(M) ≥ 1
+        // section 1: ψ ∈ M requires dim(M) ≥ 1
         if node.dimensions.is_empty() {
             self.emit(
                 format!(
@@ -6978,7 +6978,7 @@ impl<'a> TypeChecker<'a> {
             .iter()
             .any(|c| c == "non_diagnostic")
         {
-            // §4: non_diagnostic is mandatory
+            // section 4: non_diagnostic is mandatory
             self.emit(
                 format!("Psyche '{}' must include 'non_diagnostic' in safety_constraints (dependent type safety)", node.name),
                 &node.loc,
@@ -7002,7 +7002,7 @@ impl<'a> TypeChecker<'a> {
 
     fn check_corpus(&mut self, node: &CorpusDefinition) {
         // Invariant G1: D ≠ ∅ — at least one document. A store-sourced corpus
-        // (§64.A) satisfies G1 via its documents store (rows = documents).
+        // (v2.14.0) satisfies G1 via its documents store (rows = documents).
         if node.documents.is_empty() && node.mcp_server.is_empty() && node.store_source.is_none() {
             self.emit(
                 format!(
@@ -7013,13 +7013,13 @@ impl<'a> TypeChecker<'a> {
             );
         }
 
-        // §Fase 64.A — dynamic, axonstore-sourced MDN graph
+        // v2.14.0 — dynamic, axonstore-sourced MDN graph
         // (`corpus N from axonstore { documents: S(id,title)  relations: E(from,to,etype,weight) }`).
         if let Some(src) = &node.store_source {
             self.check_corpus_store_source(node, src);
         }
 
-        // §Fase 63.A — MDN relations (typed weighted edges, paper Def 1-3).
+        // v2.13.0 — MDN relations (typed weighted edges, paper Def 1-3).
         for r in &node.relations {
             // τ total on a CLOSED catalog (G3).
             if !is_valid(&r.etype, VALID_CORPUS_RELATIONS) {
@@ -7064,9 +7064,9 @@ impl<'a> TypeChecker<'a> {
             }
         }
 
-        // §Fase 63.C — the memory endofunctor deforms the graph's geometry, so
+        // v2.13.0 — the memory endofunctor deforms the graph's geometry, so
         // `adaptive` is only meaningful on a corpus that HAS a graph: static
-        // `relations:` OR (§64.A) a store-sourced edge store.
+        // `relations:` OR (v2.14.0) a store-sourced edge store.
         if node.adaptive && node.relations.is_empty() && node.store_source.is_none() {
             self.emit(
                 format!(
@@ -7078,13 +7078,13 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 64.A — validate a dynamic, `axonstore`-sourced MDN corpus graph.
-    /// Both backing stores must be declared `axonstore`s; when they carry a §38
+    /// v2.14.0 — validate a dynamic, `axonstore`-sourced MDN corpus graph.
+    /// Both backing stores must be declared `axonstore`s; when they carry a v1.31.0
     /// inline column schema, the mapped columns are validated for existence and
     /// type compatibility (id present; title text-like; edge from/to match the
     /// id type; etype text-like; weight numeric). Stores with a ManifestRef /
     /// EnvVar / no schema defer the column check to the runtime (consistent with
-    /// §38's optional-schema D5). The weight-range invariant `ω ∈ (0, 1]` (G4) is
+    /// v1.31.0's optional-schema D5). The weight-range invariant `ω ∈ (0, 1]` (G4) is
     /// a RUNTIME check here — weights are per-row dynamic, not compile-time.
     fn check_corpus_store_source(&mut self, node: &CorpusDefinition, src: &CorpusStoreSource) {
         use crate::store_schema::{StoreColumn, StoreColumnType};
@@ -7259,24 +7259,24 @@ impl<'a> TypeChecker<'a> {
             );
         }
 
-        // ── §Fase 119.b — ONE admissibility judgment, shared with the runtime ──
+        // ── v2.83.0 — ONE admissibility judgment, shared with the runtime ──
         //
         // These checks used to be five hand-rolled `if let Some(v)` sign tests
         // in this function, while axon-rs carried its own copy of the same
         // arithmetic for the controller. Two copies of a stability judgment is
-        // the §118 smell (a general concept parked where it was first needed),
+        // the v2.81.0 smell (a general concept parked where it was first needed),
         // and worse here: the two could drift, and a mandate the compiler
         // admits could be one the runtime refuses.
         //
         // Now `stability::MandateStatics` is the single source of the
         // judgment. When the declaration carries `stability { D:, L: }`, the
         // full band `D < |Kp+Ki+Kd| < 1/L` is verified — both endpoints
-        // exclusive, per the strict inequalities of paper_mandate §3 and
-        // prompt_opt §6.3. Without it, only the sign conditions apply (they
+        // exclusive, per the strict inequalities of paper_mandate section 3 and
+        // prompt_opt section 6.3. Without it, only the sign conditions apply (they
         // are necessary regardless), and the IR carries no bounds — so the
         // runtime can SEE that nothing was statically promised.
         //
-        // Note also what made this reachable at all: until §119.b.1 the
+        // Note also what made this reachable at all: until v2.83.0 the
         // published `pid { }` / `epsilon:` syntax parsed with every gain
         // silently dropped to `None`, so every `if let Some(v)` below was
         // dead for any README-style mandate. The validation existed and no
@@ -7309,7 +7309,7 @@ impl<'a> TypeChecker<'a> {
     }
 
     fn check_axonstore(&mut self, node: &AxonStoreDefinition) {
-        // ── §Fase 113 — axon-T946: the store names ONE source of truth ───────
+        // ── v2.67.0 — axon-T946: the store names ONE source of truth ───────
         //
         // `resource.endpoint` and `axonstore.connection` are THE SAME FACT
         // DECLARED TWICE — that is the islands finding, in one sentence. A store
@@ -7395,7 +7395,7 @@ impl<'a> TypeChecker<'a> {
             self.check_range(v, 0.0, 1.0, "confidence_floor", &node.loc);
         }
 
-        // §Fase 94.a — the `backend: secrets` placement laws (axon-T900).
+        // v2.48.0 — the `backend: secrets` placement laws (axon-T900).
         // A secrets store is a class-scoped, read-only metadata view over
         // the tenant's secret custody; every field that would make it
         // look like an adopter table is unrepresentable.
@@ -7475,7 +7475,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §λ-L-E Fase 1 — Resource validation.
+    /// v1.1.0 — Resource validation.
     ///
     /// Enforces: (a) lifetime ∈ {linear | affine | persistent}; (b) certainty_floor
     /// ∈ [0.0, 1.0] when present; (c) shield_ref, if non-empty, is a declared shield.
@@ -7523,7 +7523,7 @@ impl<'a> TypeChecker<'a> {
             }
         }
 
-        // ── §Fase 113 ────────────────────────────────────────────────────────
+        // ── v2.67.0 ────────────────────────────────────────────────────────
 
         // axon-T942 — `kind:` is a CLOSED catalog.
         //
@@ -7621,14 +7621,14 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §λ-L-E Fase 1 — Fabric validation.
+    /// v1.1.0 — Fabric validation.
     ///
     /// Enforces: (a) zones ≥ 1 when present; (b) shield_ref, if non-empty,
     /// is a declared shield.
     fn check_fabric(&mut self, node: &FabricDefinition) {
-        // ── §Fase 119.e — axon-E041 region/provider mismatch ────────────────
+        // ── v2.83.0 — axon-E041 region/provider mismatch ────────────────
         //
-        // §111's finding on `fabric`: `provider`/`region`/`zones` were
+        // v2.67.0's finding on `fabric`: `provider`/`region`/`zones` were
         // "consumed by NOTHING". This is the first thing they decide. The
         // knowledge doc names this check by its code and its example:
         // `provider: aws  region: "eastus"` describes a substrate that does
@@ -7690,14 +7690,14 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §λ-L-E Fase 1 — Manifest validation.
+    /// v1.1.0 — Manifest validation.
     ///
     /// Enforces: (a) every name in `resources` refers to a declared resource;
     /// (b) `fabric_ref`, if non-empty, is a declared fabric; (c) no duplicate
     /// resource names within a single manifest (Separation Logic `*` disjointness
     /// within-manifest — cross-manifest aliasing is a separate check).
     fn check_manifest(&mut self, node: &ManifestDefinition) {
-        // ── §Fase 119.e — axon-E042 compliance ↔ substrate jurisdiction ─────
+        // ── v2.83.0 — axon-E042 compliance ↔ substrate jurisdiction ─────
         //
         // The knowledge doc's own example: *"Compliance shields cross-validate
         // this against their declared geographic constraints — e.g. a
@@ -7799,7 +7799,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §λ-L-E Fase 1 — Observe validation.
+    /// v1.1.0 — Observe validation.
     ///
     /// Enforces: (a) `target` refers to a declared manifest; (b) certainty_floor
     /// ∈ [0.0, 1.0] when present; (c) quorum ≥ 1 when present; (d) on_partition
@@ -7879,7 +7879,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §λ-L-E Fase 3 — Reconcile validation.
+    /// v1.1.0 — Reconcile validation.
     ///
     /// Enforces: (a) observe_ref refers to a declared observe; (b) threshold
     /// and tolerance ∈ [0.0, 1.0]; (c) shield_ref / mandate_ref (if present)
@@ -7980,7 +7980,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §λ-L-E Fase 3 — Lease validation.
+    /// v1.1.0 — Lease validation.
     ///
     /// Enforces: (a) resource_ref resolves to a declared resource; (b) duration
     /// is non-empty; (c) acquire / on_expire enums are already validated at
@@ -8018,7 +8018,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §λ-L-E Fase 3 — Ensemble validation.
+    /// v1.1.0 — Ensemble validation.
     ///
     /// Enforces: (a) each observation name refers to a declared observe;
     /// (b) quorum ≥ 1 and ≤ len(observations); (c) at least 2 observations
@@ -8093,9 +8093,9 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    // ── §λ-L-E Fase 4 — Topology + π-calculus binary sessions ──────
+    // ── v1.1.0 — Topology + π-calculus binary sessions ──────
 
-    /// §λ-L-E Fase 4 — Session validation.
+    /// v1.1.0 — Session validation.
     ///
     /// Enforces: (a) exactly 2 roles; (b) role names are distinct; (c) every
     /// step has a valid op and — for send/receive — a non-empty message type;
@@ -8131,7 +8131,7 @@ impl<'a> TypeChecker<'a> {
         self.check_session_steps(session_name, &role.name, &role.steps);
     }
 
-    /// §Fase 41.b — validate a step sequence, recursing into `select`/`branch`
+    /// v2.3.0 — validate a step sequence, recursing into `select`/`branch`
     /// arms: `send`/`receive` need a message type; a choice needs ≥ 1 branch
     /// with unique labels; each branch's sub-protocol is validated recursively.
     fn check_session_steps(&mut self, session_name: &str, role_name: &str, steps: &[SessionStep]) {
@@ -8150,15 +8150,15 @@ impl<'a> TypeChecker<'a> {
                     }
                 }
                 "loop" | "end" => {}
-                // §Fase 79.c — `resume` is a bare terminal step (the handler's
+                // v2.36.0 — `resume` is a bare terminal step (the handler's
                 // normal exit). Its well-formedness (only inside an interrupt
                 // handler) is enforced by the enclosing `interrupt` check below;
                 // a stray top-level `resume` reaching here is harmless as a step
                 // but never lowers to a reachable exit outside a handler.
                 "resume" => {}
-                // §Fase 79.c — interrupt region.
+                // v2.36.0 — interrupt region.
                 "interrupt" => {
-                    // (a) closed-catalog signal (D79.2).
+                    // (a) closed-catalog signal.
                     if !CALL_INTERRUPT_CAUSES.contains(&step.message_type.as_str()) {
                         self.emit(
                             format!(
@@ -8185,7 +8185,7 @@ impl<'a> TypeChecker<'a> {
                     for b in &step.branches {
                         self.check_session_steps(session_name, role_name, &b.steps);
                     }
-                    // (c) two-exit well-formedness (D79.11a): the handler must
+                    // (c) two-exit well-formedness: the handler must
                     // reach either `resume` (normal exit) or `end` (abandon exit).
                     if let Some(h) = step.branches.iter().find(|b| b.label == "handler") {
                         if !handler_reaches_exit(&h.steps) {
@@ -8236,7 +8236,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 41.b — duality is now decided by the **session-type algebra**
+    /// v2.3.0 — duality is now decided by the **session-type algebra**
     /// (`crate::session`): each role is lowered to a [`SessionType`] (with
     /// `loop` becoming an equirecursive `μ`), and the two are checked under the
     /// **connection law** `T₂ ≡ T₁⊥` via regular-coinductive duality. This
@@ -8246,13 +8246,13 @@ impl<'a> TypeChecker<'a> {
     fn check_session_duality(&mut self, node: &SessionDefinition) {
         let t1 = lower_session_role(&node.roles[0]);
         let t2 = lower_session_role(&node.roles[1]);
-        // §80.g hardening (`axon-W012`) — a role whose FIRST step is `loop`
+        // v2.37.0 hardening (`axon-W012`) — a role whose FIRST step is `loop`
         // lowers to the unguarded μX.X (everything after a `loop` in
         // sequence is unreachable at this layer), so duality/credit hold
         // VACUOUSLY — the checker is checking nothing. A warning (not an
-        // error: pre-§80 corpus uses the leading-loop idiom), and the
+        // error: pre-v2.37.0 corpus uses the leading-loop idiom), and the
         // coinductive analyses must never see the degenerate type — the
-        // §41.c discharge skips it rather than risk unfolding μX.X.
+        // v2.3.0 discharge skips it rather than risk unfolding μX.X.
         for (role, t) in [(&node.roles[0], &t1), (&node.roles[1], &t2)] {
             if is_unguarded_recursion(t) {
                 self.warn(
@@ -8282,15 +8282,15 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 41.b/c — `socket` validation (the typed-WS transport binding).
+    /// v2.3.0 — `socket` validation (the typed-WS transport binding).
     /// Enforces, in order:
     ///   (a) `protocol` references a **declared `session`** (whose two roles
-    ///       are duality-checked via the §41.a algebra, so the dialogue
+    /// are duality-checked via the v2.3.0 algebra, so the dialogue
     ///       carried over the connection is conformant by construction);
     ///   (b) the backpressure credit window, if given, is **positive** — a
-    ///       0-credit window cannot type a send (§4.2: no rule at n=0);
-    ///   (c) §Fase 41.c — the **Presburger discharge**: lower each role into
-    ///       the §41.a algebra, stamp with the socket's `credit(k)`, and run
+    /// 0-credit window cannot type a send (section 4.2: no rule at n=0);
+    /// (c) v2.3.0 — the **Presburger discharge**: lower each role into
+    /// the v2.3.0 algebra, stamp with the socket's `credit(k)`, and run
     ///       [`SessionType::credit_analyse`] — surfaces send-at-zero, burst
     ///       overflow (the protocol demands a send-burst > k), and loop
     ///       unsustainability (`Δ = #send − #recv > 0` per recurring path).
@@ -8338,7 +8338,7 @@ impl<'a> TypeChecker<'a> {
             for role in &session.roles {
                 let lowered = lower_session_role(role).with_credit(budget);
                 if is_unguarded_recursion(&lowered) {
-                    // Already diagnosed on the session declaration (§80.g
+                    // Already diagnosed on the session declaration (v2.37.0
                     // hardening); never hand μX.X to the analyses.
                     continue;
                 }
@@ -8356,19 +8356,19 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 80.c — `upstream` validation (the outbound vendor connection).
+    /// v2.37.0 — `upstream` validation (the outbound vendor connection).
     /// Enforces, in order:
     ///   (a) closed catalogs — `transport:` / `auth:` / `overflow:` /
     ///       `reconnect.on_exhausted:` membership + auth-shape coherence
     ///       (`header`/`query` need a name; `signed_url` must not carry one);
     ///   (b) **axon-T851** — `protocol:` resolves to a declared `session` and
     ///       `role:` is one of its two roles (duality of the session itself is
-    ///       already §41.a's law on the declaration); when a credit window is
-    ///       given, the §41.c Presburger discharge runs on the bound role;
+    /// already v2.3.0's law on the declaration); when a credit window is
+    /// given, the v2.3.0 Presburger discharge runs on the bound role;
     ///   (c) **axon-T850** — `resolve:`/`secret:` are config KEYS
     ///       (lowercase dot-separated, the compile-time mirror of the
     ///       enterprise `SecretKeyPolicy` charset) — a URL or credential
-    ///       literal in source is unrepresentable, the §58.g "config, not
+    /// literal in source is unrepresentable, the v2.8.0 "config, not
     ///       code" property made a law;
     ///   (d) **axon-T849** — the `map:` projection is a TOTAL, unambiguous
     ///       cover of the bound role's message set: every send/receive has
@@ -8377,7 +8377,7 @@ impl<'a> TypeChecker<'a> {
     ///       discriminator, at most one receive-binary rule. Partial
     ///       transcoding is a compile error, never a runtime surprise.
     fn check_upstream(&mut self, node: &UpstreamDefinition) {
-        // §80.f — an unexpanded preset reference (the `from Preset@vN`
+        // v2.37.0 — an unexpanded preset reference (the `from Preset@vN`
         // expansion left every structural field empty because the preset
         // is not in the catalog) gets ONE precise diagnostic naming the
         // catalog, not a cascade of missing-field errors.
@@ -8543,14 +8543,14 @@ impl<'a> TypeChecker<'a> {
                 }
             }
         };
-        // §41.c Presburger discharge on the bound role, same law as `socket`.
+        // v2.3.0 Presburger discharge on the bound role, same law as `socket`.
         if let Some(role) = bound_role {
             match node.backpressure_credit {
                 Some(n) if n >= 1 => {
                     let lowered = lower_session_role(role).with_credit(n as u64);
                     if is_unguarded_recursion(&lowered) {
                         // Diagnosed on the session declaration — see
-                        // `check_session_duality` (§80.g hardening).
+                        // `check_session_duality` (v2.37.0 hardening).
                         return;
                     }
                     if let Err(e) = lowered.credit_analyse(n as u64) {
@@ -8574,13 +8574,13 @@ impl<'a> TypeChecker<'a> {
             }
         }
 
-        // (c) §Fase 114.u — axon-T951: `resource:` XOR `resolve:`.
+        // (c) v2.69.0 — axon-T951: `resource:` XOR `resolve:`.
         //
         // When the channel rides a declared `resource`, the dial address
         // DERIVES from `resource.endpoint` (axon-T944 already proves that is a
         // per-tenant config key) — a `resolve:` beside it would state the
-        // channel's address TWICE, which is exactly the §113 islands defect
-        // this family of fases exists to kill. Authority attenuation: the
+        // channel's address TWICE, which is exactly the v2.67.0 islands defect
+        // this family of cycles exists to kill. Authority attenuation: the
         // resource encapsulates its own address resolution; the upstream only
         // names WHICH channel it rides.
         if !node.resource_ref.is_empty() {
@@ -8755,13 +8755,13 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 80.g (`axon-T852`) — `voice` validation. The sugar's laws:
-    ///   (a) `stt:`+`tts:` XOR `realtime:` (D80.1 — cascaded needs both
+    /// v2.37.0 (`axon-T852`) — `voice` validation. The sugar's laws:
+    /// (a) `stt:`+`tts:` XOR `realtime:` (the design decision — cascaded needs both
     ///       legs; fused needs exactly the one);
     ///   (b) `interruptible: true` ⇒ `legal_basis:` — the sugar must be
-    ///       UNABLE to generate a program the §79 `ParkedResidualSoundness`
+    /// UNABLE to generate a program the v2.36.0 `ParkedResidualSoundness`
     ///       proof refutes (the generated socket parks residuals);
-    ///   (c) every leg resolves — a `Preset@vN` must be in the §80.f
+    /// (c) every leg resolves — a `Preset@vN` must be in the v2.37.0
     ///       catalog, a bare name must be a declared `upstream`;
     ///   (d) `carrier:` in the closed catalog; `persona:`/`context:` refs
     ///       resolve when given.
@@ -8789,7 +8789,7 @@ impl<'a> TypeChecker<'a> {
                 &node.loc,
             );
         }
-        // (b) the §79 data-at-rest obligation, surfaced at the sugar level.
+        // (b) the v2.36.0 data-at-rest obligation, surfaced at the sugar level.
         if node.interruptible && node.legal_basis.is_none() {
             self.emit(
                 format!(
@@ -8862,11 +8862,11 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 80.c (`axon-T850`) — `resolve:`/`secret:` must be per-tenant
+    /// v2.37.0 (`axon-T850`) — `resolve:`/`secret:` must be per-tenant
     /// config KEYS, never endpoint/credential literals. The charset is the
     /// compile-time mirror of the enterprise `SecretKeyPolicy`
     /// (`saas-secrets/src/policy.rs`): first char `[a-z0-9]`, rest
-    /// `[a-z0-9_.-]` — notably NO `/` (the §77.g production-custody lesson)
+    /// `[a-z0-9_.-]` — notably NO `/` (the v2.34.0 production-custody lesson)
     /// and no `:` (a URL cannot pass). Keeping the mirror here makes the
     /// "key valid in the mock, rejected by production custody" bug class
     /// unrepresentable in a compiled program.
@@ -8879,7 +8879,7 @@ impl<'a> TypeChecker<'a> {
             );
             return;
         }
-        // §Fase 113 — the shape now lives in ONE place (`is_config_key`), shared
+        // v2.67.0 — the shape now lives in ONE place (`is_config_key`), shared
         // with axon-T902 and axon-T944. It used to be inlined here.
         if !is_config_key(key) {
             self.emit(
@@ -8891,7 +8891,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §λ-L-E Fase 4 — Topology validation.
+    /// v1.1.0 — Topology validation.
     ///
     /// Enforces: (a) each node name is unique + resolves to a valid kind;
     /// (b) each edge's source/target appear in `nodes`; (c) no self-loops;
@@ -9065,11 +9065,11 @@ impl<'a> TypeChecker<'a> {
             .unwrap_or(false)
     }
 
-    // ── §λ-L-E Fase 5 — Cognitive immune system (paper_immune_v2.md) ───
+    // ── v1.1.0 — Cognitive immune system (paper_immune_v2.md) ───
 
-    /// §λ-L-E Fase 5 — Immune validation.
+    /// v1.1.0 — Immune validation.
     ///
-    /// Enforces paper §8.2 mandatory scope + watch non-empty + sensitivity
+    /// Enforces paper section 8.2 mandatory scope + watch non-empty + sensitivity
     /// ∈ [0.0, 1.0] + window ≥ 1 + decay enum.
     fn check_immune(&mut self, node: &ImmuneDefinition) {
         if node.scope.is_empty() {
@@ -9130,10 +9130,10 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §λ-L-E Fase 5 — Reflex validation.
+    /// v1.1.0 — Reflex validation.
     ///
     /// Enforces mandatory scope + valid scope/on_level/action enums + trigger
-    /// resolves to an `immune` (one-way dependency per paper §4).
+    /// resolves to an `immune` (one-way dependency per paper section 4).
     fn check_reflex(&mut self, node: &ReflexDefinition) {
         if node.scope.is_empty() {
             self.emit(
@@ -9205,10 +9205,10 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §λ-L-E Fase 5 — Heal validation.
+    /// v1.1.0 — Heal validation.
     ///
     /// Enforces mandatory scope + source is an immune + on_level/mode enums +
-    /// **paper §7.3: mode='adversarial' requires a shield gate** + shield_ref
+    /// **paper section 7.3: mode='adversarial' requires a shield gate** + shield_ref
     /// (if present) resolves to a shield + max_patches ≥ 1.
     fn check_heal(&mut self, node: &HealDefinition) {
         if node.scope.is_empty() {
@@ -9271,7 +9271,7 @@ impl<'a> TypeChecker<'a> {
                 &node.loc,
             );
         }
-        // Paper §7.3 — adversarial mode requires an explicit shield gate.
+        // Paper section 7.3 — adversarial mode requires an explicit shield gate.
         if node.mode == "adversarial" && node.shield_ref.is_empty() {
             self.emit(
                 format!(
@@ -9313,7 +9313,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    // ── §λ-L-E Fase 9 — UI cognitiva (component / view) ────────────
+    // ── v1.3.1 — UI cognitiva (component / view) ────────────
     //
     // Compile-time invariants enforced below:
     //   1. `renders` references a declared `type`.
@@ -9321,7 +9321,7 @@ impl<'a> TypeChecker<'a> {
     //      parameter type matches `renders`.
     //   3. If `renders` carries κ (regulatory class), `via_shield` is
     //      MANDATORY and its `compliance` must cover every κ of the
-    //      rendered type. Fase 9.5 compile-time contract.
+    // rendered type. v1.3.1 compile-time contract.
     //   4. `via_shield` (if present) must name a declared `shield`.
     //   5. Every component listed in a `view.components` must resolve
     //      to a declared `component`.
@@ -9389,7 +9389,7 @@ impl<'a> TypeChecker<'a> {
             }
         };
 
-        // (3) regulated-render rule — Fase 9.5
+        // (3) regulated-render rule — v1.3.1
         if let Some(t) = rendered_type {
             let type_kappa: std::collections::HashSet<&str> =
                 t.compliance.iter().map(|s| s.as_str()).collect();
@@ -9523,8 +9523,8 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 107.a (`axon-T927`) — the DECLARED WRITE surface of a flow body, the
-    /// signal the QUERY-safety law decides on (D107.1, founder-ratified). Returns
+    /// v2.62.0 (`axon-T927`) — the DECLARED WRITE surface of a flow body, the
+    /// signal the QUERY-safety law decides on (the design decision, founder-ratified). Returns
     /// the FIRST write verb reached, with its source location, so the diagnostic can
     /// point at the exact offending step.
     ///
@@ -9538,7 +9538,7 @@ impl<'a> TypeChecker<'a> {
     /// It deliberately does NOT flag a `tool` for declaring `network` / `io`: a
     /// read-only vendor lookup is legitimate (and common) inside a query, and
     /// refusing it would make QUERY useless. That boundary is the honest perimeter
-    /// (§107 §7) — axon proves what it declares, and says so plainly.
+    /// (v2.62.0 section 7) — axon proves what it declares, and says so plainly.
     fn first_declared_write(&self, steps: &[FlowStep]) -> Option<(&'static str, Loc)> {
         for step in steps {
             let hit: Option<(&'static str, Loc)> = match step {
@@ -9550,7 +9550,7 @@ impl<'a> TypeChecker<'a> {
                 FlowStep::Rotate(s) => Some(("rotate", s.loc.clone())),
                 FlowStep::Mint(s) => Some(("mint", s.loc.clone())),
                 FlowStep::Transact(s) => Some(("transact", s.loc.clone())),
-                // §Fase 108.c (D108.4) — `ingest` appends batches to a
+                // v2.63.0 — `ingest` appends batches to a
                 // server-resident dataspace: that is state change, so a safe
                 // method cannot reach it. A QUERY may focus/aggregate/explore
                 // (reads); it may NOT ingest.
@@ -9574,7 +9574,7 @@ impl<'a> TypeChecker<'a> {
         None
     }
 
-    /// §Fase 107.a (`axon-T927`) — **the QUERY-safety law.** RFC 10008 section 2: a QUERY
+    /// v2.62.0 (`axon-T927`) — **the QUERY-safety law.** RFC 10008 section 2: a QUERY
     /// request MUST be processed "in a safe and idempotent manner" — it does not
     /// change state. Caches, proxies and clients are ENTITLED to act on that (they
     /// may retry and cache freely), so a QUERY that writes is not a style problem:
@@ -9583,11 +9583,11 @@ impl<'a> TypeChecker<'a> {
     /// PROOF: an `axonendpoint` with `method: QUERY` whose bound flow reaches a
     /// declared write is REFUSED AT COMPILE TIME.
     ///
-    /// Two write sources are checked (both ratified in D107.1):
+    /// Two write sources are checked (both ratified in the design decision):
     /// 1. the flow's own body ([`first_declared_write`]);
-    /// 2. the program declaring a `deliver` (§105) or `document` (§106) — those
+    /// 2. the program declaring a `deliver` (v2.60.0) or `document` (v2.62.0) — those
     ///    egress declarations FIRE POST-RUN for any flow the deployed executor runs
-    ///    (D105.7-B), so a QUERY endpoint in such a program would write a CRM row /
+    /// (the design decision-B), so a QUERY endpoint in such a program would write a CRM row /
     ///    persist an artifact. Coarse but SOUND under the current firing semantics.
     fn check_query_is_safe(&mut self, node: &AxonEndpointDefinition) {
         if !node.method.eq_ignore_ascii_case("QUERY") || node.execute_flow.is_empty() {
@@ -9618,7 +9618,7 @@ impl<'a> TypeChecker<'a> {
             }
         }
         // 2. A program-level egress declaration fires post-run for ANY flow the
-        //    deployed executor runs (§105 deliver / §106 document, D105.7-B) — so a
+        // deployed executor runs (v2.60.0 deliver / v2.62.0 document, the design decision-B) — so a
         //    QUERY endpoint here would write a CRM row / persist an artifact.
         let egress: Option<(&'static str, String)> =
             self.program.declarations.iter().find_map(|d| match d {
@@ -9659,11 +9659,11 @@ impl<'a> TypeChecker<'a> {
             }
         }
 
-        // §Fase 107.a — the QUERY-safety law (axon-T927): RFC 10008's normative
+        // v2.62.0 — the QUERY-safety law (axon-T927): RFC 10008's normative
         // "safe and idempotent" MUST, made a compile-time proof.
         self.check_query_is_safe(node);
 
-        // §Fase 36.d (D2) — declared execution backend, closed catalog.
+        // v1.31.0 (D2) — declared execution backend, closed catalog.
         // The parser already rejects an unknown backend with a smart-
         // suggest hint; this re-check defends ASTs built outside the
         // parser (LSP synthesis, programmatic construction) so an
@@ -9682,8 +9682,8 @@ impl<'a> TypeChecker<'a> {
             );
         }
 
-        // §Fase 36.k (D10) — `axon-W003`: an axonendpoint that declares
-        // no `backend:` relies on the Fase 36 ladder for resolution.
+        // v1.31.0 (D10) — `axon-W003`: an axonendpoint that declares
+        // no `backend:` relies on the v1.31.0 ladder for resolution.
         // An explicit `backend: auto` is the adopter's deliberate
         // opt-in to ladder resolution — it carries no warning. An
         // omitted field does: the adopter learns at compile time, not
@@ -9745,7 +9745,7 @@ impl<'a> TypeChecker<'a> {
             }
         }
 
-        // §Fase 83.c — cors reference (axon-T856). Mirrors the shield
+        // v2.38.0 — cors reference (axon-T856). Mirrors the shield
         // reference check exactly, `"cors"` swapped in for `"shield"`.
         if !node.cors_ref.is_empty() {
             match self.symbols.lookup(&node.cors_ref) {
@@ -9780,7 +9780,7 @@ impl<'a> TypeChecker<'a> {
             }
         }
 
-        // §Fase 35.j (D11) — Pillar IV: capability-typed store access.
+        // v1.30.0 (D11) — Pillar IV: capability-typed store access.
         // The endpoint must GRANT (in `requires:`) every capability a
         // capability-gated store accessed by its flow declares — data
         // isolation as a language guarantee, enforced statically.
@@ -9824,12 +9824,12 @@ impl<'a> TypeChecker<'a> {
             }
         }
 
-        // §Fase 89.b (`axon-T890`) — AuthorizationCoverage: the doctrine
+        // v2.44.0 (`axon-T890`) — AuthorizationCoverage: the doctrine
         // `every_boundary_is_guarded` made a compile-time law. An
         // `axonendpoint` is a trust boundary; the boundary-coverage audit
         // found Modo 1 — an endpoint with no `requires:`/`shield:`/
         // `compliance:` silently dispatches to any authenticated same-tenant
-        // caller ("empty vec ≡ no auth gate — back-compat"). §89 closes that:
+        // caller ("empty vec ≡ no auth gate — back-compat"). v2.44.0 closes that:
         // an endpoint that DISPATCHES a flow must declare a covering
         // authorization discipline OR the EXPLICIT, auditable opt-out
         // `public: true`. Gated on a non-empty `execute:` — an endpoint that
@@ -9859,10 +9859,10 @@ impl<'a> TypeChecker<'a> {
             }
         }
 
-        // §Fase 117.a (`axon-T957`) — RegulatedBoundaryCoverage: the ESK
-        // Fase 6.1 κ-coverage law, finally scoped to the `axonendpoint`.
+        // v2.81.0 (`axon-T957`) — RegulatedBoundaryCoverage: the ESK
+        // v1.2.0 κ-coverage law, finally scoped to the `axonendpoint`.
         //
-        // THE GAP THIS CLOSES. §111 F16 diagnosed it and `advertised.rs`
+        // THE GAP THIS CLOSES. v2.67.0 F16 diagnosed it and `advertised.rs`
         // has carried the confession ever since: "the language's flagship
         // claim, and exactly ONE genuine κ-coverage rule exists (scoped to
         // `component`). The axon-T890 endpoint rule is a PRESENCE check
@@ -9870,11 +9870,11 @@ impl<'a> TypeChecker<'a> {
         // promised the endpoint form of this law since v1.x — remove the
         // `shield` from a regulated endpoint and `axon check` was supposed
         // to refuse — and the compiler never had it. The `compliance` field
-        // on `AxonEndpointDefinition` is even documented "§ESK Fase 6.1 —
+        // on `AxonEndpointDefinition` is even documented "ESK —
         // regulatory coverage on the boundary". The INTENT was always here;
         // the LAW was not. A promise the compiler cannot break is not a weak
         // guarantee, it is a VACUOUS one — the same lesson `lease` taught in
-        // §113.
+        // v2.67.0.
         //
         // THE LAW. An `axonendpoint` is where regulated data crosses the
         // process boundary. If either side of that crossing — `body:` (what
@@ -9887,7 +9887,7 @@ impl<'a> TypeChecker<'a> {
         // WHY THE SHIELD AND NOT THE ENDPOINT'S OWN `compliance:`. The
         // shield is the CONTROL (`scan:`, `on_breach:`, `severity:`); the
         // endpoint's `compliance:` list is a LABEL. Accepting the label as
-        // coverage would rebuild the very presence check §111 condemned. A
+        // coverage would rebuild the very presence check v2.67.0 condemned. A
         // κ class is covered when something can act on a breach of it.
         //
         // Runs BEFORE the E039 wire gate and is NOT suppressed by it: a
@@ -9959,7 +9959,7 @@ impl<'a> TypeChecker<'a> {
             }
         }
 
-        // §Fase 39.e (D12 α RATIFIED) — Wire-shape mandate gate
+        // v2.0.0 (D12 α RATIFIED) — Wire-shape mandate gate
         // (`axon-E039`). On `transport: json` endpoints, every
         // declared `output: T` MUST be `FlowEnvelope<T>` (or `Any` /
         // `Unit` / `<empty>`). Bare `output: T` / `output: List<T>` /
@@ -9983,7 +9983,7 @@ impl<'a> TypeChecker<'a> {
             false
         };
 
-        // §Fase 38.x.f (D1–D6) — Cardinality Coverage gate.
+        // v1.31.0 (D1–D6) — Cardinality Coverage gate.
         //
         // Runs BEFORE the 37.c totality block because the latter does
         // an early `return` when no binding sources are declared
@@ -9992,9 +9992,9 @@ impl<'a> TypeChecker<'a> {
         // binding-source declarations — it only needs the endpoint's
         // `output:` + the flow's body tail — so it must run first or
         // it never fires on the no-source case (e.g. the Stream
-        // mismatch §6 in the anchor test).
+        // mismatch section 6 in the anchor test).
         //
-        // §39.e — When E039 fires above, we SKIP the cardinality
+        // v2.0.0 — When E039 fires above, we SKIP the cardinality
         // gate (the E039 diagnostic already names the canonical
         // FlowEnvelope<...> answer; double-emitting T9XX would be
         // noisy).
@@ -10009,16 +10009,16 @@ impl<'a> TypeChecker<'a> {
             }
         }
 
-        // §Fase 37.c (D2) — The Request Binding Contract totality check.
+        // v1.32.0 (D2) — The Request Binding Contract totality check.
         //
         // When the endpoint declares `body: T`, the type-checker
         // proves every REQUIRED parameter of `execute: F` is covered
         // by a field of T — by name, type-compatible. An uncovered
         // required parameter is a compile error: otherwise the flow
         // reaches production and fails at REQUEST time for a missing
-        // argument (the exact v1.35.0 defect Fase 37 closes). The
+        // argument (the exact v1.35.0 defect v1.32.0 closes). The
         // failure moves from production to `axon check`. Sibling of
-        // the Fase 35.j Pillar IV endpoint→flow→store-capability check.
+        // the v1.30.0 Pillar IV endpoint→flow→store-capability check.
         //
         // The check runs only when `body: T` resolves to a declared
         // struct type. A primitive `body:` (or a `body:` naming an
@@ -10028,7 +10028,7 @@ impl<'a> TypeChecker<'a> {
         // covered. Type-compatibility is exact: same type name + same
         // generic parameter.
         //
-        // §Fase 37.y (D3) — D2 totality UNION over three binding sources:
+        // v1.32.0 (D3) — D2 totality UNION over three binding sources:
         // path_params (typed `Text` by HTTP convention), query_params
         // (declared type from the closed catalog), body type fields
         // (existing v1.36.0 surface). Each required flow param must be
@@ -10245,13 +10245,13 @@ impl<'a> TypeChecker<'a> {
             }
         }
 
-        // §Fase 38.x.f cardinality gate runs ABOVE this block (before
+        // v1.31.0 cardinality gate runs ABOVE this block (before
         // the 37.c early-return on no-source endpoints). See the
         // comment block at the top of check_axonendpoint for the
         // load-bearing rationale.
     }
 
-    /// §Fase 39.e (D12 α RATIFIED) — Wire-shape mandate gate.
+    /// v2.0.0 (D12 α RATIFIED) — Wire-shape mandate gate.
     ///
     /// On `transport: json` endpoints (effective wire = json), every
     /// declared `output: T` MUST be one of:
@@ -10268,7 +10268,7 @@ impl<'a> TypeChecker<'a> {
     ///
     /// On `transport: sse` / `transport: ndjson` endpoints, this gate
     /// does NOT fire — the SSE wire has its own event family per
-    /// Fase 39 D9 (`axon.token` / `axon.complete` / etc.), so adopters
+    /// v2.0.0 D9 (`axon.token` / `axon.complete` / etc.), so adopters
     /// can declare any cardinality output without the wrapping
     /// mandate.
     ///
@@ -10279,11 +10279,11 @@ impl<'a> TypeChecker<'a> {
         &mut self,
         node: &AxonEndpointDefinition,
     ) -> bool {
-        // ── §1 — Resolve effective transport ────────────────────────
+        // ── section 1 — Resolve effective transport ────────────────────────
         // Mirrors the runtime's three-way resolution:
         //   explicit (parser captured `transport:`) →
         //     use `node.transport`
-        //   not explicit + `implicit_transport` computed (Fase 31) →
+        // not explicit + `implicit_transport` computed (v1.22.0) →
         //     use `node.implicit_transport`
         //   neither → default "json"
         let effective_transport = if node.transport_explicit {
@@ -10299,7 +10299,7 @@ impl<'a> TypeChecker<'a> {
             return false;
         }
 
-        // ── §2 — Classify the declared output ──────────────────────
+        // ── section 2 — Classify the declared output ──────────────────────
         let declared = node.output_type.trim();
         // Empty: D9 backwards-compat skip (no validation gate runs
         // on the wire either).
@@ -10323,7 +10323,7 @@ impl<'a> TypeChecker<'a> {
             return false;
         }
 
-        // ── §3 — E039 fires: compute the canonical suggestion ──────
+        // ── section 3 — E039 fires: compute the canonical suggestion ──────
         // The suggestion is the SAME inner T the adopter declared,
         // just wrapped: `output: T` → suggest `FlowEnvelope<T>`. When
         // the flow's actual tail cardinality differs from the
@@ -10354,7 +10354,7 @@ impl<'a> TypeChecker<'a> {
 
         let suggested_envelope = format!("FlowEnvelope<{tail_form}>");
 
-        // ── §4 — Emit the canonical diagnostic ─────────────────────
+        // ── section 4 — Emit the canonical diagnostic ─────────────────────
         self.emit(
             format!(
                 "axon-E039 axonendpoint '{}' declares `output: {}` with \
@@ -10388,7 +10388,7 @@ impl<'a> TypeChecker<'a> {
         true
     }
 
-    /// §Fase 38.x.f (D1–D6) — Emit the cardinality-mismatch diagnostic
+    /// v1.31.0 (D1–D6) — Emit the cardinality-mismatch diagnostic
     /// for the `(declared, tail)` disjoint pair. Pure: depends only on
     /// the endpoint's `output:` declaration and the flow tail's
     /// inferred cardinality.
@@ -10398,13 +10398,13 @@ impl<'a> TypeChecker<'a> {
         declared: &Cardinality,
         tail: &Cardinality,
     ) {
-        // §Fase 39 (D4) — Wrapped(inner) unwraps transparently for the
+        // v2.0.0 (D4) — Wrapped(inner) unwraps transparently for the
         // cardinality gate. The wire shape of `FlowEnvelope<T>` is
         // always a singular object, but the COMPILE-TIME cardinality
         // the type-checker reasons about IS T's cardinality. The
         // unwrap is recursive (covers `FlowEnvelope<FlowEnvelope<X>>`
         // degenerate forms too). The full axon-E039 wire-shape
-        // mandate enforcement lands in sub-fase 39.e; here in 39.a we
+        // mandate enforcement lands in step 39.e; here in 39.a we
         // only establish that Wrapped participates in the cardinality
         // truth table by unwrapping its inner.
         if let Cardinality::Wrapped(inner) = declared {
@@ -10417,7 +10417,7 @@ impl<'a> TypeChecker<'a> {
             // — Agreed shapes → silent pass.
             (Cardinality::Unit, Cardinality::Unit) => {}
             (Cardinality::Singular(d), Cardinality::Singular(_)) => {
-                // Type-level mismatch is the existing Fase 37 D2
+                // Type-level mismatch is the existing v1.32.0 D2
                 // contract; cardinality agrees.
                 let _ = d;
             }
@@ -10428,7 +10428,7 @@ impl<'a> TypeChecker<'a> {
             (_, Cardinality::Unknown) => {}
             (Cardinality::Disagreed, _) => {
                 // `output: Any` accepts every cardinality (degraded
-                // surface; documented adopter choice — Fase 38.x.f D6).
+                // surface; documented adopter choice — v1.31.0 D6).
             }
             (Cardinality::Unknown, _) => {}
 
@@ -10573,14 +10573,14 @@ impl<'a> TypeChecker<'a> {
             }
 
             // — Type-mismatch only (cardinality agrees, types differ).
-            //   The existing Fase 37 D2 contract handles this.
+            // The existing v1.32.0 D2 contract handles this.
             (Cardinality::Unit, _) | (_, Cardinality::Unit) => {
                 // Unit + anything else is intentionally silent here —
                 // the runtime treats Unit-output as "no response body"
                 // and the existing output-schema gate doesn't apply.
             }
 
-            // §Fase 39 (D4) — Wrapped arms are statically unreachable
+            // v2.0.0 (D4) — Wrapped arms are statically unreachable
             // because the early-return at the top of this fn unwraps
             // any Wrapped operand before entering the match. The arms
             // here exist solely to satisfy Rust's exhaustiveness
@@ -10596,7 +10596,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 35.j — Resolve a flow declaration by name.
+    /// v1.30.0 — Resolve a flow declaration by name.
     fn find_flow(&self, name: &str) -> Option<&'a FlowDefinition> {
         self.program.declarations.iter().find_map(|d| match d {
             Declaration::Flow(f) if f.name == name => Some(f),
@@ -10604,7 +10604,7 @@ impl<'a> TypeChecker<'a> {
         })
     }
 
-    /// §Fase 35.j — Resolve an axonstore declaration by name.
+    /// v1.30.0 — Resolve an axonstore declaration by name.
     fn find_store(&self, name: &str) -> Option<&'a AxonStoreDefinition> {
         self.program.declarations.iter().find_map(|d| match d {
             Declaration::AxonStore(s) if s.name == name => Some(s),
@@ -10612,7 +10612,7 @@ impl<'a> TypeChecker<'a> {
         })
     }
 
-    /// §Fase 84.c — Resolve a socket declaration by name.
+    /// v2.39.0 — Resolve a socket declaration by name.
     fn find_socket(&self, name: &str) -> Option<&'a SocketDefinition> {
         self.program.declarations.iter().find_map(|d| match d {
             Declaration::Socket(s) if s.name == name => Some(s),
@@ -10620,7 +10620,7 @@ impl<'a> TypeChecker<'a> {
         })
     }
 
-    /// §Fase 84.c — Resolve a session declaration by name.
+    /// v2.39.0 — Resolve a session declaration by name.
     fn find_session(&self, name: &str) -> Option<&'a SessionDefinition> {
         self.program.declarations.iter().find_map(|d| match d {
             Declaration::Session(s) if s.name == name => Some(s),
@@ -10628,7 +10628,7 @@ impl<'a> TypeChecker<'a> {
         })
     }
 
-    /// §Fase 85.c — Resolve a cache declaration by name.
+    /// v2.40.0 — Resolve a cache declaration by name.
     fn find_cache(&self, name: &str) -> Option<&'a CacheDefinition> {
         self.program.declarations.iter().find_map(|d| match d {
             Declaration::Cache(c) if c.name == name => Some(c),
@@ -10638,14 +10638,14 @@ impl<'a> TypeChecker<'a> {
 
     // ── Flow-level reference checks ─────────────────────────────────
 
-    /// §Fase 121 — every statement position a STEP BODY can carry, walked
+    /// v2.88.0 — every statement position a STEP BODY can carry, walked
     /// through the ONE law walk (`check_flow_steps`).
     ///
     /// The `stream` recursion is here because of a measured miss: README block
     /// 14 writes `validate QuoteSnapshot against: MarketSchema` inside an
-    /// `on_complete:` arm, and the first draft of the §121 descent — which
+    /// `on_complete:` arm, and the first draft of the v2.88.0 descent — which
     /// walked only `pix_ops` — reported the block CLEAN while its schema was
-    /// undeclared. A stream arm is a full step body (§119.n made it a
+    /// undeclared. A stream arm is a full step body (v2.83.0 made it a
     /// `StepNode` for exactly that reason), so it recurses HERE, arms within
     /// arms included. `axon_frontend::effect_check` walks the same shape for
     /// D9; the two walks must keep agreeing about what "a step body" contains.
@@ -10694,7 +10694,7 @@ impl<'a> TypeChecker<'a> {
     }
 
     fn check_flow_steps(&mut self, steps: &[FlowStep], flow_name: &str) {
-        // §Fase 109.a — rich `let` expressions seen SO FAR (the T932
+        // v2.65.0 — rich `let` expressions seen SO FAR (the T932
         // "prior" discipline: grad differentiates what is already bound).
         let mut rich_lets_seen: std::collections::HashMap<String, crate::ast::Expr> =
             std::collections::HashMap::new();
@@ -10718,22 +10718,22 @@ impl<'a> TypeChecker<'a> {
                         }
                     }
                 }
-                // §Fase 121 — `validate <target> against: <Schema>` must RESOLVE.
+                // v2.88.0 — `validate <target> against: <Schema>` must RESOLVE.
                 //
                 // `IRValidateStep.rule` was a free string nobody looked at: it
                 // parsed, lowered into the IR, and no code in either repo read
-                // it. That is the `pix_ops` shape (§119.f.7) — a field written
+                // it. That is the `pix_ops` shape (v2.83.0) — a field written
                 // by the parser with no reader — and it stayed invisible
                 // because `validate` returned prose either way.
                 //
-                // It matters NOW because §121 makes the schema the source of the
+                // It matters NOW because v2.88.0 makes the schema the source of the
                 // validation's CSR: the constraints a response is scored against
                 // ARE the schema's fields. A name that resolves to nothing has
                 // no constraints, and scoring against an empty set would either
                 // divide by zero or — worse — report a clean 1.0 for a
                 // validation that checked nothing. Refuse instead: an absent
                 // schema is missing EVIDENCE, and substituting a verdict for it
-                // is the §112 kernel defect.
+                // is the v2.67.0 kernel defect.
                 FlowStep::Validate(n) => {
                     if !n.rule.is_empty() {
                         match self.symbols.lookup(&n.rule) {
@@ -10761,14 +10761,14 @@ impl<'a> TypeChecker<'a> {
                             _ => {}
                         }
                     }
-                    // §Fase 121 — the guard's VALUE laws. (Its structural laws
+                    // v2.88.0 — the guard's VALUE laws. (Its structural laws
                     // — a guard needs a schema-bearing validation, one guard
                     // per validation — are unrepresentable or parse errors; see
                     // `ast::ValidateStep::guard`.)
                     if let Some(g) = &n.guard {
                         // CSR ∈ [0,1] by construction (a ratio of satisfied
                         // constraints), so a floor at 0 can never fire — dead
-                        // governance that READS as live, the §111 shape in one
+                        // governance that READS as live, the v2.67.0 shape in one
                         // number — and a floor above 1 always fires, a retry
                         // loop wearing a conditional's clothes. Both lie about
                         // what the program does; both are refused.
@@ -10852,7 +10852,7 @@ impl<'a> TypeChecker<'a> {
                             _ => {}
                         }
                     }
-                    // Fase 15.d — output_type must not shadow primitive type names.
+                    // v1.10.0 — output_type must not shadow primitive type names.
                     // Mirror of axon.compiler.type_checker._RESERVED_OUTPUT_TYPE_NAMES;
                     // drift is detected by tests/test_lambda_data_runtime.py::
                     // test_derivation_vocab_parity_with_compiler (sibling concept).
@@ -10872,12 +10872,12 @@ impl<'a> TypeChecker<'a> {
                     }
                 }
                 FlowStep::Let(n) => {
-                    // §Fase 109.a — record the rich expression for the T932
+                    // v2.65.0 — record the rich expression for the T932
                     // "prior let" discipline (grad differentiates it).
                     if let Some(e) = &n.value_ast {
                         rich_lets_seen.insert(n.identifier.clone(), e.clone());
                     }
-                    // Fase 17.d — type-checker hardening for `let` bindings.
+                    // v1.12.0 — type-checker hardening for `let` bindings.
                     // Mirror of axon/compiler/type_checker.py::_check_let.
                     if n.identifier.is_empty() {
                         self.emit(
@@ -10916,7 +10916,7 @@ impl<'a> TypeChecker<'a> {
                     }
                 }
                 FlowStep::Navigate(n) => {
-                    // §Fase 63.B — the navigation target is a `pix` (PIX tree) OR a
+                    // v2.13.0 — the navigation target is a `pix` (PIX tree) OR a
                     // `corpus` (MDN graph). Either is well-typed; anything else is
                     // an error.
                     if !n.pix_name.is_empty() {
@@ -10940,7 +10940,7 @@ impl<'a> TypeChecker<'a> {
                     }
                 }
                 FlowStep::Ingest(n) => {
-                    // §Fase 108.c (`axon-T929`) — the ingest law. An ingest is a
+                    // v2.63.0 (`axon-T929`) — the ingest law. An ingest is a
                     // governed load into a DECLARED dataspace: target + format are
                     // not optional metadata, they are what makes the load checkable
                     // (schema known at compile time; bytes bounded before parse).
@@ -11007,7 +11007,7 @@ impl<'a> TypeChecker<'a> {
                     }
                 }
                 FlowStep::Grad(n) => {
-                    // §Fase 109.a — the two laws of the proof-carrying
+                    // v2.65.0 — the two laws of the proof-carrying
                     // derivative. T932: the target must be a PRIOR rich `let`
                     // in this flow + at least one `wrt`. T931: the expression
                     // must live inside the differentiable fragment — a
@@ -11044,7 +11044,7 @@ impl<'a> TypeChecker<'a> {
                     }
                 }
                 FlowStep::Focus(n) => {
-                    // §Fase 108.d (axon-T930) — σ∘π over a declared dataspace.
+                    // v2.63.0 (axon-T930) — σ∘π over a declared dataspace.
                     if let Some(msg) = self.dataspace_target_error("focus", &n.expression) {
                         self.emit(msg, &n.loc);
                     }
@@ -11064,7 +11064,7 @@ impl<'a> TypeChecker<'a> {
                     }
                 }
                 FlowStep::Aggregate(n) => {
-                    // §Fase 108.d (axon-T930) — γ over a declared dataspace.
+                    // v2.63.0 (axon-T930) — γ over a declared dataspace.
                     if let Some(msg) = self.dataspace_target_error("aggregate", &n.target) {
                         self.emit(msg, &n.loc);
                     }
@@ -11153,7 +11153,7 @@ impl<'a> TypeChecker<'a> {
                     }
                 }
                 FlowStep::Associate(n) => {
-                    // §Fase 108.d (axon-T930) — equi-⋈ across two declared
+                    // v2.63.0 (axon-T930) — equi-⋈ across two declared
                     // dataspaces on one shared column.
                     if let Some(msg) = self.dataspace_target_error("associate", &n.left) {
                         self.emit(msg, &n.loc);
@@ -11200,7 +11200,7 @@ impl<'a> TypeChecker<'a> {
                     }
                 }
                 FlowStep::ExploreStep(n) => {
-                    // §Fase 108.d (axon-T930) — a profile of a declared dataspace.
+                    // v2.63.0 (axon-T930) — a profile of a declared dataspace.
                     if let Some(msg) = self.dataspace_target_error("explore", &n.target) {
                         self.emit(msg, &n.loc);
                     }
@@ -11231,7 +11231,7 @@ impl<'a> TypeChecker<'a> {
                         self.emit("Trail step requires a navigate_ref".to_string(), &n.loc);
                     }
                 }
-                // ── §Fase 111 (T937) — `corroborate` is retracted ─────────
+                // ── v2.67.0 (T937) — `corroborate` is retracted ─────────
                 //
                 // The handler's ENTIRE body was an LLM prompt interpolating
                 // the NAME of the reference — never its content:
@@ -11245,10 +11245,10 @@ impl<'a> TypeChecker<'a> {
                 // corroboration — including how strongly two sources it never
                 // saw agreed with each other.
                 //
-                // This is the §108 sin at its purest: not a missing feature but
+                // This is the v2.63.0 sin at its purest: not a missing feature but
                 // a manufactured warrant. A step that fabricates verification is
                 // strictly worse than no verification, because a reader trusts
-                // it. Fail CLOSED (the §108 posture) until it is real.
+                // it. Fail CLOSED (the v2.63.0 posture) until it is real.
                 FlowStep::Corroborate(n) => {
                     self.emit(
                         format!(
@@ -11265,7 +11265,7 @@ impl<'a> TypeChecker<'a> {
                         &n.loc,
                     );
                 }
-                // ── §Fase 111 (T938) — `transact` is retracted ────────────
+                // ── v2.67.0 (T938) — `transact` is retracted ────────────
                 //
                 // `transact { … }` promised atomicity and delivered a string.
                 // The runtime handler inserted `__txn_active = "true"` into the
@@ -11283,7 +11283,7 @@ impl<'a> TypeChecker<'a> {
                 //
                 // Fail CLOSED. A missing feature is survivable; a fabricated
                 // atomicity guarantee corrupts data.
-                // ── §Fase 111 (T939/T940) — `deliberate` / `consensus` ────
+                // ── v2.67.0 (T939/T940) — `deliberate` / `consensus` ────
                 //
                 // The last two silent no-ops in the language, and they died the
                 // same way `stream` and `transact` did: all four parse through
@@ -11300,9 +11300,9 @@ impl<'a> TypeChecker<'a> {
                 // adopter silence — their steps vanished, and `StepComplete`
                 // went out on the wire saying the block had finished.
                 //
-                // Fail CLOSED (the §108 posture): a refusal is reversible, a
+                // Fail CLOSED (the v2.63.0 posture): a refusal is reversible, a
                 // silent no-op is not. Whether these are implemented or
-                // retracted is §111's Tier-4 decision; either way, they must
+                // retracted is v2.67.0's Tier-4 decision; either way, they must
                 // stop swallowing programs today.
                 FlowStep::Deliberate(n) => {
                     self.emit(
@@ -11363,15 +11363,15 @@ impl<'a> TypeChecker<'a> {
                 }
                 FlowStep::Persist(n) => {
                     self.check_store_ref(&n.store_name, flow_name, &n.loc);
-                    // §Fase 94.a — write verbs never touch a secrets store
+                    // v2.48.0 — write verbs never touch a secrets store
                     // (axon-T897): custody is written only by the seeding
                     // API and the mediated `rotate` commit.
                     self.check_secrets_store_write("persist", &n.store_name, flow_name, &n.loc);
-                    // §Fase 38.e — D2 second half: persist field-block
+                    // v1.31.0 — D2 second half: persist field-block
                     // proof (axon-T803 NOT-NULL omission + axon-T804
                     // unknown field + axon-T802 value-type mismatch).
                     self.run_38e_persist_proof(&n.store_name, &n.fields, &n.loc);
-                    // §Fase 92.b — a mint binding must never enter a store
+                    // v2.46.0 — a mint binding must never enter a store
                     // (axon-T896): credentials are shown once, not persisted.
                     for (col, value) in &n.fields {
                         for binding in self.current_mint_bindings.clone() {
@@ -11395,7 +11395,7 @@ impl<'a> TypeChecker<'a> {
                 FlowStep::Retrieve(n) => {
                     self.check_store_ref(&n.store_name, flow_name, &n.loc);
                     self.run_38d_where_proof(&n.store_name, &n.where_expr, &n.loc);
-                    // §Fase 67.b — prove the `order_by:` / `limit:` clauses
+                    // v2.21.0 — prove the `order_by:` / `limit:` clauses
                     // (axon-T807 / axon-T808).
                     self.run_67b_bounds_proof(
                         &n.store_name,
@@ -11403,7 +11403,7 @@ impl<'a> TypeChecker<'a> {
                         &n.limit_expr,
                         &n.loc,
                     );
-                    // §Fase 76.d — prove the `aggregate:` / `group_by:`
+                    // v2.33.0 — prove the `aggregate:` / `group_by:`
                     // clauses (axon-T843 / axon-T844 / axon-T845).
                     self.run_76d_aggregate_proof(
                         &n.store_name,
@@ -11413,17 +11413,17 @@ impl<'a> TypeChecker<'a> {
                         &n.limit_expr,
                         &n.loc,
                     );
-                    // §Fase 85.c — a `retrieve` reads a store (never `pure`),
+                    // v2.40.0 — a `retrieve` reads a store (never `pure`),
                     // so a `cache:` on it always accepts staleness: resolve the
                     // reference (T864) and require a finite `ttl:` (T865).
                     self.check_retrieve_cache_ref(&n.cache, flow_name, &n.loc);
                 }
                 FlowStep::Mutate(n) => {
                     self.check_store_ref(&n.store_name, flow_name, &n.loc);
-                    // §Fase 94.a (axon-T897) — see the Persist arm.
+                    // v2.48.0 (axon-T897) — see the Persist arm.
                     self.check_secrets_store_write("mutate", &n.store_name, flow_name, &n.loc);
                     self.run_38d_where_proof(&n.store_name, &n.where_expr, &n.loc);
-                    // §Fase 38.e — D2 second half: mutate SET-block
+                    // v1.31.0 — D2 second half: mutate SET-block
                     // proof (axon-T804 unknown field + axon-T802
                     // value-type mismatch). NOT-NULL omission (T803)
                     // does NOT apply to mutate (UPDATE preserves
@@ -11432,11 +11432,11 @@ impl<'a> TypeChecker<'a> {
                 }
                 FlowStep::Purge(n) => {
                     self.check_store_ref(&n.store_name, flow_name, &n.loc);
-                    // §Fase 94.a (axon-T897) — see the Persist arm.
+                    // v2.48.0 (axon-T897) — see the Persist arm.
                     self.check_secrets_store_write("purge", &n.store_name, flow_name, &n.loc);
                     self.run_38d_where_proof(&n.store_name, &n.where_expr, &n.loc);
                 }
-                // §Fase 94.b — `rotate <SecretsStore> [where "…"] with <Tool>
+                // v2.48.0 — `rotate <SecretsStore> [where "…"] with <Tool>
                 // as <binding>`: the target must be a declared `backend:
                 // secrets` store (axon-T898 — rotating an adopter table is
                 // meaningless: there is no custody behind it), the tool must
@@ -11524,14 +11524,14 @@ impl<'a> TypeChecker<'a> {
                 }
                 // Recurse into control flow bodies
                 FlowStep::If(n) => {
-                    // §Fase 70.b — static type-check a rich condition expression
+                    // v2.26.0 — static type-check a rich condition expression
                     // (the legacy triple form, `cond = None`, is unaffected).
                     if let Some(cond) = &n.cond {
-                        // §Fase 73.e — the FULL-spelling scope so a `Json<T>`
+                        // v2.26.0 — the FULL-spelling scope so a `Json<T>`
                         // param's lens shape is visible to the field checker.
                         let scope = self.current_flow_param_spellings.clone();
                         let _ = self.infer_expr(cond, &scope, &n.loc);
-                        // §Fase 70.e — const-fold the condition; a fully-constant
+                        // v2.26.0 — const-fold the condition; a fully-constant
                         // condition statically decides the branch (dead code).
                         if let Some(cv) = const_fold(cond) {
                             let always = const_truthy(&cv);
@@ -11545,7 +11545,7 @@ impl<'a> TypeChecker<'a> {
                             );
                         }
                     } else {
-                        // §Fase 73.e — a plain dotted-ref condition stays the
+                        // v2.26.0 — a plain dotted-ref condition stays the
                         // LEGACY triple (`cond = None`) and so bypasses
                         // `infer_expr`. Still run the `Json<T>` lens field check
                         // on its dotted-path operands so `if profile.agee >= 18`
@@ -11563,7 +11563,7 @@ impl<'a> TypeChecker<'a> {
                 FlowStep::ForIn(n) => {
                     self.check_flow_steps(&n.body, flow_name);
                 }
-                // §Fase 92.b — `mint <Credential> as <binding>`: the
+                // v2.46.0 — `mint <Credential> as <binding>`: the
                 // reference must resolve to a declared `credential`
                 // (axon-T895); the binding is tracked for the T896
                 // never-persisted law (walk order = source order, so a
@@ -11591,11 +11591,11 @@ impl<'a> TypeChecker<'a> {
                     }
                     self.current_mint_bindings.insert(n.binding.clone());
                 }
-                // §λ-L-E Fase 13 — Mobile typed channel reductions
+                // v1.6.0 — Mobile typed channel reductions
                 FlowStep::Emit(n) => self.check_emit(n),
                 FlowStep::Publish(n) => self.check_publish(n),
                 FlowStep::Discover(n) => self.check_discover(n),
-                // §Fase 58.d — validate a tool dispatch against the tool's
+                // v2.8.0 — validate a tool dispatch against the tool's
                 // declared input schema (W2 / CT-2 caller blame, pre-HTTP).
                 FlowStep::UseTool(n) => {
                     match self.symbols.lookup(&n.tool_name) {
@@ -11609,44 +11609,44 @@ impl<'a> TypeChecker<'a> {
                         ),
                         _ => {
                             self.check_use_tool_args(n, steps);
-                            // §Fase 116.a (axon-T956) — scope coverage.
+                            // v2.77.0 (axon-T956) — scope coverage.
                             self.check_use_tool_scopes(n);
                         }
                     }
                 }
-                // §Fase 59 (D2) — `apply: <Tool>` on a schema-bearing tool is
+                // v2.9.0 (D2) — `apply: <Tool>` on a schema-bearing tool is
                 // cognitive delegation; the honest-compiler `axon-W004` points
                 // the adopter to the deterministic `use <Tool>(k=v)` form.
                 FlowStep::Step(s) => {
-                    // §Fase 119 (D119.4) — step-body guards resolve exactly
+                    // v2.83.0 — step-body guards resolve exactly
                     // like their flow-level twins. A guard naming a ghost is a
                     // cage around nothing: the step would run ungoverned while
                     // reading as governed. (This lives INSIDE the existing Step
                     // arm — a first draft added a second `FlowStep::Step` arm
                     // above this one, and the unreachable-pattern warning
-                    // caught it silently disabling every §59/§68/§91 step
+                    // caught it silently disabling every v2.9.0/v2.22.0/v2.46.0 step
                     // check below.)
                     //
-                    // ⚠️ §Fase 121 MADE THE SAME MISTAKE AGAIN — a second
+                    // ⚠️ v2.88.0 MADE THE SAME MISTAKE AGAIN — a second
                     // `FlowStep::Step` arm above this one, in this same file,
                     // with this warning already written here. `cargo build`
                     // said `unreachable_patterns`; the frontend suite went from
                     // 1678/0 to 1667/11, and the failures were tests expecting
                     // errors that had SILENTLY STOPPED FIRING. A warning nobody
-                    // reads is indistinguishable from a disabled lint (§119's
+                    // reads is indistinguishable from a disabled lint (v2.83.0's
                     // own words about `cargo doc`). Add step-body work HERE.
                     //
-                    // §Fase 121 — descend into the step's BODY STATEMENTS.
-                    // Measured: nothing did. The ten productions §119.f–§119.n
+                    // v2.88.0 — descend into the step's BODY STATEMENTS.
+                    // Measured: nothing did. The ten productions v2.83.0–v2.83.0
                     // gave a step-body position (`probe`, `reason`, `weave`,
                     // `navigate`, `drill`, `trail`, `validate`, `use_tool`,
                     // `par`, `retrieve`, `<Agent>(args)`) all reach the
                     // dispatcher, and NO law could see them. It surfaced
-                    // because §121's `against:` resolution fired at flow level
+                    // because v2.88.0's `against:` resolution fired at flow level
                     // and stayed silent for the step-body form — the one every
                     // README block publishes. Law 4, inside the type-checker.
                     //
-                    // Recursing through the SAME walk is the D119.4 doctrine:
+                    // Recursing through the SAME walk is the the design decision doctrine:
                     // one concept, two positions, one implementation, so a
                     // future law reaches both by construction.
                     self.check_step_body_statements(s, flow_name);
@@ -11654,7 +11654,7 @@ impl<'a> TypeChecker<'a> {
                         if g.name.is_empty() {
                             continue;
                         }
-                        // §Fase 119.c — the guard keyword and the symbol table
+                        // v2.83.0 — the guard keyword and the symbol table
                         // disagree on lambda's name: the keyword is `lambda`,
                         // the declaration kind is `lambda_data`.
                         let expected_kind =
@@ -11678,19 +11678,19 @@ impl<'a> TypeChecker<'a> {
                         }
                     }
                     self.check_apply_tool(s);
-                    // §Fase 68.e — `apply: <Compute>` is a model-selection no-op;
+                    // v2.22.0 — `apply: <Compute>` is a model-selection no-op;
                     // `axon-W006` points the adopter to `requires_context:`.
                     self.check_apply_compute(s);
-                    // §Fase 68.f — a `requires_context:` that no model could ever
+                    // v2.22.0 — a `requires_context:` that no model could ever
                     // satisfy is `axon-T809` at compile time.
                     self.check_requires_context(s);
-                    // §Fase 91.a — a step-level `now:` must be a plausible IANA
+                    // v2.46.0 — a step-level `now:` must be a plausible IANA
                     // zone (`axon-T892`).
                     if let Some(tz) = &s.now_tz {
                         self.check_now_tz(tz, "step", &s.name, &s.loc);
                     }
                 }
-                // §Fase 51.b — the Continuous Type Invariant (D8). Inside a
+                // v2.4.0 — the Continuous Type Invariant (D8). Inside a
                 // `quant` block, conversational / unstructured discrete types
                 // (String literals, `.to_string` textual conversions, free-text
                 // `ask:` prompts) are the semantic-collapse path and are
@@ -11698,14 +11698,14 @@ impl<'a> TypeChecker<'a> {
                 // of bases/observables, and continuous carrier references are
                 // admitted. The walk recurses through the quant body.
                 FlowStep::Quant(q) => {
-                    // §Fase 51.c — header semantic validation (encoding scheme,
+                    // v2.4.0 — header semantic validation (encoding scheme,
                     // backend effect, register/depth/bandwidth bounds + the D2
                     // depth-trade-off note) …
                     self.check_quant_header(q, flow_name);
-                    // … then the §51.b Continuous Type Invariant over the body.
+                    // … then the v2.4.0 Continuous Type Invariant over the body.
                     self.check_continuous_type_invariant(&q.body, flow_name);
                 }
-                // §Fase 51.d.2 — a `yield` reached HERE is outside any `quant`
+                // v2.4.0 — a `yield` reached HERE is outside any `quant`
                 // block (the quant body is walked by `check_continuous_type_
                 // invariant`, not this method). `yield` is the amplitude-collapse
                 // measurement point — meaningless outside the Hilbert-space scope.
@@ -11717,11 +11717,11 @@ impl<'a> TypeChecker<'a> {
                     ),
                     &y.loc,
                 ),
-                // §Fase 52.c — `run <Flow>(args)` as a flow-step (a daemon listen
+                // v2.4.0 — `run <Flow>(args)` as a flow-step (a daemon listen
                 // handler invoking a flow, Q3). Reuse the top-level run check:
                 // the flow must be declared, args resolve, etc.
                 FlowStep::Run(n) => self.check_run(n),
-                // §Fase 52.a/c — a `listen … { … }` handler body's steps are
+                // v2.4.0 — a `listen … { … }` handler body's steps are
                 // checked like any body, so a `run`/`persist`/… inside a flow-
                 // body listener is validated (daemon listeners go via
                 // `check_daemon` → `check_listen`).
@@ -11752,9 +11752,9 @@ impl<'a> TypeChecker<'a> {
                     ),
                     _ => {}
                 },
-                // §Fase 86 — Directed Creative Synthesis laws (T868–T872).
+                // v2.41.0 — Directed Creative Synthesis laws (T868–T872).
                 FlowStep::Forge(n) => self.check_forge(n, flow_name),
-                // §Fase 88.c — the warden authorization binding (scope resolves)
+                // v2.43.0 — the warden authorization binding (scope resolves)
                 // + recurse into the analysis body.
                 FlowStep::Warden(n) => self.check_warden(n, flow_name),
                 // All other steps: no cross-reference checks needed
@@ -11763,7 +11763,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 51.c.2 — validate a Pauli-sum observable `M = Σ cₖ Pₖ`
+    /// v2.4.0 — validate a Pauli-sum observable `M = Σ cₖ Pₖ`
     /// (`axon-E0785`). Hermiticity is guaranteed *by construction* (real
     /// coefficients × Pauli strings), so the checker only enforces the
     /// structural well-formedness the construction depends on:
@@ -11833,10 +11833,10 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 69.a — `axon-E0790`: well-formedness of an Advantage Witness. The
+    /// v2.23.0 — `axon-E0790`: well-formedness of an Advantage Witness. The
     /// compiler proves the obligation is STATED correctly (a known metric, a valid
     /// threshold, the required references present); the advantage VALUE is computed
-    /// on real `data` at deploy/runtime (§69.b+) — you cannot claim advantage in
+    /// on real `data` at deploy/runtime (v2.23.0+) — you cannot claim advantage in
     /// the abstract, so `data:` is required here. The metric catalog is closed
     /// ([`WITNESS_METRICS`], mirrored in `axon::advantage_witness`, parity-pinned).
     fn check_witness(&mut self, n: &WitnessDefinition) {
@@ -11902,13 +11902,13 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 51.c — semantic validation of the `quant` block **header**: the
+    /// v2.4.0 — semantic validation of the `quant` block **header**: the
     /// encoding-scheme attribute typing + closed-set checks (D1/D2/D9), plus
     /// the D2 depth-trade-off compiler note. The Pauli-sum `observable:`
     /// *declaration* + its resolution, and the typed continuous-carrier grammar
     /// (`SymbolicPtr[Tensor[Float32]]` / `DensityMatrix[D]` + typed `let` + the
-    /// norm invariant ‖x‖₂ = 1 at the typed encoder boundary) land in §51.c.2 /
-    /// §51.c.3.
+    /// norm invariant ‖x‖₂ = 1 at the typed encoder boundary) land in v2.4.0 /
+    /// v2.4.0.
     fn check_quant_header(&mut self, q: &QuantBlock, flow_name: &str) {
         // encoding ∈ { amplitude, angle } — the closed scheme set (D2).
         if let Some(enc) = &q.encoding {
@@ -11938,7 +11938,7 @@ impl<'a> TypeChecker<'a> {
                 self.warn(note.to_string(), &q.loc);
             }
         }
-        // §Fase 51.c.2 — `observable: <Name>` must resolve to a declared
+        // v2.4.0 — `observable: <Name>` must resolve to a declared
         // `observable` (the Pauli-sum the quant block measures against).
         if let Some(obs) = &q.observable {
             match self.symbols.lookup(obs) {
@@ -11960,7 +11960,7 @@ impl<'a> TypeChecker<'a> {
                 _ => {}
             }
         }
-        // backend effect ∈ QUANT_BACKEND_CATALOG (D1/D9 closed set). §Fase 51.d:
+        // backend effect ∈ QUANT_BACKEND_CATALOG (D1/D9 closed set). v2.4.0:
         // catalogue-driven (single source of truth) — the canonical algebraic
         // effect this block performs is `ots:backend:<effect>`
         // (`crate::ots_catalog::quant_effect_slug`).
@@ -12009,7 +12009,7 @@ impl<'a> TypeChecker<'a> {
                 );
             }
         }
-        // §Fase 69.c — re-uploading layers must be ≥ 1 (1 = no re-uploading).
+        // v2.23.0 — re-uploading layers must be ≥ 1 (1 = no re-uploading).
         if let Some(r) = q.reupload {
             if r < 1 {
                 self.emit(
@@ -12023,8 +12023,8 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 51.b — enforce the **Continuous Type Invariant** over a `quant`
-    /// block body (paper §4.2, refined per D8). The Hilbert-space scope admits
+    /// v2.4.0 — enforce the **Continuous Type Invariant** over a `quant`
+    /// block body (paper section 4.2, refined per D8). The Hilbert-space scope admits
     /// only continuous carriers + discrete *classical control* (integer indices
     /// `n`/`L`/`D`, a closed enum of measurement bases). It rejects
     /// *conversational / unstructured discrete* values, which collapse the
@@ -12044,7 +12044,7 @@ impl<'a> TypeChecker<'a> {
     /// NOTE (scope): the amplitude-encoding norm invariant ‖x‖₂ = 1 (D2) is a
     /// property of a *typed* continuous carrier (`SymbolicPtr[Tensor[Float32]]`
     /// with a normalized marker), which the typed continuous grammar introduces
-    /// in §51.c — it is not statically derivable from an untyped
+    /// in v2.4.0 — it is not statically derivable from an untyped
     /// `let x = extract_embeddings(audio)`, so its enforcement lands there, at
     /// the typed encoder boundary, not here.
     fn check_continuous_type_invariant(&mut self, body: &[FlowStep], flow_name: &str) {
@@ -12076,7 +12076,7 @@ impl<'a> TypeChecker<'a> {
                             &n.loc,
                         );
                     }
-                    // §Fase 51.c.3 — typed encoder-boundary discipline. A typed
+                    // v2.4.0 — typed encoder-boundary discipline. A typed
                     // `let x: <T> = …` inside quant must carry a continuous (or
                     // classical-control) type, and a `DensityMatrix[D]` must have
                     // D = 2ⁿ (the Hilbert-space dimension for n qubits).
@@ -12126,17 +12126,17 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 51.b — heuristic: is a `let` value a **String literal**?
+    /// v2.4.0 — heuristic: is a `let` value a **String literal**?
     ///
     /// The lexer strips the surrounding quotes, so a string literal and a bare
     /// reference both surface as a plain `value_expr`. They are distinguished
     /// by `value_kind`: a string literal is `"literal"` (so is a number / bool
     /// / list). We therefore classify a `"literal"` value as a String iff it is
     /// NOT numeric, NOT a bool, and NOT a list literal. (A numeric-looking
-    /// string like `"123"` is a rare accepted false-negative; §51.c's typed
+    /// string like `"123"` is a rare accepted false-negative; v2.4.0's typed
     /// grammar closes that with real declared types.)
-    /// §Fase 51.c.3 — a `DensityMatrix[D]` must have **D = 2ⁿ** (the dimension
-    /// of the Hilbert space of n qubits, paper §3.1/§3.3); `axon-E0786`. When
+    /// v2.4.0 — a `DensityMatrix[D]` must have **D = 2ⁿ** (the dimension
+    /// of the Hilbert space of n qubits, paper section 3.1/section 3.3); `axon-E0786`. When
     /// the dimension is symbolic (non-numeric `generic_param`) the check is
     /// skipped — only a concrete literal can be proven a power of two.
     fn check_density_matrix_dim(&mut self, ty: &TypeExpr, flow_name: &str, loc: &Loc) {
@@ -12175,17 +12175,17 @@ impl<'a> TypeChecker<'a> {
         true // quotes stripped at lex time ⇒ a String literal
     }
 
-    /// §Fase 58.d — validate a `use Tool(k = v, …)` call against the tool's
+    /// v2.8.0 — validate a `use Tool(k = v, …)` call against the tool's
     /// declared input schema (W2): the contract the type-checker enforces so a
     /// malformed invocation is CALLER blame (CT-2) at compile time, BEFORE any
     /// HTTP dispatch. Checks: every named arg is a declared parameter; no
     /// duplicates; every required (non-optional) parameter is supplied; and a
     /// best-effort literal type-alignment. The legacy single-`on <arg>` form is
-    /// untyped and skipped (§58 D5 back-compat), as is a schema-less tool (no
+    /// untyped and skipped (v2.8.0 D5 back-compat), as is a schema-less tool (no
     /// `parameters:` → no contract to enforce). The `apply: Tool given:
-    /// <struct>` splat (D3) is validated separately (§58.d.2).
-    /// §Fase 116.a (D116.9) — the scopes a tool's operation requires
-    /// (`tool T { requires: [...] }`). Empty for every pre-§116 tool.
+    /// <struct>` splat (D3) is validated separately (v2.8.0).
+    /// v2.77.0 — the scopes a tool's operation requires
+    /// (`tool T { requires: [...] }`). Empty for every pre-v2.77.0 tool.
     fn tool_required_scopes(&self, name: &str) -> Vec<String> {
         self.program
             .declarations
@@ -12197,13 +12197,13 @@ impl<'a> TypeChecker<'a> {
             .unwrap_or_default()
     }
 
-    /// §Fase 116.a (D116.9) — the program's GRANTED capability set: the flat
-    /// union of every `credential`'s `grants` (§92) and every endpoint's /
-    /// daemon's `requires:` capabilities (§51.x / §52.d). These are the scopes
+    /// v2.77.0 — the program's GRANTED capability set: the flat
+    /// union of every `credential`'s `grants` (v2.46.0) and every endpoint's /
+    /// daemon's `requires:` capabilities (v2.4.0 / v2.4.0). These are the scopes
     /// the program has DECLARED it holds — the same vocabulary a tool's
     /// `requires:` draws from. Program-wide (an app's OAuth scopes are held
     /// app-wide, not per-flow); a per-flow tightening is a named future
-    /// refinement, not a §116.a hole.
+    /// refinement, not a v2.77.0 hole.
     fn granted_scopes(&self) -> std::collections::HashSet<String> {
         let mut granted = std::collections::HashSet::new();
         for d in &self.program.declarations {
@@ -12221,12 +12221,12 @@ impl<'a> TypeChecker<'a> {
         granted
     }
 
-    /// §Fase 116.a — **axon-T956** (scope coverage). A `use` of a tool whose
+    /// v2.77.0 — **axon-T956** (scope coverage). A `use` of a tool whose
     /// `requires:` names a scope the program's granted set does not cover is
     /// refused: an autonomous operation must hold the authority it needs, and
     /// that authority must be DECLARED (the doctrine `every_requirement_is_
-    /// grantable`, §90, on the tool surface). Inert for every tool with no
-    /// `requires:` (the whole pre-§116 corpus).
+    /// grantable`, v2.45.0, on the tool surface). Inert for every tool with no
+    /// `requires:` (the whole pre-v2.77.0 corpus).
     fn check_use_tool_scopes(&mut self, n: &UseToolStep) {
         let required = self.tool_required_scopes(&n.tool_name);
         if required.is_empty() {
@@ -12274,7 +12274,7 @@ impl<'a> TypeChecker<'a> {
                 ),
                 Some((_, decl_ty, _)) => {
                     if value_kind == "reference" {
-                        // §Fase 60.c — a `"reference"` value (a flow-param or a
+                        // v2.10.0 — a `"reference"` value (a flow-param or a
                         // `Step.output`) is resolved at runtime against the
                         // bindings; validate its SOURCE type against the declared
                         // parameter type (the Q4 soundness contract). Conservative:
@@ -12318,12 +12318,12 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 60.c — resolve the declared TYPE of a `"reference"` kwarg value, when
+    /// v2.10.0 — resolve the declared TYPE of a `"reference"` kwarg value, when
     /// statically knowable: a flow parameter (its declared type) or a `<Step>`
     /// / `<Step>.output` reference (the step's declared `output:` type, or a
     /// `use <Tool>`'s `output_type`). Returns `None` for anything else (a `let`
     /// binding, a runtime value) so the caller conservatively skips — no false
-    /// positive, mirroring the §58.d literal stance.
+    /// positive, mirroring the v2.8.0 literal stance.
     fn resolve_reference_type(&self, reference: &str, steps: &[FlowStep]) -> Option<String> {
         // A flow parameter — `company`.
         if let Some(t) = self.current_flow_params.get(reference) {
@@ -12342,7 +12342,7 @@ impl<'a> TypeChecker<'a> {
         })
     }
 
-    /// §Fase 60.c — a declared tool's `output_type:`, when present.
+    /// v2.10.0 — a declared tool's `output_type:`, when present.
     fn tool_output_type(&self, tool_name: &str) -> Option<String> {
         self.program.declarations.iter().find_map(|d| match d {
             Declaration::Tool(t) if t.name == tool_name => t.output_type.clone(),
@@ -12350,7 +12350,7 @@ impl<'a> TypeChecker<'a> {
         })
     }
 
-    /// §Fase 58.d — the `(name, flat-type, optional)` schema of a declared
+    /// v2.8.0 — the `(name, flat-type, optional)` schema of a declared
     /// tool. Empty when the tool declares no `parameters:` (schema-less /
     /// back-compat) or is undeclared (the existence check already emitted).
     fn tool_parameters(&self, tool_name: &str) -> Vec<(String, String, bool)> {
@@ -12376,7 +12376,7 @@ impl<'a> TypeChecker<'a> {
             .unwrap_or_default()
     }
 
-    /// §Fase 58.d — infer a named-arg VALUE's type only when it is an
+    /// v2.8.0 — infer a named-arg VALUE's type only when it is an
     /// UNAMBIGUOUS literal. The frontend stored the value as a bare string, so
     /// a bare identifier is ambiguous (the string literal `"x"` and the
     /// reference `x` both lower to `x`) → `None`, skipping the check to stay
@@ -12397,7 +12397,7 @@ impl<'a> TypeChecker<'a> {
         None
     }
 
-    /// §Fase 58.d — whether an inferred literal value type aligns with a
+    /// v2.8.0 — whether an inferred literal value type aligns with a
     /// declared parameter type. `Any` accepts anything; an `Int` coerces into a
     /// `Float` parameter; otherwise the base types must match.
     fn tool_arg_types_align(value_ty: &str, decl_ty: &str) -> bool {
@@ -12409,7 +12409,7 @@ impl<'a> TypeChecker<'a> {
         base == "Any" || base == value_ty || (base == "Float" && value_ty == "Int")
     }
 
-    /// §Fase 59 (D2/D3) — the honest-compiler guidance for `apply: <Tool>`.
+    /// v2.9.0 (D2/D3) — the honest-compiler guidance for `apply: <Tool>`.
     ///
     /// `apply: <Tool>` is **cognitive delegation**: the step runs as an LLM
     /// reasoning call with the tool made available to the model, which
@@ -12421,11 +12421,11 @@ impl<'a> TypeChecker<'a> {
     /// redirecting to the one deterministic, CT-2-validated, real-dispatch
     /// surface: flow-level `use <Tool>(k = v, …)`.
     ///
-    /// This SUPERSEDES the §58.d.2 splat type-check. Those hard errors
+    /// This SUPERSEDES the v2.8.0 splat type-check. Those hard errors
     /// (`missing required` / `type mismatch`) validated a deterministic
     /// contract the runtime never honors — the "illusion of control" that
-    /// moved the fence. §59 removes the phantom errors; the real CT-2
-    /// validation lives on `use <Tool>(k = v, …)` (§58.d, untouched). The
+    /// moved the fence. v2.9.0 removes the phantom errors; the real CT-2
+    /// validation lives on `use <Tool>(k = v, …)` (v2.8.0, untouched). The
     /// fence stays put: no runtime splat is invented (D6 — the LLM stays
     /// stochastic; the compiler only indicates the path).
     ///
@@ -12448,17 +12448,17 @@ impl<'a> TypeChecker<'a> {
         self.warn(build_w004_message(&step.apply_ref, &params), &step.loc);
     }
 
-    /// §Fase 68.e — `axon-W006`: a step's `apply: <Compute>` is a model-selection
+    /// v2.22.0 — `axon-W006`: a step's `apply: <Compute>` is a model-selection
     /// NO-OP. A `compute { model: … }` block's `model:` is dropped at lowering
     /// (the parser keeps only `shield:`), and `apply:` does not pick an LLM model
     /// — so the brief-#36 adopter who wrote `apply: BigSummary` to pin a larger
     /// model got silently ignored. Turn that silent no-op into guidance toward the
-    /// faithful surface: declare `requires_context:` on the step (the §68.c
-    /// resolver picks a satisfying model), or set the deployment model. The §59
+    /// faithful surface: declare `requires_context:` on the step (the v2.22.0
+    /// resolver picks a satisfying model), or set the deployment model. The v2.9.0
     /// honest-compiler doctrine — the compiler tells the truth + indicates the path.
     ///
     /// Fires ONLY when `apply_ref` resolves to a declared `compute`. An
-    /// `apply: <Tool>` is §59's `axon-W004`; an `apply: <Flow>` is composition.
+    /// `apply: <Tool>` is v2.9.0's `axon-W004`; an `apply: <Flow>` is composition.
     fn check_apply_compute(&mut self, step: &StepNode) {
         if step.apply_ref.is_empty() {
             return;
@@ -12470,15 +12470,15 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 68.f — `axon-T809`: validate a step's `requires_context:` at compile
+    /// v2.22.0 — `axon-T809`: validate a step's `requires_context:` at compile
     /// time. Two impossibilities are caught before deploy:
     ///   - `0` (or absent → skipped) — a zero context requirement is meaningless;
     ///   - a value larger than [`MAX_KNOWN_CONTEXT_WINDOW`] (the largest window any
-    ///     canonical model offers, §68.a) — NO model could ever satisfy it, so it
+    /// canonical model offers, v2.22.0) — NO model could ever satisfy it, so it
     ///     is a hard error here rather than a deploy-time / runtime surprise.
     ///
     /// The per-DEPLOYMENT satisfiability ("does THIS tenant's configured backend
-    /// have a `>= N` model") is the enterprise §68.h deploy gate; this OSS check is
+    /// have a `>= N` model") is the enterprise v2.22.0 deploy gate; this OSS check is
     /// the catalog-level floor that holds for any backend.
     fn check_requires_context(&mut self, step: &StepNode) {
         let Some(n) = step.requires_context else {
@@ -12507,11 +12507,11 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 94.a — the write-verb law over a `backend: secrets` store
+    /// v2.48.0 — the write-verb law over a `backend: secrets` store
     /// (`axon-T897`). A secrets store is a read-only metadata view:
     /// `persist` / `mutate` / `purge` against it are unrepresentable —
     /// custody is written only by the tenant-secrets seeding API and by
-    /// the runtime commit of a mediated `rotate` (§94.b). Emitted at the
+    /// the runtime commit of a mediated `rotate` (v2.48.0). Emitted at the
     /// offending step, naming the verb, so `axon fix` guidance stays
     /// exact.
     fn check_secrets_store_write(
@@ -12555,7 +12555,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 38.d (D2) — run the `where:` column-type proof against
+    /// v1.31.0 (D2) — run the `where:` column-type proof against
     /// the store's declared INLINE schema (form a). Forms (b)/(c)
     /// silently skip at this layer (they're proven at deploy time —
     /// D8, in 38.f — when filesystem context for manifest discovery
@@ -12580,7 +12580,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 67.b — run the bounded/ordered `retrieve` proof: the
+    /// v2.21.0 — run the bounded/ordered `retrieve` proof: the
     /// `order_by:` clause (axon-T807 — sort-term shape, direction, and
     /// column existence) + the `limit:` clause (axon-T808 — `u32` literal
     /// or integer-`${param}`). The compile-time mirror of the runtime
@@ -12613,7 +12613,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 76.d — run the aggregate `retrieve` proof: the `aggregate:`
+    /// v2.33.0 — run the aggregate `retrieve` proof: the `aggregate:`
     /// closed catalog + `group_by:` grammar (axon-T843), the schema-backed
     /// column/numeric proof (axon-T844, inline schema only), and the
     /// structural combination rules (axon-T845 — group_by-without-aggregate,
@@ -12647,7 +12647,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 38.e (D2 — second half) — run the `persist` field-block
+    /// v1.31.0 (D2 — second half) — run the `persist` field-block
     /// proof: axon-T803 NOT-NULL omission + axon-T804 unknown field +
     /// axon-T802 value-type mismatch. An empty fields block (the
     /// v1.30.0 blockless `persist <store>` form that writes user
@@ -12676,7 +12676,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 38.e (D2 — second half) — run the `mutate` SET-block
+    /// v1.31.0 (D2 — second half) — run the `mutate` SET-block
     /// proof: axon-T804 unknown field + axon-T802 value-type mismatch.
     /// NOT-NULL omission (T803) does NOT apply to mutate (UPDATE
     /// preserves existing values for omitted columns).
@@ -12708,13 +12708,13 @@ impl<'a> TypeChecker<'a> {
 
     /// Verify that a type name is either built-in or user-defined.
     /// Soft check: unknown types are silently accepted — the house
-    /// ad-hoc-type idiom (D115.6). §Fase 115 note: this leniency is NO
+    /// ad-hoc-type idiom. v2.76.0 note: this leniency is NO
     /// LONGER justified by "may come from imports" — imports are real now
     /// (module mode registers them), and an *explicitly imported* type is
     /// verified against its module's exports (`axon-T953`). Free type
     /// names stay soft because they are idiom, not because a phantom
     /// mechanism might provide them.
-    // ── §Fase 73.a — the `Json<T>` shape-lens well-formedness pass ──
+    // ── v2.26.0 — the `Json<T>` shape-lens well-formedness pass ──
     //
     // Open `Json` (no shape) is the always-total, always-honest default
     // and is never validated here. A refined `Json<T>` lens is an
@@ -12723,7 +12723,7 @@ impl<'a> TypeChecker<'a> {
     // is undeclared, or names a non-`type` symbol (a flow, a tool, a
     // builtin scalar), is `axon-T840`. This is the catalog-level
     // well-formedness of the lens TYPE; field-level lens checking (does
-    // `doc.field` exist in `T`?) is §Fase 73.e. The runtime is unaffected
+    // `doc.field` exist in `T`?) is v2.26.0. The runtime is unaffected
     // either way — the lens is compile-time only (`open_data_is_total`:
     // the compiler may help, the runtime never lies).
     fn check_json_lenses(&mut self, decls: &[Declaration]) {
@@ -12765,7 +12765,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 73.a — validate a `Json<T>` lens written as a type
+    /// v2.26.0 — validate a `Json<T>` lens written as a type
     /// annotation (a flow param / return, a `type` field). A bare `Json`
     /// (empty generic) is the open default and passes untouched.
     fn check_json_lens_annotation(&mut self, ty: &TypeExpr) {
@@ -12774,7 +12774,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 73.a — the shared `axon-T840` check: the lens shape `T` must
+    /// v2.26.0 — the shared `axon-T840` check: the lens shape `T` must
     /// resolve to a declared struct `type`.
     fn validate_json_shape(&mut self, shape: &str, loc: &Loc) {
         let t = shape.trim();
@@ -12801,7 +12801,7 @@ impl<'a> TypeChecker<'a> {
         );
     }
 
-    // ── §Fase 73.e — the `Json<T>` shape-lens field checker ─────────────
+    // ── v2.26.0 — the `Json<T>` shape-lens field checker ─────────────
     //
     // 73.a validated the lens TYPE's well-formedness (`T` is a declared
     // struct). 73.e makes the lens DO something: a navigation `profile.age`
@@ -12813,11 +12813,11 @@ impl<'a> TypeChecker<'a> {
     // (doctrine `open_data_is_total`: the compiler may help, the runtime
     // never lies, never crashes).
 
-    /// §Fase 74.g — collect every channel/topic `emit`ted to anywhere in
+    /// v2.31.0 — collect every channel/topic `emit`ted to anywhere in
     /// the program: all flow bodies + every daemon listener body, recursing
     /// into nested `if` / `for` / `listen` bodies. The set of producers a
     /// `listen`er's channel is checked against (`axon-W009`). Mirrors the
-    /// §74.g PCC `collect_emitted_channels` (same Emit/If/ForIn/Listen walk)
+    /// v2.31.0 PCC `collect_emitted_channels` (same Emit/If/ForIn/Listen walk)
     /// so the compile-time warning + the deploy-gate proof agree.
     fn collect_emitted_channels(&mut self, decls: &[Declaration]) {
         fn walk(steps: &[FlowStep], out: &mut std::collections::HashSet<String>) {
@@ -12915,7 +12915,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 73.e — walk a flat dotted lens path's field SEGMENTS against
+    /// v2.26.0 — walk a flat dotted lens path's field SEGMENTS against
     /// the shape struct, emitting `axon-T842` on the first undeclared
     /// field. Returns the final segment's declared scalar type (so
     /// `profile.age` is Int); an intermediate scalar / unknown leaf or a
@@ -12965,7 +12965,7 @@ impl<'a> TypeChecker<'a> {
         T::Unknown
     }
 
-    /// §Fase 73.e — run the lens field check over a LEGACY-condition dotted
+    /// v2.26.0 — run the lens field check over a LEGACY-condition dotted
     /// path string (`profile.address.city`): if its root is a `Json<T>`
     /// lens param, walk the segments against the shape (`axon-T842` on an
     /// undeclared field). A non-dotted path or a non-lens root is a no-op,
@@ -13004,8 +13004,8 @@ impl<'a> TypeChecker<'a> {
         {
             return true;
         }
-        // Soft: unknown types accepted silently — house idiom (D115.6),
-        // not the phantom-import excuse §115 retired.
+        // Soft: unknown types accepted silently — house idiom,
+        // not the phantom-import excuse v2.76.0 retired.
         true
     }
 
@@ -13026,11 +13026,11 @@ impl<'a> TypeChecker<'a> {
     }
 
     // ──────────────────────────────────────────────────────────────────
-    //  §λ-L-E Fase 13 — Mobile Typed Channels validation
-    //  (paper_mobile_channels.md §3 + Fase 13.b parity port)
+    // v1.6.0 — Mobile Typed Channels validation
+    // (paper_mobile_channels.md section 3 + v1.6.0 parity port)
     // ──────────────────────────────────────────────────────────────────
 
-    /// Validate `channel Name { … }` (paper §3.1 + §3.4 shield prereq).
+    /// Validate `channel Name { … }` (paper section 3.1 + section 3.4 shield prereq).
     fn check_channel(&mut self, node: &ChannelDefinition) {
         if node.name.is_empty() {
             self.emit("channel requires a name".to_string(), &node.loc);
@@ -13065,15 +13065,15 @@ impl<'a> TypeChecker<'a> {
             }
         }
 
-        // §Fase 124.c — axon-T1215: κ-coverage for the channel egress
+        // v4.0.0 — axon-T1215: κ-coverage for the channel egress
         // boundary. The exact dual of axon-T957: an axonendpoint carries
         // regulated data across a TRUST boundary; a published channel
         // carries it across a VISIBILITY boundary (D8 — publish extrudes
         // a capability to parties outside the flow).
         //
         // WHY AT CHECK TIME AND NOT ONLY AT PUBLISH. The typed bus also
-        // refuses an uncovering shield at runtime (§124.c wires that
-        // predicate), but a refusal that arrives mid-flow is the §122.c
+        // refuses an uncovering shield at runtime (v4.0.0 wires that
+        // predicate), but a refusal that arrives mid-flow is the v2.89.0
         // shape — the program had already acted by the time it was told
         // no. The declaration carries everything needed to decide
         // statically (`message:` → κ, `shield:` → shield κ), so the
@@ -13159,7 +13159,7 @@ impl<'a> TypeChecker<'a> {
     }
 
     /// Validate `daemon` body — listeners + delegated flow-step checks.
-    /// Pre-Fase 13 the Rust checker skipped daemons entirely; we now
+    /// Pre-v1.6.0 the Rust checker skipped daemons entirely; we now
     /// walk listeners so emit/publish/discover/listen receive the same
     /// validation they do inside flows.
     fn check_daemon(&mut self, node: &DaemonDefinition) {
@@ -13182,7 +13182,7 @@ impl<'a> TypeChecker<'a> {
                 _ => {}
             }
         }
-        // §Fase 71.c — the `window:` temporal binding must name a defined
+        // v2.27.0 — the `window:` temporal binding must name a defined
         // `window` primitive. The supervisor evaluates it before claiming a
         // scheduled tick (inside ⇒ fire; outside ⇒ `on_outside`).
         if !node.window_ref.is_empty() {
@@ -13206,18 +13206,18 @@ impl<'a> TypeChecker<'a> {
                 _ => {}
             }
         }
-        // §Fase 72.a — the `budget { … }` linear-effect rate limit.
+        // v2.28.0 — the `budget { … }` linear-effect rate limit.
         if let Some(budget) = &node.budget {
             self.check_budget(budget, &node.name);
         }
         for listener in &node.listeners {
             self.check_listen(listener, &node.name);
         }
-        // §Fase 52.d — a cron-SCHEDULED daemon is a standing autonomous
+        // v2.4.0 — a cron-SCHEDULED daemon is a standing autonomous
         // privilege: it fires + invokes flows on its own, with no request
         // principal behind it. It MUST declare its capability scope so the
         // enterprise supervisor can mint a least-privilege per-run principal
-        // (§52.d). Event-only daemons are exempt (pre-§52 Fase-16 surface).
+        // (v2.4.0). Event-only daemons are exempt (pre-v2.4.0 cycle-16 surface).
         let has_cron = node
             .listeners
             .iter()
@@ -13236,19 +13236,19 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// §Fase 52.g (reworked §74.g) — the honest "this daemon listener will
-    /// never fire" diagnostic. §74 WIRED flow→daemon event delivery: a
+    /// v2.4.0 (reworked v2.31.0) — the honest "this daemon listener will
+    /// never fire" diagnostic. v2.31.0 WIRED flow→daemon event delivery: a
     /// non-cron `listen`er now fires when an event arrives on its channel.
     /// So the remaining delivery defect is the UNPRODUCED channel — a
     /// listener on a channel NOTHING `emit`s to waits for an event no
     /// producer raises (the Kivi brief #39 case). `axon-W009` fires ONLY in
-    /// that case now (it is silent when a producer exists, since §74
-    /// delivers it). The compile-time mirror of the §74.g PCC
+    /// that case now (it is silent when a producer exists, since v2.31.0
+    /// delivers it). The compile-time mirror of the v2.31.0 PCC
     /// `ChannelDeliverySoundness`; still the `axon-W004`/`no_unwitnessed_advantage`
     /// honesty posture — never let a program rely on an event no producer
     /// raises.
     fn warn_daemon_listener_never_fires(&mut self, daemon_name: &str, channel: &str, loc: &Loc) {
-        // §74 delivers a listener that HAS a producer → only warn when the
+        // v2.31.0 delivers a listener that HAS a producer → only warn when the
         // channel has NO `emit` anywhere in the program.
         if self.emitted_channels.contains(channel) {
             return;
@@ -13265,7 +13265,7 @@ impl<'a> TypeChecker<'a> {
         );
     }
 
-    /// Validate a listen block (Fase 13 D4 dual-mode + §52.g delivery honesty).
+    /// Validate a listen block (v1.6.0 D4 dual-mode + v2.4.0 delivery honesty).
     fn check_listen(&mut self, node: &ListenStep, daemon_name: &str) {
         if node.channel_is_ref {
             match self.symbols.lookup(&node.channel) {
@@ -13283,15 +13283,15 @@ impl<'a> TypeChecker<'a> {
                     ),
                     &node.loc,
                 ),
-                // §Fase 52.g — a well-formed typed-channel listener still
+                // v2.4.0 — a well-formed typed-channel listener still
                 // never fires today (runtime is cron-only) → honest redirect.
                 _ => self.warn_daemon_listener_never_fires(daemon_name, &node.channel, &node.loc),
             }
         } else if let Some(expr) = crate::cron::cron_expr(&node.channel) {
-            // §Fase 52.b — a time-based `listen "cron:<expr>"`. A cron channel is
+            // v2.4.0 — a time-based `listen "cron:<expr>"`. A cron channel is
             // a first-class scheduled trigger, NOT a legacy string topic, so it
             // does NOT get the D4 deprecation warning. Validate the 5-field
-            // expression so a schedule that type-checks is one the §52.c
+            // expression so a schedule that type-checks is one the v2.4.0
             // TimerSource can actually fire.
             match crate::cron::CronSchedule::parse(expr) {
                 Err(e) => self.emit(
@@ -13306,8 +13306,8 @@ impl<'a> TypeChecker<'a> {
                     // A scheduled trigger with no handler is a no-op — almost
                     // always a mistake. The body is what runs each tick.
                     if node.body.is_empty() {
-                        // §Fase 52.b code; renumbered E0790 → E0792 to resolve the
-                        // collision with §69.a's witness well-formedness `axon-E0790`
+                        // v2.4.0 code; renumbered E0790 → E0792 to resolve the
+                        // collision with v2.23.0's witness well-formedness `axon-E0790`
                         // (one code, one meaning).
                         self.emit(
                             format!(
@@ -13323,7 +13323,7 @@ impl<'a> TypeChecker<'a> {
                 }
             }
         } else {
-            // §Fase 52.g — a non-cron string topic on a daemon never fires
+            // v2.4.0 — a non-cron string topic on a daemon never fires
             // either (runtime is cron-only). The pre-52.g D4 warning told
             // adopters to "migrate to a typed `channel`" — but a typed
             // channel listener ALSO never fires, so that redirect was
@@ -13331,7 +13331,7 @@ impl<'a> TypeChecker<'a> {
             // use cron-poll" redirect.
             self.warn_daemon_listener_never_fires(daemon_name, &node.channel, &node.loc);
         }
-        // §Fase 52.a — validate the (now-executing) handler body. Its steps get
+        // v2.4.0 — validate the (now-executing) handler body. Its steps get
         // the same checks as a flow body (e.g. a `run <Flow>` resolves, a
         // `persist` targets a declared store), so a malformed listener body is
         // caught at compile time rather than failing silently at the first tick.
@@ -13340,7 +13340,7 @@ impl<'a> TypeChecker<'a> {
         }
     }
 
-    /// Validate an emit step (Chan-Output / Chan-Mobility, paper §3.1, §3.2).
+    /// Validate an emit step (Chan-Output / Chan-Mobility, paper section 3.1, section 3.2).
     fn check_emit(&mut self, node: &EmitStatement) {
         if node.channel_ref.is_empty() {
             self.emit("emit requires a channel reference".to_string(), &node.loc);
@@ -13373,16 +13373,16 @@ impl<'a> TypeChecker<'a> {
             );
             return;
         }
-        // Fase 13.i — a dotted-access value_ref ("Step.output" or deeper)
+        // v1.6.0 — a dotted-access value_ref ("Step.output" or deeper)
         // references a prior step's result and is always scalar at the
         // type-check layer. The runtime resolves it via the executor's
-        // ContextManager. Mobility (paper §3.2) is by definition a
+        // ContextManager. Mobility (paper section 3.2) is by definition a
         // bare-identifier case (a declared channel name), so the
         // second-order check below intentionally skips dotted paths.
         if node.value_ref.contains('.') {
             return;
         }
-        // Second-order schema check (paper §3.2 Chan-Mobility): if the
+        // Second-order schema check (paper section 3.2 Chan-Mobility): if the
         // outer channel carries `Channel<U>`, the value must resolve to
         // a channel whose own message equals U.  Lookup channel
         // definition by walking the AST so we don't need a separate
@@ -13490,11 +13490,11 @@ impl<'a> TypeChecker<'a> {
             );
             return;
         }
-        // §Fase 77.b (`axon-T848`, D77.6) — the egress rule: a publish under
+        // v2.34.0 (`axon-T848`, the design decision) — the egress rule: a publish under
         // a SIGNING shield declares the channel for signed EXTERNAL delivery,
         // and the promise must be durable — a webhook backed by an ephemeral
         // in-process buffer dies unwitnessed with the process. v1 requires
-        // `persistence: persistent_axonstore` so egress inherits the §74
+        // `persistence: persistent_axonstore` so egress inherits the v2.31.0
         // outbox's at-least-once. A sign-less shield keeps the pure π-calc
         // publish semantics untouched (back-compat absolute).
         if let Some(shield) = find_shield_by_name(self.program, &node.shield_ref) {
@@ -13609,7 +13609,7 @@ impl<'a> TypeChecker<'a> {
         None
     }
 
-    /// §Fase 77.b — find the `persistence:` field of a registered channel
+    /// v2.34.0 — find the `persistence:` field of a registered channel
     /// by name (the `axon-T848` durable-egress rule reads it).
     fn find_channel_persistence(&self, name: &str) -> Option<String> {
         for decl in &self.program.declarations {
@@ -13623,11 +13623,11 @@ impl<'a> TypeChecker<'a> {
     }
 }
 
-// ── §λ-L-E Fase 4 — Honda-Vasconcelos helpers (free fns) ────────────────────
+// ── v1.1.0 — Honda-Vasconcelos helpers (free fns) ────────────────────
 
 /// Honda-Vasconcelos duality on a single step pair:
 /// `send T ↔ receive T`, `loop ↔ loop`, `end ↔ end`.
-/// §Fase 41.b — lower a Fase 4 [`SessionRole`] (a flat `send`/`receive`/`loop`/
+/// v2.3.0 — lower a v1.1.0 [`SessionRole`] (a flat `send`/`receive`/`loop`/
 /// `end` step list) into the [`SessionType`] algebra of `crate::session`:
 /// `send T` ↦ `!T.·`, `receive T` ↦ `?T.·`, a terminal `end` ↦ `end`, and a
 /// terminal `loop` ↦ a `μ`-recursion back to the role's start
@@ -13644,7 +13644,7 @@ fn lower_session_role(role: &SessionRole) -> SessionType {
     }
 }
 
-/// Lower a step sequence into a [`SessionType`] (§Fase 41.b). `send`/`receive`
+/// Lower a step sequence into a [`SessionType`] (v2.3.0). `send`/`receive`
 /// prefix the continuation; `end`↦`end`, `loop`↦`X` (the role-level recursion
 /// var); `select`/`branch` are terminal choices whose labelled branches each
 /// lower recursively (their own sub-protocol).
@@ -13659,7 +13659,7 @@ fn lower_session_steps(steps: &[SessionStep]) -> SessionType {
         "end" => SessionType::End,
         "select" => SessionType::select(branch_types(&first.branches)),
         "branch" => SessionType::branch(branch_types(&first.branches)),
-        // §Fase 79 — `interrupt { body } on Sig as sig resumable { handler }`
+        // v2.36.0 — `interrupt { body } on Sig as sig resumable { handler }`
         // lowers to `Intr(sig; B, H)`. Terminal like select/branch (the region's
         // continuation lives inside its body). `resume` ↦ the self-dual leaf.
         "interrupt" => {
@@ -13688,15 +13688,15 @@ fn branch_types(branches: &[SessionBranch]) -> impl Iterator<Item = (String, Ses
     branches.iter().map(|b| (b.label.clone(), lower_session_steps(&b.steps)))
 }
 
-/// §Fase 79 — the closed `CallInterruptCause` catalog (D79.2). Mirrors every
+/// v2.36.0 — the closed `CallInterruptCause` catalog. Mirrors every
 /// other closed catalog in the language (`qos`, `on_stuck`, `sign`): the
 /// type-checker needs a finite exhaustiveness surface and the PCC a finite
 /// proof obligation. Also consumed by the `InterruptibleSessionSoundness`
-/// witness re-derivation (§79.c PCC).
+/// witness re-derivation (v2.36.0 PCC).
 pub const CALL_INTERRUPT_CAUSES: &[&str] =
     &["CallerSpeech", "Dtmf", "SilenceTimeout", "AgentFault"];
 
-/// §Fase 79.c — a `resumable` handler is a **two-exit** construct (D79.11a):
+/// v2.36.0 — a `resumable` handler is a **two-exit** construct:
 /// its normal exit is `resume` (back to the parked body) and its abandon exit
 /// is `end` (TTL expiry). A well-formed handler must reach one of them on every
 /// path — the last step is `resume`/`end`, or a terminal choice all of whose
@@ -13778,7 +13778,7 @@ fn cycle_to_edges<'a>(cycle: &[String], edges: &'a [TopologyEdge]) -> Vec<&'a To
 }
 
 /// Locate a session by name in the program's declarations (flat scan).
-/// §80.g hardening — `Rec("X", Var("X"))`: the unguarded μX.X a leading
+/// v2.37.0 hardening — `Rec("X", Var("X"))`: the unguarded μX.X a leading
 /// `loop` lowers to. The coinductive/credit analyses would unfold it without
 /// progress; every consumer of a lowered role must reject it first.
 fn is_unguarded_recursion(t: &SessionType) -> bool {
@@ -13786,9 +13786,9 @@ fn is_unguarded_recursion(t: &SessionType) -> bool {
         if matches!(body.as_ref(), SessionType::Var(v) if v == name))
 }
 
-/// §Fase 80.c — collect the distinct message types a role sends/receives,
+/// v2.37.0 — collect the distinct message types a role sends/receives,
 /// walking every construct that can carry a message: plain `send`/`receive`
-/// steps, `select`/`branch` labelled arms, and §79 `interrupt` body+handler
+/// steps, `select`/`branch` labelled arms, and v2.36.0 `interrupt` body+handler
 /// (both exits — a message only exchanged inside a handler still crosses the
 /// wire, so the T849 totality law must see it). `loop`/`end`/`resume` carry
 /// no payload. Order-preserving first-occurrence dedup keeps diagnostics
@@ -13827,7 +13827,7 @@ fn find_session_by_name<'a>(program: &'a Program, name: &str) -> Option<&'a Sess
     None
 }
 
-/// §Fase 37.c — Render a `TypeExpr` for a diagnostic message:
+/// v1.32.0 — Render a `TypeExpr` for a diagnostic message:
 /// `String`, `List<String>`, `String?` (optional marker appended).
 fn fmt_type_expr(t: &TypeExpr) -> String {
     let mut s = t.name.clone();
@@ -13842,7 +13842,7 @@ fn fmt_type_expr(t: &TypeExpr) -> String {
     s
 }
 
-/// §Fase 117.a — peel the wrapping type constructors off a declared type
+/// v2.81.0 — peel the wrapping type constructors off a declared type
 /// reference down to the nominal name a `type` declaration can carry.
 ///
 /// `FlowEnvelope<List<PatientRecord>>` → `PatientRecord`. Used by the
@@ -13851,7 +13851,7 @@ fn fmt_type_expr(t: &TypeExpr) -> String {
 /// regulatory classes. Mirrors the constructor set [`declared_cardinality`]
 /// recognises, and is total — an unrecognised or empty reference peels to
 /// itself, so a caller that finds no matching `type` simply contributes no κ.
-// §Fase 124.c — hoisted to `crate::compliance` when the audit engine became
+// v4.0.0 — hoisted to `crate::compliance` when the audit engine became
 // the third consumer; re-imported here so every T957/T1215 call site keeps
 // its exact spelling.
 use crate::compliance::peel_type_constructors;
@@ -13913,13 +13913,13 @@ fn find_flow_by_name<'a>(program: &'a Program, name: &str) -> Option<&'a FlowDef
 }
 
 // ═══════════════════════════════════════════════════════════════════
-//  §FASE 31.b — TYPE-DRIVEN WIRE INFERENCE (D1, D7, D10)
+// FASE 31.b — TYPE-DRIVEN WIRE INFERENCE (D1, D7, D10)
 // ═══════════════════════════════════════════════════════════════════
 //
 // Cross-stack mirror of Python `axon/compiler/type_checker.py`
 // (`_implicit_transport` + `_compute_implicit_transports`). D7
 // ratifies byte-identical inference across both stacks; the
-// `tests/fixtures/fase31_implicit_transport/corpus.json` drift gate
+// `tests/fixtures/implicit_transport/corpus.json` drift gate
 // locks parity in CI.
 //
 // The inference rule (D1):
@@ -13929,8 +13929,8 @@ fn find_flow_by_name<'a>(program: &'a Program, name: &str) -> Option<&'a FlowDef
 //     "sse"                           if produces_stream(F) ∧ ¬explicit
 //     "json"                          otherwise
 //
-// `produces_stream(F)` is the 3-disjunct predicate from Fase 30.c
-// (Rust port shipping here as part of 31.b — Fase 30.c was
+// `produces_stream(F)` is the 3-disjunct predicate from v1.21.0
+// (Rust port shipping here as part of 31.b — v1.21.0 was
 // Python-only, with the Rust port deferred to 30.c.2; 31.b
 // supersedes that deferral by shipping the predicate now, since
 // the inference REQUIRES it cross-stack).
@@ -13981,13 +13981,13 @@ fn use_tool_step_name(u: &UseToolStep) -> &str {
     &u.tool_name
 }
 
-/// §Fase 51.d — the algebraic effects a flow performs via its `quant` blocks:
+/// v2.4.0 — the algebraic effects a flow performs via its `quant` blocks:
 /// the deduplicated, source-ordered set of `ots:backend:<backend>` slugs,
 /// recursing through nested control blocks (`if` / `for` / `par`) and nested
 /// `quant` blocks. This is the flow-level **effect-row projection** for the
 /// quant primitive — a flow containing a `quant` "carries the effect in its
 /// signature". Consumed downstream by PCC EffectSoundness + the runtime backend
-/// dispatcher (§51.d.2 / §51.e). Pure + total.
+/// dispatcher (v2.4.0 / v2.4.0). Pure + total.
 pub fn flow_quant_effects(flow: &FlowDefinition) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
     collect_quant_effects(&flow.body, &mut out);
@@ -14023,8 +14023,8 @@ fn collect_quant_effects(steps: &[FlowStep], out: &mut Vec<String>) {
 /// Disjunct (b): does the flow reach a tool with `effects:
 /// <stream:<policy>>`? Walks both `FlowStep::UseTool` (top-level
 /// flow-step) AND `FlowStep::Step(s)` where `s.apply_ref` resolves
-/// to a tool — the latter is the Kivi-shape pattern (Fase 31.b
-/// extension of the Fase 30.c predicate; see Python mirror for
+/// to a tool — the latter is the Kivi-shape pattern (v1.22.0
+/// extension of the v1.21.0 predicate; see Python mirror for
 /// the rationale).
 pub fn flow_uses_streaming_tool(flow: &FlowDefinition, program: &Program) -> bool {
     let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
@@ -14040,7 +14040,7 @@ pub fn flow_uses_streaming_tool(flow: &FlowDefinition, program: &Program) -> boo
                 }
             }
             FlowStep::Step(s) => {
-                // §Fase 31.b — `apply: <name>` inside a step body is
+                // v1.22.0 — `apply: <name>` inside a step body is
                 // the canonical adopter pattern (Kivi 2026-05-11).
                 if !s.apply_ref.is_empty()
                     && seen.insert(s.apply_ref.clone())
@@ -14056,14 +14056,14 @@ pub fn flow_uses_streaming_tool(flow: &FlowDefinition, program: &Program) -> boo
 }
 
 /// Master predicate: disjunction of the formal layers from
-/// Fase 30.c. Disjunct (c) `perform Stream.Yield(...)` is not
+/// v1.21.0. Disjunct (c) `perform Stream.Yield(...)` is not
 /// surfaced at this layer because the Rust AST does not currently
 /// expose step-body perform expressions through `FlowStep` — that
-/// path is the Rust frontend completion gap from Fase 30.e and is
+/// path is the Rust frontend completion gap from v1.21.0 and is
 /// covered by the runtime source-text fallback in
 /// `axon-rs/src/axon_server.rs::classify_negotiation_via_source_text`.
 /// Disjuncts (a) and (b) cover every adopter-observable in-AST
-/// pattern (the Kivi case + every Fase 30.c-tested source).
+/// pattern (the Kivi case + every v1.21.0-tested source).
 pub fn produces_stream(flow: &FlowDefinition, program: &Program) -> bool {
     flow_has_stream_output(flow) || flow_uses_streaming_tool(flow, program)
 }
@@ -14073,7 +14073,7 @@ pub fn produces_stream(flow: &FlowDefinition, program: &Program) -> bool {
 /// Returns one of:
 ///   * `"sse"`  — explicit `transport: sse|ndjson` declared (D2 ndjson
 ///                inferred as sse for wire-format purposes today;
-///                ndjson namespace remains reserved per Fase 30 D2),
+/// ndjson namespace remains reserved per v1.21.0 D2),
 ///              OR `transport_explicit == false` AND `produces_stream`
 ///                evaluates true (D1 inference fires).
 ///   * `"json"` — explicit `transport: json` declared (D3 opt-out),
@@ -14108,7 +14108,7 @@ pub fn implicit_transport(
 }
 
 // ═══════════════════════════════════════════════════════════════════
-//  §Fase 33.z.k.c (v1.28.0) — Effective dialect resolver
+// v1.28.0 — Effective dialect resolver
 // ═══════════════════════════════════════════════════════════════════
 //
 // The dialect resolver answers the question "WHICH SSE dialect does
@@ -14192,7 +14192,7 @@ pub fn resolve_effective_dialect(
 }
 
 // ═══════════════════════════════════════════════════════════════════
-//  §FASE 31.c — COMPILE-TIME WARNING `axon-W001` (D4, D10)
+// FASE 31.c — COMPILE-TIME WARNING `axon-W001` (D4, D10)
 // ═══════════════════════════════════════════════════════════════════
 //
 // Rust mirror of Python `_emit_implicit_transport_warnings`. Same
@@ -14202,25 +14202,25 @@ pub fn resolve_effective_dialect(
 
 /// Warning code namespace per D4 — first entry in the warning
 /// namespace `axon-Wnnn`. Errors keep their `axon-Ennn` namespace
-/// from Fase 28 + Fase 30.
+/// from v1.20.0 + v1.21.0.
 pub const W001_CODE: &str = "axon-W001";
 
-/// §Fase 36.k (D10) — warning code for an `axonendpoint` that
+/// v1.31.0 (D10) — warning code for an `axonendpoint` that
 /// declares no `backend:`.
 ///
 /// `axon-W002` is held by the runtime warning catalog
-/// (`axon::runtime_warnings` — `streaming-not-supported`, Fase
+/// (`axon::runtime_warnings` — `streaming-not-supported`, cycle
 /// 33.x.g); the `axon-Wnnn` namespace is shared across the frontend
 /// and the runtime, so the next free slot is `axon-W003`.
 pub const W003_CODE: &str = "axon-W003";
 
-/// §Fase 59 (D2) — warning code for `apply: <Tool>` on a tool that
+/// v2.9.0 (D2) — warning code for `apply: <Tool>` on a tool that
 /// declares a typed `parameters:` schema. The `axon-Wnnn` namespace is
 /// shared across the frontend + runtime; W001/W002/W003 are taken, so
 /// this is the next free slot.
 pub const W004_CODE: &str = "axon-W004";
 
-/// §Fase 59 (D2) — build the canonical `axon-W004` message. `apply: <Tool>`
+/// v2.9.0 (D2) — build the canonical `axon-W004` message. `apply: <Tool>`
 /// on a schema-bearing tool is COGNITIVE DELEGATION (the LLM decides
 /// whether to invoke the tool), NOT a deterministic dispatch — and `given:`
 /// is not splatted at runtime. Point the adopter at the one deterministic,
@@ -14245,43 +14245,43 @@ fn build_w004_message(tool_name: &str, params: &[(String, String, bool)]) -> Str
     )
 }
 
-/// §Fase 68.e — warning code for `apply: <Compute>`, a model-selection no-op.
-/// W005 is held by the quant-encoding advisory (§51.b); this is the next slot.
+/// v2.22.0 — warning code for `apply: <Compute>`, a model-selection no-op.
+/// W005 is held by the quant-encoding advisory (v2.4.0); this is the next slot.
 pub const W006_CODE: &str = "axon-W006";
 
-/// §Fase 69.a — the CLOSED catalog of Advantage-Witness metrics. A `witness`'s
+/// v2.23.0 — the CLOSED catalog of Advantage-Witness metrics. A `witness`'s
 /// `metric:` must be one of these (`axon-E0790`); each names how advantage over a
 /// baseline is measured for some primitive domain. Mirrored in
 /// `axon::advantage_witness::WITNESS_METRICS` (the runtime evaluator), parity-pinned
-/// by `axon-rs/tests/fase69_a_witness_metric_parity.rs` (the §67.a.2 two-
-/// representation discipline). Extending the catalog is a deliberate PR (the §53
+/// by `axon-rs/tests/witness_metric_parity.rs` (the v2.21.0 two-
+/// representation discipline). Extending the catalog is a deliberate PR (the v2.5.0
 /// closed-catalog extension discipline), never an open set.
 pub const WITNESS_METRICS: &[&str] = &[
-    // quant kernels (§69.b): geometric difference g(K_classical ‖ K_quantum).
+    // quant kernels (v2.23.0): geometric difference g(K_classical ‖ K_quantum).
     "geometric_difference",
-    // quant kernels (§69.b): centered kernel-target alignment vs the baseline.
+    // quant kernels (v2.23.0): centered kernel-target alignment vs the baseline.
     "kernel_target_alignment",
-    // retrieval / navigate (§69.d): ranking lift over flat cosine retrieval.
+    // retrieval / navigate (v2.23.0): ranking lift over flat cosine retrieval.
     "ranking_lift",
     // deliberation primitives: outcome lift over a single-shot baseline.
     "outcome_lift",
 ];
 
-/// §Fase 68.f — the largest context window any canonical model offers (tokens).
+/// v2.22.0 — the largest context window any canonical model offers (tokens).
 /// A `requires_context:` above this can never be satisfied → `axon-T809`. This is
 /// a frontend mirror of `axon::backends::model_catalog::max_canonical_context_window()`
 /// (the runtime catalog lives in axon-rs, which depends on this crate — not the
 /// reverse — so the value is mirrored here and PINNED by the cross-crate parity
-/// test `axon-rs/tests/fase68_f_context_ceiling_parity.rs`: a drift fails CI, the
-/// §67.a.2 two-representation discipline). Currently gemini-2.5-flash = 1,048,576.
+/// test `axon-rs/tests/context_ceiling_parity.rs`: a drift fails CI, the
+/// v2.21.0 two-representation discipline). Currently gemini-2.5-flash = 1,048,576.
 pub const MAX_KNOWN_CONTEXT_WINDOW: u32 = 1_048_576;
 
-/// §Fase 68.e — build the canonical `axon-W006` message. `apply: <Compute>` does
+/// v2.22.0 — build the canonical `axon-W006` message. `apply: <Compute>` does
 /// not select an LLM model — a `compute { model: … }` field is dropped at lowering
 /// (the parser keeps only `shield:`), so the brief-#36 adopter's `apply: BigSummary`
 /// to pin a larger model was silently ignored. Point them at the faithful surface:
-/// declare the step's capability need with `requires_context:` (the §68.c resolver
-/// picks a satisfying model), or set the deployment model. The §59 honest-compiler
+/// declare the step's capability need with `requires_context:` (the v2.22.0 resolver
+/// picks a satisfying model), or set the deployment model. The v2.9.0 honest-compiler
 /// doctrine — a silent no-op becomes guidance.
 fn build_w006_message(compute_ref: &str, step_name: &str) -> String {
     format!(
@@ -14295,7 +14295,7 @@ fn build_w006_message(compute_ref: &str, step_name: &str) -> String {
     )
 }
 
-/// §Fase 36.k (D10) — build the canonical `axon-W003` message: an
+/// v1.31.0 (D10) — build the canonical `axon-W003` message: an
 /// `axonendpoint` that declares no `backend:` relies on ladder
 /// resolution. Emitted by `check_axonendpoint`, surfaced by
 /// `axon check` (and promoted to an error under `--strict`).
@@ -14448,7 +14448,7 @@ pub fn compute_implicit_transport_warnings(program: &Program) -> Vec<TypeError> 
 ///
 /// Mirrors Python `_compute_implicit_transports` byte-identically
 /// (D7 cross-stack contract — locked in CI by the drift-gate
-/// corpus at `tests/fixtures/fase31_implicit_transport/corpus.json`).
+/// corpus at `tests/fixtures/implicit_transport/corpus.json`).
 pub fn compute_implicit_transports(program: &mut Program) {
     // First pass: index every FlowDefinition by name. We must clone
     // the necessary references because subsequent mutation of
@@ -14470,8 +14470,8 @@ pub fn compute_implicit_transports(program: &mut Program) {
     // immutable + mutable borrow of the same Vec, we precompute the
     // (endpoint_index, inferred_transport) pairs first, then apply
     // them all in a second mutating loop.
-    // §Fase 33.z.k.1 (v1.27.1) — compute BOTH `implicit_transport`
-    // (Fase 31 D1 inference) AND the new `has_algebraic_stream_effect`
+    // v1.27.1 — compute BOTH `implicit_transport`
+    // (v1.22.0 D1 inference) AND the new `has_algebraic_stream_effect`
     // predicate (algebraic-effect override). Both are read by the
     // runtime classifier; the algebraic-effect predicate carries
     // strictly more information (it isolates disjunct (b) of
@@ -14505,10 +14505,10 @@ pub fn compute_implicit_transports(program: &mut Program) {
     }
 }
 
-// ── §λ-L-E Fase 13 — Mobile Typed Channels type-checker tests ────────────────
+// ── v1.6.0 — Mobile Typed Channels type-checker tests ────────────────
 
 #[cfg(test)]
-mod fase13_typecheck_tests {
+mod typecheck_tests {
     use super::*;
     use crate::lexer::Lexer;
     use crate::parser::Parser;
@@ -14559,7 +14559,7 @@ mod fase13_typecheck_tests {
         );
     }
 
-    /// 🎯 §Fase 124.c — axon-T1215: a channel carrying regulated κ must name
+    /// 🎯 v4.0.0 — axon-T1215: a channel carrying regulated κ must name
     /// a shield whose κ covers it, decided at CHECK time (the dual of T957).
     #[test]
     fn t1215_uncovered_regulated_channel_rejected() {
@@ -14613,7 +14613,7 @@ mod fase13_typecheck_tests {
     }
 
     /// axon-T1215 stays silent when the shield covers the payload's κ — and
-    /// when the payload carries no κ at all (the pre-§124 tests above keep
+    /// when the payload carries no κ at all (the pre-v4.0.0 tests above keep
     /// passing for that reason, and this pins it explicitly).
     #[test]
     fn t1215_covered_or_unregulated_channels_stay_clean() {
@@ -14710,7 +14710,7 @@ mod fase13_typecheck_tests {
 
     #[test]
     fn listen_typed_channel_warns_never_fires() {
-        // §Fase 52.g — a well-formed typed-channel daemon listener resolves
+        // v2.4.0 — a well-formed typed-channel daemon listener resolves
         // cleanly (no error) but NEVER fires (the runtime is cron-only), so
         // the honest `axon-W009` redirect surfaces. Pre-52.g this was
         // silently clean — the exact trap an adopter falls into.
@@ -14726,7 +14726,7 @@ mod fase13_typecheck_tests {
         assert!(errs.is_empty(), "errors: {:?}", errs);
         assert_eq!(warns.len(), 1, "the typed-channel listener warns it never fires");
         assert!(warns[0].message.contains("axon-W009"), "{:?}", warns);
-        // §74.g — the message is now about the missing producer, not cron.
+        // v2.31.0 — the message is now about the missing producer, not cron.
         assert!(warns[0].message.contains("NEVER fire") && warns[0].message.contains("emit"));
     }
 
@@ -14748,7 +14748,7 @@ mod fase13_typecheck_tests {
 
     #[test]
     fn listen_string_topic_warns_never_fires() {
-        // §Fase 52.g — a non-cron string topic on a daemon never fires
+        // v2.4.0 — a non-cron string topic on a daemon never fires
         // either; the honest `axon-W009` redirect replaces the pre-52.g D4
         // "migrate to a typed channel" warning (which pointed at a form that
         // ALSO never fires — actively misleading).
@@ -14770,7 +14770,7 @@ mod fase13_typecheck_tests {
 
     #[test]
     fn listen_both_non_cron_listeners_warn_never_fires() {
-        // §Fase 52.g — BOTH a typed-channel and a topic listener never fire
+        // v2.4.0 — BOTH a typed-channel and a topic listener never fire
         // (cron-only runtime), so both surface the honest W009 redirect.
         // Pre-52.g only the legacy topic warned (typed was silently clean).
         let src = r#"
@@ -14790,8 +14790,8 @@ mod fase13_typecheck_tests {
 
     #[test]
     fn listen_with_a_producer_does_not_warn() {
-        // §Fase 74.g — the key change: a non-cron listener on a channel that
-        // a flow EMITS to no longer warns (§74 delivers it). W009 is now
+        // v2.31.0 — the key change: a non-cron listener on a channel that
+        // a flow EMITS to no longer warns (v2.31.0 delivers it). W009 is now
         // silent when a producer exists.
         let src = r#"
             type Order { id: String }
@@ -14813,7 +14813,7 @@ mod fase13_typecheck_tests {
 
     #[test]
     fn listen_cron_schedule_does_not_warn_never_fires() {
-        // §Fase 52.g — a `cron:` listener IS backed (the supervisor fires
+        // v2.4.0 — a `cron:` listener IS backed (the supervisor fires
         // it) → no W009 redirect. The honesty diagnostic is precisely scoped
         // to the unbacked (non-cron) listeners.
         let src = r#"
@@ -14832,7 +14832,7 @@ mod fase13_typecheck_tests {
         );
     }
 
-    // ── Fase 13.i — type checker tolerates dotted-access value_ref ──
+    // ── v1.6.0 — type checker tolerates dotted-access value_ref ──
 
     #[test]
     fn emit_dotted_value_ref_does_not_trip_mobility_check() {
@@ -14883,10 +14883,10 @@ mod fase13_typecheck_tests {
     }
 }
 
-// ── §Fase 35.j — Pillar IV: capability-typed store access ───────────
+// ── v1.30.0 — Pillar IV: capability-typed store access ───────────
 
 #[cfg(test)]
-mod fase35j_capability_tests {
+mod capability_tests {
     use super::*;
     use crate::lexer::Lexer;
     use crate::parser::Parser;
@@ -14947,7 +14947,7 @@ mod fase35j_capability_tests {
 
     #[test]
     fn ungated_store_needs_no_endpoint_grant() {
-        // §Fase 85 — renamed store `cache` → `kvstore` (`cache` is now a
+        // v2.40.0 — renamed store `cache` → `kvstore` (`cache` is now a
         // reserved keyword for the result-memoization primitive).
         let src = r#"
             axonstore kvstore { backend: postgresql connection: "env:DB" }
@@ -14975,11 +14975,11 @@ mod fase35j_capability_tests {
 }
 
 // ════════════════════════════════════════════════════════════════════
-//  §Fase 37.y.4 — D3 union-coverage + D4 T901 collision rejection
+// v1.32.0 — D3 union-coverage + D4 T901 collision rejection
 // ════════════════════════════════════════════════════════════════════
 
 #[cfg(test)]
-mod fase37y_d3_d4_tests {
+mod d4_tests {
     use super::*;
     use crate::lexer::Lexer;
     use crate::parser::Parser;
@@ -15308,11 +15308,11 @@ mod fase37y_d3_d4_tests {
 }
 
 // ════════════════════════════════════════════════════════════════════
-//  §Fase 38.x.e — Retrieve Cardinality vs Output Singularity Gate
+// v1.31.0 — Retrieve Cardinality vs Output Singularity Gate
 // ════════════════════════════════════════════════════════════════════
 
 #[cfg(test)]
-mod fase38xe_cardinality_tests {
+mod cardinality_tests {
     use super::*;
     use crate::lexer::Lexer;
     use crate::parser::Parser;
@@ -15325,7 +15325,7 @@ mod fase38xe_cardinality_tests {
 
     #[test]
     fn retrieve_tail_with_singular_output_emits_t9xx() {
-        // §Fase 39.e UPDATE — the kivi-shape regression: endpoint
+        // v2.0.0 UPDATE — the kivi-shape regression: endpoint
         // declares `output: T` (bare singular) on default
         // `transport: json` with a retrieve-tail flow producing
         // `List<T>`.
@@ -15372,7 +15372,7 @@ mod fase38xe_cardinality_tests {
         // through the retrieve-step taxonomy). The diagnostic
         // honestly reflects what the inference sees; adopters map
         // `StoreRow` to their declared row type mentally. A future
-        // sub-fase can refine the inference to use the flow's
+        // step can refine the inference to use the flow's
         // declared return type when available.
         assert!(
             err.message.contains("FlowEnvelope<List<StoreRow>>")
@@ -15468,7 +15468,7 @@ mod fase38xe_cardinality_tests {
         // (empty string), the gate cannot determine the expected
         // cardinality and silently passes. Adopters who don't declare
         // output are NOT protected by this gate; the runtime path is
-        // their only check. Documented as future Fase 38.x.f scope.
+        // their only check. Documented as future v1.31.0 scope.
         let src = r#"
             type TenantRecord { id: Text }
             axonstore tenants { backend: in_memory }
@@ -15497,7 +15497,7 @@ mod fase38xe_cardinality_tests {
     fn stream_output_skips_gate() {
         // Stream<T> is its own cardinality concept (Plural<T> over
         // time, not a List). The v1.39.0 gate doesn't reason about
-        // Stream — honestly deferred to Fase 38.x.f. Endpoints
+        // Stream — honestly deferred to v1.31.0. Endpoints
         // declaring `output: Stream<T>` are NOT compared against the
         // flow tail.
         let src = r#"
@@ -15526,11 +15526,11 @@ mod fase38xe_cardinality_tests {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// §Fase 39.a — FlowEnvelope<T> built-in primitive (Rust-canonical)
+// v2.0.0 — FlowEnvelope<T> built-in primitive (Rust-canonical)
 // ════════════════════════════════════════════════════════════════════
 //
-// Anchor §-assertions for sub-fase 39.a per the plan vivo
-// `docs/fase/fase_39_pure_silicon_cognition.md`. Acceptance criterion:
+// Anchor -assertions for step 39.a per the plan vivo
+// `docs/cycle/pure_silicon_cognition.md`. Acceptance criterion:
 //   declared_cardinality("FlowEnvelope<List<X>>") == Wrapped(Plural("X"))
 // + transparent unwrap behavior at the gate
 // + nested generic parser support (parse_type_expr recurses)
@@ -15543,7 +15543,7 @@ mod fase38xe_cardinality_tests {
 // the type-system FOUNDATION; behavior gate fires in 39.e.
 
 #[cfg(test)]
-mod fase39a_flow_envelope_tests {
+mod flow_envelope_tests {
     use super::*;
     use crate::lexer::Lexer;
     use crate::parser::Parser;
@@ -15554,11 +15554,11 @@ mod fase39a_flow_envelope_tests {
         TypeChecker::new(&prog).check()
     }
 
-    // ── §1 — declared_cardinality(FlowEnvelope<T>) recognition ──
+    // ── section 1 — declared_cardinality(FlowEnvelope<T>) recognition ──
 
     #[test]
-    fn fase39a_flow_envelope_of_singular_is_wrapped_singular() {
-        // §Fase 39.a §1 — `FlowEnvelope<TenantRecord>` recognized as
+    fn flow_envelope_of_singular_is_wrapped_singular() {
+        // v2.0.0 section 1 — `FlowEnvelope<TenantRecord>` recognized as
         // Wrapped(Singular("TenantRecord")). The wrapper preserves
         // inner cardinality through unwrap-recurse.
         let card = declared_cardinality("FlowEnvelope<TenantRecord>");
@@ -15578,8 +15578,8 @@ mod fase39a_flow_envelope_tests {
     }
 
     #[test]
-    fn fase39a_flow_envelope_of_list_is_wrapped_plural() {
-        // §Fase 39.a §1 — the acceptance criterion verbatim:
+    fn flow_envelope_of_list_is_wrapped_plural() {
+        // v2.0.0 section 1 — the acceptance criterion verbatim:
         // declared_cardinality("FlowEnvelope<List<X>>") == Wrapped(Plural("X"))
         let card = declared_cardinality("FlowEnvelope<List<TenantRecord>>");
         match card {
@@ -15599,8 +15599,8 @@ mod fase39a_flow_envelope_tests {
     }
 
     #[test]
-    fn fase39a_flow_envelope_of_stream_is_wrapped_stream() {
-        // §Fase 39.a §1 — Stream<T> wrapped through FlowEnvelope.
+    fn flow_envelope_of_stream_is_wrapped_stream() {
+        // v2.0.0 section 1 — Stream<T> wrapped through FlowEnvelope.
         // Note: per D9 SSE wire keeps its own event family; this
         // shape is here for type-system completeness, not for runtime
         // SSE dispatch.
@@ -15621,8 +15621,8 @@ mod fase39a_flow_envelope_tests {
     }
 
     #[test]
-    fn fase39a_flow_envelope_of_any_is_wrapped_disagreed() {
-        // §Fase 39.a §1 — `FlowEnvelope<Any>` is a degenerate but
+    fn flow_envelope_of_any_is_wrapped_disagreed() {
+        // v2.0.0 section 1 — `FlowEnvelope<Any>` is a degenerate but
         // valid wrap; the Any (Disagreed) propagates through.
         let card = declared_cardinality("FlowEnvelope<Any>");
         match card {
@@ -15638,8 +15638,8 @@ mod fase39a_flow_envelope_tests {
     }
 
     #[test]
-    fn fase39a_nested_flow_envelope_is_doubly_wrapped() {
-        // §Fase 39.a §1 — degenerate `FlowEnvelope<FlowEnvelope<X>>`
+    fn nested_flow_envelope_is_doubly_wrapped() {
+        // v2.0.0 section 1 — degenerate `FlowEnvelope<FlowEnvelope<X>>`
         // is syntactically valid (parser recursion) and semantically
         // double-wrapped. The unwrap-recurse at the gate handles
         // arbitrary depth transparently.
@@ -15662,11 +15662,11 @@ mod fase39a_flow_envelope_tests {
         }
     }
 
-    // ── §2 — non-FlowEnvelope declarations preserve v1.x semantics ──
+    // ── section 2 — non-FlowEnvelope declarations preserve v1.x semantics ──
 
     #[test]
-    fn fase39a_list_without_envelope_still_plural() {
-        // §Fase 39.a §2 — pre-Fase 39 declarations stay backwards-compat
+    fn list_without_envelope_still_plural() {
+        // v2.0.0 section 2 — pre-v2.0.0 declarations stay backwards-compat
         // at the cardinality level. `List<T>` is still Plural; the
         // axon-E039 mandate that promotes it to a compile error
         // when paired with `transport: json` lands in 39.e, not 39.a.
@@ -15679,7 +15679,7 @@ mod fase39a_flow_envelope_tests {
     }
 
     #[test]
-    fn fase39a_stream_without_envelope_still_stream() {
+    fn stream_without_envelope_still_stream() {
         let card = declared_cardinality("Stream<Token>");
         assert_eq!(
             card,
@@ -15689,7 +15689,7 @@ mod fase39a_flow_envelope_tests {
     }
 
     #[test]
-    fn fase39a_bare_type_still_singular() {
+    fn bare_type_still_singular() {
         let card = declared_cardinality("TenantRecord");
         assert_eq!(
             card,
@@ -15698,11 +15698,11 @@ mod fase39a_flow_envelope_tests {
         );
     }
 
-    // ── §3 — Parser supports nested generics post-39.a ──
+    // ── section 3 — Parser supports nested generics post-39.a ──
 
     #[test]
-    fn fase39a_parser_accepts_flow_envelope_of_list() {
-        // §Fase 39.a §3 — pre-39.a `parse_type_expr` only consumed
+    fn parser_accepts_flow_envelope_of_list() {
+        // v2.0.0 section 3 — pre-39.a `parse_type_expr` only consumed
         // one Identifier inside `<...>`, so `FlowEnvelope<List<X>>`
         // failed to parse with a syntax error. Post-39.a the parser
         // recurses on the inner type expression and accepts
@@ -15740,11 +15740,11 @@ mod fase39a_flow_envelope_tests {
         );
     }
 
-    // ── §4 — Gate unwraps Wrapped transparently ──
+    // ── section 4 — Gate unwraps Wrapped transparently ──
 
     #[test]
-    fn fase39a_wrapped_plural_matches_plural_tail_silent() {
-        // §Fase 39.a §4 — when declared is Wrapped(Plural(X)) and the
+    fn wrapped_plural_matches_plural_tail_silent() {
+        // v2.0.0 section 4 — when declared is Wrapped(Plural(X)) and the
         // flow tail is Plural(X), the gate silently passes (the
         // canonical Kivi-shape after migration). axon-E039 in 39.e
         // will additionally check the wire-shape mandate (transport
@@ -15783,11 +15783,11 @@ mod fase39a_flow_envelope_tests {
         );
     }
 
-    // ── §Fase 39.e — axon-E039 wire-shape mandate (D12 α) ────────
+    // ── v2.0.0 — axon-E039 wire-shape mandate (D12 α) ────────
 
     #[test]
-    fn fase39e_bare_singular_with_json_transport_emits_e039() {
-        // §39.e §1 — the canonical kivi-shape: bare `output: T` on
+    fn bare_singular_with_json_transport_emits_e039() {
+        // v2.0.0 section 1 — the canonical kivi-shape: bare `output: T` on
         // default `transport: json` is now a COMPILE ERROR.
         let src = r#"
             type TenantRecord { id: Text }
@@ -15834,8 +15834,8 @@ mod fase39a_flow_envelope_tests {
     }
 
     #[test]
-    fn fase39e_bare_list_with_json_transport_emits_e039() {
-        // §39.e §2 — bare `List<T>` (the original adopter shape
+    fn bare_list_with_json_transport_emits_e039() {
+        // v2.0.0 section 2 — bare `List<T>` (the original adopter shape
         // that v1.40.0-v1.40.3 tried to bridge) is now a COMPILE
         // ERROR. The canonical answer is `FlowEnvelope<List<T>>`.
         let src = r#"
@@ -15875,8 +15875,8 @@ mod fase39a_flow_envelope_tests {
     }
 
     #[test]
-    fn fase39e_bare_stream_with_json_transport_emits_e039() {
-        // §39.e §3 — bare `Stream<T>` with default `transport: json`
+    fn bare_stream_with_json_transport_emits_e039() {
+        // v2.0.0 section 3 — bare `Stream<T>` with default `transport: json`
         // is a COMPILE ERROR. The diagnostic suggests both FlowEnvelope
         // wrapping AND (more idiomatically) sse transport migration.
         let src = r#"
@@ -15892,7 +15892,7 @@ mod fase39a_flow_envelope_tests {
             }
         "#;
         let errs = check_errors(src);
-        // Note: implicit_transport inference (Fase 31) might set this
+        // Note: implicit_transport inference (v1.22.0) might set this
         // endpoint to "sse" implicitly because the flow produces Stream<T>.
         // In that case E039 would NOT fire — the wire is correctly sse.
         // The test accepts EITHER outcome since both are correct under
@@ -15914,8 +15914,8 @@ mod fase39a_flow_envelope_tests {
     }
 
     #[test]
-    fn fase39e_flow_envelope_singular_passes_clean() {
-        // §39.e §4 — the canonical v2.0.0 happy path: `output:
+    fn flow_envelope_singular_passes_clean() {
+        // v2.0.0 section 4 — the canonical v2.0.0 happy path: `output:
         // FlowEnvelope<T>` on a flow producing a matching tail. No
         // E039, no T9XX, no T9YY.
         let src = r#"
@@ -15947,8 +15947,8 @@ mod fase39a_flow_envelope_tests {
     }
 
     #[test]
-    fn fase39e_flow_envelope_list_passes_clean() {
-        // §39.e §5 — the canonical migration target: `output:
+    fn flow_envelope_list_passes_clean() {
+        // v2.0.0 section 5 — the canonical migration target: `output:
         // FlowEnvelope<List<T>>` on a retrieve-tail flow. No errors.
         let src = r#"
             type TenantRecord { id: Text }
@@ -15980,8 +15980,8 @@ mod fase39a_flow_envelope_tests {
     }
 
     #[test]
-    fn fase39e_flow_envelope_any_passes_clean() {
-        // §39.e §6 — `output: Any` is the universal-accept escape
+    fn flow_envelope_any_passes_clean() {
+        // v2.0.0 section 6 — `output: Any` is the universal-accept escape
         // hatch (documented degraded surface). No E039 fires; T9XX/T9YY
         // also silent per Cardinality::Disagreed semantics.
         let src = r#"
@@ -16009,8 +16009,8 @@ mod fase39a_flow_envelope_tests {
     }
 
     #[test]
-    fn fase39e_sse_transport_exempts_from_e039() {
-        // §39.e §7 — explicit `transport: sse` exempts the endpoint
+    fn sse_transport_exempts_from_e039() {
+        // v2.0.0 section 7 — explicit `transport: sse` exempts the endpoint
         // from the wrapping mandate (D9 — SSE has its own event
         // family). Bare `Stream<T>` declarations are valid on sse.
         let src = r#"
@@ -16040,8 +16040,8 @@ mod fase39a_flow_envelope_tests {
     }
 
     #[test]
-    fn fase39e_no_output_declared_skips_e039() {
-        // §39.e §8 — D9 backwards-compat: empty `output:` declaration
+    fn no_output_declared_skips_e039() {
+        // v2.0.0 section 8 — D9 backwards-compat: empty `output:` declaration
         // (no `output:` line) skips both E039 and the cardinality
         // gate. Honest scope — adopters can opt out of strict
         // wire-shape contracts by simply not declaring.
@@ -16070,8 +16070,8 @@ mod fase39a_flow_envelope_tests {
     }
 
     #[test]
-    fn fase39e_unit_output_skips_e039() {
-        // §39.e §9 — `output: Unit` is explicit "no wire body" —
+    fn unit_output_skips_e039() {
+        // v2.0.0 section 9 — `output: Unit` is explicit "no wire body" —
         // exempt from the wrapping mandate.
         let src = r#"
             type X { f: Text }
@@ -16098,8 +16098,8 @@ mod fase39a_flow_envelope_tests {
     }
 
     #[test]
-    fn fase39e_nested_flow_envelope_passes_clean() {
-        // §39.e §10 — defensive: degenerate nested
+    fn nested_flow_envelope_passes_clean() {
+        // v2.0.0 v1.4.0 — defensive: degenerate nested
         // `FlowEnvelope<FlowEnvelope<T>>` is syntactically valid
         // (per 39.a parser nested-generic support) and is treated
         // as a FlowEnvelope wrap (E039 doesn't fire). It's
@@ -16131,8 +16131,8 @@ mod fase39a_flow_envelope_tests {
     }
 
     #[test]
-    fn fase39a_wrapped_singular_vs_plural_tail_still_warns() {
-        // §Fase 39.a §4 — when declared is Wrapped(Singular(X)) but
+    fn wrapped_singular_vs_plural_tail_still_warns() {
+        // v2.0.0 section 4 — when declared is Wrapped(Singular(X)) but
         // the flow tail is Plural, the gate still surfaces the
         // T9XX mismatch (unwrap shows the inner Singular vs Plural
         // shape disagreement). The hint message still references the
@@ -16165,8 +16165,8 @@ mod fase39a_flow_envelope_tests {
 }
 
 #[cfg(test)]
-mod fase41b_session_lowering_tests {
-    //! §Fase 41.b — the Fase 4 `session` surface lowered into the §41.a
+mod session_lowering_tests {
+    //! v2.3.0 — the v1.1.0 `session` surface lowered into the v2.3.0
     //! session-type algebra, with duality decided by the connection law
     //! (regular-coinductive `is_dual_to`) rather than the old positional check.
     use super::*;
@@ -16214,8 +16214,8 @@ mod fase41b_session_lowering_tests {
 }
 
 #[cfg(test)]
-mod fase41b_socket_tests {
-    //! §Fase 41.b — the `socket` declaration: parse + check (protocol must
+mod socket_tests {
+    //! v2.3.0 — the `socket` declaration: parse + check (protocol must
     //! reference a declared `session`; backpressure credit must be positive).
     use super::*;
     use crate::lexer::Lexer;
@@ -16270,8 +16270,8 @@ mod fase41b_socket_tests {
 }
 
 #[cfg(test)]
-mod fase41b_choice_tests {
-    //! §Fase 41.b — `select`/`branch` choice steps (⊕ / &): nested sub-protocols
+mod choice_tests {
+    //! v2.3.0 — `select`/`branch` choice steps (⊕ / &): nested sub-protocols
     //! that lower into `SessionType::Select`/`Branch`, with duality decided by
     //! the connection law (`select` is dual to `branch` arm-for-arm).
     use super::*;
@@ -16369,8 +16369,8 @@ mod fase41b_choice_tests {
 }
 
 #[cfg(test)]
-mod fase41c_credit_tests {
-    //! §Fase 41.c — the Presburger discharge wired into `check_socket`.
+mod credit_tests {
+    //! v2.3.0 — the Presburger discharge wired into `check_socket`.
     //! The bare session + dual is duality-checked (41.a/b); when a `socket`
     //! binds `backpressure: credit(k)`, both roles are lowered, stamped with
     //! `k`, and run through [`SessionType::credit_analyse`] — surfacing

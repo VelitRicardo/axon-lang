@@ -1,4 +1,4 @@
-//! AXON Runtime — EnsembleAggregator (§λ-L-E Fase 3.3)
+//! AXON Runtime — EnsembleAggregator (v1.1.0)
 //!
 //! Direct port of `axon/runtime/ensemble_aggregator.py`.
 //!

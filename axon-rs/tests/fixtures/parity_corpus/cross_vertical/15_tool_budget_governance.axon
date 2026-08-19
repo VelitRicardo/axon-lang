@@ -1,0 +1,36 @@
+// META: flow_name=ToolBudgetGovernance, mode=count_only
+//
+// v2.89.0 (group A) — the FIRST `.axon` in this repository to declare a
+// top-level `budget`. Measured 2026-08-13: none of the 107 existing `.axon`
+// files uses it, so the primitive that v2.69.0 rescued from being README prose
+// still had no published program exercising it — the v2.83.0 shape, one level
+// up.
+//
+// `use <Tool> on "<arg>"` is flow-level by construction (v2.7.0: a `use` inside
+// a `step { }` body is a parse error), and the budget's ceiling binds on
+// exactly that canonical dispatch path (v2.69.0).
+
+tool LedgerLookup {
+  provider: stub
+  timeout: 10s
+}
+
+budget LookupCeiling {
+  rate: 5 per minute on Tool(LedgerLookup)
+}
+
+flow ToolBudgetGovernance() -> Unit {
+  use LedgerLookup on "account-42"
+
+  step Summarize {
+    ask: "Summarize the ledger lookup for the reviewer"
+    output: Stream<Token>
+  }
+}
+
+axonendpoint ToolBudgetGovernanceEndpoint {
+  method: POST
+  path: "/cross/tool-budget-governance"
+  execute: ToolBudgetGovernance
+  transport: sse public: true
+}

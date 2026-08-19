@@ -1,13 +1,13 @@
-//! §Fase 37 — The Request Binding Contract (runtime delivery).
+//! v1.32.0 — The Request Binding Contract (runtime delivery).
 //!
 //! An `axonendpoint` declares `body: T` (the typed request body) and
 //! `execute: F` (a flow with declared parameters). The contract: the
 //! request body's fields populate F's parameters — BY NAME (D1).
 //!
-//! §Fase 37.y (v1.38.5) extends the binding-source set: path
+//! v1.38.5 extends the binding-source set: path
 //! placeholders (`/api/users/{id}`) and query params declared via
 //! `query: { name: Type? }` join the body as canonical binding
-//! sources. The compile-time D3 + D4 check (extending Fase 37 D2)
+//! sources. The compile-time D3 + D4 check (extending v1.32.0 D2)
 //! guarantees every flow parameter resolves to EXACTLY ONE source —
 //! collisions are `axon-T901` compile errors — so the runtime merge
 //! order is semantically irrelevant by construction.
@@ -27,7 +27,7 @@ use std::collections::HashMap;
 
 use crate::ir_nodes::IRFlow;
 
-/// §Fase 37.y — Bind a request to a flow's declared parameters across
+/// v1.32.0 — Bind a request to a flow's declared parameters across
 /// THREE binding sources: path placeholders (URL captures), query
 /// string params, and a parsed JSON body.
 ///
@@ -85,7 +85,7 @@ pub fn bind_request(
         .collect()
 }
 
-/// §Fase 37 — Legacy body-only binder. Delegates to [`bind_request`]
+/// v1.32.0 — Legacy body-only binder. Delegates to [`bind_request`]
 /// with empty path + empty query maps. Preserved for source
 /// backwards-compat with v1.36.0-style callers (test code,
 /// non-axon-server programmatic consumers); D5 absolute guarantees
@@ -236,7 +236,7 @@ mod tests {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    //  §Fase 37.y — new 3-source `bind_request` tests
+    // v1.32.0 — new 3-source `bind_request` tests
     // ═══════════════════════════════════════════════════════════════
 
     fn map(pairs: &[(&str, &str)]) -> HashMap<String, String> {

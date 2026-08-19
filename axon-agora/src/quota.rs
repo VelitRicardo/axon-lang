@@ -1,6 +1,6 @@
-//! Consumable posting quotas (paper §2.3, §2.4).
+//! Consumable posting quotas (paper section 2.3, section 2.4).
 //!
-//! Substrate for **axon-W018** (quota pressure) and the §72 linear budget that meters
+//! Substrate for **axon-W018** (quota pressure) and the v2.28.0 linear budget that meters
 //! publishing. A platform posting quota is a consumable resource: Instagram allows 100
 //! API-published posts per 24-hour moving window per account; TikTok's Direct Post allows ~15
 //! per creator per 24 hours. Modeling these as linear budgets means a flow that would exceed the
@@ -27,7 +27,7 @@ pub struct Quota {
     pub source: &'static str,
 }
 
-/// The publish quota a platform enforces, if any (paper §II). `None` = no documented per-post
+/// The publish quota a platform enforces, if any (paper II). `None` = no documented per-post
 /// publish quota of this consumable shape (LinkedIn and Facebook document request-rate limits,
 /// which are modeled as request budgets elsewhere, not per-post publish quotas).
 pub fn publish_quota(platform: Platform) -> Option<Quota> {
@@ -49,7 +49,7 @@ pub fn publish_quota(platform: Platform) -> Option<Quota> {
 }
 
 /// The fraction of a quota at which axon-W018 (quota pressure) warns — 0.85 by
-/// founder-ratified D116.11.
+/// founder-ratified the design decision.
 pub const PRESSURE_THRESHOLD: f64 = 0.85;
 
 /// Whether `used` publishes against `quota` have crossed the pressure threshold (axon-W018).

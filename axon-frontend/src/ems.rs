@@ -1,4 +1,4 @@
-//! §Fase 115.g — the EMS driver: the one orchestration of Phases 0–4.
+//! v2.76.0 — the EMS driver: the one orchestration of Phases 0–4.
 //!
 //! Pure and in-memory-first: the CLI (`axon-rs`) hands it an entry file,
 //! the enterprise bundle loader hands it a [`ModuleSet`] — both get the
@@ -13,7 +13,7 @@
 //!    │  (the source map) → parse → .axi interface
 //!    │
 //!    ├─ per module: type-check in MODULE MODE (imports register, T953)
-//!    │      · skipped on a cache validation hit (§115.f)
+//! │      · skipped on a cache validation hit (v2.76.0)
 //!    ├─ ECC over every import edge (T954 / W017)
 //!    │
 //!    ├─ LINK: merge ASTs (entry last, dep `run`s dropped)
@@ -46,7 +46,7 @@ use crate::type_checker::{ModuleCheckContext, TypeChecker};
 
 /// Does this source declare any `import` at all? The EMS engagement
 /// criterion: one import statement — selective or not — means module
-/// semantics were requested (a refused form then refuses loudly, §115.d,
+/// semantics were requested (a refused form then refuses loudly, v2.76.0,
 /// instead of staying decorative as in v2.75.0).
 pub fn source_declares_imports(source: &str, filename: &str) -> bool {
     scan_imports(source, filename)
@@ -57,7 +57,7 @@ pub fn source_declares_imports(source: &str, filename: &str) -> bool {
 /// Driver options.
 #[derive(Debug, Default)]
 pub struct EmsOptions {
-    /// Module root override (D115.8; default = entry file's directory).
+    /// Module root override (the design decision; default = entry file's directory).
     pub modules_root: Option<PathBuf>,
     /// Consult/populate the on-disk cache (`--no-cache` disables).
     pub use_cache: bool,
@@ -101,7 +101,7 @@ pub fn compile_project(entry_file: &Path, opts: &EmsOptions) -> Result<EmsSucces
     compile_project_with_manifest(entry_file, opts, None)
 }
 
-/// [`compile_project`] with the §38 store-schema manifest (the
+/// [`compile_project`] with the v1.31.0 store-schema manifest (the
 /// `--schemas-dir` surface): forms (b)/(c) column proofs (T801–T805)
 /// run identically in module mode.
 pub fn compile_project_with_manifest(
@@ -133,7 +133,7 @@ pub fn compile_module_set(
     compile_module_set_with_manifest(set, cache_dir, None)
 }
 
-/// [`compile_module_set`] with the §38 manifest threaded into BOTH the
+/// [`compile_module_set`] with the v1.31.0 manifest threaded into BOTH the
 /// per-module passes and the merged revalidation.
 pub fn compile_module_set_with_manifest(
     set: &ModuleSet,

@@ -18,9 +18,9 @@ can actually be *opened*.
 
 A guard you can declare but never satisfy is not a guard. It is a locked door
 with no key — and at deploy time it is *indistinguishable* from a real one. The
-request simply 403s forever, and the operator discovers it in production. §90
-makes key-existence a proof obligation, the exact dual of the §89 dead-permission
-rule: §89 forbids a permission no boundary uses; §90 forbids a requirement no
+request simply 403s forever, and the operator discovers it in production. v2.45.0
+makes key-existence a proof obligation, the exact dual of the v2.44.0 dead-permission
+rule: v2.44.0 forbids a permission no boundary uses; v2.45.0 forbids a requirement no
 authority grants.
 
 ## Why it was needed: two namespaces that never met

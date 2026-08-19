@@ -1,10 +1,10 @@
-//! §Fase 116.e — the LinkedIn native core: the richest governance posture.
+//! v2.77.0 — the LinkedIn native core: the richest governance posture.
 //!
-//! Owned-only posture (D116.3) is a **construction invariant** here: a
+//! Owned-only posture is a **construction invariant** here: a
 //! [`LinkedInConnector`] is built for an ORGANIZATION URN, and
 //! [`LinkedInConnector::new`] REFUSES a member (`urn:li:person:`) author — the
 //! paper's central finding (member-level automation is prohibited, API ToS
-//! §3.1(26); `r_member_social` is closed) made a runtime invariant, not just a
+//! section 3.1(26); `r_member_social` is closed) made a runtime invariant, not just a
 //! compile-time refusal (`axon-T958`). The connector cannot post as a member; it
 //! never had the path.
 //!
@@ -12,17 +12,17 @@
 //! plus a `LinkedIn-Version` header (`YYYYMM`) and `X-Restli-Protocol-Version:
 //! 2.0.0`, and returns a `{"message","serviceErrorCode","status"}` error
 //! envelope. The version is CONFIG, not a constant — LinkedIn sunsets Marketing
-//! versions on a rolling cadence (paper §2.1), so a deployment pins the version
+//! versions on a rolling cadence (paper section 2.1), so a deployment pins the version
 //! it was reviewed against, and a sunset version surfaces a CLEAR typed error
 //! (fail-safe), never a silent break.
 //!
 //! **Reads use the Social Metadata / socialActions surface** (comments +
 //! reactions, the reaction types beyond likes) — the replacement for the legacy
-//! `socialActions` endpoint the paper flagged (§2.1). Analytics come from
+//! `socialActions` endpoint the paper flagged (section 2.1). Analytics come from
 //! `organizationalEntityShareStatistics`.
 //!
 //! Unlike Facebook/Instagram, post **edit and delete ARE on the paper-verified
-//! surface** (§2.1: "creating, updating, and deleting organization posts").
+//! surface** (section 2.1: "creating, updating, and deleting organization posts").
 
 use std::time::Duration;
 
@@ -73,7 +73,7 @@ impl std::fmt::Debug for LinkedInConfig {
     }
 }
 
-/// The LinkedIn connector core (§116.e).
+/// The LinkedIn connector core (v2.77.0).
 pub struct LinkedInConnector {
     config: LinkedInConfig,
     client: reqwest::blocking::Client,
@@ -222,7 +222,7 @@ impl SocialConnector for LinkedInConnector {
     }
 
     /// `GET /rest/socialActions/{shareUrn}/reactions` — reaction types beyond
-    /// likes (the Social Metadata surface, paper §2.1). Summarized per type.
+    /// likes (the Social Metadata surface, paper section 2.1). Summarized per type.
     fn read_reactions(
         &self,
         ctx: &CallContext,
@@ -358,7 +358,7 @@ impl SocialConnector for LinkedInConnector {
     }
 
     /// `POST /rest/posts/{urn}` PARTIAL_UPDATE — update the commentary
-    /// (paper §2.1: organization posts are updatable).
+    /// (paper section 2.1: organization posts are updatable).
     fn edit(
         &self,
         ctx: &CallContext,
@@ -377,7 +377,7 @@ impl SocialConnector for LinkedInConnector {
         Ok(PublishReceipt { object_id: object_id.to_string(), url: None })
     }
 
-    /// `DELETE /rest/posts/{urn}` — delete an organization post (paper §2.1).
+    /// `DELETE /rest/posts/{urn}` — delete an organization post (paper section 2.1).
     fn delete(&self, ctx: &CallContext, object_id: &str) -> Result<(), ConnectorError> {
         let token = self.token(ctx)?;
         self.json(

@@ -1,4 +1,4 @@
-//! §Fase 25.b — End-to-end build-infrastructure probe tests.
+//! v1.19.0 — End-to-end build-infrastructure probe tests.
 //!
 //! These tests exercise the entire cc-rs → C23 → static link → FFI
 //! pipeline. If they pass on Linux/macOS/Windows × clang/gcc/msvc, the

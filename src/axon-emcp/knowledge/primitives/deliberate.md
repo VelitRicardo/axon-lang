@@ -1,9 +1,9 @@
 ---
 name: deliberate
-summary: "Budget-bounded deliberation — FAILS CLOSED (axon-T939, §111): refused at check time rather than silently discarded; no budget was ever controlled by the old placeholder."
+summary: "Budget-bounded deliberation — FAILS CLOSED (axon-T939, v2.67.0): refused at check time rather than silently discarded; no budget was ever controlled by the old placeholder."
 category: cognition
 top_level: false
-since: pre-§111 (introduction unrecorded)
+since: pre-v2.67.0 (introduction unrecorded)
 grammar: |
   deliberate { <body> }   # REFUSED at check time (axon-T939)
 ---
@@ -11,13 +11,13 @@ grammar: |
 # `deliberate`
 
 `deliberate` was sold as budget-bounded deliberation. **It fails
-closed** (§111): the checker refuses it with `axon-T939`.
+closed** (v2.67.0): the checker refuses it with `axon-T939`.
 
 ## Why refusal is the honest state
 
 The old placeholder **discarded the body at parse time** — no budget
 was ever controlled, and "completing" the block was a lie the adopter
-could not detect. §111's posture: an adopter told loudly is safe; an
+could not detect. v2.67.0's posture: an adopter told loudly is safe; an
 adopter fooled silently is not. `FailsClosed` is an acceptable state to
 advertise from — the primitive returns when a real deliberation runtime
 exists.

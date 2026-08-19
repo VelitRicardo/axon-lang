@@ -20,8 +20,8 @@ inside it with its level of the uncertainty lattice.
 
 hypothesis space — permitted, but marked; downstream consumers see the level.
 
-The lattice is load-bearing at the EGRESS boundaries: `document` (§99)
-and `deliver` (§105) read the level to decide whether content may leave
+The lattice is load-bearing at the EGRESS boundaries: `document` (v2.53.0)
+and `deliver` (v2.60.0) read the level to decide whether content may leave
 as an assertion, must carry `attribute:`, or is refused — the
 assertion-laundering barrier.
 

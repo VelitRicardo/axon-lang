@@ -1,8 +1,8 @@
-//! §Fase 123 — **the closed regulatory vocabulary Κ.**
+//! v4.0.0 — **the closed regulatory vocabulary Κ.**
 //!
 //! # Why this module exists in the FRONTEND
 //!
-//! The ESK paper (§6.1, *Regulatory Type Theory*) states the rule plainly:
+//! The ESK paper (section 6.1, *Regulatory Type Theory*) states the rule plainly:
 //!
 //! > *"κ es un subconjunto del registro canónico Κ = {HIPAA, PCI_DSS, GDPR,
 //! > SOX, FINRA, ISO27001, SOC2, FISMA, GxP, CCPA, NIST_800_53}. Cualquier
@@ -18,7 +18,7 @@
 //! written where it belonged, and `compliance:` quietly became a free-string
 //! field while `effects:` beside it stayed a closed catalog.
 //!
-//! Measured 2026-08-14, and recorded in `advertised.rs` before this fase
+//! Measured 2026-08-14, and recorded in `advertised.rs` before this cycle
 //! existed: `compliance: [NOT_A_FRAMEWORK]` on an `axonendpoint` compiled
 //! clean. The values an adopter writes there are `PCI_DSS`, `SOX`, `HIPAA` —
 //! read by a regulated reader as an assertion.
@@ -35,7 +35,7 @@
 //! pins the two in agreement, so there is one
 //! source of truth for *what exists* and one place for *what it means*.
 //!
-//! This is deliberately NOT a second copy of the catalog. §122.e paid for a law
+//! This is deliberately NOT a second copy of the catalog. v2.89.0 paid for a law
 //! written three times: two copies were updated, the third was missed, and the
 //! workspace suite caught it — after the first two attempts had already shipped
 //! the drift.
@@ -48,7 +48,7 @@
 ///
 /// **Adding an entry is a deliberate act.** A new framework here becomes a
 /// label every adopter can assert, and the assertion is what a regulated
-/// reader trusts — so it belongs in a fase with a paper behind it, not in a
+/// reader trusts — so it belongs in a cycle with a paper behind it, not in a
 /// convenience commit.
 pub const REGULATORY_CLASSES: &[&str] = &[
     "HIPAA",
@@ -62,7 +62,7 @@ pub const REGULATORY_CLASSES: &[&str] = &[
     "GxP",
     "CCPA",
     "NIST_800_53",
-    // §Fase 124 (D124.1) — the four LATAM jurisdictions the product serves.
+    // v4.0.0 — the four LATAM jurisdictions the product serves.
     //
     // They enter Κ on the same footing as every class above: declarable, and a
     // participant in `axon-T957`'s coverage difference. That is the whole
@@ -168,10 +168,10 @@ fn edit_distance_at_most_1(a: &str, b: &str) -> bool {
 /// `FlowEnvelope<T>` / `List<T>` / `Stream<T>` carry the κ of `T`, and `?`
 /// (optionality) is orthogonal to what the data IS.
 ///
-/// §Fase 124.c — hoisted here from `type_checker`'s private helper because a
+/// v4.0.0 — hoisted here from `type_checker`'s private helper because a
 /// THIRD consumer arrived (the audit engine's coverage rule, joining T957 and
 /// the typed-bus predicate) and three private copies of "what wraps a type
-/// without changing its κ" is how the copies drift — §122.e paid for exactly
+/// without changing its κ" is how the copies drift — v2.89.0 paid for exactly
 /// that with a law written three times.
 pub fn peel_type_constructors(type_ref: &str) -> &str {
     let mut t = type_ref.trim();

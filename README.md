@@ -50,7 +50,7 @@
   <code>immune</code> · <code>reflex</code> · <code>heal</code> ·
   <code>compliance</code><br>
   <code>component</code> · <code>view</code><br>
-  <!-- Enterprise I/O capabilities (Fases 80–85) -->
+  <!-- Enterprise I/O capabilities (v2.37.0–v2.40.0) -->
   <code>cache</code> · <code>voice</code> · <code>shell</code> · <code>path rewrite</code> · <code>PASETO</code><br>
   <!-- NEW — Session-typed WebSocket dialogue (v2.3.0) -->
   <strong>Session types (v2.3.0):</strong>
@@ -4826,7 +4826,7 @@ know {
 | AxonEndpoint | `axonendpoint` (`axpoint`) | Native HTTP boundary primitive — typed ingress, flow dispatch, and holographic endpoint telemetry |
 | AxonStore  | `axonstore`  | Cognitive data plane — epistemically-typed rows, HMAC-Merkle audit chain, `Stream<Row>`, capability-typed access |
 
-**Block 2 — the 18 Cognitive I/O primitives (Fases 1–9, λ-L-E calculus):**
+**Block 2 — the 18 Cognitive I/O primitives (v1.1.0–v1.3.1, λ-L-E calculus):**
 
 | Primitive  | Keyword       | Phase | What it represents                                           |
 | ---------- | ------------- | ----- | ------------------------------------------------------------ |

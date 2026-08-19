@@ -3,7 +3,7 @@ name: fabric
 summary: The cloud-substrate declaration — provider, region, zones, ephemerality, bound shield.
 category: cognitive_io
 top_level: true
-since: Fase 6
+since: v1.2.0
 grammar: |
   fabric <Name> {
       provider: <ident>          # required — cloud slug (aws | gcp | azure | onprem | ...)

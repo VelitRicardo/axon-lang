@@ -3,7 +3,7 @@ name: observe
 summary: Declares an observability surface — sources, quorum, timeout, certainty floor, partition policy.
 category: cognitive_io
 top_level: true
-since: Fase 6
+since: v1.2.0
 grammar: |
   observe <Name> from <ManifestRef> {
       sources: [<src1>, <src2>, ...]            # required — telemetry sources

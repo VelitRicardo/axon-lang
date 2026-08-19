@@ -3,7 +3,7 @@
 //!
 //! # Why this exists
 //!
-//! Before §Fase 6.a, the answer to "what primitives does AXON have?"
+//! Before v1.2.0, the answer to "what primitives does AXON have?"
 //! was scattered across the parser dispatch table, the type checker's
 //! validation arms, the ℰMCP knowledge corpus, and a half-dozen
 //! markdown reference pages. There was no machine-readable canonical
@@ -33,7 +33,7 @@
 //!
 //! For primitives that exist in the parser today but haven't been
 //! documented yet, the entry lives here with `doc_status: Pending`.
-//! The §Fase 6.b–d roadmap flips each `Pending` → `Documented` as
+//! The v1.2.0–d roadmap flips each `Pending` → `Documented` as
 //! its `.md` lands.
 
 /// One primitive's **shallow** metadata. Deep documentation (grammar,
@@ -62,7 +62,7 @@ pub struct PrimitiveInfo {
     /// inside another construct (e.g. `step` inside a `flow`).
     pub top_level: bool,
     /// The cycle that introduced this primitive (e.g. `"v0.1.0"`,
-    /// `"Fase 41.b (v2.3.0)"`). Surfaced verbatim in the corpus
+    /// `"v2.3.0"`). Surfaced verbatim in the corpus
     /// frontmatter `since:` field.
     pub since: &'static str,
     /// One-line summary used by `axon.primitives()` listings and by
@@ -70,21 +70,21 @@ pub struct PrimitiveInfo {
     /// doc's frontmatter. Should fit on one line, end with a period.
     pub summary: &'static str,
     /// Whether the primitive has a corresponding markdown doc in the
-    /// ℰMCP corpus today. The §Fase 6 plan ships every primitive's
+    /// ℰMCP corpus today. The v1.2.0 plan ships every primitive's
     /// doc in tiers (6.b, 6.c, 6.d); entries flip from `Pending` to
     /// `Documented` as their `.md` lands.
     pub doc_status: DocStatus,
-    /// §Fase 114.z — whether this primitive is part of the PUBLIC
+    /// v2.69.0 — whether this primitive is part of the PUBLIC
     /// PROMISE. `true` ⇒ the anti-drift gate (`advertised.rs`) REQUIRES
     /// a `RuntimeStatus` classification for it AND a `<code>` badge in
     /// the public README — a primitive cannot be part of the promise
     /// without someone stating, on the record, what its runtime does.
     ///
-    /// Why this field exists: the §111 gate was 100% README-badge-driven,
+    /// Why this field exists: the v2.67.0 gate was 100% README-badge-driven,
     /// so a primitive DISCUSSED but never BADGED escaped classification
     /// entirely — `budget` appeared in the README seventeen times, was
     /// badged zero, and its dead runtime survived every green build until
-    /// §114.a. **A gate that guards only the badges guards the
+    /// v2.69.0. **A gate that guards only the badges guards the
     /// packaging.** The registry is the enumeration source now; the
     /// badges are a projection of it, not the other way around.
     ///
@@ -105,7 +105,7 @@ pub struct PrimitiveInfo {
 ///
 /// `Pending` entries are visible in the registry (so the catalogue
 /// is honestly complete) but the coverage gate does NOT require
-/// their docs yet — that is the §Fase 6.b–d roadmap.
+/// their docs yet — that is the v1.2.0–d roadmap.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DocStatus {
     /// Documented — has a markdown body in the corpus + passes the
@@ -113,7 +113,7 @@ pub enum DocStatus {
     /// coverage gate requires `<name>.md` to exist.
     Documented,
     /// Pending — the primitive exists in the language but its
-    /// markdown doc has not landed yet. The §Fase 6 roadmap names
+    /// markdown doc has not landed yet. The v1.2.0 roadmap names
     /// the cycle (6.b / 6.c / 6.d) that closes the gap.
     Pending,
 }
@@ -129,13 +129,13 @@ impl DocStatus {
     }
 }
 
-/// The closed catalogue — **91 primitives, all Documented** (§6.d reached
-/// 100% at 66; the §114.z census backfilled 25 parser realities and its
+/// The closed catalogue — **91 primitives, all Documented** (section 6.d reached
+/// 100% at 66; the v2.69.0 census backfilled 25 parser realities and its
 /// docs-tier paid their corpus docs, restoring 100% at the new, honest
 /// denominator). Ordered by category for readability. Consumers must not
 /// depend on declaration order; they iterate and filter.
 ///
-/// §Fase 114.z made this table the ENUMERATION SOURCE of the
+/// v2.69.0 made this table the ENUMERATION SOURCE of the
 /// anti-drift gate (`advertised.rs`): every `is_advertised` entry must
 /// carry a `RuntimeStatus` classification and a README badge. See the
 /// census section at the bottom for what was missing and why.
@@ -431,7 +431,7 @@ pub const PRIMITIVE_REGISTRY: &[PrimitiveInfo] = &[
         doc_status: DocStatus::Documented,
         is_advertised: true,
     },
-    // §Fase 111 — `transact` REMOVED (retracted, axon-T938).
+    // v2.67.0 — `transact` REMOVED (retracted, axon-T938).
     //
     // Its summary here read: "wraps multiple data-plane mutations in a single
     // transactional unit with rollback semantics." None of that was true. The
@@ -441,13 +441,13 @@ pub const PRIMITIVE_REGISTRY: &[PrimitiveInfo] = &[
     // taken, nothing rolled back. We shipped it in a knowledge template.
     //
     // The registry's own rule — "an entry without a parser production lies" —
-    // was too weak: `transact` HAD a parser production. §111 widens it: an
+    // was too weak: `transact` HAD a parser production. v2.67.0 widens it: an
     // entry whose SUMMARY the runtime does not honour lies just as loudly, and
     // is more dangerous, because a rollback that does not happen is only
     // discovered on the failure path. A retracted primitive is not an exposed
     // primitive; it leaves the closed set, and `axon check` teaches the truth
     // via T938 instead.
-    // ── Session types (§Fase 41) ──────────────────────────────────────
+    // ── Session types (v2.3.0) ──────────────────────────────────────
     PrimitiveInfo {
         name: "session",
         category: "session_types",
@@ -521,15 +521,15 @@ pub const PRIMITIVE_REGISTRY: &[PrimitiveInfo] = &[
         doc_status: DocStatus::Documented,
         is_advertised: true,
     },
-    // §Fase 6.c — `taint` was registered in 6.a as a wire primitive
+    // v1.2.0 — `taint` was registered in 6.a as a wire primitive
     // but has no parser production (the lexer recognises the
     // keyword token; no `parse_taint` exists; the language treats
     // `taint` only as part of the epistemic-uncertainty lattice
     // wording in `epistemic.rs`). Registry is the source of truth
     // for what the parser actually accepts as a top-level
     // declaration; an entry without a parser production lies. We
-    // remove it here. If a future Fase introduces `taint <Name> {
-    // ... }`, re-add an entry with that Fase's `since:` tag.
+    // remove it here. If a future cycle introduces `taint <Name> {
+    // ... }`, re-add an entry with that cycle's `since:` tag.
     PrimitiveInfo {
         name: "listen",
         category: "wire",
@@ -539,8 +539,8 @@ pub const PRIMITIVE_REGISTRY: &[PrimitiveInfo] = &[
         doc_status: DocStatus::Documented,
         is_advertised: true,
     },
-    // §Fase 77 — the π-calc channel quartet, undocumented since Fase 13
-    // (Kivi brief #51 §B.2: `axon.primitive_doc` answered *unknown
+    // v2.34.0 — the π-calc channel quartet, undocumented since v1.6.0
+    // (Kivi brief #51 B.2: `axon.primitive_doc` answered *unknown
     // primitive* for constructs the parser accepts). Registered +
     // documented together, per the atomicity discipline above.
     PrimitiveInfo {
@@ -639,13 +639,13 @@ pub const PRIMITIVE_REGISTRY: &[PrimitiveInfo] = &[
         category: "operators",
         top_level: true,
         since: "v1.13.1",
-        // §Fase 119.b — THIS SUMMARY USED TO READ: "A typed approval
+        // v2.83.0 — THIS SUMMARY USED TO READ: "A typed approval
         // requirement — gates a flow's execution on a capability check +
         // optional segregation of duties." That is a DIFFERENT PRIMITIVE. It
-        // described §90 grantability and §102 segregation of duties, neither of
+        // described v2.45.0 grantability and v2.56.0 segregation of duties, neither of
         // which `mandate` has ever done, and it cost two wrong scopes before
         // anyone opened `docs/papers/paper_mandate.md`. The registry is the
-        // artefact §111 built to stop primitives from being misdescribed, and
+        // artefact v2.67.0 built to stop primitives from being misdescribed, and
         // nothing audits that a summary matches the README — so this one rotted
         // in the one file least likely to be doubted.
         summary: "A constraint the model cannot evade — a closed-loop PID controller over the semantic error e = 1 − CSR that refines generation until |e| < ε within N steps, or fails closed.",
@@ -778,33 +778,33 @@ pub const PRIMITIVE_REGISTRY: &[PrimitiveInfo] = &[
         doc_status: DocStatus::Documented,
         is_advertised: true,
     },
-    // §Fase 6.d — `logic` was registered in 6.a as an operators
+    // v1.2.0 — `logic` was registered in 6.a as an operators
     // primitive but has NO parser production (the lexer recognises
     // the `logic` keyword token; no `parse_logic` exists; the
     // top-level dispatch in `parse_declaration` has no `Logic`
     // arm). Same situation `taint` was in at 6.c. Discipline
     // applies: registry entries match parser productions
-    // one-to-one. We remove `logic` here; if a future Fase
+    // one-to-one. We remove `logic` here; if a future cycle
     // introduces `logic <Name> { … }`, re-add the entry with
-    // that Fase's `since:` tag.
+    // that cycle's `since:` tag.
     //
-    // ══ §Fase 114.z — THE CENSUS BACKFILL ═══════════════════════════════
+    // ══ v2.69.0 — THE CENSUS BACKFILL ═══════════════════════════════
     //
     // The registry claimed to be "the single source of truth for the
     // closed set of primitive names" while **25 named constructs with
     // live parser productions were tracked NOWHERE** — most sharply
     // `budget`, which was in neither this registry nor the `ADVERTISED`
     // table, appeared in the README seventeen times with zero badges,
-    // and whose dead runtime (§114.a) therefore survived every green
+    // and whose dead runtime (v2.69.0) therefore survived every green
     // build. A single-source-of-truth that lacks entries is not one yet;
-    // §114.z audits parser dispatch (`parse_declaration` +
+    // v2.69.0 audits parser dispatch (`parse_declaration` +
     // `parse_flow_step`) against this table and closes the census.
     //
     // Entries landed as `DocStatus::Pending` in the census and were flipped
-    // to `Documented` by the §114.z docs-tier: every one of the 25 now has a
+    // to `Documented` by the v2.69.0 docs-tier: every one of the 25 now has a
     // corpus doc whose body is verified against the runtime audit (several
     // honestly document a refusal — deliberate/consensus FailsClosed — or a
-    // KNOWN_DEBT gap — hibernate; a doc that overclaims is the §112.f
+    // KNOWN_DEBT gap — hibernate; a doc that overclaims is the v2.67.0
     // defect, and these were written not to).
     //
     // DELIBERATELY EXCLUDED from the census, with reasons:
@@ -814,19 +814,19 @@ pub const PRIMITIVE_REGISTRY: &[PrimitiveInfo] = &[
     //     (`shield`/`ots`/`mandate`/`compute` on a target, `run` as a
     //     flow-step): their doc home is the parent primitive's `.md`.
     //   - structural control flow — `if`/`for`/`let`/`return`/`break`/
-    //     `continue`/`import`: syntax, not primitives. (§115 note: the
+    // `continue`/`import`: syntax, not primitives. (v2.76.0 note: the
     //     exclusion stays correct for `import` — it has no runtime
     //     kernel — but as of the Rust EMS it is REAL syntax: the
     //     compiler resolves it, T953/T954/T955 govern it, and the
-    //     README's §XVI section documents the subsystem. Through
+    // README's XVI section documents the subsystem. Through
     //     v2.75.0 this exclusion quietly covered a statement nothing
     //     resolved; the census exclusion was correct, the SILENCE
-    //     around the dead subsystem was the §115 finding.)
+    // around the dead subsystem was the v2.76.0 finding.)
     //   - retracted constructs — `transact` (axon-T938) and
     //     `corroborate`: they parse only so the checker can teach the
     //     retraction; a retracted primitive is not an exposed one.
     //
-    // ── §114.z census — top-level declarations ──────────────────────────
+    // ── v2.69.0 census — top-level declarations ──────────────────────────
     PrimitiveInfo {
         name: "budget",
         category: "operators",
@@ -890,7 +890,7 @@ pub const PRIMITIVE_REGISTRY: &[PrimitiveInfo] = &[
         doc_status: DocStatus::Documented,
         is_advertised: false,
     },
-    // ── §114.z census — the epistemic lattice scopes ────────────────────
+    // ── v2.69.0 census — the epistemic lattice scopes ────────────────────
     PrimitiveInfo {
         name: "know",
         category: "cognition",
@@ -927,7 +927,7 @@ pub const PRIMITIVE_REGISTRY: &[PrimitiveInfo] = &[
         doc_status: DocStatus::Documented,
         is_advertised: true,
     },
-    // ── §114.z census — flow-body cognitive verbs ───────────────────────
+    // ── v2.69.0 census — flow-body cognitive verbs ───────────────────────
     PrimitiveInfo {
         name: "par",
         category: "cognition",
@@ -973,7 +973,7 @@ pub const PRIMITIVE_REGISTRY: &[PrimitiveInfo] = &[
         doc_status: DocStatus::Documented,
         is_advertised: true,
     },
-    // ── §Fase 120 — algebraic effects (Plotkin/Pretnar) ──────────────
+    // ── v2.87.0 — algebraic effects (Plotkin/Pretnar) ──────────────
     //
     // THREE entries, not six. `resume` / `abort` / `forward` are the discharge
     // forms of a handler CLAUSE and are a compile error anywhere else
@@ -1111,7 +1111,7 @@ pub fn by_category<'a>(category: &'a str) -> impl Iterator<Item = &'static Primi
     PRIMITIVE_REGISTRY.iter().filter(move |i| i.category == category)
 }
 
-/// Filter the registry by documentation status. The §Fase 6 coverage
+/// Filter the registry by documentation status. The v1.2.0 coverage
 /// gate uses `with_status(DocStatus::Documented)` to know which
 /// entries MUST have a corresponding `.md`.
 pub fn with_status(status: DocStatus) -> impl Iterator<Item = &'static PrimitiveInfo> {
@@ -1134,7 +1134,7 @@ pub fn coverage_summary() -> CoverageSummary {
     summary
 }
 
-/// Aggregate documentation-coverage counts. Used by the §Fase 6
+/// Aggregate documentation-coverage counts. Used by the v1.2.0
 /// coverage gate + future telemetry to surface "we have N
 /// primitives, M documented, N-M pending" at a glance.
 #[derive(Debug, Default, Clone, Copy)]
@@ -1166,44 +1166,44 @@ mod tests {
     #[test]
     fn registry_contains_the_expected_count() {
         // Total count is pinned — a regression that drops a primitive
-        // surfaces as a smaller catalogue. §Fase 6.c removed `taint`
-        // (47→46); §Fase 6.d removed `logic` (46→45). Both were lex-
+        // surfaces as a smaller catalogue. v1.2.0 removed `taint`
+        // (47→46); v1.2.0 removed `logic` (46→45). Both were lex-
         // recognised keywords with NO parser production, and the
         // "registry entries = parser productions" discipline meant
-        // they could not stay. Future Fases that add or remove
+        // they could not stay. Future cycles that add or remove
         // primitives update this assertion in the same PR.
-        // §Fase 62.0 added `ledger` (the audit chain) as a distinct top-level
+        // v2.12.0 added `ledger` (the audit chain) as a distinct top-level
         // primitive when `pix` was reassigned to the retrieval navigator (45→46).
-        // §Fase 51 (v2.19.0) added `observable` + `quant` (the Hilbert-space
+        // v2.19.0 added `observable` + `quant` (the Hilbert-space
         // cognitive primitive + its Hermitian-observable companion) → 46→48.
-        // §Fase 71 added `window` (the temporal execution guard) → 48→49.
-        // §Fase 73 added `json` (the open semi-structured value type) → 49→50.
-        // §Fase 77 added the π-calc channel quartet `channel` / `emit` /
-        // `publish` / `discover` (parsed since Fase 13, undocumented until
-        // Kivi brief #51 §B.2 caught the gap) → 50→54.
-        // §Fase 80.b added `upstream` (the outbound vendor connection,
+        // v2.27.0 added `window` (the temporal execution guard) → 48→49.
+        // v2.26.0 added `json` (the open semi-structured value type) → 49→50.
+        // v2.34.0 added the π-calc channel quartet `channel` / `emit` /
+        // `publish` / `discover` (parsed since v1.6.0, undocumented until
+        // Kivi brief #51 B.2 caught the gap) → 50→54.
+        // v2.37.0 added `upstream` (the outbound vendor connection,
         // the client dual of `socket`) → 54→55.
-        // §Fase 80.g added `voice` (the inspectable voice-agent sugar) → 55→56.
-        // §Fase 83 added `cors` (the named, referenced browser-origin
+        // v2.37.0 added `voice` (the inspectable voice-agent sugar) → 55→56.
+        // v2.38.0 added `cors` (the named, referenced browser-origin
         // policy) → 56→57.
-        // §Fase 85 added `cache` (the named, referenced result-memoization
+        // v2.40.0 added `cache` (the named, referenced result-memoization
         // policy) → 57→58.
-        // §Fase 87 added `savant` (the long-horizon autonomous research
+        // v2.42.0 added `savant` (the long-horizon autonomous research
         // primitive) + `synth` (the dynamic tool-synthesis policy) → 58→60.
-        // §Fase 88 added `warden` (the adversarial security-analysis block) +
+        // v2.43.0 added `warden` (the adversarial security-analysis block) +
         // `scope` (the authorization-scope policy) → 60→62.
-        // §Fase 92 added `credential` (the ephemeral-credential contract) +
+        // v2.46.0 added `credential` (the ephemeral-credential contract) +
         // `mint` (the minting flow verb) → 62→64.
-        // §Fase 94 added `rotate` (the mediated secret-renewal verb) → 64→65.
-        // §Fase 99 added `document` (Native Document Synthesis) → 65→66.
-        // §Fase 105 added `deliver` (Governed CRM Delivery, egress-dual) → 66→67.
-        // §Fase 111 RETRACTED `transact` (it never opened a transaction) → 67→66.
-        // §Fase 114.z CENSUS BACKFILL → 66→91: twenty-five constructs with
+        // v2.48.0 added `rotate` (the mediated secret-renewal verb) → 64→65.
+        // v2.53.0 added `document` (Native Document Synthesis) → 65→66.
+        // v2.60.0 added `deliver` (Governed CRM Delivery, egress-dual) → 66→67.
+        // v2.67.0 RETRACTED `transact` (it never opened a transaction) → 67→66.
+        // v2.69.0 CENSUS BACKFILL → 66→91: twenty-five constructs with
         // live parser productions were tracked NOWHERE (sharpest: `budget`,
         // whose dead runtime survived every green build because no table
         // knew it existed). All 25 enter as `Pending`; see the census
         // section's exclusion list for what deliberately stays out.
-        // §Fase 120 added `effect` / `handle` / `perform` → 91→94. The §23
+        // v2.87.0 added `effect` / `handle` / `perform` → 91→94. The v1.17.0
         // algebraic-effects runtime existed all along and was tracked NOWHERE
         // for the same reason `budget` was not: no badge, no registry row,
         // nothing to classify — so no gate could ask whether a program could
@@ -1215,7 +1215,7 @@ mod tests {
         );
     }
 
-    /// §Fase 114.z — the advertised polarity is pinned. `is_advertised:
+    /// v2.69.0 — the advertised polarity is pinned. `is_advertised:
     /// false` is an EXCEPTIONAL state (an internal mechanism, or a
     /// construct whose public claims are gated on other doctrine); every
     /// new primitive is part of the promise unless this list is
@@ -1228,9 +1228,9 @@ mod tests {
             .map(|i| i.name)
             .collect();
         let expected: HashSet<&str> = [
-            // §69 — benchmark/advantage claims wait for the Sandbox (§101).
+            // v2.23.0 — benchmark/advantage claims wait for the Sandbox (v2.54.0).
             "witness",
-            // #15→§53 — internal composition mechanism, not a promised primitive.
+            // #15→v2.5.0 — internal composition mechanism, not a promised primitive.
             "extension",
         ]
         .into_iter()
@@ -1284,16 +1284,16 @@ mod tests {
 
     #[test]
     fn documented_tier_matches_phase_6d_baseline_full_coverage() {
-        // §Fase 6.d baseline (post-Tier-3): **45 primitives — every
+        // v1.2.0 baseline (post-Tier-3): **45 primitives — every
         // entry in the registry is Documented (100% coverage)**.
         //
-        //   Tier 0 (Fase 5,    7): persona, flow, step, anchor, tool, reason, socket
-        //   Tier 1 (Fase 6.b, 10): context, intent, memory, agent, probe,
+        // Tier 0 (v1.1.0, 7): persona, flow, step, anchor, tool, reason, socket
+        // Tier 1 (v1.2.0, 10): context, intent, memory, agent, probe,
         //                          validate, refine, weave, type, run
-        //   Tier 2 (Fase 6.c, 12): resource, fabric, manifest, observe,
+        // Tier 2 (v1.2.0, 12): resource, fabric, manifest, observe,
         //                          reconcile, lease, ensemble, session,
         //                          axonstore, dataspace, corpus, pix
-        //   Tier 3 (Fase 6.d, 16): axonendpoint, axpoint, daemon, mcp,
+        // Tier 3 (v1.2.0, 16): axonendpoint, axpoint, daemon, mcp,
         //                          listen, shield, mandate, compute,
         //                          lambda, forge, ots, psyche, immune,
         //                          reflex, heal, transact
@@ -1321,36 +1321,36 @@ mod tests {
             "axonendpoint", "axpoint", "daemon", "mcp", "listen",
             "shield", "mandate", "compute", "lambda", "forge", "ots",
             "psyche", "immune", "reflex", "heal",
-            // §Fase 51 (v2.19.0)
+            // v2.19.0
             "observable", "quant",
-            // §Fase 71 — the temporal execution-window guard.
+            // v2.27.0 — the temporal execution-window guard.
             "window",
-            // §Fase 73 — the open semi-structured value type.
+            // v2.26.0 — the open semi-structured value type.
             "json",
-            // §Fase 77 — the π-calc channel quartet (Kivi brief #51 §B.2).
+            // v2.34.0 — the π-calc channel quartet (Kivi brief #51 B.2).
             "channel", "emit", "publish", "discover",
-            // §Fase 80.b/80.g — the outbound vendor connection + the
+            // v2.37.0 — the outbound vendor connection + the
             // inspectable voice-agent sugar.
             "upstream", "voice",
-            // §Fase 83 — the named, referenced browser-origin policy.
+            // v2.38.0 — the named, referenced browser-origin policy.
             "cors",
-            // §Fase 85 — the named, referenced result-memoization policy.
+            // v2.40.0 — the named, referenced result-memoization policy.
             "cache",
-            // §Fase 99 — Native Document Synthesis (DOCX/PPTX/XLSX egress).
+            // v2.53.0 — Native Document Synthesis (DOCX/PPTX/XLSX egress).
             "document",
-            // §Fase 105 — Governed CRM Delivery (the egress-dual of acquisition).
+            // v2.60.0 — Governed CRM Delivery (the egress-dual of acquisition).
             "deliver",
-            // §Fase 87 — the long-horizon autonomous research primitive + its
+            // v2.42.0 — the long-horizon autonomous research primitive + its
             // dynamic tool-synthesis policy.
             "savant", "synth",
-            // §Fase 88 — the adversarial security-analysis block + its
+            // v2.43.0 — the adversarial security-analysis block + its
             // authorization-scope policy.
             "warden", "scope",
-            // §Fase 92 — the ephemeral-credential contract + its minting verb.
+            // v2.46.0 — the ephemeral-credential contract + its minting verb.
             "credential", "mint",
-            // §Fase 94 — the mediated secret-renewal verb.
+            // v2.48.0 — the mediated secret-renewal verb.
             "rotate",
-            // §Fase 114.z census + docs-tier — the 25 backfilled entries,
+            // v2.69.0 census + docs-tier — the 25 backfilled entries,
             // each documented against the runtime audit (not aspiration).
             "budget", "notify", "topology", "component", "view",
             "witness", "extension",
@@ -1358,7 +1358,7 @@ mod tests {
             "par", "hibernate", "deliberate", "consensus", "stream",
             "grad", "navigate", "drill", "trail",
             "ingest", "focus", "associate", "aggregate", "explore",
-            // §Fase 120 — algebraic effects, reachable from source at last.
+            // v2.87.0 — algebraic effects, reachable from source at last.
             "effect", "handle", "perform",
         ]
         .into_iter()
@@ -1372,29 +1372,29 @@ mod tests {
     #[test]
     fn coverage_summary_is_arithmetic() {
         let s = coverage_summary();
-        // §Fase 62.0: 45 → 46 with `ledger` (audit chain) split out from `pix`.
-        // §Fase 51 (v2.19.0): 46 → 48 with `observable` + `quant`.
-        // §Fase 71: 48 → 49 with `window` (the temporal execution guard).
-        // §Fase 73: 49 → 50 with `json` (the open semi-structured value type).
-        // §Fase 77: 50 → 54 with the π-calc channel quartet
+        // v2.12.0: 45 → 46 with `ledger` (audit chain) split out from `pix`.
+        // v2.19.0: 46 → 48 with `observable` + `quant`.
+        // v2.27.0: 48 → 49 with `window` (the temporal execution guard).
+        // v2.26.0: 49 → 50 with `json` (the open semi-structured value type).
+        // v2.34.0: 50 → 54 with the π-calc channel quartet
         // (`channel` / `emit` / `publish` / `discover`).
-        // §Fase 80.b: 54 → 55 with `upstream`; §80.g: 55 → 56 with `voice`.
-        // §Fase 83: 56 → 57 with `cors`.
-        // §Fase 85: 57 → 58 with `cache`.
-        // §Fase 87: 58 → 60 with `savant` + `synth`.
-        // §Fase 88: 60 → 62 with `warden` + `scope`.
-        // §Fase 92: 62 → 64 with `credential` + `mint`.
-        // §Fase 94: 64 → 65 with `rotate` (the mediated secret-renewal verb).
-        // §Fase 99: 65 → 66 with `document` (Native Document Synthesis).
-        // §Fase 105: 66 → 67 with `deliver` (Governed CRM Delivery).
-        // §Fase 111: 67 → 66 — `transact` retracted (axon-T938).
-        // §Fase 114.z: 66 → 91 — the census backfill (entered Pending).
-        // The §114.z docs-tier then paid the debt: all 25 census docs
+        // v2.37.0: 54 → 55 with `upstream`; v2.37.0: 55 → 56 with `voice`.
+        // v2.38.0: 56 → 57 with `cors`.
+        // v2.40.0: 57 → 58 with `cache`.
+        // v2.42.0: 58 → 60 with `savant` + `synth`.
+        // v2.43.0: 60 → 62 with `warden` + `scope`.
+        // v2.46.0: 62 → 64 with `credential` + `mint`.
+        // v2.48.0: 64 → 65 with `rotate` (the mediated secret-renewal verb).
+        // v2.53.0: 65 → 66 with `document` (Native Document Synthesis).
+        // v2.60.0: 66 → 67 with `deliver` (Governed CRM Delivery).
+        // v2.67.0: 67 → 66 — `transact` retracted (axon-T938).
+        // v2.69.0: 66 → 91 — the census backfill (entered Pending).
+        // The v2.69.0 docs-tier then paid the debt: all 25 census docs
         // landed (verified against the runtime audit), restoring 100%
         // coverage at the NEW, honest denominator. A future drop is a
         // regression the gate catches.
-        // §Fase 120: 91 → 94 with `effect` / `handle` / `perform` — the
-        // algebraic-effect constructs. The §23 runtime existed and the language
+        // v2.87.0: 91 → 94 with `effect` / `handle` / `perform` — the
+        // algebraic-effect constructs. The v1.17.0 runtime existed and the language
         // had no grammar for it at all, so `EffectRuntime` was constructible
         // only from its own tests.
         assert_eq!(s.total, 94);
@@ -1426,13 +1426,13 @@ mod tests {
         // human-readable mirror of this same polarity.
         for nested in ["step", "reason", "probe", "validate", "refine", "weave",
                        "listen", "forge", "quant",
-                       // §Fase 77 — the channel quartet's nested members.
+                       // v2.34.0 — the channel quartet's nested members.
                        "emit", "publish", "discover",
-                       // §Fase 114.z census — flow-body cognitive verbs.
+                       // v2.69.0 census — flow-body cognitive verbs.
                        "par", "hibernate", "deliberate", "consensus", "stream",
                        "grad", "navigate", "drill", "trail", "ingest",
                        "focus", "associate", "aggregate", "explore",
-                       // §Fase 120 — `handle` and `perform` live in a flow or
+                       // v2.87.0 — `handle` and `perform` live in a flow or
                        // step body; only `effect` is a top-level declaration.
                        "handle", "perform"] {
             let info = find(nested).expect("must be in registry");

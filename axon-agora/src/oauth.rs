@@ -1,11 +1,11 @@
-//! §Fase 116.b — the OAuth token lifecycle engine (paper §2.5).
+//! v2.77.0 — the OAuth token lifecycle engine (paper section 2.5).
 //!
-//! This is the OSS refresh ENGINE the enterprise §52 daemon drives; the daemon
+//! This is the OSS refresh ENGINE the enterprise v2.4.0 daemon drives; the daemon
 //! supplies the custodied app secret + the current refresh token and persists
 //! whatever this returns. The engine holds no secrets and no clock — `now_ms`
 //! is passed in, so refresh decisions are deterministic and testable.
 //!
-//! **The per-platform mechanics the paper verified (§2.5):**
+//! **The per-platform mechanics the paper verified (section 2.5):**
 //! - **Facebook Pages** — the long-lived Page token has NO expiry
 //!   ([`RefreshMechanism::NeverExpires`]); steady-state operation needs no
 //!   refresh at all (the most unattended-friendly platform).
@@ -15,18 +15,18 @@
 //!   refresh token MAY rotate on every use** ([`RefreshMechanism::
 //!   RotatingRefreshGrant`]): a returned refresh token that differs from the one
 //!   sent MUST be persisted atomically, or access is lost forever. This is the
-//!   trap §116.b exists to close.
+//! trap v2.77.0 exists to close.
 //! - **LinkedIn (member)** — no unattended refresh; token expiry forces the
 //!   member to re-consent ([`RefreshMechanism::ReConsent`]). The daemon SURFACES
 //!   a re-consent requirement; it never silently refreshes member data (ToS
-//!   §4.3/§5.2). Owned-only posture ⇒ agora targets organization assets, but the
+//! section 4.3/section 5.2). Owned-only posture ⇒ agora targets organization assets, but the
 //!   conservative member mechanic is modeled so the daemon never oversteps.
 
 use std::time::Duration;
 
 use crate::platform::Platform;
 
-/// How a platform's primary unattended token is kept alive (paper §2.5).
+/// How a platform's primary unattended token is kept alive (paper section 2.5).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RefreshMechanism {
     /// No expiry — never refreshed (Facebook long-lived Page token).
@@ -41,19 +41,19 @@ pub enum RefreshMechanism {
     ReConsent,
 }
 
-/// The refresh mechanism for a platform's primary owned-asset token (paper §2.5).
+/// The refresh mechanism for a platform's primary owned-asset token (paper section 2.5).
 pub fn refresh_mechanism(platform: Platform) -> RefreshMechanism {
     match platform {
         // The long-lived Page token has no expiry — steady-state is truly
-        // unattended (paper §2.5 [FB-TOK]).
+        // unattended (paper section 2.5 [FB-TOK]).
         Platform::FacebookPages => RefreshMechanism::NeverExpires,
         // ~60-day long-lived token, refreshed by exchange before expiry.
         Platform::Instagram => RefreshMechanism::LongLivedExchange { valid_secs: 60 * 86_400 },
-        // access 24h, refresh 365d, rotating (paper §2.5 [TT-OAUTH]).
+        // access 24h, refresh 365d, rotating (paper section 2.5 [TT-OAUTH]).
         Platform::TikTok => {
             RefreshMechanism::RotatingRefreshGrant { access_secs: 86_400, refresh_secs: 365 * 86_400 }
         }
-        // Member-data refresh is forbidden; expiry ⇒ re-consent (paper §2.1 §4.3/§5.2).
+        // Member-data refresh is forbidden; expiry ⇒ re-consent (paper section 2.1 section 4.3/section 5.2).
         Platform::LinkedIn => RefreshMechanism::ReConsent,
     }
 }
@@ -62,7 +62,7 @@ pub fn refresh_mechanism(platform: Platform) -> RefreshMechanism {
 /// mechanism actually refreshes. `NeverExpires`/`ReConsent` never trigger an
 /// unattended refresh — an expired ReConsent token surfaces re-consent, it is
 /// not refreshed. `skew_ms` is the lead margin (refresh BEFORE expiry — an
-/// expired token cannot be exchanged, paper §2.5).
+/// expired token cannot be exchanged, paper section 2.5).
 pub fn needs_refresh(
     mechanism: RefreshMechanism,
     access_expires_at_ms: u64,
@@ -80,7 +80,7 @@ pub fn needs_refresh(
 
 /// The result of a refresh. The daemon persists `access_token` +
 /// `access_expires_at_ms` always, and `refresh_token` when [`Self::rotated`]
-/// (an unpersisted rotated refresh token is a permanent lockout — the §116.b trap).
+/// (an unpersisted rotated refresh token is a permanent lockout — the v2.77.0 trap).
 #[derive(Clone, PartialEq, Eq)]
 pub struct RefreshedTokens {
     pub access_token: String,
@@ -93,13 +93,13 @@ pub struct RefreshedTokens {
 impl RefreshedTokens {
     /// Whether the platform ROTATED the refresh token (a new value different
     /// from the one presented). A `true` here that the daemon fails to persist
-    /// atomically loses access forever (TikTok, paper §2.5).
+    /// atomically loses access forever (TikTok, paper section 2.5).
     pub fn rotated(&self, sent_refresh_token: &str) -> bool {
         matches!(&self.refresh_token, Some(rt) if rt != sent_refresh_token)
     }
 }
 
-// The §94 redacting-Debug discipline: token values never reach a log.
+// The v2.48.0 redacting-Debug discipline: token values never reach a log.
 impl std::fmt::Debug for RefreshedTokens {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("RefreshedTokens")
@@ -156,7 +156,7 @@ pub struct RefreshGrantConfig {
     pub timeout: Duration,
 }
 
-// The §94 redacting-Debug discipline: the client secret never reaches a log.
+// The v2.48.0 redacting-Debug discipline: the client secret never reaches a log.
 impl std::fmt::Debug for RefreshGrantConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("RefreshGrantConfig")
@@ -232,7 +232,7 @@ pub fn refresh_grant(
 /// `fb_exchange_token` shape): `GET` the token endpoint with the client creds +
 /// the current token, parse `{access_token, expires_in?}`. There is no refresh
 /// token here (the same token family self-renews), so [`RefreshedTokens::
-/// refresh_token`] is `None`. An expired token CANNOT be exchanged (paper §2.5)
+/// refresh_token`] is `None`. An expired token CANNOT be exchanged (paper section 2.5)
 /// — the daemon must call this BEFORE expiry.
 pub fn refresh_long_lived(
     config: &RefreshGrantConfig,

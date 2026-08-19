@@ -1,4 +1,4 @@
-//! §Fase 119.b — the `mandate` controller: PID, anti-windup, convergence, and
+//! v2.83.0 — the `mandate` controller: PID, anti-windup, convergence, and
 //! the stability band the compiler must check.
 //!
 //! Named for `density_matrix.py` in `docs/papers/paper_mandate.md`, which places
@@ -9,7 +9,7 @@
 //! # What this computes
 //!
 //! Given `e(t)` from [`super::semantic_validator`] — and nothing else — it
-//! produces the control effort README §XV publishes:
+//! produces the control effort README XV publishes:
 //!
 //! ```text
 //! u(t) = Kp·e(t) + Ki·∫e dt + Kd·de/dt
@@ -27,16 +27,16 @@
 //!
 //! # The stability band, and why a sign test is not enough
 //!
-//! README §XV publishes only `Kp > 0 ∧ Ki ≥ 0 ∧ Kd ≥ 0 ∧ ε > 0 ∧ N ≥ 1`, and a
+//! README XV publishes only `Kp > 0 ∧ Ki ≥ 0 ∧ Kd ≥ 0 ∧ ε > 0 ∧ N ≥ 1`, and a
 //! compiler that checked exactly that would admit both failure modes, because
 //! the two papers bound the gains **in opposite directions**:
 //!
-//! - `paper_mandate.md` §3 (Lyapunov). Theorem 1 holds only *"if the configured
+//! - `paper_mandate.md` section 3 (Lyapunov). Theorem 1 holds only *"if the configured
 //!   control effort exceeds the natural drift"*, with `sup|drift(t)| ≤ D`. Gains
 //!   that are too **small** leave the cage open — `V(e) = ½e²` does not decrease
 //!   and the argument never applies. The README omits this precondition
 //!   entirely, which would have made the static check vacuous.
-//! - `paper_mathematical_prompt_optimization.md` §6.3 (Lipschitz). Convergence
+//! - `paper_mathematical_prompt_optimization.md` section 6.3 (Lipschitz). Convergence
 //!   requires `|Kp + Ki + Kd| < 1/L`. Gains that are too **large** overshoot;
 //!   the loop oscillates or diverges.
 //!
@@ -58,10 +58,10 @@
 //! `u(t)` into a logit bias (Tier 1) or into corrective pressure on the next
 //! attempt (Tier 2) is the actuator's job and lives elsewhere.
 
-// §Fase 119.b.3 — the band arithmetic moved to `axon_frontend::stability`.
+// v2.83.0 — the band arithmetic moved to `axon_frontend::stability`.
 //
 // It was born here, next to the controller that first needed it — which is the
-// §118 smell: the TYPE CHECKER needs the same judgment (README §XV promises
+// v2.81.0 smell: the TYPE CHECKER needs the same judgment (README XV promises
 // compile-time rejection of unstable gains), the frontend has zero deps, and
 // this crate already depends on it. One admissibility judgment, two call
 // sites; a mandate the compiler admits is exactly a mandate this controller
@@ -91,7 +91,7 @@ pub struct Control {
     pub effort: f64,
     /// The error that produced it.
     pub error: f64,
-    /// `V(e) = ½e²`, the Lyapunov function of `paper_mandate.md` §3. Recorded so
+    /// `V(e) = ½e²`, the Lyapunov function of `paper_mandate.md` section 3. Recorded so
     /// the descent claim can be **checked on the trajectory** rather than
     /// asserted in a comment.
     pub lyapunov: f64,
@@ -151,7 +151,7 @@ pub struct Controller {
 ///
 /// An earlier draft scaled the clamp with `ε` and floored it at `1.0`. The floor
 /// dominated for every `ε < 0.1` — which is every tight mandate, including
-/// README §XV's own `ε = 0.05` — so the clamp was a constant wearing a
+/// README XV's own `ε = 0.05` — so the clamp was a constant wearing a
 /// rationale about scaling. Deriving it from the gains removes the free
 /// parameter entirely: there is nothing left to tune, and nothing to get wrong.
 ///
@@ -340,7 +340,7 @@ mod tests {
 
     #[test]
     fn the_band_is_strict_so_e_equal_to_epsilon_is_not_convergence() {
-        // README §XV: `∃t ≤ N : |e(t)| < ε`.
+        // README XV: `∃t ≤ N: |e(t)| < ε`.
         let mut c = open_controller(spec(1.0, 0.0, 0.0, 0.1, 5));
         assert_eq!(c.observe(0.1).outcome, Outcome::Refine);
     }

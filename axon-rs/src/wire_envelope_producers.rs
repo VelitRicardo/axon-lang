@@ -1,4 +1,4 @@
-//! §Fase 39.c.y + 39.c.z — Wire envelope producer helpers.
+//! v2.0.0 — Wire envelope producer helpers.
 //!
 //! Pure helpers that transform runtime execution metadata into the
 //! semantic taxonomy of the wire envelope's epistemic fields:
@@ -49,7 +49,7 @@
 //!   | `backend:`      | backend slug            | `backend:anthropic`               |
 //!
 //! The taxonomy is intentionally a closed catalog at v2.0.0; new
-//! event kinds require an explicit plan-vivo sub-fase to extend
+//! event kinds require an explicit plan-vivo step to extend
 //! the table. This prevents drift between producers + consumers.
 
 use crate::wire_envelope::{BlameContext, BlameKind, BlameParty};
@@ -58,7 +58,7 @@ use crate::wire_envelope::{BlameContext, BlameKind, BlameParty};
 // Provenance event taxonomy
 // ════════════════════════════════════════════════════════════════════
 
-/// §Fase 39.c.y — emit the canonical provenance slug for a runtime
+/// v2.0.0 — emit the canonical provenance slug for a runtime
 /// step type + name. Returns `None` when the step type doesn't
 /// participate in the provenance chain (e.g. `step`, `reason`,
 /// `validate` — these contribute via `step:` entries built
@@ -100,7 +100,7 @@ pub fn provenance_event_for(step_type: &str, step_name: &str) -> Option<String> 
 // Blame attribution producers
 // ════════════════════════════════════════════════════════════════════
 
-/// §Fase 39.c.z — close-catalog blame producer for an anchor
+/// v2.0.0 — close-catalog blame producer for an anchor
 /// breach observed at runtime. The `severity` discriminator
 /// follows the same convention as `IRAnchor.severity` ("warn",
 /// "error", "critical"); only non-"error" severities surface as
@@ -114,7 +114,7 @@ pub fn blame_for_anchor_breach(
 ) -> BlameContext {
     BlameContext {
         kind: BlameKind::AnchorBreach,
-        // §Fase 119.m.2 — the paper assigns this one BY NAME: negative blame,
+        // v2.83.0 — the paper assigns this one BY NAME: negative blame,
         // "la activación de un fallo por anchor_breach, el cual ocurre cuando el
         // sub-agente intenta modificar recursos fuera de su ámbito de contención
         // concedido" (paper_agent.md, Eje 2).
@@ -129,7 +129,7 @@ pub fn blame_for_anchor_breach(
     }
 }
 
-/// §Fase 39.c.z — blame producer for a shield scanner rejection
+/// v2.0.0 — blame producer for a shield scanner rejection
 /// observed at runtime, where the flow chose to proceed (degraded
 /// posture). When the shield's `on_violation` is "block", the
 /// flow hard-fails and this producer is NOT called; this is only
@@ -141,7 +141,7 @@ pub fn blame_for_shield_rejection(
 ) -> BlameContext {
     BlameContext {
         kind: BlameKind::ShieldRejection,
-        // §Fase 119.m.2 — not named in the paper, but it follows from the
+        // v2.83.0 — not named in the paper, but it follows from the
         // definition rather than from taste: the shield IS the contract guard,
         // and the content it flagged was produced by the invoked party. That is
         // negative blame — a postcondition violated by the callee.
@@ -156,11 +156,11 @@ pub fn blame_for_shield_rejection(
     }
 }
 
-/// §Fase 39.c.z — blame producer for a store mutation chain
+/// v2.0.0 — blame producer for a store mutation chain
 /// verification failure where the flow proceeded with a prior-
 /// state read. The location identifies which store + which
 /// chain segment failed verification.
-/// §Fase 119.m.2 — `party` is a PARAMETER here, and that is the point.
+/// v2.83.0 — `party` is a PARAMETER here, and that is the point.
 ///
 /// A broken mutation chain has two possible authors: the invoked party wrote a
 /// malformed segment (`Server`), or the storage layer corrupted one
@@ -191,10 +191,10 @@ pub fn blame_for_store_breach(
     }
 }
 
-/// §Fase 39.c.z — blame producer for a backend soft-fail
+/// v2.0.0 — blame producer for a backend soft-fail
 /// (truncated response, partial completion, downgraded
 /// throughput). The backend_name + reason identifies the source.
-/// §Fase 119.m.2 — `party` is a PARAMETER, for the same reason as
+/// v2.83.0 — `party` is a PARAMETER, for the same reason as
 /// [`blame_for_store_breach`]. A truncated or non-conforming completion is the
 /// backend violating a postcondition (`Server`); a soft rate-limit or a
 /// throughput downgrade is infrastructure (`Environment`). One kind, two
@@ -214,7 +214,7 @@ pub fn blame_for_backend_soft_fail(
     }
 }
 
-/// §Fase 39.c.z — blame producer for a recoverable D5 type
+/// v2.0.0 — blame producer for a recoverable D5 type
 /// mismatch (e.g. missing optional field with a defaulted value).
 /// Distinct from a hard D5 rejection (which is a 4xx/5xx, not a
 /// degraded 200).
@@ -225,7 +225,7 @@ pub fn blame_for_type_mismatch(
 ) -> BlameContext {
     BlameContext {
         kind: BlameKind::TypeMismatch,
-        // §Fase 119.m.2 — the paper's negative blame, named: "el retorno de
+        // v2.83.0 — the paper's negative blame, named: "el retorno de
         // tipos no conformes" (paper_agent.md, Eje 2).
         party: Some(BlameParty::Server),
         location: format!("field:{}", field_path),
@@ -289,10 +289,10 @@ pub fn merge_blame(
 mod tests {
     use super::*;
 
-    // ── §1 — provenance_event_for taxonomy ──
+    // ── section 1 — provenance_event_for taxonomy ──
 
     #[test]
-    fn fase39cy_retrieve_emits_retrieve_slug() {
+    fn retrieve_emits_retrieve_slug() {
         assert_eq!(
             provenance_event_for("retrieve", "tenants"),
             Some("retrieve:tenants".to_string())
@@ -300,7 +300,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39cy_persist_emits_persist_slug() {
+    fn persist_emits_persist_slug() {
         assert_eq!(
             provenance_event_for("persist", "patient_records"),
             Some("persist:patient_records".to_string())
@@ -308,7 +308,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39cy_mutate_emits_mutate_slug() {
+    fn mutate_emits_mutate_slug() {
         assert_eq!(
             provenance_event_for("mutate", "transactions"),
             Some("mutate:transactions".to_string())
@@ -316,7 +316,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39cy_purge_emits_purge_slug() {
+    fn purge_emits_purge_slug() {
         assert_eq!(
             provenance_event_for("purge", "audit_log"),
             Some("purge:audit_log".to_string())
@@ -324,7 +324,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39cy_shield_apply_emits_shield_slug() {
+    fn shield_apply_emits_shield_slug() {
         assert_eq!(
             provenance_event_for("shield_apply", "HipaaTriage"),
             Some("shield:HipaaTriage".to_string())
@@ -332,7 +332,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39cy_ots_apply_emits_ots_slug() {
+    fn ots_apply_emits_ots_slug() {
         assert_eq!(
             provenance_event_for("ots_apply", "audio_resample"),
             Some("ots:audio_resample".to_string())
@@ -340,7 +340,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39cy_mandate_apply_emits_mandate_slug() {
+    fn mandate_apply_emits_mandate_slug() {
         assert_eq!(
             provenance_event_for("mandate_apply", "GdprArt6"),
             Some("mandate:GdprArt6".to_string())
@@ -348,7 +348,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39cy_compute_apply_emits_compute_slug() {
+    fn compute_apply_emits_compute_slug() {
         assert_eq!(
             provenance_event_for("compute_apply", "gpu_batch"),
             Some("compute:gpu_batch".to_string())
@@ -356,7 +356,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39cy_lambda_apply_emits_lambda_slug() {
+    fn lambda_apply_emits_lambda_slug() {
         assert_eq!(
             provenance_event_for("lambda_data_apply", "psi_builder"),
             Some("lambda_apply:psi_builder".to_string())
@@ -364,7 +364,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39cy_use_tool_emits_tool_slug() {
+    fn use_tool_emits_tool_slug() {
         assert_eq!(
             provenance_event_for("use_tool", "web_search"),
             Some("tool:web_search".to_string())
@@ -372,7 +372,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39cy_remember_emits_memory_slug() {
+    fn remember_emits_memory_slug() {
         assert_eq!(
             provenance_event_for("remember", "Persist"),
             Some("memory:remember@Persist".to_string())
@@ -380,7 +380,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39cy_recall_emits_memory_slug() {
+    fn recall_emits_memory_slug() {
         assert_eq!(
             provenance_event_for("recall", "Lookup"),
             Some("memory:recall@Lookup".to_string())
@@ -388,7 +388,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39cy_regular_step_returns_none() {
+    fn regular_step_returns_none() {
         // Regular `step` / `reason` / `validate` / etc. don't
         // emit semantic provenance entries — they're captured
         // via the `step:` slugs built from `step_names`.
@@ -402,7 +402,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39cy_unknown_step_type_returns_none() {
+    fn unknown_step_type_returns_none() {
         // Defensive: unknown step types don't emit fabricated
         // entries — they're silent. This keeps the taxonomy
         // closed; future plan-vivos extending it must add the
@@ -411,10 +411,10 @@ mod tests {
         assert_eq!(provenance_event_for("", "Anything"), None);
     }
 
-    // ── §2 — blame producers ──
+    // ── section 2 — blame producers ──
 
     #[test]
-    fn fase39cz_anchor_breach_producer() {
+    fn anchor_breach_producer() {
         let b = blame_for_anchor_breach(
             "Triage",
             "ConfidenceFloor",
@@ -430,7 +430,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39cz_shield_rejection_producer() {
+    fn shield_rejection_producer() {
         let b = blame_for_shield_rejection("Hipaa", "Review", "pii_phone");
         assert_eq!(b.kind, BlameKind::ShieldRejection);
         assert_eq!(b.location, "step:Review");
@@ -439,7 +439,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39cz_store_breach_producer() {
+    fn store_breach_producer() {
         let b = blame_for_store_breach("transactions", "segment_42", None);
         assert_eq!(b.kind, BlameKind::StoreBreach);
         assert_eq!(b.location, "store:transactions");
@@ -447,7 +447,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39cz_backend_soft_fail_producer() {
+    fn backend_soft_fail_producer() {
         let b = blame_for_backend_soft_fail("anthropic", "truncated_response", None);
         assert_eq!(b.kind, BlameKind::BackendSoftFail);
         assert_eq!(b.location, "backend:anthropic");
@@ -455,7 +455,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39cz_type_mismatch_producer() {
+    fn type_mismatch_producer() {
         let b = blame_for_type_mismatch("user.age", "Integer", "String");
         assert_eq!(b.kind, BlameKind::TypeMismatch);
         assert_eq!(b.location, "field:user.age");
@@ -463,10 +463,10 @@ mod tests {
         assert!(b.message.contains("String"));
     }
 
-    // ── §3 — priority + merge ──
+    // ── section 3 — priority + merge ──
 
     #[test]
-    fn fase39cz_priority_anchor_beats_shield() {
+    fn priority_anchor_beats_shield() {
         let anchor = blame_for_anchor_breach("S", "A", "warn", 0.5);
         let shield = blame_for_shield_rejection("Sh", "S", "p");
         let winner = merge_blame(Some(shield.clone()), Some(anchor.clone()));
@@ -478,7 +478,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39cz_priority_shield_beats_store() {
+    fn priority_shield_beats_store() {
         let shield = blame_for_shield_rejection("Sh", "S", "p");
         let store = blame_for_store_breach("st", "seg", None);
         let winner = merge_blame(Some(store), Some(shield.clone()));
@@ -486,7 +486,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39cz_priority_store_beats_backend() {
+    fn priority_store_beats_backend() {
         let store = blame_for_store_breach("st", "seg", None);
         let backend = blame_for_backend_soft_fail("be", "r", None);
         let winner = merge_blame(Some(backend), Some(store.clone()));
@@ -494,7 +494,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39cz_priority_backend_beats_typemismatch() {
+    fn priority_backend_beats_typemismatch() {
         let backend = blame_for_backend_soft_fail("be", "r", None);
         let mismatch = blame_for_type_mismatch("f", "I", "S");
         let winner = merge_blame(Some(mismatch), Some(backend.clone()));
@@ -502,7 +502,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39cz_merge_none_preserves_other() {
+    fn merge_none_preserves_other() {
         let b = blame_for_anchor_breach("S", "A", "warn", 0.5);
         assert_eq!(
             merge_blame(None, Some(b.clone())),
@@ -516,7 +516,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39cz_merge_tie_keeps_existing() {
+    fn merge_tie_keeps_existing() {
         let a1 = blame_for_anchor_breach("S1", "A1", "warn", 0.5);
         let a2 = blame_for_anchor_breach("S2", "A2", "warn", 0.6);
         let winner = merge_blame(Some(a1.clone()), Some(a2));
@@ -525,7 +525,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39cz_priority_closed_catalog_total_order() {
+    fn priority_closed_catalog_total_order() {
         // Verify the priority ordinals form a total order over the
         // 5 BlameKind variants. This is the structural enforcement
         // that prevents drift if a new variant is added: every
@@ -552,7 +552,7 @@ mod tests {
 // Internal API consumed by runner.rs (pub(crate))
 // ════════════════════════════════════════════════════════════════════
 
-/// §Fase 39.c.y — collect provenance events from the runtime's
+/// v2.0.0 — collect provenance events from the runtime's
 /// execution plan. Walks the caller-flattened `(step_type, step_name)`
 /// slice; for each step whose `step_type` participates in the
 /// closed taxonomy, emits the canonical slug. Called from
@@ -577,19 +577,19 @@ pub fn collect_provenance_events_from(
         .collect()
 }
 
-/// §Fase 39.c.z — derive blame attribution from the runtime's
+/// v2.0.0 — derive blame attribution from the runtime's
 /// `ExecutionReport`. Scans every unit + every step; the first
 /// step with `anchor_breaches > 0` surfaces as `BlameKind::AnchorBreach`.
 /// Subsequent breaches are still observable on the step audit
 /// but do NOT overwrite (first-emitted wins per `merge_blame`'s
 /// stable-tie discipline).
 ///
-/// In Fase 39.c.z this implementation covers the AnchorBreach
+/// In v2.0.0 this implementation covers the AnchorBreach
 /// kind only; the other 4 kinds have ready producer functions
 /// (see `blame_for_shield_rejection` / `blame_for_store_breach` /
 /// `blame_for_backend_soft_fail` / `blame_for_type_mismatch`)
 /// but their wiring depends on richer runtime observability that
-/// future sub-fases add. The blame module is 100% robust at the
+/// future steps add. The blame module is 100% robust at the
 /// PRODUCER surface; the runtime walks are extended progressively
 /// as observability hooks land.
 pub fn derive_blame_from_report(
@@ -606,7 +606,7 @@ pub fn derive_blame_from_report(
                 // names the step + the breach count.
                 let blame = BlameContext {
                     kind: BlameKind::AnchorBreach,
-                    // §Fase 119.m.2 — same attribution as the dispatcher path in
+                    // v2.83.0 — same attribution as the dispatcher path in
                     // `runner.rs`, and it has to be: `merge_blame`'s
                     // first-emitted-wins discipline means the two engines must
                     // agree on the whole shape, party included, or the reported
@@ -685,7 +685,7 @@ mod runner_integration_tests {
     }
 
     #[test]
-    fn fase39cz_clean_report_returns_no_blame() {
+    fn clean_report_returns_no_blame() {
         let report = build_test_report(vec![build_test_unit(vec![
             build_test_step("S1", 0),
             build_test_step("S2", 0),
@@ -694,7 +694,7 @@ mod runner_integration_tests {
     }
 
     #[test]
-    fn fase39cz_anchor_breach_surfaces_blame() {
+    fn anchor_breach_surfaces_blame() {
         let report = build_test_report(vec![build_test_unit(vec![
             build_test_step("Triage", 1),
         ])]);
@@ -704,7 +704,7 @@ mod runner_integration_tests {
     }
 
     #[test]
-    fn fase39cz_first_breach_wins_on_multi() {
+    fn first_breach_wins_on_multi() {
         let report = build_test_report(vec![build_test_unit(vec![
             build_test_step("First", 1),
             build_test_step("Second", 1),
@@ -717,7 +717,7 @@ mod runner_integration_tests {
     }
 
     #[test]
-    fn fase39cz_collect_provenance_walks_taxonomy() {
+    fn collect_provenance_walks_taxonomy() {
         let steps = vec![
             ("step".to_string(), "Plan".to_string()),
             ("retrieve".to_string(), "tenants".to_string()),

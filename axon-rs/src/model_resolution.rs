@@ -1,23 +1,23 @@
-//! §Fase 68.c — pure model resolution (the capability resolver).
+//! v2.22.0 — pure model resolution (the capability resolver).
 //!
-//! Given a step's declared `requires_context: N` (the §68.b grammar) and the
-//! resolved backend's model catalog (the §68.a `ModelCap` list), pick the
+//! Given a step's declared `requires_context: N` (the v2.22.0 grammar) and the
+//! resolved backend's model catalog (the v2.22.0 `ModelCap` list), pick the
 //! concrete model that satisfies the requirement — or fail closed. The doctrine
 //! (Kivi brief #36):
 //!
-//!   - **smallest-model-that-fits** (D68.2): the cheapest model whose context
+//! - **smallest-model-that-fits**: the cheapest model whose context
 //!     window is `>= requires_context`. The adopter declares the floor; the
 //!     resolver optimises above it (a bigger model wastes money).
-//!   - **fail closed, never downgrade** (D68.3): when nothing satisfies, return
+//! - **fail closed, never downgrade**: when nothing satisfies, return
 //!     `NoModelSatisfies` — NEVER a too-small model that 400s in production. This
-//!     is the §36.b "no silent stub" discipline, for models.
-//!   - **`None` requirement = backend default** (D68.4, back-compat): a step with
+//! is the v1.31.0 "no silent stub" discipline, for models.
+//! - **`None` requirement = backend default** (the design decision, back-compat): a step with
 //!     no `requires_context:` resolves to the empty model string, which the
 //!     `ChatRequest` layer reads as "use the backend's `default_model()`" — every
-//!     pre-§68 flow is byte-identical.
+//! pre-v2.22.0 flow is byte-identical.
 //!
 //! Pure + total + no I/O/env/clock (the `backend_resolution.rs` mould): the
-//! caller passes the catalog, so the enterprise §68.h per-tenant catalog reuses
+//! caller passes the catalog, so the enterprise v2.22.0 per-tenant catalog reuses
 //! this exact function with different data — identical behaviour, governed source.
 
 use crate::backends::model_catalog::ModelCap;
@@ -50,7 +50,7 @@ pub struct ResolvedModel {
     pub reason: ModelResolutionReason,
 }
 
-/// The honest-failure outcome (D68.3): the step needs more context than any model
+/// The honest-failure outcome: the step needs more context than any model
 /// in the resolved backend's catalog can serve.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NoModelSatisfies {
@@ -84,10 +84,10 @@ impl std::fmt::Display for NoModelSatisfies {
 
 impl std::error::Error for NoModelSatisfies {}
 
-/// §D68.2/3/4 — resolve the model for a step against a backend's catalog.
+/// the design decision/3/4 — resolve the model for a step against a backend's catalog.
 ///
-/// `models` is the resolved backend's `ModelCap` list (canonical §68.a or the
-/// enterprise per-tenant catalog), assumed smallest-window-first (the §68.a
+/// `models` is the resolved backend's `ModelCap` list (canonical v2.22.0 or the
+/// enterprise per-tenant catalog), assumed smallest-window-first (the v2.22.0
 /// invariant — verified by the catalog's own ordering test). `requires_context`
 /// is the step's declared need (`None` → no requirement).
 pub fn resolve_model(
@@ -95,8 +95,8 @@ pub fn resolve_model(
     requires_context: Option<u32>,
 ) -> Result<ResolvedModel, NoModelSatisfies> {
     let need = match requires_context {
-        // D68.4 — no requirement: the backend default (empty model string is the
-        // `ChatRequest` "use default" sentinel). Byte-identical to every pre-§68 flow.
+        // the design decision — no requirement: the backend default (empty model string is the
+        // `ChatRequest` "use default" sentinel). Byte-identical to every pre-v2.22.0 flow.
         None => {
             return Ok(ResolvedModel {
                 model: String::new(),
@@ -106,7 +106,7 @@ pub fn resolve_model(
         Some(n) => n,
     };
 
-    // D68.2 — the smallest model whose window fits. The catalog is smallest-first,
+    // the design decision — the smallest model whose window fits. The catalog is smallest-first,
     // so the first fit IS the smallest fit (a single forward scan).
     if let Some(m) = models.iter().find(|m| m.context_window >= need) {
         return Ok(ResolvedModel {
@@ -115,7 +115,7 @@ pub fn resolve_model(
         });
     }
 
-    // D68.3 — fail closed. Never pick a too-small model.
+    // the design decision — fail closed. Never pick a too-small model.
     Err(NoModelSatisfies {
         requires_context: need,
         largest_available: models.iter().map(|m| m.context_window).max(),
@@ -131,7 +131,7 @@ mod tests {
 
     #[test]
     fn none_requirement_resolves_to_the_backend_default_empty_string() {
-        // Back-compat (D68.4): no requirement → empty model → backend default.
+        // Back-compat: no requirement → empty model → backend default.
         let r = resolve_model(models_for("kimi"), None).unwrap();
         assert_eq!(r.model, "");
         assert_eq!(r.reason, ModelResolutionReason::BackendDefault);

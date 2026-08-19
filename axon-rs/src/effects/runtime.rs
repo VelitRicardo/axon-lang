@@ -424,7 +424,7 @@ impl EffectRuntime {
             })?;
         // Bind clause parameters into globals scoped to this dispatch.
         // The host language has no formal locals/params here yet —
-        // future Fase 24 may add a per-clause env. For now we mutate
+        // future v1.18.0 may add a per-clause env. For now we mutate
         // globals + restore after.
         let saved: Vec<(String, Option<Value>)> = clause
             .parameter_names

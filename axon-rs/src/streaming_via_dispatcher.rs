@@ -1,4 +1,4 @@
-//! §Fase 33.z.b — Streaming-via-dispatcher graft skeleton.
+//! v1.24.0 — Streaming-via-dispatcher graft skeleton.
 //!
 //! This module ships the alternative production-path producer that
 //! routes adopter traffic through `flow_dispatcher::dispatch_node`
@@ -9,12 +9,12 @@
 //!
 //! # Why a new module, not a `server_execute_streaming` rewrite?
 //!
-//! The 33.z.b sub-fase ships the producer behind a feature flag
+//! The 33.z.b step ships the producer behind a feature flag
 //! (`AXON_STREAMING_VIA_DISPATCHER`, default OFF) so v1.27.0-alpha
 //! adopters who DON'T opt in see byte-identical v1.26.0 wire
 //! behavior (D4 safety net during the migration).
 //!
-//! §Fase 119.h — that migration is OVER, and the paragraph above is kept
+//! v2.83.0 — that migration is OVER, and the paragraph above is kept
 //! only as the record of how it was staged. 33.z.c flipped the default;
 //! 33.z.e deleted the flag and both v1.26.0 entry points. Today
 //! `server_execute_streaming` calls [`run_streaming_via_dispatcher`]
@@ -22,7 +22,7 @@
 //! to. The names that used to appear here (`run_streaming_async_path`,
 //! `run_streaming_legacy_path`) resolve to nothing in this crate.
 //!
-//! Mirrors the proven Fase 33.x.h opt-in BPE chunking pattern —
+//! Mirrors the proven v1.24.0 opt-in BPE chunking pattern —
 //! land a new hot path behind a flag, validate with adopters,
 //! flip default, then retire the legacy path.
 //!
@@ -93,7 +93,7 @@ use crate::flow_dispatcher::{dispatch_node, DispatchCtx, NodeOutcome};
 use crate::flow_execution_event::{now_ms, FlowExecutionEvent};
 use tokio::sync::mpsc::UnboundedSender;
 
-/// §Fase 33.z.b — Drive a flow's execution through the
+/// v1.24.0 — Drive a flow's execution through the
 /// `flow_dispatcher::dispatch_node` hot path end-to-end, emitting
 /// FlowExecutionEvents on the inbound mpsc channel.
 ///
@@ -110,7 +110,7 @@ use tokio::sync::mpsc::UnboundedSender;
 /// - `cancel` — the cancellation flag shared with the SSE handler.
 /// - `tx` — the FlowExecutionEvent mpsc channel the SSE consumer
 ///   reads from.
-/// - `request_body` — §Fase 37.b: the parsed HTTP request body. The
+/// - `request_body` — v1.32.0: the parsed HTTP request body. The
 ///   flow's declared parameters bind from its same-named fields (the
 ///   Request Binding Contract) and seed `DispatchCtx.let_bindings`
 ///   before the flow walk.
@@ -129,7 +129,7 @@ pub async fn run_streaming_via_dispatcher(
     backend: String,
     cancel: CancellationFlag,
     tx: UnboundedSender<FlowExecutionEvent>,
-    // §Fase 33.z.c — External side-channels threaded from
+    // v1.24.0 — External side-channels threaded from
     // `server_execute_streaming` so the dispatcher's per-variant
     // handlers populate the SAME Mutexes the SSE wire's
     // `enforcement_summary`, `step_audit`, and `runtime_warnings`
@@ -151,20 +151,20 @@ pub async fn run_streaming_via_dispatcher(
     runtime_warnings: std::sync::Arc<
         tokio::sync::Mutex<Vec<crate::runtime_warnings::RuntimeWarning>>,
     >,
-    // §Fase 91.b — external temporal side-channel (the same discipline as
+    // v2.46.0 — external temporal side-channel (the same discipline as
     // the three above): the dispatcher's per-step `now:` renders populate
     // THIS shared state, so the SSE `axon.complete` envelope can carry the
     // run's temporal record (`captured_utc` + `tzdb_version` + zones) at
-    // §55.c parity with the sync `FlowEnvelope.temporal_context`.
+    // v2.7.0 parity with the sync `FlowEnvelope.temporal_context`.
     temporal_state: std::sync::Arc<
         std::sync::Mutex<crate::temporal_context::TemporalState>,
     >,
-    // §Fase 35.j (Pillar IV) — the capability slugs the request
+    // v1.30.0 (Pillar IV) — the capability slugs the request
     // carries (the JWT bearer's `capabilities` claim). `Some` activates
     // the store handlers' runtime capability re-check; `None` defers to
     // the type-checker's compile-time guarantee.
     held_capabilities: Option<Vec<String>>,
-    // §Fase 37.b (D1) — the parsed HTTP request body. The flow's
+    // v1.32.0 (D1) — the parsed HTTP request body. The flow's
     // declared parameters bind from its same-named fields and seed
     // `DispatchCtx.let_bindings` before the flow walk, so a `${param}`
     // interpolates in `where:` clauses, step `ask:` prompts, and
@@ -173,25 +173,25 @@ pub async fn run_streaming_via_dispatcher(
     // direct hit) — the flow then runs with only its own `let` / step
     // bindings (D5 backwards-compat).
     request_body: Option<serde_json::Value>,
-    // §Fase 37.y (D3) — URL path captures from the dynamic-route
+    // v1.32.0 (D3) — URL path captures from the dynamic-route
     // dispatcher (empty for non-dynamic-route callers). Threaded to
     // `bind_request` alongside body + query.
     request_path: std::collections::HashMap<String, String>,
-    // §Fase 37.y (D3) — URL query string parsed name → value.
+    // v1.32.0 (D3) — URL query string parsed name → value.
     request_query: std::collections::HashMap<String, String>,
-    // §Fase 58.g (D7) — optional per-tenant / per-server tool base URL.
+    // v2.8.0 (D7) — optional per-tenant / per-server tool base URL.
     // When `Some`, every URL-dispatched program tool with a RELATIVE
     // `runtime` is resolved against it before the dispatcher walks any
     // node (`{base}/{slug}`); absolute runtimes stay verbatim (D5).
-    // `None` → no resolution (the pre-§58.g behavior).
+    // `None` → no resolution (the pre-v2.8.0 behavior).
     tool_base_url: Option<String>,
-    // §Fase 65.C — the per-tenant API key (resolved from the tenant secrets
+    // v2.15.0 — the per-tenant API key (resolved from the tenant secrets
     // manager by the SSE handler). When `Some`, the dispatcher's LLM handlers
     // use THIS tenant's key instead of the process env var — closing the gap
     // where the streaming path could only ever use the env key. `None` ⇒
     // env-key behavior, unchanged.
     api_key: Option<String>,
-    // §Fase 114 — the per-deployment channel guards (`resource.capacity`
+    // v2.69.0 — the per-deployment channel guards (`resource.capacity`
     // semaphores + the `lease` decay guard), resolved from `ServerState` by
     // `server_execute_streaming`. Threaded onto the DispatchCtx so the SSE tool
     // path (`pure_shape`) charges the lease + holds a concurrency permit for a
@@ -201,7 +201,7 @@ pub async fn run_streaming_via_dispatcher(
         std::sync::Arc<crate::channel_semaphore::ChannelSemaphores>,
     >,
     tool_leases: Option<std::sync::Arc<crate::resource_lease::ResourceLeaseGuard>>,
-    // §Fase 122.d.1 — the verified tenant. See the note on
+    // v2.89.0 — the verified tenant. See the note on
     // `axon_server::server_execute_streaming`'s parameter of the same name: this
     // producer built its `DispatchCtx` without ever calling `with_tenant_id`,
     // so every explicit-tenant seam on the SSE path ran under the empty tenant.
@@ -219,7 +219,7 @@ pub async fn run_streaming_via_dispatcher(
 
     let exec_start = std::time::Instant::now();
 
-    // §1 — FlowStart fires BEFORE we attempt compilation so any
+    // section 1 — FlowStart fires BEFORE we attempt compilation so any
     // consumer can bind side-effect state (audit row, observability
     // span) immediately.
     if emit(FlowExecutionEvent::FlowStart {
@@ -232,12 +232,12 @@ pub async fn run_streaming_via_dispatcher(
         return;
     }
 
-    // §2 — Compile source → IR via the unified pipeline. Parse /
+    // section 2 — Compile source → IR via the unified pipeline. Parse /
     // type-check / IR-generation errors emit FlowError + exit.
     let (ast_program, ir) = match crate::flow_plan::compile_source_to_ir(&source, &source_file) {
         Ok(pair) => pair,
         Err(plan_error) => {
-            // §Fase 37.e (D6) — honest failure: the diagnostic reaches
+            // v1.32.0 (D6) — honest failure: the diagnostic reaches
             // the `axon.error` wire event (every dialect) AND a
             // structured server log line. A stream that dies says why.
             let detail = format!("compilation failed: {plan_error:?}");
@@ -252,14 +252,14 @@ pub async fn run_streaming_via_dispatcher(
                 error: detail,
                 timestamp_ms: now_ms(),
             });
-            // §Fase 36.x.c (D1) — exactly one terminator: a
+            // v1.31.0 (D1) — exactly one terminator: a
             // compilation failure emits ONLY `FlowError` (the failure
             // terminator). No trailing `FlowComplete`.
             return;
         }
     };
 
-    // §2.5 — Build the axonstore registry (Fase 35.f). The D2 closed-
+    // section 2.5 — Build the axonstore registry (v1.30.0). The D2 closed-
     // catalog gate runs here: an unknown `backend:` fails fast with a
     // named FlowError before any node dispatches.
     let store_registry = match crate::store::registry::StoreRegistry::build(
@@ -267,7 +267,7 @@ pub async fn run_streaming_via_dispatcher(
     ) {
         Ok(r) => std::sync::Arc::new(r),
         Err(reg_error) => {
-            // §Fase 37.e (D6) — honest failure: name the cause.
+            // v1.32.0 (D6) — honest failure: name the cause.
             let detail = format!("axonstore registry: {reg_error}");
             tracing::error!(
                 flow = %flow_name,
@@ -279,26 +279,26 @@ pub async fn run_streaming_via_dispatcher(
                 error: detail,
                 timestamp_ms: now_ms(),
             });
-            // §Fase 36.x.c (D1) — exactly one terminator: a registry
+            // v1.31.0 (D1) — exactly one terminator: a registry
             // build failure emits ONLY `FlowError`.
             return;
         }
     };
 
-    // §Fase 37.x.j (D2) — Eager acquire ONE PoolConnection per
+    // v1.32.0 (D2) — Eager acquire ONE PoolConnection per
     // postgresql-backed axonstore the resolved flow body references.
     // Held in an Arc<Mutex<HashMap>> shared with `DispatchCtx` so
     // every wire-integration store handler routes its SQL through the
     // pinned conn. Conns drop when this function returns + the
-    // streaming task ends → `after_release(DEALLOCATE ALL)` (Fase
+    // streaming task ends → `after_release(DEALLOCATE ALL)` (cycle
     // 38.x.a D2) wipes any prepared statements before the pool reuses
     // them.
     //
     // The discovery walk is currently a permissive over-acquire: it
     // scans every flow in the IR for postgresql-backed store ops and
     // acquires one pin per unique store_name. This is a deliberate
-    // honest-deferral for sub-fase 37.x.j.5 — a precise walk that
-    // visits ONLY the resolved flow's body lands in sub-fase 37.x.j.6
+    // honest-deferral for step 37.x.j.5 — a precise walk that
+    // visits ONLY the resolved flow's body lands in step 37.x.j.6
     // alongside the par-block isolation. Over-acquire is safe (pins
     // are released on drop) but holds the pool slightly longer than
     // strictly necessary; acceptable trade for shipping the adopter-
@@ -318,7 +318,7 @@ pub async fn run_streaming_via_dispatcher(
             std::collections::HashSet::new();
         for f in &ir.flows {
             for node in &f.steps {
-                // §Fase 37.x.j.5 — match the four SQL store-op variants
+                // v1.32.0 — match the four SQL store-op variants
                 // of `IRFlowNode`. Discovery is permissive: an in_memory
                 // store filters out below via `backend_kind`.
                 let store_ref: Option<&str> = match node {
@@ -337,7 +337,7 @@ pub async fn run_streaming_via_dispatcher(
                 }
             }
         }
-        // §Fase 96.a — the filter yields nothing under a session/direct pooler,
+        // v2.51.0 — the filter yields nothing under a session/direct pooler,
         // so the streaming path's eager pin is skipped (store ops release across
         // cognition; no misleading warn). Doctrine `connections_release_across_cognition`.
         for store_name in needed
@@ -349,7 +349,7 @@ pub async fn run_streaming_via_dispatcher(
                 Ok(crate::store::registry::StoreHandle::Postgres(backend)) => {
                     match backend.acquire_pin().await {
                         Ok(conn) => {
-                            // §Fase 37.x.j (D4) — emit acquire event.
+                            // v1.32.0 (D4) — emit acquire event.
                             crate::store::pin_observability::emit_pin_acquire(
                                 store_name,
                                 &flow_name,
@@ -393,14 +393,14 @@ pub async fn run_streaming_via_dispatcher(
         }
     }
 
-    // §3 — Resolve the requested flow from the IR's flow list.
+    // section 3 — Resolve the requested flow from the IR's flow list.
     // The frontend's IR generator preserves source declaration order
     // so a multi-flow program can dispatch any of them by name.
     let flow = match ir.flows.iter().find(|f| f.name == flow_name) {
         Some(f) => f.clone(),
         None => {
             let available: Vec<String> = ir.flows.iter().map(|f| f.name.clone()).collect();
-            // §Fase 37.e (D6) — honest failure: name what was sought
+            // v1.32.0 (D6) — honest failure: name what was sought
             // and what was available.
             let detail = format!(
                 "flow '{}' not found in compiled IR; available: {:?}",
@@ -416,19 +416,19 @@ pub async fn run_streaming_via_dispatcher(
                 error: detail,
                 timestamp_ms: now_ms(),
             });
-            // §Fase 36.x.c (D1) — exactly one terminator: a
+            // v1.31.0 (D1) — exactly one terminator: a
             // flow-not-found failure emits ONLY `FlowError`.
             return;
         }
     };
 
-    // §4 — System prompt composition. Mirror of the v1.25.0 33.x.b
+    // section 4 — System prompt composition. Mirror of the v1.25.0 33.x.b
     // discipline: persona + context + anchor instructions via the
     // public composer; `backend_tag: None` because the wire's
     // `axon.complete.backend` field already carries the backend name.
     let system_prompt = crate::flow_plan::compose_system_prompt_public(&flow, &ir, None);
 
-    // §Fase 36.i (D4) — Build the tool registry from the compiled
+    // v1.31.0 (D4) — Build the tool registry from the compiled
     // IR's tool declarations. Pre-36.i `DispatchCtx::with_tool_registry`
     // had ZERO production callers: `run_streaming_via_dispatcher`
     // attached only the store registry + side-channels, so
@@ -446,22 +446,22 @@ pub async fn run_streaming_via_dispatcher(
     // declared `provider:` (the per-step backend, overriding the
     // flow-level backend for that step) with the `<stream:<policy>>`
     // effect honored end-to-end. `register_from_ir` auto-derives the
-    // `is_streaming` flag from each tool's `effect_row` (Fase 34.c).
+    // `is_streaming` flag from each tool's `effect_row` (v1.29.0).
     let tool_registry = {
         let mut reg = crate::tool_registry::ToolRegistry::new();
         reg.register_from_ir(&ir.tools);
-        // §Fase 58.g (D7) — resolve relative tool runtimes against the
+        // v2.8.0 (D7) — resolve relative tool runtimes against the
         // caller-supplied per-tenant / per-server base URL. This `reg`
         // is request-scoped (fresh per stream) → no cross-tenant
-        // leakage (§58 D10).
+        // leakage (v2.8.0 D10).
         if let Some(base) = tool_base_url.as_deref() {
             reg.resolve_relative_endpoints(base);
         }
-        // §Fase 114.d — the STREAMING path must derive a tool's channel from its
+        // v2.69.0 — the STREAMING path must derive a tool's channel from its
         // `resource` too, or a governed tool would resolve its endpoint on the
         // synchronous path (`execute_server_flow`) and NOT on the streaming one —
         // `capacity: 20` real on a POST, a phantom on an SSE. The exact
-        // "real-on-one-path, dead-on-the-other" defect §111 exists to end, so it
+        // "real-on-one-path, dead-on-the-other" defect v2.67.0 exists to end, so it
         // is wired in BOTH places.
         let _refused = reg.resolve_from_resources_within(
             &ir.resources,
@@ -471,7 +471,7 @@ pub async fn run_streaming_via_dispatcher(
         std::sync::Arc::new(reg)
     };
 
-    // §Fase 63.B — build the MDN corpus graphs from `corpus { relations: … }`
+    // v2.13.0 — build the MDN corpus graphs from `corpus { relations: … }`
     // declarations (request-scoped, like the tool registry). A `navigate
     // <corpus>` over one of these runs real graph navigation.
     let mdn_corpora = {
@@ -493,9 +493,9 @@ pub async fn run_streaming_via_dispatcher(
         std::sync::Arc::new(map)
     };
 
-    // §Fase 63.C — the corpora declared `adaptive: true` (memory-enabled).
-    // §Fase 64.B — a store-sourced corpus ALSO counts as a graph (its edges
-    // live as rows), so adaptive over it is meaningful (the §64.C write-back).
+    // v2.13.0 — the corpora declared `adaptive: true` (memory-enabled).
+    // v2.14.0 — a store-sourced corpus ALSO counts as a graph (its edges
+    // live as rows), so adaptive over it is meaningful (the v2.14.0 write-back).
     let mdn_adaptive = {
         let mut set: std::collections::HashSet<String> = std::collections::HashSet::new();
         for c in &ir.corpus_specs {
@@ -506,7 +506,7 @@ pub async fn run_streaming_via_dispatcher(
         std::sync::Arc::new(set)
     };
 
-    // §Fase 64.B — the DYNAMIC, store-sourced MDN corpora (`corpus N from
+    // v2.14.0 — the DYNAMIC, store-sourced MDN corpora (`corpus N from
     // axonstore { … }`): a navigation over one of these builds a fresh
     // `mdn::Corpus` from the LIVE store rows at navigate-time (tenant-scoped).
     let mdn_store_sources = {
@@ -520,7 +520,7 @@ pub async fn run_streaming_via_dispatcher(
         std::sync::Arc::new(map)
     };
 
-    // §5 — Construct DispatchCtx. The mpsc tx is the SAME channel
+    // section 5 — Construct DispatchCtx. The mpsc tx is the SAME channel
     // the SSE consumer reads from; the dispatcher's events flow
     // directly to the wire with no intermediate buffering.
     let mut ctx = DispatchCtx::new(
@@ -534,7 +534,7 @@ pub async fn run_streaming_via_dispatcher(
         enforcement_summaries,
         step_audit_records,
         runtime_warnings,
-        // §Fase 67.c — the SSE path does not surface aggregate row counts on
+        // v2.21.0 — the SSE path does not surface aggregate row counts on
         // the wire (per-step counts already ride the result envelopes), so a
         // throwaway counter satisfies the shared-channel contract.
         std::sync::Arc::new(std::sync::Mutex::new(
@@ -542,39 +542,39 @@ pub async fn run_streaming_via_dispatcher(
         )),
     )
     .with_store_registry(store_registry)
-    // §Fase 122.d.1 — the verified tenant, at last. Before this the SSE ctx
+    // v2.89.0 — the verified tenant, at last. Before this the SSE ctx
     // carried the empty default and custody / mint / rotate ran unscoped.
     .with_tenant_id(tenant_id)
-    // §Fase 65.C — the per-tenant API key so LLM steps use this tenant's key.
+    // v2.15.0 — the per-tenant API key so LLM steps use this tenant's key.
     .with_api_key(api_key)
-    // §Fase 65.C.3 — the flow's anchors so each LLM step's output is checked
+    // v2.15.0 — the flow's anchors so each LLM step's output is checked
     // (declared `require:` constraints were silently ignored on SSE before).
     .with_anchors(std::sync::Arc::new(ir.anchors.clone()))
-    // §Fase 36.i (D4) — the tool registry, now LIVE on the production
+    // v1.31.0 (D4) — the tool registry, now LIVE on the production
     // SSE path. Activates the dispatcher's streaming-tool branch.
     .with_tool_registry(tool_registry)
-    // §Fase 63.B — the MDN corpus graphs, so `navigate <corpus>` runs real
+    // v2.13.0 — the MDN corpus graphs, so `navigate <corpus>` runs real
     // signed-EPR / ε-informative graph navigation.
     .with_mdn_corpora(mdn_corpora)
-    // §Fase 63.C — mark the adaptive corpora so navigations apply the memory
+    // v2.13.0 — mark the adaptive corpora so navigations apply the memory
     // endofunctor + learn.
     .with_mdn_adaptive(mdn_adaptive)
-    // §Fase 64.B — register the dynamic store-sourced corpora so `navigate`
+    // v2.14.0 — register the dynamic store-sourced corpora so `navigate`
     // builds the graph from live store rows at request-time (tenant-scoped).
     .with_mdn_store_sources(mdn_store_sources)
-    // §Fase 37.x.j (D2) — install the eager-acquired flow-scoped pin
+    // v1.32.0 (D2) — install the eager-acquired flow-scoped pin
     // map. The wire-integration store handlers (`run_persist`,
     // `run_retrieve`, `run_mutate`, `run_purge`) consult this map
     // per op via take/dispatch/return discipline so every store op
     // against the same axonstore for this flow lifetime routes
     // through the SAME physical Postgres backend connection.
     .with_pinned_conns(pinned_conns);
-    // §Fase 122.d — mount the memoisation tier on the SSE path too.
+    // v2.89.0 — mount the memoisation tier on the SSE path too.
     //
     // The sync runner mounts it the same way from the same plan. Wiring one and
-    // not the other is the "real-on-one-path, dead-on-the-other" defect §111
-    // exists to end and §120 restated as the two-doors rule — and it is exactly
-    // the defect §122.d.1 had to fix first, because this path had no tenant to
+    // not the other is the "real-on-one-path, dead-on-the-other" defect v2.67.0
+    // exists to end and v2.87.0 restated as the two-doors rule — and it is exactly
+    // the defect v2.89.0 had to fix first, because this path had no tenant to
     // key entries with. Mounting a tenant-keyed cache here before that would
     // have made every SSE caller share one namespace.
     //
@@ -591,10 +591,10 @@ pub async fn run_streaming_via_dispatcher(
             );
         }
     }
-    // §Fase 35.j — thread the request's held capabilities into the
+    // v1.30.0 — thread the request's held capabilities into the
     // dispatcher so the store handlers can re-check gated stores.
     ctx.held_capabilities = held_capabilities;
-    // §Fase 114 — the per-deployment channel guards, so the SSE tool path
+    // v2.69.0 — the per-deployment channel guards, so the SSE tool path
     // (`pure_shape`) enforces `resource.capacity` (a concurrency permit) and
     // breaches a post-expiry `lease` — at parity with the sync path. Before
     // this the SSE ctx carried `None` and a `capacity: N` tool invoked from a
@@ -605,15 +605,15 @@ pub async fn run_streaming_via_dispatcher(
     if let Some(leases) = tool_leases {
         ctx = ctx.with_tool_leases(leases);
     }
-    // §Fase 91.b — the frame-level declared cognitive timezone (the program's
+    // v2.46.0 — the frame-level declared cognitive timezone (the program's
     // first `context` declaration's `now:` — the same first-context convention
     // `compose_system_prompt_public` uses). A step's own `now:` overrides it.
     // The caller's shared temporal state replaces the ctx's fresh internal Arc
-    // (the §33.z.c external-side-channel discipline) so the record reaches the
+    // (the v1.24.0 external-side-channel discipline) so the record reaches the
     // SSE completion envelope.
     ctx.default_now_tz = ir.contexts.first().and_then(|c| c.now_tz.clone());
     ctx.temporal = temporal_state;
-    // §Fase 92.c — the compiled `credential` contracts, so a `mint` resolves
+    // v2.46.0 — the compiled `credential` contracts, so a `mint` resolves
     // its ttl/grants at dispatch. (The minter PORT is injected by the caller
     // that owns one — the enterprise executor; absent => mint fails closed.)
     ctx.credentials = std::sync::Arc::new(
@@ -623,14 +623,14 @@ pub async fn run_streaming_via_dispatcher(
             .collect(),
     );
 
-    // §Fase 119.c — the declaration catalogs, threaded on the SSE entry too.
+    // v2.83.0 — the declaration catalogs, threaded on the SSE entry too.
     //
     // FOUND BY THE D10 PARITY GATE, and worth naming: this entry built its
     // ctx without ANY of the apply-family catalogs, so a `lambda X on y` on
     // the SSE path refused ("empty catalog") while the sync path elevated.
     // Nobody had seen it because the placeholder handlers fabricated success
-    // for any input — the §111 F18 lie was MASKING the missing threading.
-    // The moment the handlers became real (§119.b/c), the parity corpus
+    // for any input — the v2.67.0 F18 lie was MASKING the missing threading.
+    // The moment the handlers became real (v2.83.0), the parity corpus
     // caught the drift on the first full run: fixture
     // cross_vertical/08_rate_limiting_lambda, sync=true async=false.
     ctx = ctx
@@ -638,20 +638,20 @@ pub async fn run_streaming_via_dispatcher(
         .with_mandates(std::sync::Arc::new(ir.mandate_specs.clone()))
         .with_lambdas(std::sync::Arc::new(ir.lambda_data_specs.clone()))
         .with_ots(std::sync::Arc::new(ir.ots_specs.clone()))
-        // §Fase 119.m.3 — the STREAMING twin. `feedback_ask_where_production_calls_it`
+        // v2.83.0 — the STREAMING twin. `feedback_ask_where_production_calls_it`
         // records that a feature with two dispatch entries (sync + SSE) must be
         // wired in BOTH, and that the streaming one is the forgotten half
-        // because it builds its own ctx — §114's channel governance shipped
+        // because it builds its own ctx — v2.69.0's channel governance shipped
         // inert on this exact path for the same reason.
         .with_agents(std::sync::Arc::new(ir.agents.clone()));
 
-    // §Fase 37.b (D1, D4) — The Request Binding Contract. Seed the
+    // v1.32.0 (D1, D4) — The Request Binding Contract. Seed the
     // flow's declared parameters from the parsed request body BEFORE
     // the flow walk, so `${param}` resolves everywhere downstream — a
     // `retrieve` / `mutate` / `purge` `where:` clause, a `step` `ask:`
     // prompt, a `persist` / `mutate` field block.
     //
-    // §Fase 37.y (D3) — extended to THREE binding sources: URL path
+    // v1.32.0 (D3) — extended to THREE binding sources: URL path
     // captures + URL query string + parsed JSON body. The compile-time
     // D3 + D4 check (`axon-T901`) guarantees every flow parameter
     // resolves to EXACTLY ONE source — collisions are compile errors
@@ -672,7 +672,7 @@ pub async fn run_streaming_via_dispatcher(
         ctx.let_bindings.insert(name, value);
     }
 
-    // §6 — Walk the flow body. For each top-level IRFlowNode, call
+    // section 6 — Walk the flow body. For each top-level IRFlowNode, call
     // dispatch_node and honor the outcome semantics:
     //
     //   Completed { .. }      → continue to the next node
@@ -694,8 +694,8 @@ pub async fn run_streaming_via_dispatcher(
     let mut total_tokens_output: u64 = 0;
     let mut steps_executed: usize = 0;
     let mut flow_success = true;
-    // §Fase 36.x.c (D1) — `true` once a `FlowError` terminator has
-    // been emitted from the dispatch loop. Gates the §7 `FlowComplete`
+    // v1.31.0 (D1) — `true` once a `FlowError` terminator has
+    // been emitted from the dispatch loop. Gates the section 7 `FlowComplete`
     // so the producer NEVER emits a second terminator after
     // `FlowError` — the wire carries exactly one (`FlowComplete` XOR
     // `FlowError`). Distinct from `flow_success`: a flow can complete
@@ -703,7 +703,7 @@ pub async fn run_streaming_via_dispatcher(
     // that case still gets its single `FlowComplete` terminator.
     let mut flow_errored = false;
 
-    // §Fase 33.z.c — Look up the AST flow that corresponds to the
+    // v1.24.0 — Look up the AST flow that corresponds to the
     // IR flow. The AST is needed by `resolve_stream_effect_for_step`
     // to walk the tool-effects table. For canonical Step shapes
     // declaring `<stream:<policy>>` effects on a tool referenced via
@@ -728,7 +728,7 @@ pub async fn run_streaming_via_dispatcher(
         if cancel.is_cancelled() {
             break;
         }
-        // §Fase 33.z.c — Per-step effect-policy resolution. Set
+        // v1.24.0 — Per-step effect-policy resolution. Set
         // `ctx.pending_effect_policy` before dispatch; the pure_shape
         // handler reads + clears via `take_pending_effect_policy()` +
         // wraps the chunk stream with `StreamPolicyEnforcer`.
@@ -756,7 +756,7 @@ pub async fn run_streaming_via_dispatcher(
             Ok(NodeOutcome::Break) | Ok(NodeOutcome::LoopContinue) => {
                 // Defensive: shouldn't reach top level. Treat as no-op.
             }
-            // §Fase 120 — an effect sentinel reaching the TOP of a flow means
+            // v2.87.0 — an effect sentinel reaching the TOP of a flow means
             // no `handle` claimed it: the `perform` had no frame, or an `abort`
             // named a frame that is not on this path. The type-checker refuses
             // that statically (axon-T966 / axon-T967), so reaching here means
@@ -798,7 +798,7 @@ pub async fn run_streaming_via_dispatcher(
                 timeout,
                 ..
             }) => {
-                // §Fase 119.d — park the continuation and HALT. The task ends
+                // v2.83.0 — park the continuation and HALT. The task ends
                 // here: no stream held open, no timer, no polling. Resume
                 // rides `emit` (see run_emit); a late resume is refused by
                 // the lot's lazy expiry.
@@ -832,8 +832,8 @@ pub async fn run_streaming_via_dispatcher(
                     lambda_data_specs: ctx.lambda_data_specs.clone(),
                     ots_specs: ctx.ots_specs.clone(),
                     compute_specs: ctx.compute_specs.clone(),
-                    // §Fase 119.m.3 — carried across the suspension, for the
-                    // §119.b/c reason: a resumed flow whose agent catalog was
+                    // v2.83.0 — carried across the suspension, for the
+                    // v2.83.0 reason: a resumed flow whose agent catalog was
                     // lost would fail closed on every agent call after the
                     // sleep, turning a nap into a broken run.
                     agent_specs: ctx.agent_specs.clone(),
@@ -854,10 +854,10 @@ pub async fn run_streaming_via_dispatcher(
             }
             Err(e) => {
                 flow_success = false;
-                // §Fase 36.x.c (D1) — `FlowError` is the terminator
-                // for this flow; §7 must NOT also emit `FlowComplete`.
+                // v1.31.0 (D1) — `FlowError` is the terminator
+                // for this flow; section 7 must NOT also emit `FlowComplete`.
                 flow_errored = true;
-                // §Fase 37.e (D6) — honest failure: name the FAILING
+                // v1.32.0 (D6) — honest failure: name the FAILING
                 // NODE. Step + the four store ops carry a meaningful
                 // name; any other variant is named by its flow
                 // position. The diagnostic reaches the `axon.error`
@@ -895,12 +895,12 @@ pub async fn run_streaming_via_dispatcher(
         }
     }
 
-    // §7 — FlowComplete with accumulated counters. tokens_input is
+    // section 7 — FlowComplete with accumulated counters. tokens_input is
     // 0 because the dispatcher doesn't currently track input tokens
     // separately (the per-step audit records do, but the FlowComplete
     // input field stays 0 until 33.z.c extends the surface).
     //
-    // §Fase 36.x.c (D1) — GATED on `!flow_errored`. When the dispatch
+    // v1.31.0 (D1) — GATED on `!flow_errored`. When the dispatch
     // loop already terminated the stream with `FlowError`, emitting
     // `FlowComplete` here would put a SECOND terminator on the wire —
     // the malformed double-terminator the 36.x.a anchor pinned. The
@@ -962,16 +962,16 @@ mod tests {
             warnings,
             std::sync::Arc::new(std::sync::Mutex::new(
                 crate::temporal_context::TemporalState::default(),
-            )), // §Fase 91.b — temporal side-channel (test: fresh)
+)), // v2.46.0 — temporal side-channel (test: fresh)
             None,
             None,
             std::collections::HashMap::new(),
             std::collections::HashMap::new(),
-            None, // §Fase 58.g — tool_base_url
-            None, // §Fase 65.C — api_key (tests use the env/stub key)
-            None, // §Fase 114 — channel_semaphores (test: ungoverned)
-            None, // §Fase 114 — tool_leases (test: ungoverned)
-            // §Fase 122.d.1 — unscoped tenant, VERBATIM. §95.f's rule: a caller
+            None, // v2.8.0 — tool_base_url
+            None, // v2.15.0 — api_key (tests use the env/stub key)
+            None, // v2.69.0 — channel_semaphores (test: ungoverned)
+            None, // v2.69.0 — tool_leases (test: ungoverned)
+            // v2.89.0 — unscoped tenant, VERBATIM. v2.49.0's rule: a caller
             // with no verified principal passes `""` and custody fails closed,
             // rather than inventing a plausible-looking tenant for a test.
             String::new(),
@@ -1000,7 +1000,7 @@ mod tests {
         assert_eq!(complete_count, 1, "exactly 1 FlowComplete");
     }
 
-    /// §Fase 36.x.c (D1) — a compilation error emits EXACTLY ONE
+    /// v1.31.0 (D1) — a compilation error emits EXACTLY ONE
     /// terminator: `FlowError`, no StepToken events, and NO redundant
     /// post-error `FlowComplete`. A stream that ends twice is a lie
     /// about where it ended.
@@ -1026,16 +1026,16 @@ mod tests {
             warnings,
             std::sync::Arc::new(std::sync::Mutex::new(
                 crate::temporal_context::TemporalState::default(),
-            )), // §Fase 91.b — temporal side-channel (test: fresh)
+)), // v2.46.0 — temporal side-channel (test: fresh)
             None,
             None,
             std::collections::HashMap::new(),
             std::collections::HashMap::new(),
-            None, // §Fase 58.g — tool_base_url
-            None, // §Fase 65.C — api_key (tests use the env/stub key)
-            None, // §Fase 114 — channel_semaphores (test: ungoverned)
-            None, // §Fase 114 — tool_leases (test: ungoverned)
-            // §Fase 122.d.1 — unscoped tenant, VERBATIM. §95.f's rule: a caller
+            None, // v2.8.0 — tool_base_url
+            None, // v2.15.0 — api_key (tests use the env/stub key)
+            None, // v2.69.0 — channel_semaphores (test: ungoverned)
+            None, // v2.69.0 — tool_leases (test: ungoverned)
+            // v2.89.0 — unscoped tenant, VERBATIM. v2.49.0's rule: a caller
             // with no verified principal passes `""` and custody fails closed,
             // rather than inventing a plausible-looking tenant for a test.
             String::new(),
@@ -1071,7 +1071,7 @@ mod tests {
         );
     }
 
-    /// §Fase 36.x.c (D1) — a missing flow name emits a single
+    /// v1.31.0 (D1) — a missing flow name emits a single
     /// structured `FlowError` terminator, no `FlowComplete`.
     #[tokio::test]
     async fn missing_flow_name_emits_flow_error() {
@@ -1098,16 +1098,16 @@ mod tests {
             warnings,
             std::sync::Arc::new(std::sync::Mutex::new(
                 crate::temporal_context::TemporalState::default(),
-            )), // §Fase 91.b — temporal side-channel (test: fresh)
+)), // v2.46.0 — temporal side-channel (test: fresh)
             None,
             None,
             std::collections::HashMap::new(),
             std::collections::HashMap::new(),
-            None, // §Fase 58.g — tool_base_url
-            None, // §Fase 65.C — api_key (tests use the env/stub key)
-            None, // §Fase 114 — channel_semaphores (test: ungoverned)
-            None, // §Fase 114 — tool_leases (test: ungoverned)
-            // §Fase 122.d.1 — unscoped tenant, VERBATIM. §95.f's rule: a caller
+            None, // v2.8.0 — tool_base_url
+            None, // v2.15.0 — api_key (tests use the env/stub key)
+            None, // v2.69.0 — channel_semaphores (test: ungoverned)
+            None, // v2.69.0 — tool_leases (test: ungoverned)
+            // v2.89.0 — unscoped tenant, VERBATIM. v2.49.0's rule: a caller
             // with no verified principal passes `""` and custody fails closed,
             // rather than inventing a plausible-looking tenant for a test.
             String::new(),
@@ -1152,16 +1152,16 @@ mod tests {
             warnings,
             std::sync::Arc::new(std::sync::Mutex::new(
                 crate::temporal_context::TemporalState::default(),
-            )), // §Fase 91.b — temporal side-channel (test: fresh)
+)), // v2.46.0 — temporal side-channel (test: fresh)
             None,
             None,
             std::collections::HashMap::new(),
             std::collections::HashMap::new(),
-            None, // §Fase 58.g — tool_base_url
-            None, // §Fase 65.C — api_key (tests use the env/stub key)
-            None, // §Fase 114 — channel_semaphores (test: ungoverned)
-            None, // §Fase 114 — tool_leases (test: ungoverned)
-            // §Fase 122.d.1 — unscoped tenant, VERBATIM. §95.f's rule: a caller
+            None, // v2.8.0 — tool_base_url
+            None, // v2.15.0 — api_key (tests use the env/stub key)
+            None, // v2.69.0 — channel_semaphores (test: ungoverned)
+            None, // v2.69.0 — tool_leases (test: ungoverned)
+            // v2.89.0 — unscoped tenant, VERBATIM. v2.49.0's rule: a caller
             // with no verified principal passes `""` and custody fails closed,
             // rather than inventing a plausible-looking tenant for a test.
             String::new(),

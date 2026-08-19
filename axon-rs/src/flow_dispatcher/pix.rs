@@ -1,8 +1,8 @@
-//! §Fase 33.y.i — PIX variants (paper §6 hidden-state primitives).
+//! v1.24.0 — PIX variants (paper section 6 hidden-state primitives).
 //!
 //! Three variants graduated in 33.y.i:
 //!
-//! - **`Hibernate`** (Fase 11.e + Fase 16 supervisor) — wait for
+//! - **`Hibernate`** (v1.4.0 + v1.11.0 supervisor) — wait for
 //!   a named event with a timeout. Sync runner uses CPS-style
 //!   continuation passing: the flow suspends, the supervisor
 //!   resumes it on event arrival. OSS reference impl emits the
@@ -11,19 +11,19 @@
 //!   (axon_enterprise.cognitive_states + .supervisor) wires the
 //!   real continuation-passing semantics.
 //!
-//! - **`Drill`** (Fase 11.e PIX) — drill into a PIX subtree at
+//! - **`Drill`** (v1.4.0 PIX) — drill into a PIX subtree at
 //!   `subtree_path` to answer `query`. OSS reads from
 //!   `__pix_<pix_ref>_<subtree_path>` namespaced let_bindings;
 //!   binds result under `output_name`.
 //!
-//! - **`Trail`** (Fase 11.e PIX) — walk the breadcrumb of a prior
+//! - **`Trail`** (v1.4.0 PIX) — walk the breadcrumb of a prior
 //!   navigation (`navigate_ref`). OSS reads from
 //!   `__navigate_<ref>_trail`; binds result under canonical key.
 //!
-//! # Paper §6 semantic contract
+//! # Paper section 6 semantic contract
 //!
-//! PIX (Procedural Index of eXcurrences) is the paper §6 hidden-
-//! state primitive used by Fase 11 neuro-symbolic flows. The sync
+//! PIX (Procedural Index of eXcurrences) is the paper section 6 hidden-
+//! state primitive used by v1.4.0 neuro-symbolic flows. The sync
 //! runner's CPS dispatcher is the canonical reference; 33.y.i ships
 //! the async port with D10 byte-identical algebraic-semantics
 //! parity for the OSS reference cases (placeholder bindings —
@@ -54,9 +54,9 @@ use crate::ir_nodes::{IRDrillStep, IRHibernateStep, IRTrailStep};
 //  Public helpers (enterprise hooks override these)
 // ────────────────────────────────────────────────────────────────────
 
-// §Fase 119.d — `await_event_with_timeout` was DELETED here. It inserted a
+// v2.83.0 — `await_event_with_timeout` was DELETED here. It inserted a
 // marker binding and returned "(hibernating <event> timeout=<t>)" while the
-// flow KEPT WALKING — a hibernation that kept spending (§111 F20). The
+// flow KEPT WALKING — a hibernation that kept spending (v2.67.0 F20). The
 // suspension is real now: NodeOutcome::Hibernated + the walk loop's park
 // + halt, with resume riding `emit` (crate::hibernation).
 
@@ -66,7 +66,7 @@ use crate::ir_nodes::{IRDrillStep, IRHibernateStep, IRTrailStep};
 /// the raw stored value); falls back to a canonical
 /// `"(drilled <pix_ref> path=<subtree_path> query=<query>)"`
 /// placeholder when the subtree isn't pre-seeded. Enterprise
-/// overrides wire the real PIX state machine (paper §6).
+/// overrides wire the real PIX state machine (paper section 6).
 pub fn drill_pix_subtree(
     pix_ref: &str,
     subtree_path: &str,
@@ -93,12 +93,12 @@ pub fn trail_navigation(navigate_ref: &str, ctx: &DispatchCtx) -> String {
 }
 
 // ────────────────────────────────────────────────────────────────────
-//  Hibernate (Fase 11.e — event-await with timeout)
+// Hibernate (v1.4.0 — event-await with timeout)
 // ────────────────────────────────────────────────────────────────────
 
-/// §Fase 119.d — `hibernate <event> [timeout]`: observe the suspension point.
+/// v2.83.0 — `hibernate <event> [timeout]`: observe the suspension point.
 ///
-/// §111 F20 found this handler returning "(hibernating …)" SYNCHRONOUSLY —
+/// v2.67.0 F20 found this handler returning "(hibernating …)" SYNCHRONOUSLY —
 /// the flow kept walking, kept spending, while claiming to sleep. It now
 /// returns [`NodeOutcome::Hibernated`]; the WALK LOOP (which alone knows the
 /// node's position in the body) parks the continuation and HALTS the run.
@@ -146,12 +146,12 @@ pub async fn run_hibernate(
 
 
 // ────────────────────────────────────────────────────────────────────
-//  Drill (Fase 11.e PIX — drill into hidden-state subtree)
+// Drill (v1.4.0 PIX — drill into hidden-state subtree)
 // ────────────────────────────────────────────────────────────────────
 
 /// Drill handler. Wire shape: `step_type: "drill"`.
 ///
-/// §Fase 62.A.3: when the source document is in scope, this runs REAL subtree
+/// v2.12.0: when the source document is in scope, this runs REAL subtree
 /// navigation — index the source, locate the named subtree by its dotted
 /// title-path (`subtree_path`), then navigate WITHIN that subtree
 /// ([`crate::pix_navigator::pix_drill`]), embeddings-free. Falls back to the
@@ -212,7 +212,7 @@ pub async fn run_drill(
 }
 
 // ────────────────────────────────────────────────────────────────────
-//  Trail (Fase 11.e PIX — breadcrumb walk)
+// Trail (v1.4.0 PIX — breadcrumb walk)
 // ────────────────────────────────────────────────────────────────────
 
 /// Trail handler. Wire shape: `step_type: "trail"`. Resolves the
@@ -320,13 +320,13 @@ mod tests {
 
     // ── Public helpers ───────────────────────────────────────────────
 
-    // §Fase 119.d — `await_event_sets_marker_and_returns_placeholder` was
-    // DELETED here. It pinned the §111 F20 placeholder in green: a
+    // v2.83.0 — `await_event_sets_marker_and_returns_placeholder` was
+    // DELETED here. It pinned the v2.67.0 F20 placeholder in green: a
     // "(hibernating …)" string returned synchronously while the flow kept
     // walking. The suspension is real now; its gates live in
-    // `tests/fase119_d_hibernate.rs` (halt, park, emit-wake, lazy expiry).
+    // `tests/hibernate.rs` (halt, park, emit-wake, lazy expiry).
 
-    /// §Fase 119.d — the handler observes the suspension point; the walk
+    /// v2.83.0 — the handler observes the suspension point; the walk
     /// loop parks and halts. Inside a nested branch it refuses.
     #[tokio::test]
     async fn run_hibernate_returns_the_suspension_outcome() {
@@ -407,11 +407,11 @@ mod tests {
 
     // ── Hibernate ────────────────────────────────────────────────────
 
-    // §Fase 119.d — `run_hibernate_emits_wire_shape_and_marker` was DELETED
+    // v2.83.0 — `run_hibernate_emits_wire_shape_and_marker` was DELETED
     // here: it pinned the F20 placeholder ("(hibernating …)" + marker binding
     // + Completed outcome) in green. The handler now returns the SUSPENSION
     // (`run_hibernate_returns_the_suspension_outcome` below) and the walk
-    // loop parks + halts (tests/fase119_d_hibernate.rs).
+    // loop parks + halts (tests/hibernate.rs).
 
     // ── Drill ────────────────────────────────────────────────────────
 
@@ -442,7 +442,7 @@ mod tests {
 
     #[tokio::test]
     async fn run_drill_real_navigates_subtree_when_source_in_scope() {
-        // §Fase 62.A.3 — with the source in scope, drill indexes it, locates the
+        // v2.12.0 — with the source in scope, drill indexes it, locates the
         // named subtree by title-path, and navigates within it (no LLM, no
         // embeddings).
         let (mut ctx, _rx) = fresh_ctx();

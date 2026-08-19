@@ -1,7 +1,7 @@
 //! Runtime value representation for AXON algebraic effects.
 //!
 //! At runtime every value is a tagged dynamic [`Value`]. The Python
-//! frontend's typechecker (Fase 23.c) already proves that values flow
+//! frontend's typechecker (v1.17.0) already proves that values flow
 //! through compatible types, so the runtime does no type checking — it
 //! only carries enough discriminant to print + serialise + compare.
 //!

@@ -1,4 +1,4 @@
-//! AXON Runtime — ReconcileLoop (§λ-L-E Fase 3.1)
+//! AXON Runtime — ReconcileLoop (v1.1.0)
 //!
 //! Direct port of `axon/runtime/reconcile_loop.py`.
 //!
@@ -65,7 +65,7 @@ impl TickAction {
 /// Shield adapter: `(reconcile_name, observation, drift) → approved`.
 ///
 /// Real shields plug into this contract once runtime wiring for
-/// `ShieldApplyNode` lands (Fase 4+). Fake adapters simulate deny/approve
+/// `ShieldApplyNode` lands (v1.1.0+). Fake adapters simulate deny/approve
 /// in tests.
 pub type ShieldApprove = Box<dyn Fn(&str, &HandlerOutcome, f64) -> bool>;
 
@@ -206,7 +206,7 @@ impl<'p, H: Handler> ReconcileLoop<'p, H> {
         let mut pass: Continuation<'_> = identity_continuation();
         let observation = self.handler.observe(&self.observe, &self.manifest, &mut pass)?;
 
-        // §Fase 112.e — **the belief-vs-evidence gap, restored.**
+        // v2.67.0 — **the belief-vs-evidence gap, restored.**
         //
         // This block used to read:
         //
@@ -370,7 +370,7 @@ impl<'p, H: Handler> ReconcileLoop<'p, H> {
                 .with_data(data))
             }
             _ => {
-                // refine — belief-revision placeholder (Fase 4+).
+                // refine — belief-revision placeholder (v1.1.0+).
                 let mut data = serde_json::Map::new();
                 data.insert("reconcile".into(), self.ir.name.clone().into());
                 data.insert("drift".into(), serde_json::Value::from(drift));

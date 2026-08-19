@@ -1,0 +1,235 @@
+name: v1.30.0 — axonstore Cognitive Data Plane
+
+# v1.30.0 — Dedicated CI workflow for the `axonstore` cognitive
+# data plane. D14 ratificada 2026-05-15; this workflow is the harness
+# that spins a real Postgres service container so the four-pillar
+# implementation is proven against an actual database on every PR +
+# master push — adopter-facing regressions surface BEFORE a release.
+#
+# Four parallel lanes:
+#
+#   1. axonstore-runtime — the no-database Rust surface: the store
+#      module unit tests (filter compiler, PostgresStoreBackend SQL
+#      builders, StoreRegistry, epistemic, audit-chain, capability,
+#      row-stream drain), the 35.a diagnostic anchor, and the 35.k
+#      D13 fuzz pack (~24 000 deterministic LCG iterations).
+#
+#   2. real-postgres — the D14 floor: a `postgres:16` SERVICE
+#      container + `AXON_TEST_DATABASE_URL`, running the 35.l
+#      integration suite end-to-end against real rows, a real cursor,
+#      real type decoding, real backpressure bounds, real injection
+#      resistance.
+#
+#   3. pgbouncer-transaction-mode — Gap 3 (v1.36.3): the SAME 35.l
+#      integration suite, but routed through a PgBouncer service in
+#      `pool_mode=transaction` in front of `postgres:16`. This is the
+#      permanent regression guard for the transaction-mode pooler fix:
+#      without `statement_cache_capacity(0)` on the connection options
+#      the second prepared-statement operation fails with `prepared
+#      statement "sqlx_s_1" already exists`. Transaction-mode poolers
+#      (PgBouncer, Supabase Supavisor, Neon, RDS Proxy) are the norm
+#      for managed Postgres, so this lane is non-negotiable.
+#
+#   4. frontend-capability — the 35.j Pillar IV compile-time
+#      enforcement: the type-checker's endpoint→flow→gated-store
+#      compositional check.
+
+on:
+  push:
+    branches: [master]
+    tags: ["v*"]
+  pull_request:
+    branches: [master]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  # ── 1. No-database Rust surface: store units + anchor + fuzz ────────
+  axonstore-runtime:
+    name: axonstore runtime — store units + anchor + D13 fuzz
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: axon-rs
+
+      - name: Store module unit tests
+        working-directory: axon-rs
+        run: |
+          cargo test --lib store:: -- --nocapture
+
+      - name: v1.30.0 — axonstore gap diagnostic anchor
+        working-directory: axon-rs
+        run: cargo test --test axonstore_gap_diagnostic
+
+      - name: v1.30.0 — D13 robustness fuzz pack
+        working-directory: axon-rs
+        run: cargo test --test axonstore_fuzz
+
+  # ── 2. D14 floor: real Postgres service container ───────────────────
+  real-postgres:
+    name: v1.30.0 — real-Postgres integration (D14)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: axon
+          POSTGRES_PASSWORD: axon
+          POSTGRES_DB: axon_store_test
+        ports:
+          - 5432:5432
+        # Hold the job until Postgres is accepting connections.
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      AXON_TEST_DATABASE_URL: postgres://axon:axon@localhost:5432/axon_store_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: axon-rs
+
+      - name: v1.30.0 — all four pillars end-to-end vs a real database
+        working-directory: axon-rs
+        run: cargo test --test postgres_integration -- --nocapture
+
+  # ── 3. Gap 3 (v1.36.3): transaction-mode pooler regression guard ────
+  pgbouncer-transaction-mode:
+    name: Gap 3 — l_2 vs PgBouncer (pool_mode=transaction)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: axon
+          POSTGRES_PASSWORD: axon
+          POSTGRES_DB: axon_store_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      # A transaction-mode pooler in front of Postgres. Successive
+      # operations land on DIFFERENT physical sessions — exactly the
+      # condition under which a cached named prepared statement
+      # collides. `edoburu/pgbouncer` builds its config from env vars.
+      pgbouncer:
+        image: edoburu/pgbouncer:latest
+        env:
+          DB_HOST: postgres
+          DB_PORT: "5432"
+          DB_USER: axon
+          DB_PASSWORD: axon
+          DB_NAME: axon_store_test
+          POOL_MODE: transaction
+          AUTH_TYPE: scram-sha-256
+          # Deliberately small server pool (5 ≪ the 13 parallel
+          # integration tests) so multiplexing — and thus cross-session
+          # prepared-statement reuse, the exact Gap 3 trigger — actually
+          # happens. MAX_CLIENT_CONN stays generous so the small server
+          # pool never becomes an acquire-timeout bottleneck.
+          DEFAULT_POOL_SIZE: "5"
+          MAX_CLIENT_CONN: "200"
+          LISTEN_PORT: "6432"
+        ports:
+          - 6432:6432
+    env:
+      # The integration suite connects THROUGH the transaction-mode
+      # pooler (port 6432) — never directly to Postgres. Without the
+      # Gap 3 `statement_cache_capacity(0)` fix the second prepared-
+      # statement operation fails with `prepared statement "sqlx_s_1"
+      # already exists`. This lane is the permanent regression guard.
+      AXON_TEST_DATABASE_URL: postgres://axon:axon@localhost:6432/axon_store_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: axon-rs
+
+      - name: Wait for the transaction-mode pooler (end-to-end probe)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends postgresql-client
+          for i in $(seq 1 30); do
+            if PGPASSWORD=axon psql -h localhost -p 6432 -U axon \
+                 -d axon_store_test -tAc 'SELECT 1' >/dev/null 2>&1; then
+              echo "PgBouncer → Postgres path is live (transaction mode)."
+              exit 0
+            fi
+            echo "waiting for pgbouncer ($i/30)…"
+            sleep 2
+          done
+          echo "::error::PgBouncer did not become ready" >&2
+          exit 1
+
+      - name: v1.30.0 through PgBouncer transaction mode (Gap 3 guard)
+        working-directory: axon-rs
+        run: cargo test --test postgres_integration -- --nocapture
+
+  # ── 4. Pillar IV compile-time enforcement (frontend type-checker) ───
+  frontend-capability:
+    name: v1.30.0 — capability-typed access (type-checker)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: axon-frontend
+
+      - name: v1.30.0 — endpoint→flow→gated-store compositional check
+        working-directory: axon-frontend
+        run: cargo test --lib -- capability_2
+
+  # ── Cycle summary ───────────────────────────────────────────────────
+  cycle-35-summary:
+    name: v1.30.0 cycle CI summary
+    runs-on: ubuntu-latest
+    needs:
+      - axonstore-runtime
+      - real-postgres
+      - pgbouncer-transaction-mode
+      - frontend-capability
+    steps:
+      - name: v1.30.0 cycle CI
+        run: |
+          echo "🎉 v1.30.0 cycle CI — ALL 4 LANES GREEN."
+          echo ""
+          echo "The axonstore cognitive data plane, proven:"
+          echo "  D1-D7  substrate    — filter compiler, PostgresStoreBackend,"
+          echo "                        StoreRegistry, both execution paths"
+          echo "  D8     Pillar I     — epistemic: rows born Untrusted,"
+          echo "                        confidence_floor enforced"
+          echo "  D9     Pillar II    — audit-chain: HMAC-Merkle mutation log"
+          echo "  D10    Pillar III   — Stream<Row>: lazy cursor + backpressure"
+          echo "  D11    Pillar IV    — capability-typed access, type-checked"
+          echo "  D13    fuzz         — ~24 000 LCG iters, never-panic + D4"
+          echo "  D14    real Postgres — all four pillars vs an actual database"
+          echo "  Gap 3  pooler-safe  — 35.l vs PgBouncer pool_mode=transaction"

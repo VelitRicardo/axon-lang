@@ -1,4 +1,4 @@
-//! §Fase 115.f — the EMS compilation cache: content-addressed, with
+//! v2.76.0 — the EMS compilation cache: content-addressed, with
 //! GHC-style early cutoff. Nix model: a compile is a pure function of its
 //! inputs, so matching inputs ⇒ the recorded outcome is the outcome.
 //!
@@ -19,13 +19,13 @@
 //!   every dependent's key still matches: the dependents skip
 //!   re-validation. This is real, observable via [`CacheStats`], and
 //!   sound because per-module validation consumes only interface facts
-//!   (§115.b) — nothing body-derived is cached per-dependent.
+//! (v2.76.0) — nothing body-derived is cached per-dependent.
 //! - **The merged revalidation re-runs whenever any module changed.**
 //!   Cross-module semantics are global; v1 does not scope it. When NO
 //!   module changed, the project-level entry marks the whole compile
 //!   clean and the driver skips validation entirely.
 //!
-//! # Laws (D115.7)
+//! # Laws
 //!
 //! 1. Source hash changed → module miss.
 //! 2. Any dependency interface hash changed → module miss.
@@ -282,7 +282,7 @@ fn atomic_write(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
 }
 
 // ════════════════════════════════════════════════════════════════════
-//  Unit tests (integration suite: tests/fase115_f_cache_laws.rs)
+//  Unit tests (integration suite: tests/cache_laws.rs)
 // ════════════════════════════════════════════════════════════════════
 
 #[cfg(test)]

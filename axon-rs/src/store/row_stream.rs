@@ -1,4 +1,4 @@
-//! §Fase 35.i (v1.30.0) — Pillar III: `retrieve` is a `Stream<Row>`.
+//! v1.30.0 — Pillar III: `retrieve` is a `Stream<Row>`.
 //!
 //! A `retrieve from S where φ` is the coinductive selection σ_φ(S) —
 //! not an eager set. A pg-backed `axonstore` becomes a first-class
@@ -7,9 +7,9 @@
 //! materializes the whole result — it streams, exactly like an LLM
 //! token stream, and stays inside a memory bound.
 //!
-//! # Joins the Fase 34 streaming surface
+//! # Joins the v1.29.0 streaming surface
 //!
-//! The drain reuses the **closed [`BackpressurePolicy`] catalog** Fase
+//! The drain reuses the **closed [`BackpressurePolicy`] catalog** cycle
 //! 34 ratified (`drop_oldest` / `degrade_quality` / `pause_upstream` /
 //! `fail`) and the same `CancellationFlag` cancel discipline as the
 //! `unified_stream_handler`. A DB row is not a `ToolChunk` — it has no
@@ -35,7 +35,7 @@
 //! Cancel-aware: the [`CancellationFlag`] is polled between every row;
 //! a cancelled drain stops immediately and reports `cancelled`.
 //!
-//! # OSS (§6 — 35.i is fully OSS)
+//! # OSS (section 6 — 35.i is fully OSS)
 //!
 //! The streaming surface — the lazy cursor + the closed policy catalog
 //! + the cancel-aware drain — is entirely OSS.
@@ -174,7 +174,7 @@ where
 /// Cancel-aware via `cancel`; bounded by `policy` + `max_rows`.
 pub async fn stream_retrieve(
     backend: &PostgresStoreBackend,
-    // §Fase 37.x.j (D1) — the connection source. See the equivalent
+    // v1.32.0 (D1) — the connection source. See the equivalent
     // parameter on `PostgresStoreBackend::query()` for the rationale:
     // `StoreConn::Pool(&backend.pool())` for legacy callers,
     // `StoreConn::Pinned(conn)` for the flow-pinned execution where
@@ -184,7 +184,7 @@ pub async fn stream_retrieve(
     conn: &mut crate::store::store_conn::StoreConn<'_>,
     table: &str,
     where_expr: &str,
-    // §Fase 67.b — bounded + ordered retrieve. `order_by` is a closed
+    // v2.21.0 — bounded + ordered retrieve. `order_by` is a closed
     // `column [asc|desc], …` list; `limit_expr` is a `u32` literal or a
     // `${binding}`. Both render to a STRUCTURAL `ORDER BY … LIMIT …`
     // suffix ([`filter::render_bounds`]) appended after the `WHERE`
@@ -192,7 +192,7 @@ pub async fn stream_retrieve(
     // `u32`). Empty strings = no ordering / no limit (the pre-67.b form).
     order_by: &str,
     limit_expr: &str,
-    // §Fase 76.d — the closed aggregate surface. `aggregate` is `count` /
+    // v2.33.0 — the closed aggregate surface. `aggregate` is `count` /
     // `sum(col)` / `avg(col)` / `min(col)` / `max(col)` (or empty = plain
     // `SELECT *`); `group_by` is a comma-separated validated column list
     // (requires an aggregate). Both render STRUCTURALLY
@@ -204,29 +204,29 @@ pub async fn stream_retrieve(
     policy: BackpressurePolicy,
     max_rows: usize,
     cancel: &CancellationFlag,
-    // §Fase 37.d (D3) — resolves `${name}` in `where_expr` to `$N`
+    // v1.32.0 (D3) — resolves `${name}` in `where_expr` to `$N`
     // bind parameters (the Request Binding Contract on the filter path).
     bindings: &std::collections::HashMap<String, String>,
 ) -> Result<RowStreamOutcome, StoreError> {
-    // §Fase 76.d — parse + cross-validate the aggregate surface ONCE.
+    // v2.33.0 — parse + cross-validate the aggregate surface ONCE.
     // `None` = the plain retrieve (pre-76.d, byte-identical). A malformed
     // clause is a typed `FilterError` surfaced as a `StoreError` here (and
-    // caught earlier at `axon check` by the §38.d proof — axon-T843/T844/T845).
+    // caught earlier at `axon check` by the v1.31.0 proof — axon-T843/T844/T845).
     let agg = crate::store::filter::parse_aggregate_clause(
         aggregate, group_by, order_by, limit_expr,
     )?;
-    // §Fase 67.b — the structural `ORDER BY … LIMIT …` suffix (or empty),
+    // v2.21.0 — the structural `ORDER BY … LIMIT …` suffix (or empty),
     // computed once + appended to the SELECT on both the cache-HIT and
     // cache-MISS paths. A malformed clause is a typed `FilterError`
     // surfaced as a `StoreError` here (and caught earlier at `axon check`
-    // by the §38.d proof — axon-T807/T808). (Empty by construction when an
+    // by the v1.31.0 proof — axon-T807/T808). (Empty by construction when an
     // aggregate is present — the clause parser rejects the combination.)
     let bounds = crate::store::filter::render_bounds(order_by, limit_expr, bindings)?;
-    // §Fase 37.x.d (D3) — a cache HIT: the cursor drains on the conn,
+    // v1.32.0 (D3) — a cache HIT: the cursor drains on the conn,
     // no transaction (the cached resolution is correct and the SELECT
     // is schema-qualified, so it resolves on any session).
     if let Some(resolved) = backend.cached_schema(table) {
-        // §Fase 76.d — an aggregate retrieve swaps the SELECT list
+        // v2.33.0 — an aggregate retrieve swaps the SELECT list
         // (group columns + labeled aggregate) and appends GROUP BY;
         // everything else (cursor, pooler discipline, schema cache,
         // drift retry) is the same machinery.
@@ -250,12 +250,12 @@ pub async fn stream_retrieve(
             }
         };
         match &agg {
-            None => sql.push_str(&bounds), // §Fase 67.b — ORDER BY … LIMIT …
+            None => sql.push_str(&bounds), // v2.21.0 — ORDER BY … LIMIT …
             Some((_, groups)) => {
                 sql.push_str(&crate::store::filter::render_group_by_suffix(groups))
             }
         }
-        // §Fase 38.x.a (D1) — see `postgres_backend::introspect_conn` for
+        // v1.31.0 (D1) — see `postgres_backend::introspect_conn` for
         // the full rationale on `.persistent(false)`. The unnamed PARSE
         // protocol is structurally collision-free behind transaction-mode
         // poolers; the named protocol leaks `sqlx_s_N` across logical
@@ -264,7 +264,7 @@ pub async fn stream_retrieve(
         for value in &params {
             query = bind_value(query, value);
         }
-        // §Fase 37.x.j (D1) — `.fetch()` is the lazy cursor; the
+        // v1.32.0 (D1) — `.fetch()` is the lazy cursor; the
         // Pool/Pinned dispatch happens inline here because the
         // returned `BoxStream` borrows the executor for its lifetime
         // and we can't unify the two stream types through a single
@@ -290,7 +290,7 @@ pub async fn stream_retrieve(
         match drain_result {
             Ok(outcome) => return Ok(outcome),
             Err(e) if e.is_schema_drift() => {
-                // §37.x.f (D9) — the cached schema is STALE; evict and
+                // v1.32.0 (D9) — the cached schema is STALE; evict and
                 // fall through to the miss path: the single retry,
                 // with fresh introspection.
                 backend.evict_schema(table);
@@ -299,13 +299,13 @@ pub async fn stream_retrieve(
         }
     }
 
-    // §Fase 37.x.d (D3) — a cache MISS: the schema introspection AND
+    // v1.32.0 (D3) — a cache MISS: the schema introspection AND
     // the cursor drain run inside ONE transaction, so a transaction-
     // mode pooler pins one physical backend for both. The transaction
     // is held for the cursor's lifetime — bounded by `max_rows` (the
     // `PauseUpstream` default caps the drain), so the held pooler
     // backend is time-bounded; no pool starvation.
-    // §Fase 37.x.j (D1) — `conn.begin()` runs on the same physical
+    // v1.32.0 (D1) — `conn.begin()` runs on the same physical
     // backend as the cache-HIT attempt above when on the Pinned
     // variant; on the Pool variant it acquires a fresh logical
     // connection (legacy behavior).
@@ -313,7 +313,7 @@ pub async fn stream_retrieve(
         .begin()
         .await
         .map_err(|e| StoreError::Connect { source: e.to_string() })?;
-    // §Fase 37.x.j.12 — ROLLBACK + propagate introspect error directly.
+    // v1.32.0 — ROLLBACK + propagate introspect error directly.
     // Pre-v1.40.3 the fall-through path here re-used the same `tx` with
     // a bare-table SELECT, so an introspect failure (privilege /
     // search_path / SSL / pooler-mode) cascaded as `relation X does not
@@ -340,7 +340,7 @@ pub async fn stream_retrieve(
             return Err(introspect_err);
         }
     };
-    // §Fase 76.d — same SELECT-list / GROUP BY branch as the cache-HIT
+    // v2.33.0 — same SELECT-list / GROUP BY branch as the cache-HIT
     // path above.
     let (mut sql, params): (String, Vec<SqlValue>) = match &agg {
         None => build_select_sql(
@@ -362,12 +362,12 @@ pub async fn stream_retrieve(
         }
     };
     match &agg {
-        None => sql.push_str(&bounds), // §Fase 67.b — ORDER BY … LIMIT …
+        None => sql.push_str(&bounds), // v2.21.0 — ORDER BY … LIMIT …
         Some((_, groups)) => {
             sql.push_str(&crate::store::filter::render_group_by_suffix(groups))
         }
     }
-    // §Fase 38.x.a (D1) — mandatory inside the `pool.begin()` tx.
+    // v1.31.0 (D1) — mandatory inside the `pool.begin()` tx.
     let mut query = sqlx::query(&sql).persistent(false);
     for value in &params {
         query = bind_value(query, value);

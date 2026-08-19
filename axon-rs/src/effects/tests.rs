@@ -1,4 +1,4 @@
-//! Fase 23.f — Rust runtime tests for algebraic effects.
+//! v1.17.0 — Rust runtime tests for algebraic effects.
 //!
 //! Verifies the FSM dispatch loop, handler frame stack, one-shot
 //! continuation semantics (D2), exhaustiveness (D9 trust boundary),

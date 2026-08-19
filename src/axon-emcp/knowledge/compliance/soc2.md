@@ -60,20 +60,20 @@ axonendpoint UpdateCustomer {
 | CC6.1 — logical access | A SOC2-tagged `axonstore` requires an `isolation:` setting (`read_committed` / `repeatable_read` / `serializable`). |
 | CC6.6 — transmission security | A SOC2-tagged `socket` rejects `ws://`; only `wss://` is accepted. |
 | CC6.7 — cryptographic protection | A SOC2-tagged `axonstore` requires `encryption: at_rest`. |
-| CC7.2 — system monitoring | A SOC2-tagged deployment requires the §40 observability layer to be enabled (verified at deploy, not at parse). |
-| PI1.4 — input validation | A SOC2-PI-tagged `axonendpoint` whose body type has `where` refinements gets the §40 D4 body schema validation; non-PI SOC2 endpoints get it too if they declare it. |
+| CC7.2 — system monitoring | A SOC2-tagged deployment requires the v2.0.0 observability layer to be enabled (verified at deploy, not at parse). |
+| PI1.4 — input validation | A SOC2-PI-tagged `axonendpoint` whose body type has `where` refinements gets the v2.0.0 D4 body schema validation; non-PI SOC2 endpoints get it too if they declare it. |
 | C1.1 — confidentiality | A SOC2-C-tagged `type` cannot leak through an `axonendpoint` whose `compliance:` list omits SOC2-C, unless passed through a shield with `strategy: pattern` over confidentiality markers. |
 
 ## What the runtime enforces
 
 | TSC | AXON runtime enforcement |
 |---|---|
-| CC4.1 — monitoring | Every emission to a SOC2-tagged endpoint emits an audit row; uptime + error-rate metrics flow to the §40 observability layer. |
-| CC6.2 — user authentication | The §40.w auth layer enforces token signature + expiry + audience; SOC2 endpoints log every auth outcome. |
+| CC4.1 — monitoring | Every emission to a SOC2-tagged endpoint emits an audit row; uptime + error-rate metrics flow to the v2.0.0 observability layer. |
+| CC6.2 — user authentication | The v2.0.0 auth layer enforces token signature + expiry + audience; SOC2 endpoints log every auth outcome. |
 | CC7.1 — security events | The audit chain records every authentication failure, every authorisation denial, every shield breach with `category: security_event`. |
 | CC7.4 — incident response | Structured incident records flow to the compliance event store; the IR playbook consumes them. |
 | A1.1 — availability commitments | The runtime exposes `axon_uptime_seconds` + `axon_inflight_requests`; SLO breach triggers structured alerts. |
-| PI1.3 — processing integrity | The §40 D4 body validation + D5 output validation + audit chain together provide the integrity evidence. |
+| PI1.3 — processing integrity | The v2.0.0 D4 body validation + D5 output validation + audit chain together provide the integrity evidence. |
 | C1.2 — disposal of confidential information | Purge operations on SOC2-tagged stores emit `session:disposal_evidence` rows. |
 
 ## What you still attest manually
@@ -111,7 +111,7 @@ axonendpoint ServeContent {
 ```
 
 The `sla:` field (an enterprise extension) declares the
-Availability commitment. The §40 observability layer compares
+Availability commitment. The v2.0.0 observability layer compares
 live measurements + emits structured breach events to the audit
 chain when the commitment is missed.
 

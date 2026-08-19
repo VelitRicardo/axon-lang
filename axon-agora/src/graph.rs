@@ -1,4 +1,4 @@
-//! §Fase 116.d — shared Meta Graph API transport for the Facebook Pages and
+//! v2.77.0 — shared Meta Graph API transport for the Facebook Pages and
 //! Instagram connectors (both speak the same Graph surface: Bearer auth, the
 //! `{"error":{"message","code"}}` envelope, JSON pointer extraction).
 

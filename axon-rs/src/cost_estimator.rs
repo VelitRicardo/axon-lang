@@ -123,7 +123,7 @@ fn default_estimate(kind: StepKind) -> StepEstimate {
 fn classify_node(node: &IRFlowNode) -> StepKind {
     match node {
         IRFlowNode::Step(_) => StepKind::Ask,
-        // §Fase 109 — a compile-time-derived derivative evaluates with the
+        // v2.65.0 — a compile-time-derived derivative evaluates with the
         // pure expression evaluator: no LLM, no store, no cost — the same
         // Control class as `let`/`return`.
         IRFlowNode::Grad(_) => StepKind::Control,
@@ -138,10 +138,10 @@ fn classify_node(node: &IRFlowNode) -> StepKind {
         | IRFlowNode::Mutate(_) | IRFlowNode::Purge(_) => StepKind::Memory,
         IRFlowNode::Conditional(_) | IRFlowNode::ForIn(_)
         | IRFlowNode::Let(_) | IRFlowNode::Return(_)
-        // Fase 19.e — break/continue are pure control transfers, no
+        // v1.14.0 — break/continue are pure control transfers, no
         // model call, no I/O. Classify as Control alongside Return.
         | IRFlowNode::Break(_) | IRFlowNode::Continue(_)
-        // §Fase 120 — the algebraic-effect constructs are pure CONTROL
+        // v2.87.0 — the algebraic-effect constructs are pure CONTROL
         // transfers: no model call, no I/O of their own. The COST lives in the
         // nodes inside a handler clause, and those are classified on their own
         // terms when the clause body is walked — pricing `handle` itself as an
@@ -151,7 +151,7 @@ fn classify_node(node: &IRFlowNode) -> StepKind {
         | IRFlowNode::Forward(_) => StepKind::Control,
         IRFlowNode::Par(_) | IRFlowNode::Stream(_) => StepKind::Parallel,
         IRFlowNode::Deliberate(_) | IRFlowNode::Consensus(_)
-        // §Fase 119.m.3 — an `<Agent>(args)` call is a BOUNDED LOOP of
+        // v2.83.0 — an `<Agent>(args)` call is a BOUNDED LOOP of
         // deliberations, so `MultiAgent` (the most expensive class) is the
         // honest classification: it is the only one that does not price a
         // whole agent run as a single ask. The estimate is still a floor —
@@ -169,24 +169,24 @@ fn classify_node(node: &IRFlowNode) -> StepKind {
         IRFlowNode::ShieldApply(_) | IRFlowNode::OtsApply(_)
         | IRFlowNode::MandateApply(_) | IRFlowNode::ComputeApply(_)
         | IRFlowNode::LambdaDataApply(_) | IRFlowNode::Transact(_) => StepKind::Control,
-        // §λ-L-E Fase 13 — Mobile typed channel reductions are π-calc
+        // v1.6.0 — Mobile typed channel reductions are π-calc
         // prefixes, classified as Cognitive alongside Listen/DaemonStep.
         IRFlowNode::Emit(_) | IRFlowNode::Publish(_) | IRFlowNode::Discover(_) => StepKind::Cognitive,
-        // §Fase 51.a — the `quant` Hilbert-space projection block is cognitive
+        // v2.4.0 — the `quant` Hilbert-space projection block is cognitive
         // computation (variational / kernel-feature evaluation).
         IRFlowNode::Quant(_) => StepKind::Cognitive,
-        // §Fase 88.a — the `warden` adversarial-analysis block is cognitive
+        // v2.43.0 — the `warden` adversarial-analysis block is cognitive
         // (LLM abduction over authorized evidence).
         IRFlowNode::Warden(_) => StepKind::Cognitive,
-        // §Fase 51.d.2 — `yield` is the amplitude-collapse measurement point.
+        // v2.4.0 — `yield` is the amplitude-collapse measurement point.
         IRFlowNode::Yield(_) => StepKind::Cognitive,
-        // §Fase 52.c — `run <Flow>` is orchestration: it dispatches a declared
+        // v2.4.0 — `run <Flow>` is orchestration: it dispatches a declared
         // flow whose own cost is attributed to that flow, not to this step.
         IRFlowNode::Run(_) => StepKind::Control,
-        // §Fase 92.c — `mint` is a pure effect (no model call, no store I/O):
+        // v2.46.0 — `mint` is a pure effect (no model call, no store I/O):
         // classify as Control alongside the other non-cognitive verbs.
         IRFlowNode::Mint(_) => StepKind::Control,
-        // §Fase 94.b — `rotate` performs one mediated tool exchange per
+        // v2.48.0 — `rotate` performs one mediated tool exchange per
         // matching custody entry (network I/O, no model call): classify as
         // ToolCall — the closest honest kind for a set-oriented dispatch.
         IRFlowNode::Rotate(_) => StepKind::ToolCall,

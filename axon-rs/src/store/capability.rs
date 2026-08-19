@@ -1,4 +1,4 @@
-//! §Fase 35.j (v1.30.0) — Pillar IV: capability-typed store access.
+//! v1.30.0 — Pillar IV: capability-typed store access.
 //!
 //! An `axonstore` may declare a `capability:` slug. Access to that
 //! store — `retrieve` / `persist` / `mutate` / `purge` — then requires
@@ -19,7 +19,7 @@
 //!    actually carries, that the gated store may be touched —
 //!    defense-in-depth behind the static guarantee.
 //!
-//! # OSS / ENTERPRISE seam (§6 — 35.j is SPLIT)
+//! # OSS / ENTERPRISE seam (section 6 — 35.j is SPLIT)
 //!
 //! This module + the type-checker enforcement are the **OSS
 //! mechanism** — a capability is a slug, the check is set membership.

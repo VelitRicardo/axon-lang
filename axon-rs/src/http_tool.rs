@@ -18,7 +18,7 @@
 //! Timeout: parsed from ToolEntry.timeout field (e.g., "10s", "500ms").
 //! Default timeout: 30 seconds.
 //!
-//! §Fase 34.e (v1.29.0) — Streaming surface via [`HttpStreamingTool`].
+//! v1.29.0 — Streaming surface via [`HttpStreamingTool`].
 //! The async-trait Tool impl drives the upstream HTTP request via
 //! `reqwest::Client` (async) + drains the response body chunk-by-chunk.
 //! Content-Type drives framing:
@@ -120,7 +120,7 @@ pub fn dispatch_http(entry: &ToolEntry, argument: &str) -> ToolResult {
     }
 }
 
-/// §Fase 114 (owed) — the PROCESS-SHARED blocking HTTP client. A fresh
+/// v2.69.0 (owed) — the PROCESS-SHARED blocking HTTP client. A fresh
 /// `reqwest::blocking::Client` per call threw away reqwest's internal connection
 /// pool, so every tool call paid a new TCP + TLS handshake. reqwest is explicitly
 /// designed to be built ONCE and reused (the pool lives on the `Client`); the
@@ -134,7 +134,7 @@ fn shared_blocking_client() -> &'static reqwest::blocking::Client {
     CLIENT.get_or_init(reqwest::blocking::Client::new)
 }
 
-/// §Fase 114 (owed) — the PROCESS-SHARED async HTTP client (the streaming-tool
+/// v2.69.0 (owed) — the PROCESS-SHARED async HTTP client (the streaming-tool
 /// dual of [`shared_blocking_client`]). Same rationale: build once, reuse the
 /// connection pool, set the timeout per request.
 fn shared_async_client() -> &'static reqwest::Client {
@@ -195,7 +195,7 @@ fn execute_request(
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-//  §Fase 34.e — HttpStreamingTool: async-trait Tool impl with per-chunk
+// v1.29.0 — HttpStreamingTool: async-trait Tool impl with per-chunk
 //  streaming wire emission via reqwest::Response::bytes_stream().
 // ════════════════════════════════════════════════════════════════════════════
 
@@ -206,7 +206,7 @@ use futures::StreamExt;
 use crate::backends::sse_streaming::{LineBuffer, SseEventParser};
 use crate::tool_trait::{Tool, ToolChunk, ToolContext, ToolFinishReason, ToolStream};
 
-/// HTTP tool with first-class streaming surface (Fase 34.e).
+/// HTTP tool with first-class streaming surface (v1.29.0).
 ///
 /// `stream()` drives a `reqwest::Client::post(url)` async request +
 /// drains `response.bytes_stream()` chunk-by-chunk. Content-Type
@@ -344,7 +344,7 @@ impl Tool for HttpStreamingTool {
             max_results: None,
             output_schema: String::new(),
             effect_row: Vec::new(),
-            // §Fase 58.f.2 — reconstructed entry for the legacy sync
+            // v2.8.0 — reconstructed entry for the legacy sync
             // delegate; no typed input schema needed on this path.
             parameters: Vec::new(),
             secret: String::new(),
@@ -392,7 +392,7 @@ impl Tool for HttpStreamingTool {
                 return;
             }
 
-            // 1. The PROCESS-SHARED async client (§Fase 114 owed — see
+            // 1. The PROCESS-SHARED async client (v2.69.0 owed — see
             //    `shared_blocking_client`: pooling was thrown away by a
             //    per-call `Client::builder().build()`). Timeout is per REQUEST.
             let client = shared_async_client();
@@ -496,7 +496,7 @@ enum DrainOutcome {
 
 /// Drain SSE framing. Reuses the battle-tested
 /// [`crate::backends::sse_streaming::LineBuffer`] +
-/// [`crate::backends::sse_streaming::SseEventParser`] from Fase 33.d
+/// [`crate::backends::sse_streaming::SseEventParser`] from v1.24.0
 /// so every adopter-emitted SSE shape (CRLF normalization, CR strip,
 /// multi-line data field, comment lines) is honored verbatim.
 async fn drain_sse<S>(
@@ -631,7 +631,7 @@ mod tests {
     use super::*;
     use crate::tool_registry::{ToolEntry, ToolSource};
 
-    /// §Fase 114 (owed) — **the HTTP client is POOLED: every call reuses ONE
+    /// v2.69.0 (owed) — **the HTTP client is POOLED: every call reuses ONE
     /// client, not a fresh one per request.** reqwest's connection pool lives on
     /// the `Client`; a fresh `Client::builder().build()` per call discarded it, so
     /// every tool call paid a new TCP + TLS handshake. This pins the fix directly:
@@ -676,9 +676,9 @@ mod tests {
             secret: String::new(),
             secret_partition: String::new(),
             source: ToolSource::Program,
-            // §Fase 34.c — HTTP tools default to non-streaming; effect_row
+            // v1.29.0 — HTTP tools default to non-streaming; effect_row
             // carries `network` but no `stream:` prefix. HTTP streaming
-            // (SSE-aware adapter consuming upstream SSE) lands in Fase 34.e.
+            // (SSE-aware adapter consuming upstream SSE) lands in v1.29.0.
             is_streaming: false,
             scrape: None,
         }

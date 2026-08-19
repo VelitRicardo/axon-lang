@@ -1,4 +1,4 @@
-//! AXON Runtime — Handler layer (§λ-L-E Fase 2).
+//! AXON Runtime — Handler layer (v1.1.0).
 //!
 //! Direct port of `axon/runtime/handlers/`.
 //!
@@ -9,7 +9,7 @@
 
 pub mod base;
 pub mod dry_run;
-/// §Fase 112.a — the `Handler` that actually looks at something. Until it landed,
+/// v2.67.0 — the `Handler` that actually looks at something. Until it landed,
 /// the only implementation was `DryRunHandler`, whose `observe` returns certainty
 /// `1.0` unconditionally — a perfect-confidence clean bill of health for a system
 /// nobody ever examined.

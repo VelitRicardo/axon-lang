@@ -1,16 +1,16 @@
-//! §Fase 119.d — `hibernate`: the flow HALTS, and that is the whole point.
+//! v2.83.0 — `hibernate`: the flow HALTS, and that is the whole point.
 //!
 //! # The specification, and where it comes from
 //!
 //! `hibernate` has no paper. Its requirement is ECONOMIC, stated by the
 //! founder: *when the agent hibernates it STOPS — it generates no compute
-//! cost and no token cost.* README §"CPS Continuation Points" publishes the
+//! cost and no token cost.* README "CPS Continuation Points" publishes the
 //! mechanics: a deterministic continuation ID via
 //! `SHA-256(flow_name ∥ event_name ∥ source_position)`, the executor
 //! serializes the execution state **and halts**, and `resume(continuation_id)`
 //! continues from the exact IR node.
 //!
-//! §111 F20 found the shipped behavior: `run_hibernate` returned
+//! v2.67.0 F20 found the shipped behavior: `run_hibernate` returned
 //! `"(hibernating …)"` **synchronously and the flow kept walking** — it kept
 //! spending while claiming to sleep, which inverts the one guarantee the
 //! primitive exists for.
@@ -81,7 +81,7 @@ pub struct ParkedFlow {
     pub tenant_id: String,
     pub session_id: String,
     /// The declaration catalogs, carried by Arc so a resumed flow can still
-    /// resolve mandates / lambdas / ots / computes (§119.b/c doctrine: an
+    /// resolve mandates / lambdas / ots / computes (v2.83.0 doctrine: an
     /// empty catalog fails closed, so losing these on resume would break
     /// every governed step after the sleep).
     #[serde(skip)]
@@ -92,7 +92,7 @@ pub struct ParkedFlow {
     pub ots_specs: Arc<Vec<crate::ir_nodes::IROts>>,
     #[serde(skip)]
     pub compute_specs: Arc<Vec<crate::ir_nodes::IRCompute>>,
-    /// §Fase 119.m.3 — the agent catalog, carried across the suspension for the
+    /// v2.83.0 — the agent catalog, carried across the suspension for the
     /// same reason as the four above: losing it on resume would fail-close
     /// every agent call after the sleep.
     #[serde(skip)]
@@ -205,20 +205,20 @@ impl ParkingLot {
     /// `event_name`. Expired entries of that tenant are reaped on the way (the
     /// lazy timeout firing).
     ///
-    /// # §Fase 119.m.4 — why the tenant is a REQUIRED parameter
+    /// # v2.83.0 — why the tenant is a REQUIRED parameter
     ///
     /// It used to key on `event_name` alone, and `by_event` is a process-global
     /// index, so an emit claimed every continuation under that name across
     /// every tenant in the process — and `resume_parked_flow` restores
     /// `ctx.tenant_id` from the parked flow, so the other tenant's flow really
     /// did resume, as itself, with the emitter's payload bound under the event
-    /// name. `ParkedFlow` has carried `tenant_id` since §119.d; the wake path
+    /// name. `ParkedFlow` has carried `tenant_id` since v2.83.0; the wake path
     /// simply never looked at it.
     ///
     /// The parameter is required rather than optional so the compiler names
     /// every call site. An `Option<&str>` defaulting to "all tenants" would
     /// have let the one seam that matters keep its old behaviour silently,
-    /// which is the §119.f.7 defect in the shape of an API.
+    /// which is the v2.83.0 defect in the shape of an API.
     ///
     /// **A foreign candidate is SKIPPED, never an error.** Failing the emit
     /// would let any tenant deny another by choosing a channel name. And the
@@ -226,7 +226,7 @@ impl ParkingLot {
     /// leak tenancy structure into the emitter's logs.
     ///
     /// Matching is strict string equality, which makes the untenanted OSS case
-    /// (`"" == ""`) byte-identical to pre-§119.m.4, and refuses to let a
+    /// (`"" == ""`) byte-identical to pre-v2.83.0, and refuses to let a
     /// tenanted emit adopt an orphaned park.
     pub fn take_resumable(
         &self,
@@ -365,7 +365,7 @@ mod tests {
         lot.park(parked("live", "quarterly", Some(10_000)));
         lot.park(parked("stale", "quarterly", Some(1_000)));
         lot.park(parked("other", "different_event", None));
-        // §Fase 119.m.4 — the fixture parks with an empty `tenant_id`, so the
+        // v2.83.0 — the fixture parks with an empty `tenant_id`, so the
         // untenanted emit is the matching one. That equality IS the OSS
         // back-compat path, exercised here by construction.
         let got = lot.take_resumable("", "quarterly", 5_000);
@@ -375,7 +375,7 @@ mod tests {
         assert!(lot.is_parked("other"), "unrelated event untouched");
     }
 
-    /// §Fase 119.m.4 — the isolation, at the unit level and on a LOCAL lot (no
+    /// v2.83.0 — the isolation, at the unit level and on a LOCAL lot (no
     /// process-global state, so this one cannot race another test).
     #[test]
     fn take_resumable_is_scoped_to_the_emitting_tenant() {

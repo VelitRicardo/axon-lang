@@ -1,20 +1,20 @@
-//! §Fase 34.g (v1.29.0) — Unified stream handler converging the
+//! v1.29.0 — Unified stream handler converging the
 //! four streaming-effect disjunctions onto a single drain path.
 //!
-//! Per the AXON paper §3, streaming-effect tools surface through
+//! Per the AXON paper section 3, streaming-effect tools surface through
 //! FOUR syntactic disjunctions:
 //!
 //! - **(a)** `output: Stream<T>` — type-level streaming via
 //!   `Backend::stream()`. Produces `Stream<ChatChunk>` (LLM-side).
 //! - **(b)** `apply: <stream-tool>` — `apply_ref` resolves to a
 //!   `Tool` impl whose `stream()` produces `Stream<ToolChunk>`
-//!   (Fase 34.d dispatcher arm).
+//! (v1.29.0 dispatcher arm).
 //! - **(c)** `use_tool` syntax — adopter declares allowed tools at
 //!   the step level; semantically reduces to (a) at runtime (the
 //!   LLM emits the tool-call which is dispatched on the next
 //!   iteration).
 //! - **(d)** `perform Stream.Yield(x)` — algebraic effect. Static
-//!   pre-scan of `IRPerform` nodes (Fase 33.y.e
+//! pre-scan of `IRPerform` nodes (v1.24.0
 //!   `bridge_effect_stream_yield`).
 //!
 //! Pre-34.g the four disjunctions had **divergent drain paths** —
@@ -57,7 +57,7 @@
 //!   impl + tests prove the convergence is semantically correct;
 //!   migrating production (a) to the unified handler is deferred
 //!   to 34.g.2 (involves preserving the `FlowExecutionEvent::ToolCall`
-//!   emission ordering invariant from Fase 33.y.k D8 + the
+//! emission ordering invariant from v1.24.0 D8 + the
 //!   `Usage`-bearing terminal chunk semantics).
 //! - Disjunct (c) does NOT produce its own runtime stream — it
 //!   forwards tool declarations to the LLM via
@@ -282,7 +282,7 @@ pub fn unified_stream_from_chunks(chunks: Vec<ToolChunk>) -> ToolStream {
 ///   tick (chunks_dropped = chunks_degraded = 0). Mirrors the
 ///   pre-34.g `run_step_streaming_tool` shape byte-equal (D9
 ///   backwards-compat for tools that don't declare a stream policy).
-/// §Fase 119.n — the `on_chunk:` arm of a `stream<T> { … }`, plus the context it
+/// v2.83.0 — the `on_chunk:` arm of a `stream<T> { … }`, plus the context it
 /// needs, handed to the drain so the handler runs **per chunk, during the
 /// stream**.
 ///
@@ -304,7 +304,7 @@ impl ChunkHook<'_> {
         self.ctx
             .let_bindings
             .insert("chunk".to_string(), delta.to_string());
-        // §Fase 119.n.3 — a failure raised BY THE HANDLER is tagged `stream:on_`
+        // v2.83.0 — a failure raised BY THE HANDLER is tagged `stream:on_`
         // so `on_error` cannot catch it. `on_error` handles a failing SOURCE; a
         // broken handler that silently catches itself and reports the stream as
         // healthy is worse than one that crashes, because the program looks fine.
@@ -323,7 +323,7 @@ impl ChunkHook<'_> {
         })?;
         match outcome {
             crate::flow_dispatcher::NodeOutcome::Completed { .. } => Ok(()),
-            // §Fase 119.d discipline — a sentinel raised mid-drain has no defined
+            // v2.83.0 discipline — a sentinel raised mid-drain has no defined
             // continuation shape (which chunk does it resume at?) and the upstream
             // is still open. Refused rather than half-honoured.
             _ => Err(DispatchError::BackendError {
@@ -343,7 +343,7 @@ pub async fn unified_stream_handler(
     cancel: &CancellationFlag,
     tx: &mpsc::UnboundedSender<FlowExecutionEvent>,
     step_name: &str,
-    // §Fase 65.D.2 — the multiplex demux key for the event stream. Empty
+    // v2.15.0 — the multiplex demux key for the event stream. Empty
     // at the top level (elided on the wire via skip-if-empty); `"par[i].…"`
     // inside a `par` branch so an SSE consumer demuxes a tool-stream nested
     // in a concurrent branch by the same key as every other handler event.
@@ -352,16 +352,16 @@ pub async fn unified_stream_handler(
     unified_stream_handler_with_hook(source, policy, cancel, tx, step_name, branch_path, None).await
 }
 
-/// §Fase 119.n — [`unified_stream_handler`] with an optional per-chunk handler.
+/// v2.83.0 — [`unified_stream_handler`] with an optional per-chunk handler.
 ///
 /// Additive: the hookless entry point above delegates here with `None`, so every
-/// pre-§119.n caller is byte-identical.
+/// pre-v2.83.0 caller is byte-identical.
 ///
 /// The hook goes HERE, in the one drain that enforces the declared
 /// `BackpressurePolicy`, rather than in a private loop inside the stream step.
 /// A second drain would have silently stopped honouring a declared
 /// `backpressure:` the moment the two copies diverged — a dropped policy being
-/// exactly the class of defect §119 exists to end.
+/// exactly the class of defect v2.83.0 exists to end.
 pub async fn unified_stream_handler_with_hook(
     source: ToolStream,
     policy: Option<BackpressurePolicy>,
@@ -425,7 +425,7 @@ async fn unified_drain_direct(
                 step_name: step_name.to_string(),
                 content: chunk.delta.clone(),
                 token_index: summary.tokens_emitted,
-                // §Fase 65.D.2 — carry the multiplex key threaded from the
+                // v2.15.0 — carry the multiplex key threaded from the
                 // caller's DispatchCtx so a tool-stream nested in a `par`
                 // branch demuxes by the same `par[i].…` key as every other
                 // handler event (empty at the top level → elided on the wire).
@@ -433,7 +433,7 @@ async fn unified_drain_direct(
                 timestamp_ms: crate::flow_execution_event::now_ms(),
             })
             .map_err(|_| DispatchError::ChannelClosed)?;
-            // §Fase 119.n — `on_chunk`, over the chunk that just reached the wire.
+            // v2.83.0 — `on_chunk`, over the chunk that just reached the wire.
             if let Some(h) = hook.as_mut() {
                 h.fire(&chunk.delta).await?;
             }
@@ -519,7 +519,7 @@ async fn unified_drain_with_policy(
                 step_name: step_name.to_string(),
                 content: chunk.delta.clone(),
                 token_index: summary.tokens_emitted,
-                // §Fase 65.D.2 — carry the multiplex key threaded from the
+                // v2.15.0 — carry the multiplex key threaded from the
                 // caller's DispatchCtx so a tool-stream nested in a `par`
                 // branch demuxes by the same `par[i].…` key as every other
                 // handler event (empty at the top level → elided on the wire).
@@ -527,7 +527,7 @@ async fn unified_drain_with_policy(
                 timestamp_ms: crate::flow_execution_event::now_ms(),
             })
             .map_err(|_| DispatchError::ChannelClosed)?;
-            // §Fase 119.n — `on_chunk` runs on the chunks the POLICY let through,
+            // v2.83.0 — `on_chunk` runs on the chunks the POLICY let through,
             // not on the raw source: a `drop_oldest` chunk that never reached the
             // wire must not reach the handler either, or the author's processing
             // would see a stream the consumer never got.
@@ -939,7 +939,7 @@ mod tests {
         assert!(!summary.success);
     }
 
-    // §Fase 65.D.2 — a tool-stream nested in a `par` branch must carry the
+    // v2.15.0 — a tool-stream nested in a `par` branch must carry the
     // multiplex key so an SSE consumer demuxes its tokens by the SAME
     // `par[i].…` key as every other handler event in that branch.
     #[tokio::test]

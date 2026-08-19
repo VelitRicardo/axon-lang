@@ -1,7 +1,7 @@
-//! §Fase 38.h (D10) — pure manifest-building logic for the
+//! v1.31.0 (D10) — pure manifest-building logic for the
 //! `axon store introspect <store>` CLI.
 //!
-//! This module is the first runtime CONSUMER of the §Fase 38.c
+//! This module is the first runtime CONSUMER of the v1.31.0
 //! manifest format. It takes the rows a live `pg_catalog`
 //! introspection produces (the impure half lives in
 //! `axon-rs/src/store/introspect_cli.rs` because it needs `sqlx`)
@@ -85,7 +85,7 @@ pub fn udt_to_canonical_type(pg_udt: &str) -> Option<StoreColumnType> {
 // ════════════════════════════════════════════════════════════════════
 
 /// One column row produced by the deep `pg_catalog` introspection
-/// the §Fase 38.h impure side runs. Carries everything the manifest
+/// the v1.31.0 impure side runs. Carries everything the manifest
 /// needs to faithfully reproduce the column declaration.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IntrospectionRow {
@@ -103,7 +103,7 @@ pub struct IntrospectionRow {
     /// column has no default. `nextval(...)` substrings are how the
     /// auto_increment heuristic ([`detect_auto_increment`]) decides.
     pub default_expression: String,
-    /// §Fase 38.x.c (D1) — `pg_attribute.attidentity` value:
+    /// v1.31.0 (D1) — `pg_attribute.attidentity` value:
     /// - `Some('a')` = `GENERATED ALWAYS AS IDENTITY` (Postgres rejects
     ///   user-supplied values; `OVERRIDING SYSTEM VALUE` required to
     ///   override)
@@ -114,7 +114,7 @@ pub struct IntrospectionRow {
     ///
     /// `build_manifest_store` converts this into the manifest's
     /// `identity: bool` field (true when `Some(_)`); the 'a' vs 'd'
-    /// distinction is preserved here for a future Fase 38.x.d that
+    /// distinction is preserved here for a future v1.31.0 that
     /// could surface it in T802 (rejecting `persist` values INTO a
     /// `GENERATED ALWAYS` column).
     pub identity_kind: Option<char>,
@@ -157,7 +157,7 @@ pub struct OmittedColumn {
 
 impl OmittedColumn {
     /// Render this omission as a `# omitted: <name> <pg_udt> — <reason>`
-    /// comment line — the shape the §Fase 38.h CLI emits beside the
+    /// comment line — the shape the v1.31.0 CLI emits beside the
     /// manifest's canonical JSON.
     pub fn as_comment_line(&self) -> String {
         format!(
@@ -167,7 +167,7 @@ impl OmittedColumn {
     }
 }
 
-/// §Fase 38.h — build a [`ManifestStore`] from a vector of
+/// v1.31.0 — build a [`ManifestStore`] from a vector of
 /// [`IntrospectionRow`] entries.
 ///
 /// Returns the manifest store + a side list of [`OmittedColumn`]
@@ -196,7 +196,7 @@ pub fn build_manifest_store(
             continue;
         };
         let auto_increment = detect_auto_increment(&row.default_expression);
-        // §Fase 38.x.c (D1) — `pg_attribute.attidentity` is the
+        // v1.31.0 (D1) — `pg_attribute.attidentity` is the
         // second-channel auto-fill marker; channel #1 (`default_expression`
         // ↔ `auto_increment`) only catches the legacy SERIAL pattern.
         // A `GENERATED ALWAYS/BY DEFAULT AS IDENTITY` column has NO
@@ -213,7 +213,7 @@ pub fn build_manifest_store(
                 auto_increment,
                 not_null: row.not_null,
                 unique: row.unique,
-                // §Fase 38.h: when the default IS a sequence, omit the
+                // v1.31.0: when the default IS a sequence, omit the
                 // `default_value` from the manifest — auto_increment
                 // already encodes "the DB supplies it"; carrying the
                 // raw `nextval(...)` expression would couple the

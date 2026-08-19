@@ -1,7 +1,7 @@
 ---
 name: governed_crm_delivery
 title: Governed CRM delivery — acquire → enrich → deliver, provenance intact
-summary: "`deliver` (§105): the egress-dual of acquisition. A partial lead is enriched (§104 — the resolved email is born `speculate`/`believe`, Untrusted, NEVER `know`) and then DELIVERED to the CRM. With `provenance: attached` (the default) each delivered field lands beside its epistemic origin, so a vendor guess arrives LABELED a guess — never laundered into a bare fact (`delivery_is_assertion_egress`, the egress form of the §99 `document` T916 barrier). The credential rides §94 custody (`secret:`), never entering cognition; every operation carries an idempotency `key:` so an at-least-once retry never double-creates. Delivering bare values (`provenance: cleared`) would be a compile-time refusal (axon-T920) unless wrapped in `epistemic { believe }` after a shield + anchor."
+summary: "`deliver` (v2.60.0): the egress-dual of acquisition. A partial lead is enriched (v2.58.0 — the resolved email is born `speculate`/`believe`, Untrusted, NEVER `know`) and then DELIVERED to the CRM. With `provenance: attached` (the default) each delivered field lands beside its epistemic origin, so a vendor guess arrives LABELED a guess — never laundered into a bare fact (`delivery_is_assertion_egress`, the egress form of the v2.53.0 `document` T916 barrier). The credential rides v2.48.0 custody (`secret:`), never entering cognition; every operation carries an idempotency `key:` so an at-least-once retry never double-creates. Delivering bare values (`provenance: cleared`) would be a compile-time refusal (axon-T920) unless wrapped in `epistemic { believe }` after a shield + anchor."
 topic: data
 primitives:
   - deliver
@@ -9,11 +9,11 @@ primitives:
   - flow
 ---
 
-// The lead-gen vertical's last hop: acquire (§102) → enrich (§104) →
-// DELIVER (§105). This example shows the deliver primitive — the governed
+// The lead-gen vertical's last hop: acquire (v2.56.0) → enrich (v2.58.0) →
+// DELIVER (v2.60.0). This example shows the deliver primitive — the governed
 // egress of assertions into a system of record.
 
-// §104 — a governed enrichment tool. The resolved contact is born INFERRED
+// v2.58.0 — a governed enrichment tool. The resolved contact is born INFERRED
 // (a vendor's probabilistic guess): its fields carry a confidence + an
 // epistemic level bounded at `believe` (never `know`), and the value is
 // Untrusted until a shield clears it. Enrichment resolves the missing
@@ -25,7 +25,7 @@ tool Enrich {
     effects: <network, web>
 }
 
-// §105 — the governed CRM delivery. This is the point where a value LEAVES
+// v2.60.0 — the governed CRM delivery. This is the point where a value LEAVES
 // the epistemic lattice into a machine others treat as fact.
 //   - target: crm         — the system-of-record class (a vendor is the
 //                           enterprise transducer's per-tenant config; the
@@ -35,7 +35,7 @@ tool Enrich {
 //                           email arrives LABELED a guess. `cleared` (bare
 //                           values) is a compile-time refusal (axon-T920)
 //                           unless the flow vouched via `epistemic { believe }`.
-//   - secret: crm_api_key — the per-tenant credential resolved via §94
+// - secret: crm_api_key — the per-tenant credential resolved via v2.48.0
 //                           custody at dispatch; the flow never touches it.
 //   - effects: <web>      — a CRM write crosses the network trust boundary.
 // Every operation carries an idempotency `key:` (a natural key like the

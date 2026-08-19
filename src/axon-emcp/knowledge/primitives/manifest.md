@@ -3,7 +3,7 @@ name: manifest
 summary: Bundles resources + fabric + compliance tags into a deployable, audit-tracked unit.
 category: cognitive_io
 top_level: true
-since: Fase 6
+since: v1.2.0
 grammar: |
   manifest <Name> {
       resources: [<Res1>, <Res2>, ...]      # required — declared resources to mount
@@ -22,7 +22,7 @@ the whole bundle attests against. A manifest is what `observe`
 watches, what `reconcile` corrects drift on, and what the runtime
 treats as the unit of deployment.
 
-This is the smallest unit a Fase 6+ AXON program can ship: one
+This is the smallest unit a v1.2.0+ AXON program can ship: one
 manifest is one deployable. Multi-manifest programs are common
 (staging + production; per-tenant; per-region) and the runtime
 treats them independently.

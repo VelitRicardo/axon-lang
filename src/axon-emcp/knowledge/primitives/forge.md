@@ -3,7 +3,7 @@ name: forge
 summary: "Directed Creative Synthesis — a flow-body block that runs the Poincaré-Hadamard four-phase creative process under a measured, fail-closed novelty guarantee (NCD), so an LLM can genuinely CREATE, not just interpolate."
 category: operators
 top_level: false
-since: Fase 18 (stub); Fase 86 (v2.41.0, real implementation)
+since: v1.12.0 (stub); v2.41.0 (v2.41.0, real implementation)
 grammar: |
   forge <Name>(seed: "<text>") -> <Type> {
       mode:        combinatorial | exploratory | transformational   # optional (default exploratory)

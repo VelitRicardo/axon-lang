@@ -1,4 +1,4 @@
-//! §Fase 33.z.k (v1.28.0) — Wire-format adapter framework.
+//! v1.28.0 — Wire-format adapter framework.
 //!
 //! Closed-catalog dispatcher for SSE wire-format dialects. Three
 //! dialects ship as first-class adapters per Q3 ratification:
@@ -8,11 +8,11 @@
 //!   `event: axon.error`). D6 backwards-compat baseline.
 //! - **openai**: `data: {"choices": [{"delta": {"content": "..."}}]}`
 //!   frames terminated by `data: [DONE]`. Matches OpenAI Chat
-//!   Completions API streaming wire (OpenAI Reference Docs §Chat /
+//! Completions API streaming wire (OpenAI Reference Docs Chat /
 //!   Create chat completion / Streaming).
 //! - **anthropic**: `event: content_block_delta` /
 //!   `event: message_stop`. Matches Anthropic Messages API
-//!   streaming wire (Anthropic API Reference §Messages / Streaming).
+//! streaming wire (Anthropic API Reference Messages / Streaming).
 //!
 //! # Architecture
 //!
@@ -52,7 +52,7 @@
 //! - **D9 wire byte-compat for canonical Step**: the axon-dialect
 //!   adapter MUST produce byte-identical output to the v1.27.1
 //!   inline emission. Test pack
-//!   `tests/fase33z_k_d_axon_adapter_byte_compat.rs` pins this.
+//!   `tests/d_axon_adapter_byte_compat.rs` pins this.
 //!
 //! # Pillar trace (D10)
 //!
@@ -78,7 +78,7 @@ use crate::flow_execution_event::FlowExecutionEvent;
 use crate::runtime_warnings::RuntimeWarning;
 use axum::response::sse::Event;
 
-/// §Fase 33.z.k.g (v1.28.0) — Envelope carrying all the side-channel
+/// v1.28.0 — Envelope carrying all the side-channel
 /// + summary data the SSE producer accumulates over the lifetime of
 /// a flow. Passed to `adapter.build_complete_envelope_event()` at
 /// FlowComplete time so dialect adapters can surface the data per
@@ -94,19 +94,19 @@ use axum::response::sse::Event;
 /// Built by the producer from the same side-channels v1.27.1
 /// `build_complete_event` consumed:
 /// - `enforcement_summaries`: per-step enforcement counters from
-///   the dispatcher's `StreamPolicyEnforcer` (Fase 33.x.d).
+/// the dispatcher's `StreamPolicyEnforcer` (v1.24.0).
 /// - `runtime_warnings`: closed-catalog axon-W002 etc. warnings
-///   (Fase 33.x.g).
+/// (v1.24.0).
 /// - `effect_policies`: per-step `<stream:<policy>>` declarations
-///   (Fase 33.e).
+/// (v1.24.0).
 /// - `step_audit_records`: per-step audit rows (step_name +
 ///   tokens_emitted + output_hash + effect_policy_applied +
-///   counters), populated by the dispatcher (Fase 33.x.f). Surfaces
+/// counters), populated by the dispatcher (v1.24.0). Surfaces
 ///   on the `axon.metadata` extension frame for openai + anthropic
 ///   dialects (Q7 algebraic-policy preservation channel — adopters
 ///   on those wires use this to satisfy banking PCI DSS Req 10 /
 ///   government FedRAMP AU-2 / legal FRE 502 / medicine 21 CFR Part
-///   11 §11.10 per-step provenance requirements).
+/// 11 v1.4.0 per-step provenance requirements).
 /// - Flow envelope: trace_id, flow_name, backend, success, counters,
 ///   latency.
 #[derive(Debug, Clone)]
@@ -123,18 +123,18 @@ pub struct CompleteEnvelope {
     pub enforcement_summaries: Vec<(String, EnforcementSummaryWire)>,
     pub runtime_warnings: Vec<RuntimeWarning>,
     pub step_audit_records: Vec<StepAuditRecord>,
-    /// §Fase 55.b — the Theorem 5.1 `(base, scope, confidence)` triple of
+    /// v2.7.0 — the Theorem 5.1 `(base, scope, confidence)` triple of
     /// every `use <Tool>` dispatch whose tool declares an
     /// `epistemic:<level>` effect. Emitted as the `epistemic` array on the
     /// streaming `axon.complete` envelope (elided when empty), byte-aligned
     /// with the sync `FlowEnvelope.epistemic_envelopes` (both derived by
-    /// `epistemic_capture::collect_for_flow` — §55.c parity).
+    /// `epistemic_capture::collect_for_flow` — v2.7.0 parity).
     pub epistemic_envelopes: Vec<crate::epistemic_capture::EpistemicEnvelope>,
-    /// §Fase 91.b — the run's temporal record when any step rendered a
+    /// v2.46.0 — the run's temporal record when any step rendered a
     /// declared `now:` (capture + tzdb version + zones). Emitted as the
     /// `temporal_context` object on the streaming `axon.complete` envelope
     /// (elided when `None`), byte-aligned with the sync
-    /// `FlowEnvelope.temporal_context` (the §55.c parity discipline).
+    /// `FlowEnvelope.temporal_context` (the v2.7.0 parity discipline).
     pub temporal_context: Option<crate::temporal_context::TemporalRecord>,
 }
 
@@ -170,7 +170,7 @@ pub trait WireFormatAdapter: Send {
     /// runtime_warnings / effect_policies.
     fn translate(&mut self, event: &FlowExecutionEvent) -> Vec<Event>;
 
-    /// §Fase 33.z.k.g (v1.28.0) — Build the dialect-specific
+    /// v1.28.0 — Build the dialect-specific
     /// "complete" event with the full algebraic-policy side-channel
     /// data accumulated over the flow's lifetime. The producer calls
     /// this in place of `translate(FlowComplete)` so adapters can
@@ -216,7 +216,7 @@ pub trait WireFormatAdapter: Send {
 /// `AXONENDPOINT_TRANSPORT_DIALECTS` at parse time, but we never
 /// panic on a stale input).
 ///
-/// `trace_id` is reserved per-request (Fase 33.x.c contract); the
+/// `trace_id` is reserved per-request (v1.24.0 contract); the
 /// adapter embeds it in every emitted event for correlation.
 pub fn select_adapter(
     dialect: &str,
@@ -224,9 +224,9 @@ pub fn select_adapter(
 ) -> Box<dyn WireFormatAdapter> {
     match dialect {
         "axon" => Box::new(axon_dialect::AxonDialectAdapter::new(trace_id)),
-        // §Fase 33.z.k.e — OpenAI Chat Completions streaming wire.
+        // v1.24.0 — OpenAI Chat Completions streaming wire.
         "openai" => Box::new(openai_dialect::OpenAIDialectAdapter::new(trace_id)),
-        // §Q3 revision 2026-05-14 — Kimi (Moonshot) + GLM (Zhipu).
+        // Q3 revision 2026-05-14 — Kimi (Moonshot) + GLM (Zhipu).
         // Both providers use the OpenAI-compatible Chat Completions
         // streaming wire verbatim (same chunk shape, same `data: [DONE]`
         // sentinel). First-class catalog entries for adopter intent
@@ -234,7 +234,7 @@ pub fn select_adapter(
         // OpenAIDialectAdapter so the bytes are canonical-OpenAI.
         "kimi" => Box::new(openai_dialect::OpenAIDialectAdapter::new(trace_id)),
         "glm" => Box::new(openai_dialect::OpenAIDialectAdapter::new(trace_id)),
-        // §Fase 33.z.k.f — Anthropic Messages streaming wire.
+        // v1.24.0 — Anthropic Messages streaming wire.
         "anthropic" => Box::new(anthropic_dialect::AnthropicDialectAdapter::new(trace_id)),
         _ => Box::new(axon_dialect::AxonDialectAdapter::new(trace_id)),
     }

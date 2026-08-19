@@ -1,4 +1,4 @@
-//! §Fase 25.d — Buffer pool slab allocator (Rust shim).
+//! v1.19.0 — Buffer pool slab allocator (Rust shim).
 //!
 //! Safe Rust wrapper around the C23 cache-line-aligned slab allocator
 //! in `c-src/buffer/pool.c`. The boundary follows the founder pillar

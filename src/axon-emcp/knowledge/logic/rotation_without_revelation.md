@@ -1,7 +1,7 @@
 ---
 name: rotation_without_revelation
-title: "Rotation without revelation — custodied secrets have lifecycles, not readers (§Fase 94)"
-summary: "The law governing the secret-custody lifecycle (`backend: secrets` + `rotate` + `tool { secret: }`, §94): a secret's whole life — seed, use, enumerate, rotate, expire — completes without the value ever entering the COGNITION space (flow bindings, epistemic envelopes, LLM context, stores, wire audit). The flow decides WHEN (enumerate metadata, filter by declared expiry, invoke); the runtime performs every custody-touching act (reveal into ONE tool exchange, CAS commit at version+1). Enforced at three layers, all fail-closed: compile (axon-T897 write-verbs-never-touch-custody, axon-T898/T899 rotate anchors, axon-T900 class scoping, axon-T902 injection key shape), verify/deploy (the SecretCustodySoundness proof re-derives every store, rotate site and write verb from the IR), and dispatch (no custody port ⇒ MissingDependency; the reveal exists only on the custody→tool channel — no term evaluates to a value, so revelation is unrepresentable, not prohibited). The inbound dual of authority_only_attenuates: §92 governs authority we hand DOWN; §94 governs authority a third party lends US."
+title: "Rotation without revelation — custodied secrets have lifecycles, not readers (v2.48.0)"
+summary: "The law governing the secret-custody lifecycle (`backend: secrets` + `rotate` + `tool { secret: }`, v2.48.0): a secret's whole life — seed, use, enumerate, rotate, expire — completes without the value ever entering the COGNITION space (flow bindings, epistemic envelopes, LLM context, stores, wire audit). The flow decides WHEN (enumerate metadata, filter by declared expiry, invoke); the runtime performs every custody-touching act (reveal into ONE tool exchange, CAS commit at version+1). Enforced at three layers, all fail-closed: compile (axon-T897 write-verbs-never-touch-custody, axon-T898/T899 rotate anchors, axon-T900 class scoping, axon-T902 injection key shape), verify/deploy (the SecretCustodySoundness proof re-derives every store, rotate site and write verb from the IR), and dispatch (no custody port ⇒ MissingDependency; the reveal exists only on the custody→tool channel — no term evaluates to a value, so revelation is unrepresentable, not prohibited). The inbound dual of authority_only_attenuates: v2.46.0 governs authority we hand DOWN; v2.48.0 governs authority a third party lends US."
 ---
 
 # Rotation without revelation
@@ -31,7 +31,7 @@ own effects.
    declared class (`crm.*`). Its schema is law, synthesized by the
    compiler: `key`, `version`, `created_at`, `expires_at` — the value
    has no column. A daemon's `retrieve CrmTokens where "expires_at <
-   now() + interval '10 minutes'"` is ordinary §67 time-aware source.
+   now() + interval '10 minutes'"` is ordinary v2.21.0 time-aware source.
 2. **Rotate** — `rotate CrmTokens where "…" with RefreshCrmToken as r`
    renews every matching entry through ONE mediated exchange per key:
    the runtime reveals the current value only INTO the tool request
@@ -54,7 +54,7 @@ own effects.
    class-less secrets store — which would enumerate the tenant's ENTIRE
    secret namespace — is unrepresentable (`axon-T900`); a `secret:`
    that is not a config KEY is rejected (`axon-T902` — a credential
-   literal in source is unrepresentable, the §80.c posture).
+   literal in source is unrepresentable, the v2.37.0 posture).
 2. **Verify/deploy.** The `SecretCustodySoundness` proof re-derives
    every secrets store, rotate site and write verb from the compiled
    IR — a stale or hand-edited artifact that smuggles a ghost rotation
@@ -81,17 +81,17 @@ authenticated, each with a typed witness.
 
 - **The inbound dual of
   [`authority_only_attenuates`](axon://logic/authority_only_attenuates)**
-  (§92): that law governs authority we hand DOWN (a mint can only
+  (v2.46.0): that law governs authority we hand DOWN (a mint can only
   attenuate, and the bearer is never persisted — `axon-T896`); this law
   governs authority a third party lends US (a borrowed credential is
   custodied, renewed in custody, and never readable). Together they
   close the perimeter: **no authority — own or borrowed — exists as
   data in cognition space.**
 - [`time_is_an_explicit_input`](axon://logic/time_is_an_explicit_input)
-  (§71/§91): `expires_at` is *declared* metadata, written by the seeder
+  (v2.27.0/v2.46.0): `expires_at` is *declared* metadata, written by the seeder
   and the rotation commit — expiry drives the daemon's filter, never a
   hidden clock.
-- `dispatch_vs_cognition` (§59): the flow decides WHEN to rotate
+- `dispatch_vs_cognition` (v2.9.0): the flow decides WHEN to rotate
   (cognition); the runtime performs the exchange (dispatch). The verb
   exists precisely so that split is structural.
 

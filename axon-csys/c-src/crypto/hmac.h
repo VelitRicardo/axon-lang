@@ -1,8 +1,8 @@
 /*
- * §Fase 25.h — HMAC-SHA256 (FIPS 198-1).
+ * v1.19.0 — HMAC-SHA256 (FIPS 198-1).
  *
  * Pure-C HMAC construction over the in-house SHA-256 transform
- * (`axon_csys_sha256`). FIPS 198-1 §4 algorithm:
+ * (`axon_csys_sha256`). FIPS 198-1 section 4 algorithm:
  *
  *   K' = SHA256(K) if len(K) > B, else K padded to B
  *   ipad = K' XOR 0x36 repeated
@@ -36,8 +36,8 @@ typedef struct {
 } AxonCsysHmacSha256Ctx;
 
 /* Initialise the streaming HMAC with the given key. Any key length
- * is accepted (FIPS 198-1 §3 requires arbitrary-length support);
- * keys longer than 64 bytes are pre-hashed per §5. */
+ * is accepted (FIPS 198-1 section 3 requires arbitrary-length support);
+ * keys longer than 64 bytes are pre-hashed per section 5. */
 void axon_csys_hmac_sha256_init(
     AxonCsysHmacSha256Ctx* ctx,
     const uint8_t* key,

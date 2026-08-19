@@ -4,7 +4,7 @@
 // scaffold targets a SINGLE pipeline pass — ingest → validate →
 // enrich (cognitive) → load — with explicit data-quality anchors.
 //
-// §Fase 111 — this scaffold used to show a `transact { }` block over the
+// v2.67.0 — this scaffold used to show a `transact { }` block over the
 // load step. It was empty, and `transact` never opened a transaction
 // anyway (axon-T938): it set an unread marker string and rolled nothing
 // back. Teaching a guarantee that does not exist is worse than teaching

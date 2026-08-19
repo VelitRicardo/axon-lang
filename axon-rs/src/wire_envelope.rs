@@ -1,7 +1,7 @@
-//! §Fase 39.b — Pure Silicon Cognition: the canonical wire payload type
+//! v2.0.0 — Pure Silicon Cognition: the canonical wire payload type
 //! for axonendpoint responses on `transport: json`.
 //!
-//! Isomorphic to the ψ-vector `ψ = ⟨T, V, E⟩` (paper §5):
+//! Isomorphic to the ψ-vector `ψ = ⟨T, V, E⟩` (paper section 5):
 //!
 //! - **T** — the ontological type the value claims to inhabit
 //!   (`FlowEnvelope.ontological_type`)
@@ -23,16 +23,16 @@
 //! envelope. The conversion is total: every field of the legacy
 //! struct maps to a pillar-organized slot of the envelope, with no
 //! information loss. Epistemic fields (`certainty`,
-//! `provenance_chain`, `blame_attribution`) receive Fase-39.b safe
-//! defaults; their full producer logic lands in Fase 39.c.
+//! `provenance_chain`, `blame_attribution`) receive cycle-39.b safe
+//! defaults; their full producer logic lands in v2.0.0.
 //!
 //! ## Sealing
 //!
 //! [`FlowEnvelope::seal`] is the single egress point before HTTP
-//! serialization. In Fase 39.b it runs the Rust-side fallback for
+//! serialization. In v2.0.0 it runs the Rust-side fallback for
 //! Theorem 5.1 enforcement (clamp `certainty ≤ 0.99` if derived) +
 //! computes the `audit_chain_hash` over the canonical provenance
-//! representation. In Fase 39.c this method delegates to the C23
+//! representation. In v2.0.0 this method delegates to the C23
 //! kernel `axon-csys::effects::envelope::validate_epistemic_degradation`,
 //! making the bound structurally unbypassable from any Rust caller.
 //!
@@ -47,7 +47,7 @@
 //! - **Pillar IV (Capability)** — `blame_attribution` (carries
 //!   `BlameKind` of failure when present)
 //!
-//! See plan vivo `docs/fase/fase_39_pure_silicon_cognition.md` §4 for
+//! See plan vivo `docs/cycle/pure_silicon_cognition.md` section 4 for
 //! the full wire-shape contract.
 
 use serde::{Deserialize, Serialize};
@@ -57,13 +57,13 @@ use sha2::{Digest, Sha256};
 // FlowEnvelope — the canonical wire payload for `transport: json`
 // ════════════════════════════════════════════════════════════════════
 
-/// §Fase 39 (D1, D2, D5) — the wire payload of every `transport: json`
+/// v2.0.0 (D1, D2, D5) — the wire payload of every `transport: json`
 /// axonendpoint response (HTTP 2xx) and every legacy
 /// `POST /v1/execute` invocation.
 ///
 /// Fields are organized by Pillar (see module docs). At wire
 /// emission, `result` carries a `serde_json::Value` (monomorphic at
-/// runtime); D5 validation (Fase 32.d) — once simplified in 39.d —
+/// runtime); D5 validation (v1.23.0) — once simplified in 39.d —
 /// will type-check this slot against the declared inner T of the
 /// adopter's `output: FlowEnvelope<T>` declaration.
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -83,17 +83,17 @@ pub struct FlowEnvelope {
     pub result: serde_json::Value,
 
     /// Certainty `c ∈ [0.0, 1.0]`, bounded by Theorem 5.1:
-    /// `c ≤ 0.99` whenever `derived_status = true`. In Fase 39.b
+    /// `c ≤ 0.99` whenever `derived_status = true`. In v2.0.0
     /// the bound is enforced by [`FlowEnvelope::seal`]'s Rust
-    /// fallback; in Fase 39.c the bound moves to the C23 kernel
+    /// fallback; in v2.0.0 the bound moves to the C23 kernel
     /// `axon-csys::effects::envelope::validate_epistemic_degradation`,
     /// making it structurally unbypassable.
     pub certainty: f64,
 
-    /// §Fase 55.b — the Theorem 5.1 `(base, scope, confidence)` triple of
+    /// v2.7.0 — the Theorem 5.1 `(base, scope, confidence)` triple of
     /// every flow-level `use <Tool>` dispatch whose tool declares an
     /// `epistemic:<level>` effect. Surfaces the epistemic degradation on
-    /// the wire — the §50.i.4 parity gate, promoted (the competitive
+    /// the wire — the v2.4.0 parity gate, promoted (the competitive
     /// differential: an adopter sees a query routed through an
     /// `epistemic:speculate` tool decay to `confidence ≤ 0.80`). Empty —
     /// and elided from the JSON — for flows with no epistemic tool (D5
@@ -119,7 +119,7 @@ pub struct FlowEnvelope {
 
     /// HMAC-SHA256 hex of the canonical form of `provenance_chain
     /// || step_audit`. Computed by [`FlowEnvelope::seal`]; in
-    /// Fase 39.c the hash moves to the C23 kernel for byte-
+    /// v2.0.0 the hash moves to the C23 kernel for byte-
     /// deterministic cross-deployment verification.
     pub audit_chain_hash: String,
 
@@ -140,7 +140,7 @@ pub struct FlowEnvelope {
     /// is reborn here as Uuid v4 hex string).
     pub trace_id: String,
 
-    /// §Fase 65.F — the HONEST hard-failure detail when the flow aborted on
+    /// v2.15.0 — the HONEST hard-failure detail when the flow aborted on
     /// a node's `DispatchError` (a failing `persist`/`mutate`/`purge` store
     /// write, a backend error, etc.). `Some("flow 'F' failed at persist into
     /// 'S': <cause>")` names the failing node + the underlying cause. This is
@@ -148,29 +148,29 @@ pub struct FlowEnvelope {
     /// degradation reported ON the success path — a hard fail needs its own
     /// slot. Mirrors the streaming dispatcher's `FlowError.error` so a
     /// non-streaming endpoint surfaces store-write failures with the SAME
-    /// honesty the SSE path always had (closing the §65.E.2 silent-abort
+    /// honesty the SSE path always had (closing the v2.15.0 silent-abort
     /// regression). `None` — and elided from the JSON — on the clean path, so
-    /// every pre-§65.F happy-path wire stays byte-identical.
+    /// every pre-v2.15.0 happy-path wire stays byte-identical.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
 
-    /// §Fase 91.b — the run's temporal record when any step rendered a
+    /// v2.46.0 — the run's temporal record when any step rendered a
     /// declared `now:` (`time_is_an_explicit_input` applied to cognition):
     /// the single captured instant (RFC 3339 UTC), the tz-database release
     /// it resolved against, and the declared zones actually rendered — the
     /// triple that makes the exact prompt the model saw reconstructible
     /// byte-for-byte. `None` — and elided from the JSON — for every
-    /// `now:`-less flow, so every pre-§91 wire stays byte-identical.
+    /// `now:`-less flow, so every pre-v2.46.0 wire stays byte-identical.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub temporal_context: Option<crate::temporal_context::TemporalRecord>,
 }
 
-/// §Fase 39 (D5) — per-step audit surface. Structured replacement
+/// v2.0.0 (D5) — per-step audit surface. Structured replacement
 /// for the v1.x `Vec<String>` step results.
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct StepAuditTrail {
     pub step_names: Vec<String>,
-    /// §Fase 39.b — TYPED. The v1.x stringified results are parsed
+    /// v2.0.0 — TYPED. The v1.x stringified results are parsed
     /// as JSON values when constructible; opaque strings fall back
     /// to `Value::String(...)`. The D5 simplification in 39.d
     /// leverages this typed form.
@@ -179,18 +179,18 @@ pub struct StepAuditTrail {
     pub anchor_breaches: usize,
     pub errors: usize,
     pub steps_executed: usize,
-    /// §Fase 33.x.d carry-over — per-step EnforcementSummary entries
+    /// v1.24.0 carry-over — per-step EnforcementSummary entries
     /// (from `StreamPolicyEnforcer` runs). Empty in the legacy sync
     /// path; populated by `server_execute_streaming` per the D2
     /// contract.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub enforcement_summaries:
         Vec<(String, crate::execution_result::EnforcementSummaryWire)>,
-    /// §Fase 33.e carry-over — per-step `<stream:<policy>>` slugs
+    /// v1.24.0 carry-over — per-step `<stream:<policy>>` slugs
     /// declared in source. Empty when no step declares one.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub effect_policies: Vec<(String, String)>,
-    /// §Fase 33.x.g carry-over — closed-catalog runtime warnings
+    /// v1.24.0 carry-over — closed-catalog runtime warnings
     /// (only populated on legacy-path fallback under axon-W002 —
     /// structurally unreachable post-33.z but the slot survives
     /// for forward-compat with future warnings).
@@ -198,7 +198,7 @@ pub struct StepAuditTrail {
     pub runtime_warnings: Vec<crate::runtime_warnings::RuntimeWarning>,
 }
 
-/// §Fase 39 (D5) — execution metrics + provenance identity. Always
+/// v2.0.0 (D5) — execution metrics + provenance identity. Always
 /// populated.
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct ExecutionMetrics {
@@ -214,7 +214,7 @@ pub struct ExecutionMetrics {
 // BlameContext — Pillar IV attribution surface
 // ════════════════════════════════════════════════════════════════════
 
-/// §Fase 39 (D11) — closed-catalog blame attribution. Surfaces
+/// v2.0.0 (D11) — closed-catalog blame attribution. Surfaces
 /// WHICH layer produced the degraded posture on a 2xx response.
 /// Hard-fails (4xx/5xx) are handled by the existing error envelopes
 /// (not this struct) — `BlameContext` is for SOFT degradation
@@ -222,11 +222,11 @@ pub struct ExecutionMetrics {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct BlameContext {
     pub kind: BlameKind,
-    /// §Fase 119.m.2 — WHO is responsible, orthogonal to [`BlameKind`]'s WHAT
+    /// v2.83.0 — WHO is responsible, orthogonal to [`BlameKind`]'s WHAT
     /// degraded. `None` when this degradation does not determine a party.
     ///
     /// Elided from the wire when absent (`skip_serializing_if`), so every
-    /// pre-§119.m.2 envelope serialises byte-identically and §39's D11 wire
+    /// pre-v2.83.0 envelope serialises byte-identically and v2.0.0's D11 wire
     /// contract is untouched.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub party: Option<BlameParty>,
@@ -243,7 +243,7 @@ pub struct BlameContext {
     pub d_letter: Option<String>,
 }
 
-/// §Fase 119.m.2 — the RESPONSIBILITY axis of the Findler-Felleisen blame
+/// v2.83.0 — the RESPONSIBILITY axis of the Findler-Felleisen blame
 /// calculus: **who** is answerable for a degradation, as opposed to
 /// [`BlameKind`]'s **what** degraded.
 ///
@@ -289,7 +289,7 @@ pub enum BlameParty {
     Environment,
 }
 
-/// §Fase 39 (D11) — closed catalog of blame kinds. Adding a variant
+/// v2.0.0 (D11) — closed catalog of blame kinds. Adding a variant
 /// is a non-breaking surface change (consumers MUST handle
 /// `#[non_exhaustive]`-style fall-through).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -317,7 +317,7 @@ pub enum BlameKind {
 // ════════════════════════════════════════════════════════════════════
 
 impl FlowEnvelope {
-    /// §Fase 39.b — convert a v1.x [`crate::execution_result::ServerExecutionResult`]
+    /// v2.0.0 — convert a v1.x [`crate::execution_result::ServerExecutionResult`]
     /// into a v2.0.0 envelope. Total: every legacy field maps to a
     /// pillar-organized slot; no information loss.
     ///
@@ -345,7 +345,7 @@ impl FlowEnvelope {
         ontological_type: String,
     ) -> Self {
         // ── Pillar II — provenance chain ──
-        // §Fase 39.c.y — interleave semantic provenance events
+        // v2.0.0 — interleave semantic provenance events
         // (`retrieve:*`, `shield:*`, etc.) with the canonical
         // step/backend entries. Order: `flow:F`, then taxonomy
         // events from execution_units walk, then `step:S` entries
@@ -393,7 +393,7 @@ impl FlowEnvelope {
         let certainty = if derived { 0.99 } else { 1.0 };
 
         // ── Pillar IV — blame ──
-        // §Fase 39.c.z — propagate the blame attribution from the
+        // v2.0.0 — propagate the blame attribution from the
         // runtime walk (populated by `derive_blame_from_report` in
         // `wire_envelope_producers`). `None` on clean happy path;
         // populated when the runtime surfaced an anchor breach,
@@ -417,7 +417,7 @@ impl FlowEnvelope {
             ontological_type,
             result,
             certainty,
-            // §Fase 55.b — surface the IR-derived epistemic envelopes.
+            // v2.7.0 — surface the IR-derived epistemic envelopes.
             epistemic_envelopes: exec_result.epistemic_envelopes,
             provenance_chain,
             step_audit: StepAuditTrail {
@@ -442,10 +442,10 @@ impl FlowEnvelope {
                 source_file: exec_result.source_file,
             },
             trace_id,
-            // §Fase 65.F — the honest hard-failure detail (named node + cause),
+            // v2.15.0 — the honest hard-failure detail (named node + cause),
             // verbatim from the runtime walk. `None` on the clean path.
             error: exec_result.error,
-            // §Fase 91.b — the temporal record, verbatim from the runtime walk.
+            // v2.46.0 — the temporal record, verbatim from the runtime walk.
             temporal_context: exec_result.temporal_context,
         }
     }
@@ -456,14 +456,14 @@ impl FlowEnvelope {
 // ════════════════════════════════════════════════════════════════════
 
 impl FlowEnvelope {
-    /// §Fase 39.b — apply epistemic enforcement + compute the
+    /// v2.0.0 — apply epistemic enforcement + compute the
     /// `audit_chain_hash` before wire serialization. This is the
     /// ONLY public sealing surface; the wire bytes emitted by
     /// `axon_server` MUST pass through this method (the `seal()`
-    /// invariant — Fase 39.b establishes it; 39.h grep gate locks
+    /// invariant — v2.0.0 establishes it; 39.h grep gate locks
     /// it structurally).
     ///
-    /// ## Fase 39.c.x implementation (C23 kernel canonical)
+    /// ## v2.0.0 implementation (C23 kernel canonical)
     ///
     /// 1. Theorem 5.1 enforcement DELEGATES to the C23 kernel
     ///    `axon-csys::envelope::validate_degradation`. The kernel:
@@ -484,14 +484,14 @@ impl FlowEnvelope {
     ///    serialization of `[provenance_chain, step_audit]`.
     ///    Deterministic on identical inputs; tamper-evident.
     ///    (39.c.x leaves the SHA-256 in Rust pending a future
-    ///    sub-fase that moves it to axon-csys::crypto for true
+    /// step that moves it to axon-csys::crypto for true
     ///    silicon-grounded tamper-evidence.)
     pub fn seal(mut self) -> Self {
-        // §Fase 55.e — epistemic ceiling propagates to the HEADLINE
+        // v2.7.0 — epistemic ceiling propagates to the HEADLINE
         // certainty: a flow can be no more certain than its least-certain
         // epistemic tool. The λD lattice meet (⊓) of the per-tool ceilings
         // is their minimum; each envelope's `confidence` IS that tool's
-        // applied ceiling (§55.a/b), so `min(confidences)` is the flow's
+        // applied ceiling (v2.7.0), so `min(confidences)` is the flow's
         // epistemic upper bound. Applied BEFORE the C23 kernel so the kernel
         // consolidates the full degradation (Theorem 5.1) at the single
         // egress — no gateway can read a nominal `know` headline while an
@@ -552,7 +552,7 @@ impl FlowEnvelope {
 // Helpers
 // ════════════════════════════════════════════════════════════════════
 
-/// §Fase 39.b — derive the `ontological_type` slug for an endpoint's
+/// v2.0.0 — derive the `ontological_type` slug for an endpoint's
 /// declared `output: T`. When the endpoint declares
 /// `output: FlowEnvelope<T>` (the canonical form post-39.e), this
 /// extracts the inner T. For legacy declarations (pre-39.e — still
@@ -612,7 +612,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39b_from_execution_result_clean_happy_path() {
+    fn from_execution_result_clean_happy_path() {
         let exec = fixture_exec_result();
         let env = FlowEnvelope::from_execution_result(
             exec,
@@ -634,7 +634,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39b_typed_result_slot_from_last_step() {
+    fn typed_result_slot_from_last_step() {
         let exec = fixture_exec_result();
         let env = FlowEnvelope::from_execution_result(
             exec,
@@ -650,7 +650,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39b_typed_step_results_parsed_when_json() {
+    fn typed_step_results_parsed_when_json() {
         let exec = fixture_exec_result();
         let env = FlowEnvelope::from_execution_result(
             exec,
@@ -661,7 +661,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39b_opaque_step_result_falls_back_to_string_value() {
+    fn opaque_step_result_falls_back_to_string_value() {
         let mut exec = fixture_exec_result();
         exec.step_results = vec!["(stub model response)".to_string()];
         let env = FlowEnvelope::from_execution_result(exec, "String".to_string());
@@ -674,7 +674,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39b_certainty_bounded_on_derived_state() {
+    fn certainty_bounded_on_derived_state() {
         let mut exec = fixture_exec_result();
         exec.anchor_breaches = 1;
         let env = FlowEnvelope::from_execution_result(exec, "Any".to_string());
@@ -682,7 +682,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39b_certainty_bounded_on_errors() {
+    fn certainty_bounded_on_errors() {
         let mut exec = fixture_exec_result();
         exec.errors = 1;
         let env = FlowEnvelope::from_execution_result(exec, "Any".to_string());
@@ -690,7 +690,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39b_seal_populates_audit_chain_hash() {
+    fn seal_populates_audit_chain_hash() {
         let env = FlowEnvelope::from_execution_result(
             fixture_exec_result(),
             "List<TenantRecord>".to_string(),
@@ -709,7 +709,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39b_seal_is_deterministic_on_identical_inputs() {
+    fn seal_is_deterministic_on_identical_inputs() {
         let a = FlowEnvelope::from_execution_result(
             fixture_exec_result(),
             "List<TenantRecord>".to_string(),
@@ -727,7 +727,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39b_seal_changes_hash_on_provenance_drift() {
+    fn seal_changes_hash_on_provenance_drift() {
         let a = FlowEnvelope::from_execution_result(
             fixture_exec_result(),
             "List<TenantRecord>".to_string(),
@@ -747,8 +747,8 @@ mod tests {
     }
 
     #[test]
-    fn fase39b_seal_clamps_certainty_on_derived() {
-        // §Theorem 5.1 enforcement — even if a producer set certainty
+    fn seal_clamps_certainty_on_derived() {
+        // Theorem 5.1 enforcement — even if a producer set certainty
         // > 0.99 on a derived state, seal() clamps it.
         // The 39.b algebra: derived ⇔ anchor_breaches > 0 || errors > 0
         // (matches from_execution_result verbatim).
@@ -780,8 +780,8 @@ mod tests {
     }
 
     #[test]
-    fn fase39b_seal_preserves_certainty_on_clean_path() {
-        // §Theorem 5.1 — only derived states are clamped. A flow
+    fn seal_preserves_certainty_on_clean_path() {
+        // Theorem 5.1 — only derived states are clamped. A flow
         // with no derivation (just the flow:_ provenance prefix and
         // nothing else) keeps certainty = 1.0.
         let mut exec = fixture_exec_result();
@@ -813,7 +813,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39b_extract_inner_ontological_type_unwraps_envelope() {
+    fn extract_inner_ontological_type_unwraps_envelope() {
         assert_eq!(
             extract_inner_ontological_type("FlowEnvelope<List<TenantRecord>>"),
             "List<TenantRecord>"
@@ -831,7 +831,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39b_serialization_round_trip() {
+    fn serialization_round_trip() {
         let env = FlowEnvelope::from_execution_result(
             fixture_exec_result(),
             "List<TenantRecord>".to_string(),
@@ -848,8 +848,8 @@ mod tests {
     }
 
     #[test]
-    fn fase39b_wire_shape_has_canonical_field_order() {
-        // §Fase 39 §4 — the wire is the ψ-vector. Verify the
+    fn wire_shape_has_canonical_field_order() {
+        // v2.0.0 section 4 — the wire is the ψ-vector. Verify the
         // serialized form carries every field the contract names.
         let env = FlowEnvelope::from_execution_result(
             fixture_exec_result(),
@@ -871,7 +871,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39b_blame_kind_serializes_snake_case() {
+    fn blame_kind_serializes_snake_case() {
         // Wire-shape contract: BlameKind serializes as snake_case.
         let blame = BlameContext {
             kind: BlameKind::AnchorBreach,
@@ -895,7 +895,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39b_trace_id_minted_when_legacy_is_zero() {
+    fn trace_id_minted_when_legacy_is_zero() {
         let exec = fixture_exec_result(); // trace_id = 0
         let env = FlowEnvelope::from_execution_result(exec, "Any".to_string());
         // Uuid v4 is 36 chars with dashes; legacy hex (16) is 16.
@@ -910,7 +910,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39b_trace_id_carries_legacy_value_when_nonzero() {
+    fn trace_id_carries_legacy_value_when_nonzero() {
         let mut exec = fixture_exec_result();
         exec.trace_id = 0xDEADBEEF;
         let env = FlowEnvelope::from_execution_result(exec, "Any".to_string());

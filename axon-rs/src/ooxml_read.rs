@@ -1,26 +1,26 @@
-//! §Fase 100.c/100.d — the OOXML reader: unzip an ingested DOCX/PPTX/XLSX into a
+//! v2.54.0 — the OOXML reader: unzip an ingested DOCX/PPTX/XLSX into a
 //! typed, bounded, born-`Untrusted` text tree — the *faithful* half of the
-//! `parse ≠ infer` split (D100.1).
+//! `parse ≠ infer` split.
 //!
-//! **Born `Untrusted` (D100.2, reuses §98 verbatim).** A `.docx` from a
+//! **Born `Untrusted` (the design decision, reuses v2.52.0 verbatim).** A `.docx` from a
 //! customer's inbox is exactly as adversarial as a scraped page: prompt
 //! injection in comments / hidden runs / speaker notes, external relationship
 //! targets (SSRF on open), DDE / field codes, embedded OLE, zip bombs, XML
 //! entity expansion. The reader's output is born `EpistemicTaint::Untrusted`
-//! and cannot reach an agent's beliefs without a shield (the §98.f barrier).
+//! and cannot reach an agent's beliefs without a shield (the v2.52.0 barrier).
 //!
-//! **Parsed, never Inferred (D100.1/D100.14).** Everything this reader produces
+//! **Parsed, never Inferred.** Everything this reader produces
 //! is [`IngestProvenance::Parsed`] — a fact about the file, re-derivable from
 //! the bytes, elevatable by a shield. It NEVER produces `Inferred` (OCR /
-//! vision): that has no producer until §101, so the intermediate state is safe
+//! vision): that has no producer until v2.54.0, so the intermediate state is safe
 //! by construction.
 //!
-//! **Bounded BEFORE parsed (D100.13).** Entry count, per-entry uncompressed
+//! **Bounded BEFORE parsed.** Entry count, per-entry uncompressed
 //! size, compression ratio (zip bomb), and total size are checked before the
 //! XML is looked at. Entity expansion / external DTDs are refused outright. A
 //! hostile document cannot OOM or hang the runtime.
 //!
-//! **Every threat is a typed refusal, never a silent fetch/expand (§6):**
+//! **Every threat is a typed refusal, never a silent fetch/expand (section 6):**
 //! external relationship targets, DDE fields, and OLE objects are
 //! [`IngestError`]s — refused and (enterprise-side) audited, never followed.
 
@@ -31,7 +31,7 @@ use sha2::{Digest, Sha256};
 
 use crate::emcp::EpistemicTaint;
 
-// ── Bounds (D100.13) ──────────────────────────────────────────────────────────
+// ── Bounds ──────────────────────────────────────────────────────────
 
 /// Max ZIP entries in an ingested package — a package with thousands of parts is
 /// a decompression-amplification vector.
@@ -64,11 +64,11 @@ impl Default for IngestBounds {
     }
 }
 
-// ── Provenance class (D100.1) — the keystone type ─────────────────────────────
+// ── Provenance class — the keystone type ─────────────────────────────
 
-// §Fase 118.b — `IngestProvenance` MOVED to `crate::ingest_provenance`, a
+// v2.81.0 — `IngestProvenance` MOVED to `crate::ingest_provenance`, a
 // leaf module. It is an epistemic concept, not an OOXML one, and living here
-// made the §101 extraction contract depend on the OOXML reader (and `zip`)
+// made the v2.54.0 extraction contract depend on the OOXML reader (and `zip`)
 // just to name it. Re-exported so existing call sites keep resolving.
 pub use crate::ingest_provenance::IngestProvenance;
 
@@ -86,24 +86,24 @@ pub struct TextRun {
 pub struct IngestedDocument {
     /// `docx | pptx | xlsx`.
     pub format: String,
-    /// Always `Untrusted` on read (D100.2).
+    /// Always `Untrusted` on read.
     pub taint: EpistemicTaint,
-    /// Always `Parsed` on read (D100.1) — never `Inferred` in §100.
+    /// Always `Parsed` on read — never `Inferred` in v2.54.0.
     pub provenance: IngestProvenance,
     /// Extracted text runs, in document order.
     pub text: Vec<TextRun>,
     /// `sha256` per package part — the basis of the surgical-edit manifest
-    /// (§100.e, D100.7).
+    /// (v2.54.0, the design decision).
     pub part_hashes: BTreeMap<String, String>,
     /// The raw package parts (name → bytes), preserved verbatim for the
-    /// preserve-by-default surgical editor (D100.6). NEVER round-tripped through
-    /// the §99 IR.
+    /// preserve-by-default surgical editor. NEVER round-tripped through
+    /// the v2.53.0 IR.
     pub parts: BTreeMap<String, Vec<u8>>,
 }
 
 impl IngestedDocument {
     /// The concatenated text (document order) — what a shield scans + what a
-    /// `pix` navigator descends (D100.11).
+    /// `pix` navigator descends.
     pub fn full_text(&self) -> String {
         self.text.iter().map(|r| r.text.as_str()).collect::<Vec<_>>().join("\n")
     }
@@ -153,7 +153,7 @@ impl std::error::Error for IngestError {}
 
 // ── The reader ────────────────────────────────────────────────────────────────
 
-/// §Fase 100.c — read an OOXML package from bytes into an
+/// v2.54.0 — read an OOXML package from bytes into an
 /// [`IngestedDocument`]. Bounds are enforced BEFORE parse; threats are typed
 /// refusals; the output is born `Untrusted` + `Parsed`.
 pub fn read_ooxml(bytes: &[u8], bounds: &IngestBounds) -> Result<IngestedDocument, IngestError> {
@@ -283,7 +283,7 @@ fn extract_text_runs(xml: &str) -> Vec<String> {
         .collect()
 }
 
-/// Minimal XML text unescaping (the inverse of the §99 writer's escaping).
+/// Minimal XML text unescaping (the inverse of the v2.53.0 writer's escaping).
 fn xml_unescape(s: &str) -> String {
     s.replace("&lt;", "<")
         .replace("&gt;", ">")
@@ -362,7 +362,7 @@ mod tests {
 
     #[test]
     fn never_constructs_inferred_in_this_fase() {
-        // D100.14 — the reader only ever produces Parsed. (The vacuum test.)
+        // the design decision — the reader only ever produces Parsed. (The vacuum test.)
         let doc = read_ooxml(&docx_bytes("<w:document/>"), &IngestBounds::default()).unwrap();
         assert_eq!(doc.provenance, IngestProvenance::Parsed);
         assert_ne!(doc.provenance, IngestProvenance::Inferred);

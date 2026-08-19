@@ -214,8 +214,8 @@ pub fn list() -> Vec<Value> {
                         ],
                         "description": "Optional explicit domain override. Skips the \
                             classifier — use when you already know which scaffold you want. \
-                            §Fase 7 ships 33 closed domains: verticals (Fase 7.a), agent \
-                            patterns (Fase 7.b), application patterns (Fase 7.c). See \
+                            v1.2.0 ships 33 closed domains: verticals (v1.2.0), agent \
+                            patterns (v1.2.0), application patterns (v1.2.0). See \
                             `axon://logic/flow_composition` for picking the right one."
                     }
                 },
@@ -229,10 +229,10 @@ pub fn list() -> Vec<Value> {
 /// Dispatch a `tools/call` request. `params` is the raw `params` field
 /// of the JSON-RPC envelope: `{ "name": "...", "arguments": { ... } }`.
 ///
-/// §Fase 8 — every dispatched call is wall-clock-timed and recorded
+/// v1.3.0 — every dispatched call is wall-clock-timed and recorded
 /// through `telemetry`. The recorded fields are privacy-clean: tool
 /// name + duration + `is_error` boolean. Arguments + error messages
-/// are NEVER passed to the recorder (see `telemetry.rs` §Privacy).
+/// are NEVER passed to the recorder (see `telemetry.rs` Privacy).
 pub async fn dispatch_call(
     params: Value,
     catalog: &Arc<Catalog>,
@@ -241,7 +241,7 @@ pub async fn dispatch_call(
     let call: ToolCall = serde_json::from_value(params)
         .map_err(|e| JsonRpcError::invalid_params(format!("tools/call params: {e}")))?;
     let started = Instant::now();
-    // §Fase 8 — for `axon.compose` + `axon.check` + `axon.parse` we
+    // v1.3.0 — for `axon.compose` + `axon.check` + `axon.parse` we
     // ALSO record the structured outcome below (per-domain, per-stage)
     // through the dedicated `record_compose` / `record_check`
     // entrypoints. The top-level `record_tool_call` runs in EVERY
@@ -394,7 +394,7 @@ fn check(args: Value, telemetry: &Arc<Telemetry>) -> Result<Value, JsonRpcError>
     let outcome = compiler_pipeline::run(&args.source, filename);
     let payload = compiler_pipeline::outcome_to_check_payload(&outcome);
     let is_error = !payload["ok"].as_bool().unwrap_or(true);
-    // §Fase 8 — record the per-stage outcome. The `stage` value is
+    // v1.3.0 — record the per-stage outcome. The `stage` value is
     // the closed `Stage::as_str()` slug; the source itself is NEVER
     // forwarded to the recorder (privacy invariant #1).
     let stage_slug = payload["stage"].as_str().unwrap_or("type_check");
@@ -423,7 +423,7 @@ fn parse(args: Value, telemetry: &Arc<Telemetry>) -> Result<Value, JsonRpcError>
     let outcome = compiler_pipeline::run(&args.source, filename);
     let payload = compiler_pipeline::outcome_to_parse_payload(outcome);
     let is_error = !payload["ok"].as_bool().unwrap_or(true);
-    // §Fase 8 — same per-stage recording surface as `axon.check`. The
+    // v1.3.0 — same per-stage recording surface as `axon.check`. The
     // pipeline shape is shared (it's the same `compiler_pipeline::run`)
     // so the `stage` slug is interchangeable between check/parse.
     let stage_slug = payload["stage"].as_str().unwrap_or("ir_generate");
@@ -490,7 +490,7 @@ fn compose_tool(
     // template drifted from the parser without the integration test
     // catching it. Flip `isError` so the agent's reflex fires.
     let is_error = r.axon_check_verdict != "well-formed";
-    // §Fase 8 — record the per-domain compose outcome. `intent` is
+    // v1.3.0 — record the per-domain compose outcome. `intent` is
     // NEVER forwarded (privacy invariant #2); only the closed-catalog
     // `domain` slug, the top classifier score, and whether the call
     // carried an explicit `domain:` override.
@@ -521,7 +521,7 @@ struct ExamplesArgs {
     primitive: Option<String>,
 }
 
-/// §Phase 9 — `axon.examples` handler. Resolves three independent
+/// Phase 9 — `axon.examples` handler. Resolves three independent
 /// filter modes:
 ///
 /// - `name:` — single-example lookup; returns the full `.axon`
@@ -677,7 +677,7 @@ mod tests {
         let mut f = std::fs::File::create(prims.join(format!("{name}.md"))).unwrap();
         let body = format!(
             "---\nname: {name}\nsummary: test summary\ncategory: {}\ntop_level: {}\n\
-             since: Fase X\ngrammar: |\n  {name} ...\n---\n\nBody.\n",
+             since: cycle X\ngrammar: |\n {name} ...\n---\n\nBody.\n",
             cat.as_str(),
             top,
         );
@@ -1041,8 +1041,8 @@ mod tests {
             serde_json::from_str(v["content"][0]["text"].as_str().unwrap()).unwrap();
         let alts = payload["alternatives"].as_array().unwrap();
         // We always return the full scoreboard (one entry per domain
-        // in `Domain::all()`) so the agent can quote it. §Fase 7.a
-        // grew the catalogue to 12; §Fase 7.b to 20; §Fase 7.c
+        // in `Domain::all()`) so the agent can quote it. v1.2.0
+        // grew the catalogue to 12; v1.2.0 to 20; v1.2.0
         // closes the cycle at 33. The assertion tracks the count
         // exactly so any future drop / addition surfaces here.
         assert_eq!(alts.len(), 33);
@@ -1066,15 +1066,15 @@ mod tests {
         assert_eq!(v["isError"], false);
         let payload: Value =
             serde_json::from_str(v["content"][0]["text"].as_str().unwrap()).unwrap();
-        // Phase 9 ships 25 curated examples (5 composition [+ §58.h
-        // tool_structured_args] + §Fase 51 quant_feature_map + §Fase 91
+        // Phase 9 ships 25 curated examples (5 composition [+ v2.8.0
+        // tool_structured_args] + v2.4.0 quant_feature_map + v2.46.0
         // temporal_cognitive_context + 2 session_types + 1 shields +
-        // 1 effects + 1 streaming + 5 data [+ §Fase 94
-        // secret_custody_rotation + §Fase 95 secret_partition_multitenant +
-        // §Fase 105 governed_crm_delivery] + 2 agents + 4 endpoints [+ §Fase 83
-        // cors_named_origin_policy + §Fase 92 widget_ephemeral_credential +
-        // §Fase 107 query_safe_search] + 1 memory + 2 validation +
-        // §Fase 108 governed_data_pipeline [data] + §Fase 115
+        // 1 effects + 1 streaming + 5 data [+ v2.48.0
+        // secret_custody_rotation + v2.49.0 secret_partition_multitenant +
+        // v2.60.0 governed_crm_delivery] + 2 agents + 4 endpoints [+ v2.38.0
+        // cors_named_origin_policy + v2.46.0 widget_ephemeral_credential +
+        // v2.62.0 query_safe_search] + 1 memory + 2 validation +
+        // v2.63.0 governed_data_pipeline [data] + v2.76.0
         // module_imports [composition — the EMS]).
         assert_eq!(payload["count"], 30);
         assert_eq!(payload["examples"].as_array().unwrap().len(), 30);

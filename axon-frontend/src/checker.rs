@@ -68,7 +68,7 @@ fn count_declarations(decls: &[Declaration]) -> usize {
 
 /// Run `axon check` natively. Returns an exit code (0 / 1 / 2).
 ///
-/// `strict = true` (Fase 13.e D4) promotes warnings (e.g. legacy
+/// `strict = true` (v1.6.0 D4) promotes warnings (e.g. legacy
 /// string-topic listeners) to errors so the check exits non-zero.
 pub fn run_check(
     file: &str,
@@ -94,9 +94,9 @@ pub fn run_check(
         }
     };
 
-    // ── 1.b §Fase 115.g — the EMS engages when the entry declares any
+    // ── 1.b v2.76.0 — the EMS engages when the entry declares any
     // import. One statement means module semantics were requested; the
-    // refused forms then refuse loudly (D115.9) instead of staying
+    // refused forms then refuse loudly instead of staying
     // decorative as they did through v2.75.0.
     if crate::ems::source_declares_imports(&source, file) {
         let manifest_owned = match load_manifest(schemas_dir, &filename, &c) {
@@ -154,7 +154,7 @@ pub fn run_check(
     let declaration_count = count_declarations(&program.declarations);
 
     // ── 6. Type check ────────────────────────────────────────────
-    // §Fase 38.x.d (D2, D3) — when `--schemas-dir <path>` is supplied
+    // v1.31.0 (D2, D3) — when `--schemas-dir <path>` is supplied
     // (or `AXON_SCHEMAS_DIR` env var), load + merge every
     // `.axon-schema.json` under the path and feed the resulting
     // `Manifest` to the type-checker. T801-T805 + T803 run against
@@ -191,7 +191,7 @@ pub fn run_check(
         return 1;
     }
 
-    // ── 6.b §Fase 13.e — strict mode promotes warnings to errors ─
+    // ── 6.b v1.6.0 — strict mode promotes warnings to errors ─
     if strict && !type_warnings.is_empty() {
         eprintln!(
             "{}X {filename}{}  0 errors, {} warning(s) {}(--strict){}",
@@ -232,8 +232,8 @@ pub fn run_check(
     0
 }
 
-/// §Fase 38.x.d — load + merge the `--schemas-dir` manifests (shared by
-/// the single-file path and the §115 EMS path). `Err(exit_code)` when the
+/// v1.31.0 — load + merge the `--schemas-dir` manifests (shared by
+/// the single-file path and the v2.76.0 EMS path). `Err(exit_code)` when the
 /// directory fails to load.
 fn load_manifest(
     schemas_dir: Option<&str>,
@@ -257,7 +257,7 @@ fn load_manifest(
     }
 }
 
-/// §Fase 115.g — `axon check` over a multi-module project. Same exit
+/// v2.76.0 — `axon check` over a multi-module project. Same exit
 /// contract as the single-file path (0 clean · 1 diagnostics); the
 /// report gains a module count, and every diagnostic names its FILE
 /// (module-local line) because the compilation spans several.

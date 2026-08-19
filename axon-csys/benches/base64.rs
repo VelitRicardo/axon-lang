@@ -1,4 +1,4 @@
-//! §Fase 25.j — base64url-no-pad benchmark vs `base64::URL_SAFE_NO_PAD`.
+//! v1.19.0 — base64url-no-pad benchmark vs `base64::URL_SAFE_NO_PAD`.
 //!
 //! Measures encode + decode throughput on 64 B, 1 KiB, 64 KiB inputs.
 //! Documented in plan vivo 25.j row.

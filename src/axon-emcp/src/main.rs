@@ -19,7 +19,7 @@
 //! valid JSON-RPC frame corrupts the agent's parser — so we route every
 //! `tracing` event through stderr by default.
 //!
-//! # Subcommands (§Fase 6.a)
+//! # Subcommands (v1.2.0)
 //!
 //! In addition to the default MCP-server mode, this binary supports a
 //! handful of contributor-facing subcommands that run, exit, and do
@@ -48,7 +48,7 @@ use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
 async fn main() -> ExitCode {
-    // §Fase 6.a — subcommand dispatch BEFORE tracing setup. Scaffold
+    // v1.2.0 — subcommand dispatch BEFORE tracing setup. Scaffold
     // and help-style flags are interactive CLI invocations: their
     // stderr is read by humans, and the MCP-server's tracing
     // configuration (compact formatter, info level) is wrong for
@@ -102,7 +102,7 @@ async fn main() -> ExitCode {
         "knowledge base loaded"
     );
 
-    // §Fase 8 — install the per-instance telemetry registry. Reads
+    // v1.3.0 — install the per-instance telemetry registry. Reads
     // env vars (`AXON_EMCP_TELEMETRY_FILE`, `AXON_EMCP_DEPLOYMENT_ID`,
     // `AXON_EMCP_TELEMETRY_MAX_SAMPLES`) at startup; missing vars
     // yield defaults (no file sink, no deployment ID, 1k samples).
@@ -118,7 +118,7 @@ async fn main() -> ExitCode {
         "telemetry installed"
     );
 
-    // §Fase 10 — OTLP/gRPC exporter follow-up. The pusher reads its
+    // v1.4.0 — OTLP/gRPC exporter follow-up. The pusher reads its
     // config from `AXON_EMCP_OTLP_*` env vars; empty endpoint = no
     // task spawned, no socket opened (privacy invariant #6). The
     // background loop snapshots `tel` every `interval` and pushes
@@ -210,7 +210,7 @@ fn resolve_knowledge_dir() -> Result<PathBuf, String> {
     }
     let cwd = std::env::current_dir()
         .map_err(|e| format!("could not read cwd: {e}"))?;
-    // §Release 0.2.0 — corpus moved INSIDE the crate
+    // Release 0.2.0 — corpus moved INSIDE the crate
     // (`src/axon-emcp/knowledge/`) so `cargo publish` ships it. Dev
     // paths we try (in order): `<cwd>/src/axon-emcp/knowledge` (from
     // repo root), `<cwd>/knowledge` (from inside the crate dir).
@@ -266,7 +266,7 @@ fn run_version() -> ExitCode {
     ExitCode::SUCCESS
 }
 
-/// `telemetry <subcmd>` — §Fase 8 contributor surface for the
+/// `telemetry <subcmd>` — v1.3.0 contributor surface for the
 /// telemetry layer. Subcommands:
 ///
 /// - `summarize <file>` — aggregate a JSONL telemetry log into the

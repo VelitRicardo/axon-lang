@@ -1,5 +1,5 @@
 /*
- * §Fase 39.c.x — Epistemic Envelope C23 Kernel (Theorem 5.1 in silicon).
+ * v2.0.0 — Epistemic Envelope C23 Kernel (Theorem 5.1 in silicon).
  *
  * Public surface for the FlowEnvelope's epistemic enforcement primitives.
  * Called from the Rust shim `axon-csys::effects::envelope` which is
@@ -8,7 +8,7 @@
  * through this kernel before serialization, making Theorem 5.1
  * structurally unbypassable from any Rust caller.
  *
- * ## Theorem 5.1 (paper §5.1)
+ * ## Theorem 5.1 (paper section 5.1)
  *
  *   For any epistemic state E with `derived_status = true`, the
  *   certainty c is bounded c ≤ 0.99. No derived knowledge claims
@@ -28,7 +28,7 @@
  * structural ceiling. This split honours the pillar discipline: Rust
  * decides WHO is derived; C23 enforces WHAT the ceiling looks like.
  *
- * ## Layout discipline (per §Fase 25 pillar split)
+ * ## Layout discipline (per v1.19.0 pillar split)
  *
  *  - Public ABI is everything prefixed `axon_csys_envelope_*`. Order of
  *    functions in this file is the order in which Rust's `extern`
@@ -80,7 +80,7 @@ typedef struct {
 #define AXON_CSYS_EPISTEMIC_DEGRADED  3u
 
 /*
- * §Theorem 5.1 enforcement in silicon.
+ * Theorem 5.1 enforcement in silicon.
  *
  *   POST: result.certainty = clamp(env.certainty, [0.0, 0.99])
  *         IF env.derived_status, else result.certainty = env.certainty
@@ -96,7 +96,7 @@ typedef struct {
 axon_csys_envelope_t axon_csys_envelope_validate_degradation(axon_csys_envelope_t env);
 
 /*
- * §Theorem 5.1 ceiling constant exported for cross-language drift
+ * Theorem 5.1 ceiling constant exported for cross-language drift
  * gates. The Rust shim compares this against its own const to detect
  * any divergence (which would imply a bug in either side).
  */

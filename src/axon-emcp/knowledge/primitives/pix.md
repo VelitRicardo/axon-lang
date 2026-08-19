@@ -3,7 +3,7 @@ name: pix
 summary: PIX retrieval navigator — an embeddings-free structural index navigated by conditional-mutual-information descent (no vector store, no cosine similarity).
 category: data_plane
 top_level: true
-since: Fase 19
+since: v1.14.0
 grammar: |
   pix <Name> {
       source: "<uri-or-name>"       # required — the document/corpus the PIX indexes
@@ -34,7 +34,7 @@ similarity** anywhere in a PIX. The formal basis is
 Theorem; monotone conditional-entropy reduction; reasoning-path
 explainability).
 
-> **Note — naming (§Fase 62.0).** `pix` was briefly documented as a
+> **Note — naming (v2.12.0).** `pix` was briefly documented as a
 > "Provenance Index" (an audit chain). That role now lives in the
 > [`ledger`](axon://primitives/ledger) primitive. `pix` is, and always
 > was in the grammar (`navigate <pix>` takes a pix), the **retrieval

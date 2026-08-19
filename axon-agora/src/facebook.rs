@@ -1,13 +1,13 @@
-//! §Fase 116.c — the Facebook Pages native core: the first REAL connector.
+//! v2.77.0 — the Facebook Pages native core: the first REAL connector.
 //!
-//! Owned-only posture (D116.3): every operation acts on a Page the tenant owns,
-//! through the official Pages API surface the paper verified (§2.2): publish
+//! Owned-only posture: every operation acts on a Page the tenant owns,
+//! through the official Pages API surface the paper verified (section 2.2): publish
 //! (`pages_manage_posts`), comment moderation + deletion
 //! (`pages_manage_engagement`), reads + insights (`pages_read_engagement`).
 //! Post EDITING was not paper-verified and is therefore [`ConnectorError::
-//! Unsupported`] — never emulated (the §111 posture).
+//! Unsupported`] — never emulated (the v2.67.0 posture).
 //!
-//! **Credentials.** The token is resolved PER CALL: the §94.c custody injection
+//! **Credentials.** The token is resolved PER CALL: the v2.48.0 custody injection
 //! ([`CallContext::secret`]) takes precedence; the connector's configured token
 //! is the dev/OSS fallback; neither ⇒ [`ConnectorError::MissingCredential`]
 //! (fail-closed, never an unauthenticated vendor call). The token travels as an
@@ -63,7 +63,7 @@ impl FacebookPagesConfig {
     }
 }
 
-// The §94 redacting-Debug discipline: the fallback token never reaches a log.
+// The v2.48.0 redacting-Debug discipline: the fallback token never reaches a log.
 impl std::fmt::Debug for FacebookPagesConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("FacebookPagesConfig")
@@ -76,7 +76,7 @@ impl std::fmt::Debug for FacebookPagesConfig {
     }
 }
 
-/// The Facebook Pages connector core (§116.c).
+/// The Facebook Pages connector core (v2.77.0).
 pub struct FacebookPagesConnector {
     config: FacebookPagesConfig,
     client: reqwest::blocking::Client,
@@ -95,7 +95,7 @@ impl FacebookPagesConnector {
         graph::url(&self.config.base_url, &self.config.graph_version, path)
     }
 
-    /// Per-call token: custody injection first (§94.c), configured fallback
+    /// Per-call token: custody injection first (v2.48.0), configured fallback
     /// second, fail-closed third.
     fn token<'a>(&'a self, ctx: &'a CallContext) -> Result<&'a str, ConnectorError> {
         ctx.secret
@@ -245,8 +245,8 @@ impl SocialConnector for FacebookPagesConnector {
     }
 
     /// Text → `POST /{page_id}/feed`; single photo → `POST /{page_id}/photos`
-    /// with `url` + `caption` (published). **Multi-photo (§116.c.3)** = the
-    /// two-step `attached_media` flow the paper (§2.2) verified: each image is
+    /// with `url` + `caption` (published). **Multi-photo (v2.77.0)** = the
+    /// two-step `attached_media` flow the paper (section 2.2) verified: each image is
     /// first uploaded as an UNPUBLISHED photo container
     /// (`POST /{page_id}/photos` with `published=false` → `{id}`), then a single
     /// `POST /{page_id}/feed` attaches all containers via
@@ -274,7 +274,7 @@ impl SocialConnector for FacebookPagesConnector {
                 token,
             )?,
             _ => {
-                // §116.c.3 — step 1: upload each image as an UNPUBLISHED photo
+                // v2.77.0 — step 1: upload each image as an UNPUBLISHED photo
                 // container, collecting its fbid. A container with no returned id
                 // is a hard failure (never attach a phantom media to the post).
                 let mut fbids: Vec<String> = Vec::with_capacity(req.media_urls.len());
@@ -322,7 +322,7 @@ impl SocialConnector for FacebookPagesConnector {
         Ok(PublishReceipt { object_id, url: None })
     }
 
-    /// Post editing was NOT paper-verified for the Pages surface (§2.2) — the
+    /// Post editing was NOT paper-verified for the Pages surface (section 2.2) — the
     /// op is honestly unsupported until verified, never emulated.
     fn edit(
         &self,
@@ -396,9 +396,9 @@ mod tests {
         ));
     }
 
-    // §116.c.3 — the multi-photo `attached_media` flow is HTTP-driven (two-step:
+    // v2.77.0 — the multi-photo `attached_media` flow is HTTP-driven (two-step:
     // unpublished containers → feed attach), so its coverage lives in the
-    // recorded-fixture integration test (`fase116_c_facebook.rs`) where a
+    // recorded-fixture integration test (`facebook.rs`) where a
     // Graph-shaped server observes the two POST /photos + one POST /feed with
     // `attached_media`. There is nothing network-free left to assert here.
 }

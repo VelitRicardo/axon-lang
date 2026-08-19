@@ -3,7 +3,7 @@ name: ots
 summary: One-shot transform — a closed-catalogue media transformation (audio, image, format) with native/ffmpeg backend dispatch.
 category: operators
 top_level: true
-since: Fase 11
+since: v1.4.0
 grammar: |
   ots <Name> [<<InType>, <OutType>>] {
       teleology: "<string>"                            # optional — declared purpose
@@ -20,7 +20,7 @@ audio codec conversion, an image resize, a format coercion,
 any deterministic transformation with declared inputs +
 outputs + quality semantics.
 
-The Fase 11 §λ-L-E ots layer added typed transformation
+The v1.4.0 λ-L-E ots layer added typed transformation
 sessions to AXON: the cognitive layer can request
 `transform: <src>:<dst>` (e.g.
 `transform:mulaw8:pcm16`) and the runtime dispatches to a
@@ -52,7 +52,7 @@ ots AudioMulawToPcm16<AudioMulaw, AudioPcm16> {
 A standard generic-application syntax declaring the input and
 output types of the transformation. The parser accepts any
 content between `<` and `>` (skipped structurally for now);
-future Fase increments will tighten this to typed parameter
+future cycle increments will tighten this to typed parameter
 binding.
 
 ### `teleology:` (optional)
@@ -123,7 +123,7 @@ emit `ots:<name>:failed` with diagnostic detail.
   C / Rust / ffmpeg dispatch).
 - **Not arbitrary transformations.** The catalogue is
   closed: only registered `transform:<src>:<dst>` slugs are
-  dispatchable. The catalogue grows by Fase increment, not
+  dispatchable. The catalogue grows by cycle increment, not
   by adopter declaration.
 - **Not lossless by default.** `loss_function:` is the metric
   the runtime uses to score candidate paths; the runtime

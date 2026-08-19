@@ -1,31 +1,31 @@
-//! §Fase 98.e — Native Web Acquisition runtime: the OSS sibling of
+//! v2.52.0 — Native Web Acquisition runtime: the OSS sibling of
 //! [`crate::http_tool`], the dispatch core for the three web-acquisition
 //! providers (`scrape_http` / `scrape_dom` / `scrape_crawl`).
 //!
-//! **The load-bearing property (D98.1):** every value this module produces is
+//! **The load-bearing property:** every value this module produces is
 //! born epistemically **Untrusted** (⊥ in the lattice `doubt ⊑ speculate ⊑
 //! believe ⊑ know`) — reusing [`crate::emcp::EpistemicTaint::Untrusted`]
 //! verbatim. The open web is adversarial; a page an agent fetched is not a
 //! fact until a `shield` scans it. The compile-time content-injection barrier
-//! (§98.d) refuses to let a `web`-tainted value reach an agent's belief
+//! (v2.52.0) refuses to let a `web`-tainted value reach an agent's belief
 //! context without an intervening shield — this runtime realises the OTHER
 //! half of that contract: the taint is stamped on the outcome so the audit
-//! trail and any runtime IFC (§98.f) can observe it.
+//! trail and any runtime IFC (v2.52.0) can observe it.
 //!
-//! **Tiers (D98.3).** Acquisition is fingerprint-first, browser-second, both
+//! **Tiers.** Acquisition is fingerprint-first, browser-second, both
 //! ENTERPRISE. OSS ships the *contract* plus a plain-`reqwest` fallback that
 //! is functional but un-stealthed: a [`ScrapeFetcher`] the enterprise engine
-//! (§98.g) registers to supply JA3/JA4 + HTTP/2 impersonation and per-tenant
+//! (v2.52.0) registers to supply JA3/JA4 + HTTP/2 impersonation and per-tenant
 //! proxies. With no enterprise engine injected, `impersonate` degrades to a
 //! plain request (honest, un-stealthed) and `browser` returns an explicit
-//! "no sidecar configured" refusal — **never a silent wrong result (D98.5)**.
+//! "no sidecar configured" refusal — **never a silent wrong result**.
 //!
-//! **Bounded (D98.11).** Bodies are size-capped + truncated; crawls are
+//! **Bounded.** Bodies are size-capped + truncated; crawls are
 //! `max_pages`/`max_depth`-bounded; timeouts apply. A hostile or infinite
 //! site can neither OOM the runtime nor spin the crawler forever.
 //!
 //! **Honest heuristics.** Adaptive selector relocation is a *heuristic*, not a
-//! proof (D98.4); the OSS DOM engine is a deterministic reference extractor
+//! proof; the OSS DOM engine is a deterministic reference extractor
 //! (regex-scanned elements over a closed selector subset), not a full browser
 //! DOM — the enterprise/browser tier owns fidelity. Both are named as such.
 
@@ -40,7 +40,7 @@ use crate::tool_executor::ToolResult;
 use crate::tool_registry::{ScrapeConfig, ToolEntry};
 
 /// Default fetched-body ceiling (5 MiB). A page larger than this is truncated
-/// and flagged `truncated: true` — the output is always bounded (D98.11).
+/// and flagged `truncated: true` — the output is always bounded.
 pub const DEFAULT_BODY_LIMIT: usize = 5 * 1024 * 1024;
 
 /// Default per-request timeout when the tool declares none.
@@ -50,10 +50,10 @@ pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(30);
 /// mis-declared `max_pages: 0` (unbounded sentinel) can never run away.
 pub const CRAWL_HARD_PAGE_CAP: usize = 10_000;
 
-/// §Fase 114 (owed) — hard ceiling on in-flight fetches for a single crawl,
+/// v2.69.0 (owed) — hard ceiling on in-flight fetches for a single crawl,
 /// regardless of the declared `concurrency`. Politeness first: a `concurrency:
 /// 1000` can never open a thousand sockets to a vendor. The declared value is
-/// clamped to `[1, CRAWL_MAX_CONCURRENCY]`; `1` is the pre-§114 sequential crawl.
+/// clamped to `[1, CRAWL_MAX_CONCURRENCY]`; `1` is the pre-v2.69.0 sequential crawl.
 pub const CRAWL_MAX_CONCURRENCY: usize = 32;
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -76,7 +76,7 @@ pub struct RawPage {
     /// Whether this page was served from a cache/checkpoint (crawl resume).
     #[serde(default)]
     pub from_cache: bool,
-    /// Whether `body` was truncated to the size cap (D98.11).
+    /// Whether `body` was truncated to the size cap.
     #[serde(default)]
     pub truncated: bool,
     /// The engine that produced this page (`impersonate` | `browser` |
@@ -107,7 +107,7 @@ impl RawPage {
 
 /// Everything that can go wrong acquiring a page. Every variant is a *typed
 /// refusal* — a failed challenge or a robots denial is a first-class outcome,
-/// never a silently-empty body (D98.5).
+/// never a silently-empty body.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ScrapeError {
     /// The structured tool body did not carry the required argument.
@@ -118,7 +118,7 @@ pub enum ScrapeError {
     /// not set the (enterprise-gated) `respect_robots: false` override.
     RobotsDenied(String),
     /// The `browser` engine was requested but no sidecar is configured — the
-    /// OSS build has no headless renderer (§98.i is the enterprise sidecar).
+    /// OSS build has no headless renderer (v2.52.0 is the enterprise sidecar).
     NoBrowserSidecar,
     /// The upstream fetch failed (connect/timeout/transport).
     FetchFailed(String),
@@ -153,10 +153,10 @@ impl std::fmt::Display for ScrapeError {
 impl std::error::Error for ScrapeError {}
 
 /// The provenance-tagged outcome of a scrape dispatch. `taint` is ALWAYS
-/// [`EpistemicTaint::Untrusted`] on success — the born-⊥ property (D98.1). The
+/// [`EpistemicTaint::Untrusted`] on success — the born-⊥ property. The
 /// registry integration flattens this to a [`ToolResult`] (which does not
 /// carry taint, matching the ℰMCP discipline where the shield/know step
-/// elevates), but the taint is exposed here so `§98.f` IFC + audit can observe
+/// elevates), but the taint is exposed here so `v2.52.0` IFC + audit can observe
 /// it directly.
 #[derive(Debug, Clone)]
 pub struct ScrapeOutcome {
@@ -192,7 +192,7 @@ impl ScrapeOutcome {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-//  ScrapeFetcher — the enterprise injection seam (§98.g)
+// ScrapeFetcher — the enterprise injection seam (v2.52.0)
 // ════════════════════════════════════════════════════════════════════════════
 
 /// A single fetch request, resolved from the tool's [`ScrapeConfig`] + the
@@ -209,8 +209,8 @@ pub struct FetchRequest {
     pub render_wait: String,
     pub timeout: Duration,
     pub body_limit: usize,
-    /// §Fase 103.e-1 — the acquiring tenant, carried from
-    /// [`ScrapeConfig::tenant`] (§102.b/d) so a fetch-grain audit row (a robots
+    /// v2.57.0-1 — the acquiring tenant, carried from
+    /// [`ScrapeConfig::tenant`] (v2.56.0) so a fetch-grain audit row (a robots
     /// denial / anti-bot block) can be attributed to the right tenant's
     /// hash-chained log. Empty in OSS standalone use (no tenant) ⇒ no audit row
     /// is emitted (an unattributable acquisition is never witnessed cross-tenant).
@@ -218,12 +218,12 @@ pub struct FetchRequest {
 }
 
 /// The pluggable fetch engine. OSS registers nothing → the plain-`reqwest`
-/// [`default_fetch`] is used. The enterprise stealth engine (§98.g) registers
+/// [`default_fetch`] is used. The enterprise stealth engine (v2.52.0) registers
 /// an impl via [`register_scrape_fetcher`] to supply fingerprint impersonation
 /// + proxy pools. Exactly the [`crate::shield_registry`] injection shape.
 pub trait ScrapeFetcher: Send + Sync {
     /// Fetch a single page. MUST return a typed [`ScrapeError`] on failure —
-    /// never an empty [`RawPage`] masquerading as success (D98.5).
+    /// never an empty [`RawPage`] masquerading as success.
     fn fetch(&self, req: &FetchRequest) -> Result<RawPage, ScrapeError>;
 
     /// A short slug identifying the engine, for the `RawPage.engine`
@@ -233,7 +233,7 @@ pub trait ScrapeFetcher: Send + Sync {
 
 static SCRAPE_FETCHER: OnceLock<Arc<dyn ScrapeFetcher>> = OnceLock::new();
 
-/// §Fase 98.g — register the enterprise stealth fetcher. Idempotent-first:
+/// v2.52.0 — register the enterprise stealth fetcher. Idempotent-first:
 /// the first registration wins (the enterprise host installs it once at boot).
 /// Returns `true` if this call installed the fetcher.
 pub fn register_scrape_fetcher(fetcher: Arc<dyn ScrapeFetcher>) -> bool {
@@ -245,15 +245,15 @@ pub fn has_registered_fetcher() -> bool {
     SCRAPE_FETCHER.get().is_some()
 }
 
-/// §Fase 102.d — the per-tenant adaptive-selector memory seam. The extractor
+/// v2.56.0 — the per-tenant adaptive-selector memory seam. The extractor
 /// consults a registered memory to (a) **recall** a previously-learned selector
 /// for a drifted field before scanning, and (b) **learn** the selector a
 /// relocation just recovered — so the lead pipeline *heals* a target's HTML
 /// drift across runs instead of a human rewriting selectors. Strictly
 /// tenant-keyed. OSS ships none (recall → `None`, learn → noop); the enterprise
-/// Postgres store (§102.d) registers here, exactly the [`register_scrape_fetcher`]
+/// Postgres store (v2.56.0) registers here, exactly the [`register_scrape_fetcher`]
 /// shape. The `(tenant, tool, field, domain)` key is supplied per-call by the
-/// extractor (the tenant rides `ScrapeConfig.tenant`, D102.9).
+/// extractor (the tenant rides `ScrapeConfig.tenant`, the design decision).
 pub trait SelectorMemory: Send + Sync {
     /// A previously-learned selector for this coordinate, if any.
     fn recall(&self, tenant: &str, tool: &str, field: &str, domain: &str) -> Option<String>;
@@ -267,7 +267,7 @@ fn selector_memory_reg() -> &'static std::sync::RwLock<Option<Arc<dyn SelectorMe
     REG.get_or_init(|| std::sync::RwLock::new(None))
 }
 
-/// §Fase 102.d — register the enterprise durable selector store (the host calls
+/// v2.56.0 — register the enterprise durable selector store (the host calls
 /// this once at boot). Replaces any prior registration.
 pub fn register_selector_memory(memory: Arc<dyn SelectorMemory>) {
     *selector_memory_reg().write().expect("selector memory poisoned") = Some(memory);
@@ -279,14 +279,14 @@ pub fn clear_selector_memory() {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-//  ScrapeAuditSink — the per-fetch audit seam (§Fase 103.e-1)
+// ScrapeAuditSink — the per-fetch audit seam (v2.57.0-1)
 // ════════════════════════════════════════════════════════════════════════════
 
 /// A witnessed fetch-grain outcome. The runtime emits these AS a fetch resolves
-/// (the executor pre-flight, §102.a, only sees the *declared* tier — not whether
+/// (the executor pre-flight, v2.56.0, only sees the *declared* tier — not whether
 /// a live fetch was actually robots-denied or challenge-blocked). Host-only: an
 /// event NEVER carries the fetched body (born-Untrusted content stays out of the
-/// audit trail — the §84.f discipline); the enterprise sink extracts just the
+/// audit trail — the v2.39.0 discipline); the enterprise sink extracts just the
 /// host from `url` for the row.
 #[derive(Debug, Clone)]
 pub enum ScrapeAuditEvent<'a> {
@@ -302,12 +302,12 @@ pub enum ScrapeAuditEvent<'a> {
     },
 }
 
-/// §Fase 103.e-1 — the per-fetch audit seam. OSS ships none (`record` → noop);
+/// v2.57.0-1 — the per-fetch audit seam. OSS ships none (`record` → noop);
 /// the enterprise host registers one that appends to the tenant's hash-chained
-/// audit log (the `scrape:robots_denied` / `scrape:blocked` catalog rows, §98.h).
+/// audit log (the `scrape:robots_denied` / `scrape:blocked` catalog rows, v2.52.0).
 /// Exactly the [`register_scrape_fetcher`] / [`register_selector_memory`]
 /// injection shape. The tenant is supplied per-call (it rides
-/// [`FetchRequest::tenant`], D103.8).
+/// [`FetchRequest::tenant`], the design decision).
 pub trait ScrapeAuditSink: Send + Sync {
     /// Witness a fetch-grain outcome for `tenant`. Best-effort: the AUTHORIZATION
     /// controls are enforced elsewhere; this is the observability row.
@@ -319,7 +319,7 @@ fn scrape_audit_reg() -> &'static std::sync::RwLock<Option<Arc<dyn ScrapeAuditSi
     REG.get_or_init(|| std::sync::RwLock::new(None))
 }
 
-/// §Fase 103.e-1 — register the enterprise fetch-grain audit sink (the host calls
+/// v2.57.0-1 — register the enterprise fetch-grain audit sink (the host calls
 /// this once at boot). Replaces any prior registration.
 pub fn register_scrape_audit_sink(sink: Arc<dyn ScrapeAuditSink>) {
     *scrape_audit_reg().write().expect("scrape audit sink poisoned") = Some(sink);
@@ -366,7 +366,7 @@ fn learn_selector(tenant: &str, tool: &str, field: &str, domain: &str, selector:
 }
 
 /// Resolve the active fetcher: the registered enterprise engine, or the OSS
-/// plain-`reqwest` fallback. §Fase 103.e-1 — witnesses a fetch-grain robots
+/// plain-`reqwest` fallback. v2.57.0-1 — witnesses a fetch-grain robots
 /// denial / anti-bot block on the tenant's audit log as the fetch resolves (the
 /// executor pre-flight only sees the declared tier). Host-only; noop in OSS.
 fn fetch_page(req: &FetchRequest) -> Result<RawPage, ScrapeError> {
@@ -410,18 +410,18 @@ fn default_fetch(req: &FetchRequest) -> Result<RawPage, ScrapeError> {
     if url.is_empty() || (!url.starts_with("http://") && !url.starts_with("https://")) {
         return Err(ScrapeError::InvalidUrl(url.to_string()));
     }
-    // The browser tier has no OSS engine — refuse explicitly (D98.5).
+    // The browser tier has no OSS engine — refuse explicitly.
     if req.engine == "browser" {
         return Err(ScrapeError::NoBrowserSidecar);
     }
-    // robots-respecting default (D98.6). A denial is a typed refusal.
+    // robots-respecting default. A denial is a typed refusal.
     if req.respect_robots && !robots_allows(url, req.timeout) {
         return Err(ScrapeError::RobotsDenied(url.to_string()));
     }
 
     let client = reqwest::blocking::Client::builder()
         .timeout(req.timeout)
-        // §Brief #63 — bound the CONNECT phase (DNS + TCP + TLS) explicitly. The
+        // Brief #63 — bound the CONNECT phase (DNS + TCP + TLS) explicitly. The
         // total-request `.timeout()` can be escaped by a DNS stall on some platforms
         // (the "timeout not honored" the adopter reported); `.connect_timeout` caps
         // the phase so a hung name-resolution degrades to a typed error, not a hang.
@@ -473,9 +473,9 @@ fn default_fetch(req: &FetchRequest) -> Result<RawPage, ScrapeError> {
 /// Fetch + evaluate `robots.txt` for `url`, honoring `Disallow` rules for the
 /// `*` user-agent group. Fail-OPEN on fetch/parse failure (the standard
 /// posture — an unreachable robots.txt does not block). The enterprise layer
-/// (§98.h) adds the RBAC-gated override + the audit row; this is the sound
+/// (v2.52.0) adds the RBAC-gated override + the audit row; this is the sound
 /// default so an OSS deployment is polite out of the box.
-/// §Brief #63 — the connect-phase budget derived from a request's total timeout.
+/// Brief #63 — the connect-phase budget derived from a request's total timeout.
 /// Connecting (DNS + TCP + TLS) should be fast; cap it at 15s so a stalled
 /// name-resolution fails quickly, but never above the caller's own total timeout
 /// and never below 1s (so a tiny total timeout still permits a real connection).
@@ -493,7 +493,7 @@ fn robots_allows(url: &str, timeout: Duration) -> bool {
     let robots_url = format!("{scheme}://{host}/robots.txt");
     let client = match reqwest::blocking::Client::builder()
         .timeout(timeout.min(Duration::from_secs(10)))
-        // §Brief #63 — bound the connect phase of the robots.txt pre-fetch; it runs
+        // Brief #63 — bound the connect phase of the robots.txt pre-fetch; it runs
         // BEFORE the page fetch and a DNS stall here would hang the whole scrape.
         .connect_timeout(clamp_connect_timeout(timeout))
         .user_agent(DEFAULT_USER_AGENT)
@@ -512,7 +512,7 @@ fn robots_allows(url: &str, timeout: Duration) -> bool {
 
 /// Pure robots.txt evaluator: does the `*` user-agent group permit `path`?
 /// Longest-match `Allow`/`Disallow` wins (the de-facto standard). Public for
-/// the §98.f unit tests + the enterprise governance layer.
+/// the v2.52.0 unit tests + the enterprise governance layer.
 pub fn robots_path_allowed(robots_txt: &str, path: &str) -> bool {
     let mut in_star = false;
     let mut applicable = false;
@@ -592,7 +592,7 @@ pub fn dispatch_scrape(entry: &ToolEntry, argument: &str) -> ToolResult {
     dispatch_scrape_outcome(entry, argument).result
 }
 
-/// The taint-carrying dispatch (used by §98.f IFC + tests). Always yields an
+/// The taint-carrying dispatch (used by v2.52.0 IFC + tests). Always yields an
 /// `Untrusted` outcome for a successful acquisition.
 pub fn dispatch_scrape_outcome(entry: &ToolEntry, argument: &str) -> ScrapeOutcome {
     let cfg = entry.scrape.clone().unwrap_or_default();
@@ -646,8 +646,8 @@ fn run_scrape_http(
         render_wait: cfg.render_wait.clone(),
         timeout: crate::http_tool::parse_timeout_pub(timeout).unwrap_or(DEFAULT_TIMEOUT),
         body_limit: DEFAULT_BODY_LIMIT,
-        // §Fase 103.e-1 — the tenant rides the request so a fetch-grain audit row
-        // attributes to the right hash-chained log (§102.b/d stamps it on cfg).
+        // v2.57.0-1 — the tenant rides the request so a fetch-grain audit row
+        // attributes to the right hash-chained log (v2.56.0 stamps it on cfg).
         tenant: cfg.tenant.clone(),
     };
     match fetch_page(&req) {
@@ -663,7 +663,7 @@ fn run_scrape_dom(name: &str, cfg: &ScrapeConfig, args: &serde_json::Value) -> S
     // The `page:` argument is a `RawPage` (from a prior scrape_http), or a bare
     // HTML string. Either way, the taint is PRESERVED — scrape_dom does no I/O,
     // it only processes already-Untrusted content, so its output stays ⊥.
-    // Capture the source domain from the RawPage's `final_url` so the §102.d
+    // Capture the source domain from the RawPage's `final_url` so the v2.56.0
     // selector memory keys a learned selector to the site (a selector learned on
     // `news.acme.com` must not leak into `shop.acme.com`). A bare-HTML input has
     // no URL → empty domain → the memory is simply not consulted.
@@ -781,7 +781,7 @@ fn matches(el: &Element, s: &Selector) -> bool {
 /// Scan HTML into a flat element list. A deterministic reference parser
 /// (regex over open-tag..matching-close for a common set of container tags),
 /// NOT a spec-compliant DOM — the enterprise/browser tier owns fidelity
-/// (D98.4). Nested same-tag elements resolve to the outermost occurrence,
+///. Nested same-tag elements resolve to the outermost occurrence,
 /// which is sufficient for the closed selector subset.
 /// The closed tag set the reference extractor scans. Container + inline tags
 /// common in article/product markup — sufficient for the closed selector
@@ -861,7 +861,7 @@ fn tag_strip_regex() -> regex::Regex {
 /// Extract every declared FieldSpec from `html`. Each spec is `name=selector`.
 /// Returns a JSON object `{ name: text }`. When `adaptive` and a selector
 /// misses, a HEURISTIC relocation is attempted (loosen the selector, keeping
-/// the tag) — recorded honestly, never presented as a proof (D98.4).
+/// the tag) — recorded honestly, never presented as a proof.
 fn extract_fields(
     html: &str,
     specs: &[String],
@@ -882,7 +882,7 @@ fn extract_fields(
                 continue;
             }
         };
-        // §Fase 102.d — (1) recall: a previously-learned selector for this
+        // v2.56.0 — (1) recall: a previously-learned selector for this
         // (tenant, tool, field, domain) that STILL matches heals a prior drift
         // before we even try the declared selector.
         if let Some(learned) = recall_selector(tenant, tool, field, domain) {
@@ -899,7 +899,7 @@ fn extract_fields(
             continue;
         }
         // (3) adaptive relocation — and LEARN the selector it recovered, so the
-        // next run recalls it directly (§102.d, the drift-healing loop).
+        // next run recalls it directly (v2.56.0, the drift-healing loop).
         let value = if adaptive {
             match relocate(&elements, &sel, similarity_floor) {
                 Some((text, learned_selector)) => {
@@ -919,17 +919,17 @@ fn extract_fields(
     serde_json::Value::Object(obj)
 }
 
-/// §Fase 102.c — adaptive relocation, scored for real (D102.4). When the exact
+/// v2.56.0 — adaptive relocation, scored for real. When the exact
 /// selector misses (the target drifted its `id`/`class`), score every candidate
 /// element by **structural + textual similarity** to the selector's signature —
 /// tag match + class-token Jaccard + id-token overlap — and relocate to the
 /// best-scoring element, but ONLY if its similarity clears `similarity_floor`.
 /// Below the floor it returns `None` (a typed empty), NEVER a wrong field: the
-/// pre-§102 stub returned a hardcoded `1.0` for any tag-level fallback, silently
-/// producing a wrong value. Honesty over a fabricated cell (§101 D101.14 applied
+/// pre-v2.56.0 stub returned a hardcoded `1.0` for any tag-level fallback, silently
+/// producing a wrong value. Honesty over a fabricated cell (v2.54.0 the design decision applied
 /// to selectors). Deterministic: ties resolve to document order. This is still a
-/// HEURISTIC (D98.4), not a proof; the enterprise tier's durable per-tenant
-/// selector memory (§102.d) is what turns a good relocation into learned drift.
+/// HEURISTIC, not a proof; the enterprise tier's durable per-tenant
+/// selector memory (v2.56.0) is what turns a good relocation into learned drift.
 fn relocate(elements: &[Element], sel: &Selector, similarity_floor: f64) -> Option<(String, String)> {
     // A selector with no distinguishing components cannot be relocated.
     if sel.tag.is_none() && sel.id.is_none() && sel.class.is_none() {
@@ -952,7 +952,7 @@ fn relocate(elements: &[Element], sel: &Selector, similarity_floor: f64) -> Opti
         }
     }
     // Return the recovered text + a reconstructed selector that will MATCH this
-    // element again — so §102.d can learn it for the next run.
+    // element again — so v2.56.0 can learn it for the next run.
     best.map(|(_, el)| (el.text.clone(), reconstruct_selector(el)))
 }
 
@@ -1035,17 +1035,17 @@ use async_trait::async_trait;
 
 use crate::tool_trait::{Tool, ToolChunk, ToolContext, ToolFinishReason, ToolStream};
 
-/// §Fase 98.e — the streaming crawl provider. A bounded, checkpointed spider:
+/// v2.52.0 — the streaming crawl provider. A bounded, checkpointed spider:
 /// it BFS-walks from `seed`, emitting each fetched [`RawPage`] as a
 /// `ToolChunk` AS it arrives, bounded by `max_pages` / `max_depth` /
 /// `concurrency`, honoring the per-invocation cancel flag between fetches.
-/// Every emitted page is born Untrusted (D98.1) — the taint discipline is
-/// identical to the synchronous providers; the compile-time barrier (§98.d)
+/// Every emitted page is born Untrusted — the taint discipline is
+/// identical to the synchronous providers; the compile-time barrier (v2.52.0)
 /// enforces the shield before an agent's belief.
 ///
 /// The OSS engine uses the plain-`reqwest` fetcher (or the registered
 /// enterprise stealth engine); resumable checkpointing to a store is the
-/// enterprise `<storage>` concern (§98.h) — OSS keeps the visited set in
+/// enterprise `<storage>` concern (v2.52.0) — OSS keeps the visited set in
 /// memory (non-resumable, honestly bounded).
 pub struct ScrapeStreamingTool {
     name: String,
@@ -1204,7 +1204,7 @@ impl Tool for ScrapeStreamingTool {
                 return;
             }
 
-            // §Fase 114 (owed) — the crawl is BOUNDED-CONCURRENT: up to
+            // v2.69.0 (owed) — the crawl is BOUNDED-CONCURRENT: up to
             // `concurrency` fetches in flight at once, the declaration
             // `scrape.concurrency` at last enforced (it was parsed + type-checked
             // + documented as honored, but the loop fetched one page at a time —
@@ -1256,7 +1256,7 @@ impl Tool for ScrapeStreamingTool {
                         render_wait: cfg.render_wait.clone(),
                         timeout,
                         body_limit: DEFAULT_BODY_LIMIT,
-                        // §Fase 103.e-1 — carry the tenant into each crawl fetch.
+                        // v2.57.0-1 — carry the tenant into each crawl fetch.
                         tenant: cfg.tenant.clone(),
                     };
                     // Blocking fetch on the blocking pool; carry `depth` so the
@@ -1302,7 +1302,7 @@ impl Tool for ScrapeStreamingTool {
                     }
                     Ok(Err(e)) => {
                         // A per-page failure is a typed chunk, not a crawl
-                        // abort — the spider keeps going (D98.5 typed outcome).
+                        // abort — the spider keeps going (the design decision typed outcome).
                         let _ = tx.send(ToolChunk::intermediate(e.to_string()));
                     }
                     Err(e) => {
@@ -1418,7 +1418,7 @@ mod tests {
 
     #[test]
     fn dom_adaptive_relocates_across_class_drift() {
-        // §102.c — the target renamed `.price` to `.product-price`; token
+        // v2.56.0 — the target renamed `.price` to `.product-price`; token
         // similarity (price ∈ {product, price}) relocates instead of empty.
         let html = r#"<span class="product-price">$42</span>"#;
         let out = extract_fields(html, &["p=span.price".to_string()], true, 0.6, "", "", "");
@@ -1427,8 +1427,8 @@ mod tests {
 
     #[test]
     fn dom_adaptive_below_floor_is_null_not_a_wrong_field() {
-        // §102.c / D102.4 — an unrelated same-tag element must NOT be returned.
-        // The pre-§102 stub returned the FIRST same-tag element at confidence 1.0
+        // v2.56.0 / the design decision — an unrelated same-tag element must NOT be returned.
+        // The pre-v2.56.0 stub returned the FIRST same-tag element at confidence 1.0
         // — a silent wrong field. Real scoring falls below the floor → null.
         let html = r#"<span class="footer-legal">unrelated</span>"#;
         let out = extract_fields(html, &["p=span.price".to_string()], true, 0.75, "", "", "");
@@ -1447,7 +1447,7 @@ mod tests {
         assert_eq!(out["p"], "$9");
     }
 
-    /// §Fase 102.d — the drift-healing loop: a relocation LEARNS the recovered
+    /// v2.56.0 — the drift-healing loop: a relocation LEARNS the recovered
     /// selector; a later run RECALLS it directly. Serialised because the memory
     /// registry is process-global.
     #[test]
@@ -1509,7 +1509,7 @@ mod tests {
         clear_selector_memory();
     }
 
-    /// §Fase 103.e-1 — the fetch-grain audit seam records for a stamped tenant
+    /// v2.57.0-1 — the fetch-grain audit seam records for a stamped tenant
     /// and is a NOOP for an unstamped one (an unattributable acquisition is never
     /// witnessed cross-tenant). Serialised — the sink registry is process-global.
     #[test]

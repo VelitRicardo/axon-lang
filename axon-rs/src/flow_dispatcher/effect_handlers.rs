@@ -1,11 +1,11 @@
-//! §Fase 120 — **the algebraic-effect machine** (Plotkin/Pretnar handlers with
+//! v2.87.0 — **the algebraic-effect machine** (Plotkin/Pretnar handlers with
 //! one-shot delimited continuations), running on the DISPATCHER.
 //!
-//! # D120.1 — why the machine is here and not in `crate::effects`
+//! # the design decision — why the machine is here and not in `crate::effects`
 //!
 //! `crate::effects::EffectRuntime` is a real 590-line FSM with a handler stack,
 //! `find_handler` walking innermost-out, clause parameter binding and
-//! resume/abort/forward. It was built in §Fase 23 and it works. It is also
+//! resume/abort/forward. It was built in v1.17.0 and it works. It is also
 //! **not a machine this language can run on**, and the reason is one line:
 //!
 //! ```text
@@ -14,12 +14,12 @@
 //!
 //! Its instruction alphabet is `Instruction`, whose catch-all variant
 //! (`#[serde(other)]`) is INERT. Lowering `handle SSE { … } in { run generate(…) }`
-//! onto it — the shape `fase_120`'s plan originally proposed as step 2 — would
+//! onto it — the shape `the design plan`'s plan originally proposed as step 2 — would
 //! deserialise `run generate(…)` to `Passthrough` and execute **nothing**, while
-//! the program compiled clean. That is §111's *motor real, cable muerto* rebuilt
+//! the program compiled clean. That is v2.67.0's *motor real, cable muerto* rebuilt
 //! deliberately, one level deeper.
 //!
-//! So §120 puts the machine where the language's instructions already are: the
+//! So v2.87.0 puts the machine where the language's instructions already are: the
 //! dispatcher, whose alphabet is `IRFlowNode`. A handler clause is a `Vec<IRFlowNode>`
 //! and therefore composes with all 51 primitives — a clause can `emit` on a
 //! channel, call a tool, `persist`, run a nested `handle`. That composability is
@@ -29,18 +29,18 @@
 //! `crate::effects` keeps its job: the FSM over the JSON `Instruction` IR that
 //! `effects_bridge::bridge_effect_stream_yield` drives. Two machines, two
 //! alphabets, one documented relationship — not two catalogs of one concept
-//! (the §119.m.2 defect).
+//! (the v2.83.0 defect).
 //!
 //! # The semantics, and the two places they diverge from `EffectRuntime`
 //!
 //! Both divergences are decisions, not oversights, and both were forced by
-//! reading `fase_23` §3.1 rather than the engine:
+//! reading `the design plan` section 3.1 rather than the engine:
 //!
 //! 1. **A clause that falls off its end ABORTS; it is not an error.**
-//!    `EffectRuntime` returns `NoDischarge` there. But §3.1 publishes
+//! `EffectRuntime` returns `NoDischarge` there. But section 3.1 publishes
 //!    `Done() -> { websocket.close() }` with the comment *"sin resume — abort
-//!    implícito"*, and §3.6 states *"0 resumes: aborto explícito, OK."* Under
-//!    §119's doctrine the published surface is the promise, so a clause with no
+//! implícito"*, and section 3.6 states *"0 resumes: aborto explícito, OK."* Under
+//! v2.83.0's doctrine the published surface is the promise, so a clause with no
 //!    `resume` aborts the handle with its last output.
 //!
 //! 2. **An `abort` is routed to the frame it belongs to**, by `frame_id`.
@@ -144,7 +144,7 @@ pub async fn run_perform(
     ctx.step_counter += 1;
 
     // An empty `effect_name` means the frontend could not resolve the site to
-    // exactly one declared effect (D120.2 ambiguity, or an undeclared
+    // exactly one declared effect (the design decision ambiguity, or an undeclared
     // operation). The type-checker already refused that program; a hand-built
     // IR that reaches here FAILS CLOSED. Searching the stack by operation name
     // alone would be the tempting fallback and it is precisely wrong — it would
@@ -290,7 +290,7 @@ async fn dispatch_operation(
                 message: format!(
                     "unhandled effect '{effect}.{operation}': no enclosing `handle {effect}` \
                      is in scope at this point. The compiler refuses this statically \
-                     (axon-T966, fase_23 D9 — there is no runtime fallback); reaching it \
+                     (axon-T966, the design plan D9 — there is no runtime fallback); reaching it \
                      here means the IR was not produced by `axon check`."
                 ),
             });
@@ -384,10 +384,10 @@ async fn dispatch_operation(
                 search_from = frame_idx;
                 continue;
             }
-            // The clause ran off its end without resuming. §3.1 publishes
+            // The clause ran off its end without resuming. section 3.1 publishes
             // exactly this (`Done() -> { websocket.close() }`, *"sin resume —
             // abort implícito"*), so it ABORTS the handle with the clause's last
-            // output rather than raising `NoDischarge` the way the §23 engine
+            // output rather than raising `NoDischarge` the way the v1.17.0 engine
             // does. The continuation is simply dropped — nothing was allocated
             // to release.
             NodeOutcome::Completed { output, .. } => {
@@ -426,7 +426,7 @@ fn find_frame(ctx: &DispatchCtx, effect: &str, start_exclusive: usize) -> Option
 
 /// Resolve one argument / value expression against the live bindings.
 ///
-/// A quoted argument is a LITERAL (§60's classification, preserved by §119.f.10's
+/// A quoted argument is a LITERAL (v2.10.0's classification, preserved by v2.83.0's
 /// parser); anything else is a reference the runtime looks up, so
 /// `perform Emit(Gen.output)` hands the handler the step's VALUE, not the name
 /// `Gen.output`. Putting the name on the wire is the specific defect that made

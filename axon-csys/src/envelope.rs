@@ -1,4 +1,4 @@
-//! §Fase 39.c.x — Epistemic Envelope C23 kernel (Rust shim).
+//! v2.0.0 — Epistemic Envelope C23 kernel (Rust shim).
 //!
 //! Safe Rust wrapper around the C23 envelope kernel at
 //! `c-src/effects/envelope.c`. The boundary follows the founder
@@ -15,7 +15,7 @@
 //!
 //! ## Mathematical pillar
 //!
-//! §Theorem 5.1 (paper §5.1): For any epistemic state E with
+//! Theorem 5.1 (paper section 5.1): For any epistemic state E with
 //! `derived_status = true`, the certainty `c` is bounded `c ≤ 0.99`.
 //! The C23 kernel applies the clamp structurally; the Rust shim
 //! exposes the bound as the const [`THEOREM_5_1_CEILING`] for any
@@ -32,7 +32,7 @@
 //! [`validate_degradation`] (or one of the secondary primitives) —
 //! no in-tree Rust path exists that bypasses the C23 kernel for
 //! production code. The fallback Rust implementation in
-//! `axon-rs::wire_envelope::FlowEnvelope::seal` (Fase 39.b) is
+//! `axon-rs::wire_envelope::FlowEnvelope::seal` (v2.0.0) is
 //! superseded by this shim in 39.c.
 
 use std::os::raw::c_double;
@@ -121,7 +121,7 @@ impl EpistemicEnvelope {
         }
     }
 
-    /// §Theorem 5.1 enforcement via the C23 kernel. THIS IS THE
+    /// Theorem 5.1 enforcement via the C23 kernel. THIS IS THE
     /// CANONICAL ENTRY POINT — every wire envelope MUST pass through
     /// this method (or [`validate_degradation`]) before HTTP
     /// serialization. The C23 kernel:
@@ -158,7 +158,7 @@ impl From<EpistemicEnvelopeCRepr> for EpistemicEnvelope {
     }
 }
 
-/// §Theorem 5.1 ceiling — the unbypassable upper bound on derived
+/// Theorem 5.1 ceiling — the unbypassable upper bound on derived
 /// certainty. Exported as a `pub const` so adopter code can
 /// reason about the bound at compile time. The drift gate in
 /// [`tests`] verifies this matches the C kernel's export.
@@ -168,7 +168,7 @@ pub const THEOREM_5_1_CEILING: f64 = 0.99;
 // Free-function entry points (called via FFI to the C23 kernel).
 // ──────────────────────────────────────────────────────────────────────
 
-/// §Theorem 5.1 — canonical entry point. Calls the C23 kernel
+/// Theorem 5.1 — canonical entry point. Calls the C23 kernel
 /// `axon_csys_envelope_validate_degradation`. See
 /// [`EpistemicEnvelope::validate_degradation`] for semantics.
 #[cfg(feature = "native")]
@@ -178,7 +178,7 @@ pub fn validate_degradation(env: EpistemicEnvelope) -> EpistemicEnvelope {
     c_output.into()
 }
 
-/// §Fase 119.h — the same function without the C toolchain.
+/// v2.83.0 — the same function without the C toolchain.
 ///
 /// A LINE-BY-LINE mirror of `c-src/effects/envelope.c`, not a
 /// reinterpretation: defensive normalisation first (NaN / ±Inf / out-of-range
@@ -198,7 +198,7 @@ pub fn validate_degradation(mut env: EpistemicEnvelope) -> EpistemicEnvelope {
     env
 }
 
-/// §Fase 119.h — the C helper `axon_csys_envelope_normalise`, in Rust.
+/// v2.83.0 — the C helper `axon_csys_envelope_normalise`, in Rust.
 /// Non-finite and negative inputs collapse to `0.0`; above `1.0` saturates.
 #[cfg(not(feature = "native"))]
 fn normalise(c: f64) -> f64 {
@@ -211,7 +211,7 @@ fn normalise(c: f64) -> f64 {
     c
 }
 
-/// §Theorem 5.1 ceiling exported by the C23 kernel. Returns
+/// Theorem 5.1 ceiling exported by the C23 kernel. Returns
 /// `0.99`. Used by drift-gate tests to detect Rust/C divergence
 /// in the bound.
 #[cfg(feature = "native")]
@@ -219,7 +219,7 @@ pub fn theorem_5_1_ceiling_from_c() -> f64 {
     unsafe { axon_csys_envelope_theorem_5_1_ceiling() }
 }
 
-/// §Fase 119.h — without the C kernel there is no second source to compare
+/// v2.83.0 — without the C kernel there is no second source to compare
 /// against, so this returns the Rust constant. The drift gate that calls it
 /// becomes a tautology in this configuration — which is exactly why the
 /// `native` build must keep running in CI: the comparison only means
@@ -239,7 +239,7 @@ pub fn clamp_ceiling(certainty: f64) -> f64 {
     unsafe { axon_csys_envelope_clamp_ceiling(certainty) }
 }
 
-/// §Fase 119.h — mirror of `axon_csys_envelope_clamp_ceiling`: normalise,
+/// v2.83.0 — mirror of `axon_csys_envelope_clamp_ceiling`: normalise,
 /// then saturate at the Theorem 5.1 ceiling.
 #[cfg(not(feature = "native"))]
 pub fn clamp_ceiling(certainty: f64) -> f64 {
@@ -260,7 +260,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn fase39cx_validate_clean_path_preserves_certainty() {
+    fn validate_clean_path_preserves_certainty() {
         let env = EpistemicEnvelope::new(1.0, false, EpistemicKind::Clean);
         let out = validate_degradation(env);
         assert_eq!(
@@ -272,7 +272,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39cx_validate_derived_clamps_to_ceiling() {
+    fn validate_derived_clamps_to_ceiling() {
         // A misbehaving Rust producer sets certainty = 1.0 + derived.
         // The C23 kernel MUST clamp regardless.
         let env = EpistemicEnvelope::new(1.0, true, EpistemicKind::Derived);
@@ -286,7 +286,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39cx_validate_derived_below_ceiling_passes_through() {
+    fn validate_derived_below_ceiling_passes_through() {
         let env = EpistemicEnvelope::new(0.5, true, EpistemicKind::Derived);
         let out = validate_degradation(env);
         assert_eq!(
@@ -296,7 +296,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39cx_validate_normalises_nan() {
+    fn validate_normalises_nan() {
         let env = EpistemicEnvelope::new(f64::NAN, true, EpistemicKind::Breached);
         let out = validate_degradation(env);
         assert_eq!(
@@ -306,7 +306,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39cx_validate_normalises_positive_infinity() {
+    fn validate_normalises_positive_infinity() {
         let env = EpistemicEnvelope::new(f64::INFINITY, true, EpistemicKind::Derived);
         let out = validate_degradation(env);
         assert_eq!(
@@ -316,7 +316,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39cx_validate_normalises_negative_certainty() {
+    fn validate_normalises_negative_certainty() {
         let env = EpistemicEnvelope::new(-0.5, false, EpistemicKind::Clean);
         let out = validate_degradation(env);
         assert_eq!(
@@ -326,7 +326,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39cx_validate_normalises_above_one() {
+    fn validate_normalises_above_one() {
         // 1.5 is out-of-range; the kernel coerces to 1.0 first, then
         // (since not derived) preserves.
         let env = EpistemicEnvelope::new(1.5, false, EpistemicKind::Clean);
@@ -338,7 +338,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39cx_validate_normalises_above_one_and_clamps_derived() {
+    fn validate_normalises_above_one_and_clamps_derived() {
         let env = EpistemicEnvelope::new(1.5, true, EpistemicKind::Derived);
         let out = validate_degradation(env);
         assert_eq!(
@@ -348,7 +348,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39cx_clamp_ceiling_unconditional() {
+    fn clamp_ceiling_unconditional() {
         // The belt-and-suspenders clamp ignores `derived_status` and
         // always applies the ceiling.
         assert_eq!(clamp_ceiling(1.0), THEOREM_5_1_CEILING);
@@ -360,8 +360,8 @@ mod tests {
     }
 
     #[test]
-    fn fase39cx_drift_gate_rust_ceiling_matches_c_ceiling() {
-        // §Drift gate — the Rust THEOREM_5_1_CEILING const MUST agree
+    fn drift_gate_rust_ceiling_matches_c_ceiling_2() {
+        // Drift gate — the Rust THEOREM_5_1_CEILING const MUST agree
         // with the C kernel's exported constant. If they ever diverge
         // it indicates a bug in one of the two; this test fails fast.
         let from_c = theorem_5_1_ceiling_from_c();
@@ -374,7 +374,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39cx_epistemic_kind_round_trip_through_ffi() {
+    fn epistemic_kind_round_trip_through_ffi() {
         // Each EpistemicKind variant MUST round-trip through the FFI
         // byte-identically.
         let kinds = [
@@ -394,7 +394,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39cx_unknown_ordinal_falls_back_to_derived() {
+    fn unknown_ordinal_falls_back_to_derived() {
         // Defensive: an unknown ordinal coming back from C means the
         // C/Rust enum drifted. We fall back to Derived (safe class)
         // rather than panic.
@@ -403,7 +403,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39cx_validate_method_on_struct_matches_free_function() {
+    fn validate_method_on_struct_matches_free_function() {
         // The method on EpistemicEnvelope MUST be a thin wrapper
         // around the free function — verify they produce identical
         // outputs.

@@ -1,6 +1,6 @@
 //! WebSocket binary-frame accumulator.
 //!
-//! §λ-L-E Fase 11.b. WebSocket spec (RFC 6455) allows a message to
+//! v1.4.0. WebSocket spec (RFC 6455) allows a message to
 //! be split across multiple frames:
 //!
 //! - Frame #1: opcode=0x2 (binary), FIN=0

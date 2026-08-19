@@ -1,19 +1,19 @@
-//! §Fase 114.f — **`lease` over a vendor: the CT-2 Anchor Breach fires on a tool
+//! v2.69.0 — **`lease` over a vendor: the CT-2 Anchor Breach fires on a tool
 //! call, not just a store op.**
 //!
-//! §113.d gave `lease` its first use-site: a store operation is a *use* of the
-//! resource, so a post-expiry store op is the breach. §114.c/d made a `tool` name
+//! v2.67.0 gave `lease` its first use-site: a store operation is a *use* of the
+//! resource, so a post-expiry store op is the breach. v2.69.0 made a `tool` name
 //! a resource too — so a **tool call** is also a use, and a post-expiry vendor call
 //! must breach the same way.
 //!
 //! This is the shared lease guard, keyed by **resource** (a lease is over a
 //! resource, not over the thing that uses it). `StoreRegistry` holds its own guard
-//! for store-held leases (§113.d, unchanged); this one is held on `ServerState` for
+//! for store-held leases (v2.67.0, unchanged); this one is held on `ServerState` for
 //! tool-held leases.
 //!
 //! # Why one guard never charges another's lease
 //!
-//! `axon-T945` (extended in §114.f to count tool holders) guarantees a leased —
+//! `axon-T945` (extended in v2.69.0 to count tool holders) guarantees a leased —
 //! i.e. `affine` or `linear` — resource has **exactly one holder**: a store XOR a
 //! tool, never both. So a given leased resource is charged by exactly one path. The
 //! two guards are disjoint by construction, not by luck.

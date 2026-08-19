@@ -1,8 +1,8 @@
 //! Session types — the algebra of typed bidirectional dialogue.
 //!
-//! §Fase 41.a — *WebSocket as a Cognitive Primitive*. This module is the pure
+//! v2.3.0 — *WebSocket as a Cognitive Primitive*. This module is the pure
 //! mathematical core of the paper (`docs/paper_websocket_cognitive_primitive.md`):
-//! the session-type grammar (§3.1), the **duality** involution `(·)⊥` (§3.2),
+//! the session-type grammar (section 3.1), the **duality** involution `(·)⊥` (section 3.2),
 //! the **regular-coinductive equality** for recursive (`μ`) types, and the
 //! **connection law** — a connection with endpoints typed `S` and `T` is
 //! well-formed iff `T ≡ S⊥`. Grounded in Caires & Pfenning's Curry–Howard
@@ -11,13 +11,13 @@
 //! expects* — making a dialogue **deadlock-free and protocol-conformant by
 //! construction**, not by per-message runtime validation.
 //!
-//! This is the pure algebra only: no parser/AST (Fase 41.b), no runtime (41.d),
+//! This is the pure algebra only: no parser/AST (v2.3.0), no runtime (41.d),
 //! no multiparty projection (41.h). The payload carried by `send`/`recv` is an
 //! opaque [`Payload`] (a canonical type name); 41.b binds it to the real AST
 //! value types — the duality + equality algebra here depends only on payload
 //! *equality*, never on payload structure, so it is decoupled by construction.
 //!
-//! §Fase 41.c — **credit-refined backpressure** (D2 of the plan vivo, §4.2 of
+//! v2.3.0 — **credit-refined backpressure** (D2 of the plan vivo, section 4.2 of
 //! the paper). `Send` / `Recv` now carry an optional credit index `n: u64`
 //! (`!ⁿA.S` / `?ⁿA.S`); `None` is the unbounded fragment (`!∞A.S`, the algebra
 //! before 41.c). The "send at n = 0 has no typing rule" axiom is implemented by
@@ -35,11 +35,11 @@ use std::fmt;
 use serde::{Deserialize, Serialize};
 
 /// The value type carried by a `send`/`recv`. Opaque at this layer (a canonical
-/// type name); Fase 41.b replaces it with the real AST value type. Duality and
+/// type name); v2.3.0 replaces it with the real AST value type. Duality and
 /// equality treat it nominally — only `Payload == Payload` matters.
 ///
 /// `#[serde(transparent)]` — the JSON encoding is the bare type-name string
-/// (the wire shape the §Fase 41.g sealed-snapshot serialiser depends on);
+/// (the wire shape the v2.3.0 sealed-snapshot serialiser depends on);
 /// `Payload("Msg")` ↔ `"Msg"` on the wire.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
@@ -57,11 +57,11 @@ impl fmt::Display for Payload {
     }
 }
 
-/// A session type — the protocol of one endpoint of a connection (§3.1 of the
+/// A session type — the protocol of one endpoint of a connection (section 3.1 of the
 /// paper). `Select`/`Branch` carry their labelled continuations in a `BTreeMap`
 /// so the label set is canonically ordered (deterministic duality + equality).
 ///
-/// `Serialize` + `Deserialize` — §Fase 41.g sealed-snapshot resume needs the
+/// `Serialize` + `Deserialize` — v2.3.0 sealed-snapshot resume needs the
 /// residual cursor + the protocol schema serialisable. The encoding is
 /// stable across the algebra layer + the enterprise persistence layer: the
 /// same JSON shape goes into the AAD-bound `cognitive_states` ciphertext
@@ -71,7 +71,7 @@ pub enum SessionType {
     /// `end` — the dialogue is complete.
     End,
     /// `!ⁿA.S` — send a value of type `A`, then behave as `S`. The optional
-    /// `credit` is the Fase 41.c index `n` (paper §4.2): `Some(n)` types a send
+    /// `credit` is the v2.3.0 index `n` (paper section 4.2): `Some(n)` types a send
     /// that *requires* `n > 0` available credit (the "no rule at n = 0" axiom
     /// makes `Some(0)` unprovable); `None` is the unbounded fragment `!∞A.S`.
     Send {
@@ -94,8 +94,8 @@ pub enum SessionType {
     Rec(String, Box<SessionType>),
     /// `X` — a recursion variable (bound by an enclosing `Rec`).
     Var(String),
-    /// §Fase 79 — `Intr(sig; B, H)` — an **interruptible region** (paper
-    /// *Interruptible Sessions* §3.3). `body` (`B`) is the interruptible
+    /// v2.36.0 — `Intr(sig; B, H)` — an **interruptible region** (paper
+    /// *Interruptible Sessions* section 3.3). `body` (`B`) is the interruptible
     /// protocol; on the `signal` (a closed `CallInterruptCause` cause) the
     /// `handler` (`H`) runs. `H` is a **two-exit** construct: its normal exit is
     /// [`SessionType::Resume`] (control returns to `B`'s residual), its
@@ -106,11 +106,11 @@ pub enum SessionType {
         body: Box<SessionType>,
         handler: Box<SessionType>,
     },
-    /// §Fase 79 — the interrupt handler's **normal exit**: hand control back to
+    /// v2.36.0 — the interrupt handler's **normal exit**: hand control back to
     /// the parked body's residual (`resume`). A self-dual leaf, like `End`
     /// (resumption is symmetric — the peer receives control back). Only
     /// well-formed inside an [`SessionType::Interrupt`] handler (checked at
-    /// §79.c); the abandon exit is the ordinary `End`.
+    /// v2.36.0); the abandon exit is the ordinary `End`.
     Resume,
 }
 
@@ -133,7 +133,7 @@ impl SessionType {
             cont: Box::new(then),
         }
     }
-    /// `!ⁿA.S` — credit-refined send (Fase 41.c, paper §4.2). The continuation
+    /// `!ⁿA.S` — credit-refined send (v2.3.0, paper section 4.2). The continuation
     /// `then` runs in the same window — the budget is global to the socket; the
     /// `n` here is the *snapshot* of available credit demanded at this step.
     pub fn send_credit(payload: impl Into<String>, n: u64, then: SessionType) -> Self {
@@ -143,7 +143,7 @@ impl SessionType {
             cont: Box::new(then),
         }
     }
-    /// `?ⁿA.S` — credit-refined receive (Fase 41.c).
+    /// `?ⁿA.S` — credit-refined receive (v2.3.0).
     pub fn recv_credit(payload: impl Into<String>, n: u64, then: SessionType) -> Self {
         SessionType::Recv {
             payload: Payload::new(payload),
@@ -164,7 +164,7 @@ impl SessionType {
         SessionType::Var(name.into())
     }
 
-    // ── Duality (§3.2): the involution that swaps the two sides ────────────
+    // ── Duality (section 3.2): the involution that swaps the two sides ────────────
 
     /// The dual `S⊥`: swaps `send`↔`recv` and `select`↔`branch`, recursing into
     /// continuations; `end`, `Rec` binders and `Var`s are preserved. Payloads
@@ -189,7 +189,7 @@ impl SessionType {
             SessionType::Branch(m) => SessionType::Select(dual_map(m)),
             SessionType::Rec(x, b) => SessionType::Rec(x.clone(), Box::new(b.dual())),
             SessionType::Var(x) => SessionType::Var(x.clone()),
-            // §Fase 79 — Intr(sig; B, H)⊥ = Intr(sig; B⊥, H⊥); Resume self-dual
+            // v2.36.0 — Intr(sig; B, H)⊥ = Intr(sig; B⊥, H⊥); Resume self-dual
             // (Theorem 1: connection law preserved across both handler exits).
             SessionType::Interrupt { signal, body, handler } => SessionType::Interrupt {
                 signal: signal.clone(),
@@ -233,7 +233,7 @@ impl SessionType {
                     self.clone()
                 }
             }
-            // §Fase 79 — substitution descends into both interrupt sub-protocols;
+            // v2.36.0 — substitution descends into both interrupt sub-protocols;
             // Resume is a leaf (no free vars of its own).
             SessionType::Interrupt { signal, body, handler } => SessionType::Interrupt {
                 signal: signal.clone(),
@@ -273,14 +273,14 @@ impl SessionType {
         equiv_inner(self, other, &mut assumed)
     }
 
-    /// The **connection law** (§3.2): a connection whose two endpoints are typed
+    /// The **connection law** (section 3.2): a connection whose two endpoints are typed
     /// `self` and `peer` is well-formed iff `peer ≡ self⊥`. Symmetric up to
     /// involutivity (`(S⊥)⊥ ≡ S`).
     pub fn is_dual_to(&self, peer: &SessionType) -> bool {
         peer.equiv(&self.dual())
     }
 
-    // ── Fase 41.c — credit-refined backpressure (D2, paper §4.2) ────────────
+    // ── v2.3.0 — credit-refined backpressure (D2, paper section 4.2) ────────────
 
     /// Stamp every (recursively-reachable) `Send` and `Recv` with the credit
     /// index `n`. Idempotent on already-stamped types. Used by the type
@@ -308,7 +308,7 @@ impl SessionType {
             ),
             SessionType::Rec(x, b) => SessionType::Rec(x.clone(), Box::new(b.with_credit(n))),
             SessionType::Var(x) => SessionType::Var(x.clone()),
-            // §Fase 79 — stamp both sub-protocols; the handler's disjoint-budget
+            // v2.36.0 — stamp both sub-protocols; the handler's disjoint-budget
             // symmetry (Thm 3) is enforced structurally by the checker, not here.
             SessionType::Interrupt { signal, body, handler } => SessionType::Interrupt {
                 signal: signal.clone(),
@@ -319,7 +319,7 @@ impl SessionType {
         }
     }
 
-    /// The "no rule at n = 0" axiom (paper §4.2): an explicit `!⁰A.S` in the
+    /// The "no rule at n = 0" axiom (paper section 4.2): an explicit `!⁰A.S` in the
     /// type is **unprovable** — there is no typing rule for a send at zero
     /// available credit. Returns the offending payload of the first such send
     /// (in a deterministic left-to-right walk) if any.
@@ -335,7 +335,7 @@ impl SessionType {
             }
             SessionType::Rec(_, b) => b.has_send_at_zero(),
             SessionType::Var(_) => None,
-            // §Fase 79 — an explicit `!⁰A.S` anywhere in either sub-protocol.
+            // v2.36.0 — an explicit `!⁰A.S` anywhere in either sub-protocol.
             SessionType::Interrupt { body, handler, .. } => {
                 body.has_send_at_zero().or_else(|| handler.has_send_at_zero())
             }
@@ -348,7 +348,7 @@ impl SessionType {
     /// Presburger discharge — the constraints are linear arithmetic over the
     /// naturals, so satisfiability is decidable; the algorithm here is the
     /// direct fixpoint formulation specialised to closed, contractive session
-    /// types (Rast lineage, §4.2 of the paper).
+    /// types (Rast lineage, section 4.2 of the paper).
     ///
     /// The check fires three kinds of error:
     ///
@@ -401,14 +401,14 @@ impl SessionType {
             .unwrap_or((0, 0))
     }
 
-    // ── Fase 41.e — SSE-as-fragment unification (D3, paper §4.4) ─────────
+    // ── v2.3.0 — SSE-as-fragment unification (D3, paper section 4.4) ─────────
 
     /// True iff `self` lies in the **SSE producer fragment**: the
     /// connection only sends to its peer. Concretely the type contains
     /// only `End`, `Send`, internal-`Select`, `Rec`, and `Var` — no
     /// `Recv` (would mean the producer expects client input) and no
     /// `Branch` (would mean the producer offers a choice the client
-    /// picks). For such a type the §4.4 identity `S_SSE = Π↓(S_WS)`
+    /// picks). For such a type the section 4.4 identity `S_SSE = Π↓(S_WS)`
     /// holds with `Π↓ = id`: the protocol *is already* the SSE fragment,
     /// runnable over W3C SSE without WebSocket bidirectionality.
     ///
@@ -420,7 +420,7 @@ impl SessionType {
 
     /// Dual of [`projects_to_sse`] — the **SSE consumer fragment**: the
     /// connection only receives from its peer (`End`, `Recv`,
-    /// external-`Branch`, `Rec`, `Var`). The §4.4 theorem
+    /// external-`Branch`, `Rec`, `Var`). The section 4.4 theorem
     /// `Π↓(S)⊥ = Π↑(S⊥)` ties this to `projects_to_sse` via duality:
     /// `S.projects_to_sse() ⇔ S.dual().projects_to_sse_consumer()`.
     pub fn projects_to_sse_consumer(&self) -> bool {
@@ -455,7 +455,7 @@ impl SessionType {
 /// Which side of an SSE-projectable connection a session type describes
 /// — the **producer** (server-side, only sends/selects) or the
 /// **consumer** (client-side, only receives/branches). Used by
-/// [`SessionType::has_polarity`] to discharge the §4.4 SSE-fragment
+/// [`SessionType::has_polarity`] to discharge the section 4.4 SSE-fragment
 /// predicate `Π↓(S_WS) = S_SSE`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Polarity {
@@ -572,8 +572,8 @@ fn credit_walk(t: &SessionType, available: i64, budget: i64) -> Result<i64, Cred
             // the fixpoint check above already vetted sustainability.
             Ok(available)
         }
-        // §Fase 79 — the body runs on the socket window; the handler runs on a
-        // separate declared budget (Thm 3 / D79.11b) and does not debit this
+        // v2.36.0 — the body runs on the socket window; the handler runs on a
+        // separate declared budget (Thm 3 / the design decision) and does not debit this
         // window. On `resume` the window returns to its pre-interrupt state, so
         // the region's post-state is exactly the body's normal completion.
         SessionType::Interrupt { body, .. } => credit_walk(body, available, budget),
@@ -600,7 +600,7 @@ fn recurring_paths_into(t: &SessionType, x: &str, s: u64, r: u64, out: &mut Vec<
         }
         SessionType::Rec(y, body) if y != x => recurring_paths_into(body, x, s, r, out),
         SessionType::Rec(_, _) => {} // shadows x — its inner Var refers to itself
-        // §Fase 79 — descend into the body (its sends/recvs count toward the loop
+        // v2.36.0 — descend into the body (its sends/recvs count toward the loop
         // Δ); the handler's disjoint budget is analysed separately, and Resume is
         // a return-to-body marker, not a fresh recurring path.
         SessionType::Interrupt { body, .. } => recurring_paths_into(body, x, s, r, out),
@@ -638,7 +638,7 @@ fn equiv_inner(s: &SessionType, t: &SessionType, assumed: &mut Vec<(SessionType,
         // A bare `Var` survives unfolding only if it is free (open type); compare
         // nominally. Closed, contractive types never reach this with a head Var.
         (SessionType::Var(x), SessionType::Var(y)) => x == y,
-        // §Fase 79 — two interrupt regions are equivalent iff same signal cause
+        // v2.36.0 — two interrupt regions are equivalent iff same signal cause
         // and equivalent body + handler. Required so `is_dual_to` recognizes the
         // Intr(sig;B,H) / Intr(sig;B⊥,H⊥) pair.
         (
@@ -824,7 +824,7 @@ mod tests {
         assert_eq!(SessionType::rec("X", SessionType::var("X")).to_string(), "rec X.X");
     }
 
-    // ── Fase 41.c — credit-refined backpressure (D2) ─────────────────────────
+    // ── v2.3.0 — credit-refined backpressure (D2) ─────────────────────────
 
     #[test]
     fn dual_preserves_credit_index() {
@@ -975,7 +975,7 @@ mod tests {
         assert_eq!(body_chat.credit_delta("X"), (1, 1));
     }
 
-    // ── Fase 41.e — SSE-as-fragment unification (D3) ─────────────────────
+    // ── v2.3.0 — SSE-as-fragment unification (D3) ─────────────────────
 
     #[test]
     fn pure_send_chain_is_in_the_sse_producer_fragment() {
@@ -1025,7 +1025,7 @@ mod tests {
     #[test]
     fn recursive_sse_token_stream_is_in_the_producer_fragment() {
         // rec X. !Token.X — an unbounded SSE token stream. The canonical
-        // example: every Fase 33 server-token stream is exactly this
+        // example: every v1.24.0 server-token stream is exactly this
         // type (modulo the closing `end` we typically wrap it in).
         let s = SessionType::rec(
             "X",

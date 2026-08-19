@@ -1,4 +1,4 @@
-//! §Fase 33.x.g — Closed-catalog runtime warnings for the streaming
+//! v1.24.0 — Closed-catalog runtime warnings for the streaming
 //! production path.
 //!
 //! D5 contract: when the production async streaming path can't
@@ -17,10 +17,10 @@
 //!   2. Updating the slug-uniqueness pin in
 //!      [`closed_catalog_pins`].
 //!   3. Updating the warning-surface drift gate in
-//!      `tests/fase33x_g_warning_catalog.rs`.
+//!      `tests/warning_catalog.rs`.
 //!
 //! The "axon-W001" slot is reserved for the X-Axon-Stream-Available
-//! HTTP-header diagnostic that shipped in Fase 31.e (kept as a
+//! HTTP-header diagnostic that shipped in v1.22.0 (kept as a
 //! header-level surface rather than a wire-body warning to preserve
 //! legacy adopter parsers). 33.x.g introduces "axon-W002" as the
 //! first wire-body-surfaced warning code.
@@ -46,7 +46,7 @@ use serde::{Deserialize, Serialize};
 /// production SSE wire.
 ///
 /// As of 33.x.g there is exactly one wire-body code: `AxonW002`.
-/// W001 was reserved by Fase 31.e but ships as the
+/// W001 was reserved by v1.22.0 but ships as the
 /// `X-Axon-Stream-Available` HTTP header (header-level diagnostic),
 /// NOT as a wire-body warning. Future codes (W003+) require an
 /// explicit founder sign-off and a closed-catalog drift gate
@@ -97,8 +97,8 @@ impl WarningCode {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum FallbackMode {
-    // §Fase 33.z.e — `UnsupportedFlowShape` variant DELETED. The
-    // per-IRFlowNode dispatcher (Fase 33.y 45/45) covers every shape
+    // v1.24.0 — `UnsupportedFlowShape` variant DELETED. The
+    // per-IRFlowNode dispatcher (v1.24.0 45/45) covers every shape
     // the planner could previously reject; W002 cannot fire for
     // "unsupported flow shape" because no shape is unsupported.
     /// `resolve_streaming_backend` returned `None` for the
@@ -112,7 +112,7 @@ pub enum FallbackMode {
     /// Reserved for future scenarios where a custom adopter-
     /// provided backend implements `Backend::complete()` but not
     /// `Backend::stream()`. Not reachable today (all 8 dispatched
-    /// backends implement `stream()` per Fase 24 + 33.x.b); kept
+    /// backends implement `stream()` per v1.18.0 + v1.24.0); kept
     /// here so the catalog covers the conceptual case adopters
     /// hit when extending the registry.
     BackendLacksStream,
@@ -135,7 +135,7 @@ impl FallbackMode {
 /// `axon.complete.warnings[*]` (wire) and
 /// `replay.runtime_warnings[*]` (audit).
 ///
-/// # Required fields (per D5 + plan vivo §1)
+/// # Required fields (per D5 + plan vivo section 1)
 ///
 /// - `code` — closed-catalog [`WarningCode`].
 /// - `flow_name` — the flow whose streaming declaration fell back.
@@ -246,7 +246,7 @@ mod closed_catalog_pins {
 
     #[test]
     fn fallback_mode_catalog_has_three_variants_post_33_z_e() {
-        // §Fase 33.z.e — `UnsupportedFlowShape` retired; catalog
+        // v1.24.0 — `UnsupportedFlowShape` retired; catalog
         // shrinks from 4 to 3. The dispatcher path covers every
         // IRFlowNode variant; no shape is "unsupported".
         let all = [

@@ -3,7 +3,7 @@ name: mandate
 summary: A typed approval requirement — gates a flow's execution on a capability check + optional segregation of duties.
 category: operators
 top_level: true
-since: Fase 21
+since: v1.13.1
 grammar: |
   mandate <Name> {
       constraint: "<string>"           # required — human-readable constraint description
@@ -27,8 +27,8 @@ parameters for a control loop that drives outputs toward
 compliance, and a violation policy.
 
 In production deployments, mandates encode requirements that
-must be enforced **structurally**: SoX §404 segregation of
-duties, HIPAA §164.508 authorisation, PCI DSS §6.4 change
+must be enforced **structurally**: SoX section 404 segregation of
+duties, HIPAA section 164.508 authorisation, PCI DSS section 6.4 change
 control. The mandate's constraint is auditable; the PID loop
 makes its enforcement quantitative.
 
@@ -86,7 +86,7 @@ operations outside it engage the PID loop.
 
 A **non-negative integer**. The maximum number of PID loop
 iterations before the runtime gives up and runs
-`on_violation:`. Bounded retry is mandatory by §40 — the
+`on_violation:`. Bounded retry is mandatory by v2.0.0 — the
 runtime emits `axon-W014` for unbounded mandate loops.
 
 ### `on_violation:` (optional)
@@ -105,7 +105,7 @@ runtime validates against its registered handlers.
   check on every request.
 - A `reconcile` with `mandate: <Name>` runs the mandate before
   applying corrections.
-- A `flow … constrained_by_mandate: <Name>` (Fase 21 extension)
+- A `flow … constrained_by_mandate: <Name>` (v1.13.1 extension)
   attaches the mandate to a specific run.
 
 Per check:
@@ -141,4 +141,4 @@ Per check:
 - `axon://primitives/axonendpoint` — `mandate:` binding site.
 - `axon://primitives/reconcile` — `mandate:` binding site for
   control-plane corrections.
-- `axon://compliance/sox` — §404 SoD examples.
+- `axon://compliance/sox` — section 404 SoD examples.

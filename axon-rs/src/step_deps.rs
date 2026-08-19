@@ -69,7 +69,7 @@ pub fn extract_refs(text: &str) -> HashSet<String> {
     refs
 }
 
-/// §Fase 61 — augment a step's dependency-analysis `argument` with the step
+/// v2.11.0 — augment a step's dependency-analysis `argument` with the step
 /// references carried by a `use Tool(k = v)` call's keyword arguments.
 ///
 /// [`analyze`] only scans `user_prompt` + `argument` for `${name}` references.
@@ -78,7 +78,7 @@ pub fn extract_refs(text: &str) -> HashSet<String> {
 /// invisible: the scheduler classifies the call as a root and co-schedules it
 /// in the SAME wave as the steps it consumes — whose results are therefore
 /// absent from the call's pre-wave context snapshot, so the value resolves to
-/// empty (§60 reference) or to the literal name (pre-§60). This was the unifying
+/// empty (v2.10.0 reference) or to the literal name (pre-v2.10.0). This was the unifying
 /// root cause behind a multi-arg `use Tool` whose source steps are independent.
 ///
 /// Each `named_args` entry is `(name, value, value_kind)`:
@@ -540,7 +540,7 @@ mod tests {
         assert_eq!(graph.steps[1].depends_on, vec!["Gather"]);
     }
 
-    // ── §Fase 61 — use Tool(k = v) named-arg dependencies ───────────────────
+    // ── v2.11.0 — use Tool(k = v) named-arg dependencies ───────────────────
 
     #[test]
     fn use_tool_reference_dotted_creates_dep() {
@@ -568,7 +568,7 @@ mod tests {
 
     #[test]
     fn use_tool_flow_param_reference_is_not_a_step_dep() {
-        // `src = user_input` — a flow-param reference is valid (§60.c type-checks
+        // `src = user_input` — a flow-param reference is valid (v2.10.0 type-checks
         // it) but is NOT a step, so it must add no synthetic dependency token.
         let names: HashSet<&str> = ["ExtractUrl"].into_iter().collect();
         let na = vec![("src".into(), "user_input".into(), "reference".into())];
@@ -589,8 +589,8 @@ mod tests {
     fn use_tool_multi_arg_orders_after_independent_sources() {
         // The Kivi repro: two independent extraction steps (roots that depend
         // only on the flow-param) + a `use Tool` consuming both via `.output`.
-        // Pre-§61 the call was a root → same wave as its sources → snapshot
-        // race. Post-§61 the dependency is visible → a strictly later wave.
+        // Pre-v2.11.0 the call was a root → same wave as its sources → snapshot
+        // race. Post-v2.11.0 the dependency is visible → a strictly later wave.
         let names: HashSet<&str> =
             ["ExtractCompany", "ExtractDomain", "GenerateRadar"].into_iter().collect();
         let na = vec![

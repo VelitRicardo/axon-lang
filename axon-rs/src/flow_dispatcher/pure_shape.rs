@@ -1,4 +1,4 @@
-//! §Fase 33.y.c — Pure-shape variant handlers (Step / Probe / Reason /
+//! v1.24.0 — Pure-shape variant handlers (Step / Probe / Reason /
 //! Validate / Refine / Weave).
 //!
 //! All 6 IRFlowNode variants here share the underlying shape "produce
@@ -55,7 +55,7 @@
 //!   before `Backend::stream()` resolves; the enforcer activates per-
 //!   node, not per-step-list-iteration.
 //! - **D3** — `cancel.is_cancelled()` is checked at every `.await`
-//!   boundary; cancel propagates into reqwest body via Fase 33.x.e's
+//! boundary; cancel propagates into reqwest body via v1.24.0's
 //!   `cancel_aware` adapter (the backend impls already plumb this).
 //! - **D4** — wire shape extends v1.25.0 by adding `step_type` slugs
 //!   for the 5 non-`Step` variants; the canonical `Step` slug stays
@@ -102,39 +102,39 @@ pub struct PureShapeStep {
     /// `flow_plan::ir_flow_node_kind` for the corresponding IR
     /// variant.
     pub kind_slug: &'static str,
-    /// §Fase 33.y.k — Tools plumbed into `ChatRequest.tools`. The
+    /// v1.24.0 — Tools plumbed into `ChatRequest.tools`. The
     /// per-variant entry function builds this from the step's
     /// declared `apply: <tool>` (canonical Step shape) or
     /// `use_tool: [...]` (multi-tool form). For OSS reference: each
     /// declared tool synthesizes a minimal [`ToolSpec`] with name +
     /// canonical description + empty `{}` parameter schema.
     /// Enterprise integrations resolve real `IRToolSpec` entries
-    /// from the IRProgram (a future Fase 33.y.k.2 follow-up
+    /// from the IRProgram (a future v1.24.0 follow-up
     /// extends `DispatchCtx` with an `Option<&IRProgram>` ref for
     /// full per-provider parameter-schema resolution).
     ///
     /// Empty `Vec` (default) → backend gets no tools → wire shape
     /// stays D4 byte-compat with pre-33.y.k.
     pub tools: Vec<crate::backends::ToolSpec>,
-    /// §Fase 68.d — the step's declared model-capability requirement (context
-    /// window in tokens), threaded from `IRStep.requires_context`. The §68.c
-    /// resolver maps it (against the resolved backend's §68.a catalog) to the
+    /// v2.22.0 — the step's declared model-capability requirement (context
+    /// window in tokens), threaded from `IRStep.requires_context`. The v2.22.0
+    /// resolver maps it (against the resolved backend's v2.22.0 catalog) to the
     /// `ChatRequest.model` for this step. `None` (every non-`step` shape +
     /// requirement-less steps) → empty model → backend default (back-compat).
     pub requires_context: Option<u32>,
-    /// §Fase 86 — an explicit sampling temperature for this call. The `forge`
+    /// v2.41.0 — an explicit sampling temperature for this call. The `forge`
     /// pipeline runs each creative phase at a distinct temperature (low for
     /// Preparation/Verification, τ_eff for Incubation, τ_base for Illumination).
-    /// `None` (every pre-§86 shape) → backend default, wire-shape byte-compat.
+    /// `None` (every pre-v2.41.0 shape) → backend default, wire-shape byte-compat.
     pub temperature: Option<f64>,
-    /// §Fase 91.b — the step's declared cognitive timezone (`now: "<IANA>"`,
+    /// v2.46.0 — the step's declared cognitive timezone (`now: "<IANA>"`,
     /// threaded from `IRStep.now_tz`). Overrides the frame-level
     /// `ctx.default_now_tz`. When either is present, [`run_pure_shape`]
     /// appends the run's captured instant — rendered in that zone — to the
-    /// effective system prompt (`time_is_an_explicit_input`, §91). `None` on
-    /// every pre-§91 shape → prompt byte-identical.
+    /// effective system prompt (`time_is_an_explicit_input`, v2.46.0). `None` on
+    /// every pre-v2.46.0 shape → prompt byte-identical.
     pub now_tz: Option<String>,
-    /// §Fase 119.n — the `on_chunk:` arm of a `stream<T> { … }` written in this
+    /// v2.83.0 — the `on_chunk:` arm of a `stream<T> { … }` written in this
     /// step's body, run ONCE PER non-empty chunk with the chunk bound as
     /// `chunk`.
     ///
@@ -143,7 +143,7 @@ pub struct PureShapeStep {
     /// drain sequence — would drift from [`run_pure_shape`] the first time
     /// anything changed there (history budget, model resolution, temporal
     /// context), and a stream that silently stopped honouring `now:` or
-    /// `requires_context:` is precisely the class of defect this fase exists to
+    /// `requires_context:` is precisely the class of defect this cycle exists to
     /// end. Hooking [`drain_direct`] means the handler sees the SAME chunks
     /// every LLM step already produces.
     ///
@@ -159,7 +159,7 @@ pub struct PureShapeStep {
 /// `ask:` field verbatim; no addendum (the flow-level system prompt
 /// fully establishes intent).
 ///
-/// §Fase 33.y.k — when `step.apply_ref` is non-empty, synthesizes
+/// v1.24.0 — when `step.apply_ref` is non-empty, synthesizes
 /// a [`ToolSpec`](crate::backends::ToolSpec) and plumbs it into
 /// `ChatRequest.tools` via the shared async core. Adopter flows
 /// declaring `step S { apply: <tool> }` activate real upstream
@@ -172,9 +172,9 @@ pub async fn run_step(
 ) -> Result<NodeOutcome, DispatchError> {
     let outcome = run_step_generation(step, ctx).await?;
 
-    // §Fase 120 — the step-body `perform`s, dispatched AFTER generation.
+    // v2.87.0 — the step-body `perform`s, dispatched AFTER generation.
     //
-    // The ORDER is the whole design. `fase_23` §3.1 publishes
+    // The ORDER is the whole design. `the design plan` section 3.1 publishes
     // `perform Emit(response.token)` inside the step that produced `response`,
     // so the performed argument is the step's OWN output — and every generation
     // branch above binds that output under the step's name before returning.
@@ -185,7 +185,7 @@ pub async fn run_step(
     // failure produces plausible output and no error, which is the kind that
     // survives a release.
     //
-    // Empty for every pre-§120 program, so nothing above changes.
+    // Empty for every pre-v2.87.0 program, so nothing above changes.
     if step.performs.is_empty() {
         return Ok(outcome);
     }
@@ -212,7 +212,7 @@ async fn run_step_generation(
     step: &IRStep,
     ctx: &mut DispatchCtx,
 ) -> Result<NodeOutcome, DispatchError> {
-    // §Fase 36.x.e (D4) — interpolate `${name}` / `$name` in the
+    // v1.31.0 (D4) — interpolate `${name}` / `$name` in the
     // step's `ask` against the flow bindings BEFORE it becomes the
     // prompt (legacy LLM path) or the tool argument (streaming-tool
     // path). A `retrieve … as: alias` binds `alias`, a `let` binds
@@ -220,8 +220,8 @@ async fn run_step_generation(
     // name (see `run_pure_shape` / `run_step_streaming_tool`). So the
     // agent pattern's data threads — retrieve context → deliberate →
     // persist — on the streaming dispatcher path, matching the
-    // synchronous path's interpolation contract (Fase 35.q).
-    // §Fase 119.c — pre-generation elevations. A `lambda X on y -> b` or
+    // synchronous path's interpolation contract (v1.30.0).
+    // v2.83.0 — pre-generation elevations. A `lambda X on y -> b` or
     // `ots X on y -> b` inside the step body transforms its input BEFORE the
     // step's generation, so the produced binding is in scope for the prompt
     // interpolation below (README blocks 46-47 write exactly this: elevate
@@ -252,23 +252,23 @@ async fn run_step_generation(
         }
     }
 
-    // §Fase 119.f.7 — the step-body STATEMENTS, dispatched.
+    // v2.83.0 — the step-body STATEMENTS, dispatched.
     //
-    // §119.f gave the PIX verbs (`navigate` / `drill` / `trail` / `validate`)
+    // v2.83.0 gave the PIX verbs (`navigate` / `drill` / `trail` / `validate`)
     // and the step-scoped invocations (`probe … for […]`, `use_tool … with …`,
     // `par { … }`) a position inside a `step { }` body, an AST slot
     // (`StepNode.pix_ops`), an IR field (`IRStep.pix_ops`) — and NO reader.
     // `.pix_ops` had exactly one reader in the workspace: the frontend's own
     // grammar test. Both doc comments asserted "dispatch runs them BEFORE the
     // step generates"; that sentence was false for every one of them, and ten
-    // README rows left the §117 ledger on the strength of programs that
-    // compiled and then did nothing. Same shape as `warden`/`quant` in §111 —
-    // badge, registry entry, parser production, dispatch arm, no-op — one fase
-    // after the fase built to end it.
+    // README rows left the v2.81.0 ledger on the strength of programs that
+    // compiled and then did nothing. Same shape as `warden`/`quant` in v2.67.0 —
+    // badge, registry entry, parser production, dispatch arm, no-op — one cycle
+    // after the cycle built to end it.
     //
     // The elevation IS the flow-level node run in the step's position: each op
     // goes to the SAME handler the flow body would give it, so it keeps its own
-    // wire events and its own binding (D119.4's "one concept, two positions").
+    // wire events and its own binding (the design decision's "one concept, two positions").
     // No second implementation to drift. The routing is a CLOSED catalog
     // (`dispatch_step_statement`) rather than the generic `dispatch_node`: a
     // step body admits exactly the eight statements the parser can put there,
@@ -280,12 +280,12 @@ async fn run_step_generation(
     // `guideline` before `ask: "… {guideline} …"` is rendered.
     //
     // Failure propagates. A step must not generate over evidence its own body
-    // said to gather and could not — the §112 kernel defect ("if the evidence
+    // said to gather and could not — the v2.67.0 kernel defect ("if the evidence
     // is missing, substitute the belief") is the thing being refused here.
     for op in &step.pix_ops {
         match dispatch_step_statement(op, ctx).await? {
             NodeOutcome::Completed { .. } => {}
-            // §Fase 119.d — suspending inside a nested construct has no defined
+            // v2.83.0 — suspending inside a nested construct has no defined
             // continuation shape; the `par` handler refuses it in the same
             // words, and guessing here would park a continuation nobody can
             // resume into the middle of a step body.
@@ -306,7 +306,7 @@ async fn run_step_generation(
     let prompt =
         crate::exec_context::interpolate_vars(&step.ask, &ctx.let_bindings);
 
-    // §Fase 119.n — a `stream<T> { … }` in this step's body makes the step a
+    // v2.83.0 — a `stream<T> { … }` in this step's body makes the step a
     // STREAM step: its output IS the stream, `on_chunk` runs per chunk and
     // `on_complete` runs once the source closes. Placed before every generation
     // branch below because those branches are the source.
@@ -314,7 +314,7 @@ async fn run_step_generation(
         return run_step_stream(step, block, &prompt, ctx).await;
     }
 
-    // §Fase 34.d — Streaming-tool branch. When the step's
+    // v1.29.0 — Streaming-tool branch. When the step's
     // `apply_ref` resolves to a tool flagged `is_streaming` in the
     // attached registry, bypass the LLM upstream entirely + invoke
     // `tool.stream(args, ctx)` via the
@@ -326,20 +326,20 @@ async fn run_step_generation(
     //   3. The resolved entry's `is_streaming` flag is true
     //
     // When any condition fails, the legacy LLM-side path is taken
-    // (Fase 33.y.k+33.z behavior preserved). D9 backwards-compat:
+    // (v1.24.0 + v1.24.0 behavior preserved). D9 backwards-compat:
     // adopters who don't wire the registry see no change.
     if !step.apply_ref.is_empty() {
         if let Some(registry) = ctx.tool_registry.clone() {
             if let Some(entry) = registry.get(&step.apply_ref) {
                 if entry.is_streaming {
-                    // §Fase 119.n — no `on_chunk` here: a step with a `stream<T>`
+                    // v2.83.0 — no `on_chunk` here: a step with a `stream<T>`
                     // block never reaches this branch, it returned above.
                     return run_step_streaming_tool(step, entry.clone(), &prompt, None, ctx).await;
                 }
             }
         }
     }
-    // §Fase 119.b (D119.4) — a step carrying a `mandate` guard runs the
+    // v2.83.0 — a step carrying a `mandate` guard runs the
     // BUFFERED enforcement loop instead of the streaming path. Deliberate:
     // a mandated generation must never stream raw attempts to the wire,
     // because a token that reached the client cannot be unshipped — the
@@ -367,10 +367,10 @@ async fn run_step_generation(
         if let Some(guard) = mandate_guards.first() {
             return run_step_mandated(step, guard, &prompt, ctx).await;
         }
-        // §Fase 119.c — `lambda` and `ots` guards are ENFORCED above (pre-
+        // v2.83.0 — `lambda` and `ots` guards are ENFORCED above (pre-
         // generation elevations). `shield` remains the one guard kind not yet
         // enforced on the step path (flow-level `shield X on Y` IS enforced);
-        // silence would be the §111 defect, so it warns structurally.
+        // silence would be the v2.67.0 defect, so it warns structurally.
         for g in &step.guards {
             if g.kind == "shield" {
                 tracing::warn!(
@@ -382,7 +382,7 @@ async fn run_step_generation(
         }
     }
 
-    // Legacy path: LLM-side dispatch (Fase 33.y.k+33.z).
+    // Legacy path: LLM-side dispatch (v1.24.0 + v1.24.0).
     let tools = synthesize_tools_from_step(step);
     let shape = PureShapeStep {
         name: if step.name.is_empty() {
@@ -402,22 +402,22 @@ async fn run_step_generation(
     run_pure_shape(shape, ctx).await
 }
 
-/// §Fase 119.n — a step whose body declares `stream<T> { on_chunk … on_complete … }`.
+/// v2.83.0 — a step whose body declares `stream<T> { on_chunk … on_complete … }`.
 ///
 /// # What this replaces
 ///
-/// Nothing — and that is the point. Before §119.n the construct never reached
+/// Nothing — and that is the point. Before v2.83.0 the construct never reached
 /// the dispatcher at all: the step-body parser sent it to
 /// `skip_flow_step_structural`, so README block 15's `step Stream` arrived here
 /// with `pix_ops=0`, `ask=""`, `output=""`. An EMPTY step that `axon check`
 /// passed with `0 errors`, whose `Stream.output` the next step then reasoned
-/// over. §111.e's `stream` handler was real; the grammar reaching it was a shape
+/// over. v2.67.0's `stream` handler was real; the grammar reaching it was a shape
 /// (`body: Vec<FlowStep>`) that no published block writes.
 ///
 /// # The chunk source, and why a missing one REFUSES
 ///
 /// A stream handler is a consumer; it needs something producing chunks. This
-/// path takes the step's own generation as that producer — `fase_23` §3.7's
+/// path takes the step's own generation as that producer — `the design plan` section 3.7's
 /// desugaring, where `step gen { given: prompt stream<Token> { on_chunk … } }`
 /// handles the tokens the step itself emits — so `on_chunk` sees exactly the
 /// chunks [`drain_direct`] already produces for every LLM step.
@@ -425,7 +425,7 @@ async fn run_step_generation(
 /// When the step declares NO source (no `ask:` to generate from), this refuses
 /// in writing rather than running the handlers over nothing. The alternative was
 /// to complete with an empty output, which is indistinguishable from a stream
-/// that legitimately had no chunks — and manufacturing that silence is the §112
+/// that legitimately had no chunks — and manufacturing that silence is the v2.67.0
 /// kernel defect ("if the evidence is missing, substitute the belief") wearing a
 /// stream's clothes. README block 15 is in exactly this state: it declares
 /// `tool MarketFeed` and never binds it to the step, so it now FAILS CLOSED with
@@ -459,13 +459,13 @@ async fn run_step_stream(
     //   1. `apply: <Tool>` where the tool is a REGISTERED STREAMING tool — the
     //      shape README block 15 writes (`tool MarketFeed` feeding
     //      `stream<QuoteData>`). The tool's chunks ARE the stream.
-    //   2. otherwise the step's own generation — `fase_23` §3.7's
+    // 2. otherwise the step's own generation — `the design plan` section 3.7's
     //      `stream<Token>` case, where the step's tokens are the stream.
     //
     // An `apply:` that does NOT resolve to a streaming tool is REFUSED, never
     // quietly demoted to (2). Falling back would substitute a different producer
     // than the one the author named: the step would stream the model's words
-    // while the program says it is streaming the feed. That is the §112 kernel
+    // while the program says it is streaming the feed. That is the v2.67.0 kernel
     // defect ("if the evidence is missing, substitute the belief") applied to an
     // entire data source, and it is the one direction that fails silently.
     if !step.apply_ref.is_empty() {
@@ -480,7 +480,7 @@ async fn run_step_stream(
                 match run_step_streaming_tool(step, e, prompt, block.on_chunk.as_deref(), ctx).await
                 {
                     Ok(outcome) => finish_stream_step(block, outcome, &step_name, ctx).await,
-                    // §Fase 119.n.3 — the SOURCE failed (an error terminator, a
+                    // v2.83.0 — the SOURCE failed (an error terminator, a
                     // dead upstream). `on_error` decides, if the author wrote one.
                     Err(e) => recover_stream_step(block, e, &step_name, ctx).await,
                 }
@@ -538,14 +538,14 @@ async fn run_step_stream(
     };
     match run_pure_shape(shape, ctx).await {
         Ok(outcome) => finish_stream_step(block, outcome, &step_name, ctx).await,
-        // §Fase 119.n.3 — the generation itself failed (a dead upstream, a chunk
+        // v2.83.0 — the generation itself failed (a dead upstream, a chunk
         // error mid-drain). Same `on_error` semantics as the tool source: one
         // arm, one meaning, whichever producer broke.
         Err(e) => recover_stream_step(block, e, &step_name, ctx).await,
     }
 }
 
-/// §Fase 119.n.3 — did the SOURCE fail, or did the author's own handler fail?
+/// v2.83.0 — did the SOURCE fail, or did the author's own handler fail?
 ///
 /// `on_error` handles a failing PRODUCER. It must never catch a dispatch error
 /// raised by `on_chunk` itself: a broken handler that silently catches itself
@@ -560,7 +560,7 @@ fn is_source_failure(e: &DispatchError) -> bool {
     }
 }
 
-/// §Fase 119.n.3 — run `on_error` over a failed source, if the author wrote one.
+/// v2.83.0 — run `on_error` over a failed source, if the author wrote one.
 ///
 /// The failure binds under `error`. The step then COMPLETES with the arm's
 /// output: the author declared what to do about the failure, so this is an
@@ -598,7 +598,7 @@ async fn recover_stream_step(
     }
 }
 
-/// §Fase 119.n — run `on_complete` and decide the stream step's output.
+/// v2.83.0 — run `on_complete` and decide the stream step's output.
 ///
 /// Shared by BOTH chunk sources so the completion semantics cannot drift between
 /// "streamed from a tool" and "streamed from the step's own generation". The
@@ -654,13 +654,13 @@ async fn finish_stream_step(
     })
 }
 
-/// §Fase 119.f.7 — the CLOSED catalog of statements a `step { }` body admits.
+/// v2.83.0 — the CLOSED catalog of statements a `step { }` body admits.
 ///
-/// `IRStep.pix_ops` is filled by exactly ten parser productions (§119.f's
+/// `IRStep.pix_ops` is filled by exactly ten parser productions (v2.83.0's
 /// `parse_step` arms): the PIX verbs `navigate` / `drill` / `trail` /
 /// `validate`, the step-scoped invocations `probe … for […]`,
-/// `use_tool … with …`, `reason { given ask depth }` (§119.f.8) and
-/// `weave [a, b] format: … include: […]` (§119.f.9), and a nested `par { … }`.
+/// `use_tool … with …`, `reason { given ask depth }` (v2.83.0) and
+/// `weave [a, b] format: … include: […]` (v2.83.0), and a nested `par { … }`.
 /// Each routes to the handler the FLOW-level position already uses — one
 /// concept, two positions, one implementation.
 ///
@@ -673,7 +673,7 @@ async fn finish_stream_step(
 ///   2. A step body is not a flow body. Sending an unexpected variant to a
 ///      generic dispatcher would execute grammar the parser cannot produce and
 ///      the language never promised. A closed match makes the set legible and
-///      REFUSES the rest in writing — the §111 discipline (an open surface
+/// REFUSES the rest in writing — the v2.67.0 discipline (an open surface
 ///      breeds a catalog nobody decided) applied to a dispatch table.
 ///
 /// Adding an eighth step-body statement means adding its arm here. The refusal
@@ -686,14 +686,14 @@ async fn dispatch_step_statement(
     use crate::ir_nodes::IRFlowNode as N;
     match op {
         N::Probe(n) => run_probe(n, ctx).await,
-        // §Fase 119.f.8 — the eighth statement: `reason { given ask depth }`.
+        // v2.83.0 — the eighth statement: `reason { given ask depth }`.
         N::Reason(n) => run_reason(n, ctx).await,
-        // §Fase 119.f.9 — the ninth: `weave [a, b] format: T include: […]`.
+        // v2.83.0 — the ninth: `weave [a, b] format: T include: […]`.
         N::Weave(n) => run_weave(n, ctx).await,
-        // §Fase 119.f.11 — the tenth: `retrieve from <Store> where "…"`. The
+        // v2.83.0 — the tenth: `retrieve from <Store> where "…"`. The
         // only one of the four whose engine was already wired end to end.
         N::Retrieve(n) => super::wire_integrations::run_retrieve(n, ctx).await,
-        // §Fase 119.m.3 — the eleventh: `<Agent>(arg, …)`. An ELEVATION like
+        // v2.83.0 — the eleventh: `<Agent>(arg, …)`. An ELEVATION like
         // the rest — the agent's answer binds under its own name BEFORE the
         // step generates, so the step's `ask:` can interpolate it.
         N::AgentCall(n) => super::agent_loop::run_agent_call(n, ctx).await,
@@ -716,7 +716,7 @@ async fn dispatch_step_statement(
     }
 }
 
-/// §Fase 34.d (v1.29.0) — Streaming-tool dispatch branch.
+/// v1.29.0 — Streaming-tool dispatch branch.
 ///
 /// Bypasses `Backend::stream()` entirely. Invokes
 /// `tool.stream(step.ask, ctx)` via the bridge factory + drains the
@@ -747,7 +747,7 @@ async fn dispatch_step_statement(
 /// - `effect_policy_applied` — the policy slug from the tool's
 ///   `effect_row` (e.g., "drop_oldest"). Captured at the dispatch
 ///   layer; actual enforcement at the chunk level lands in
-///   Fase 34.g's `unified_stream_handler`.
+/// v1.29.0's `unified_stream_handler`.
 /// - `chunks_dropped` / `chunks_degraded` — 0 for 34.d (enforcer
 ///   integration deferred to 34.g).
 ///
@@ -762,19 +762,19 @@ async fn dispatch_step_statement(
 async fn run_step_streaming_tool(
     step: &IRStep,
     entry: crate::tool_registry::ToolEntry,
-    // §Fase 36.x.e (D4) — the step's `ask` already interpolated by
+    // v1.31.0 (D4) — the step's `ask` already interpolated by
     // `run_step` against `ctx.let_bindings`. Used as the tool's
     // streaming argument so a `${retrieve_alias}` reaches the tool.
     prompt: &str,
-    // §Fase 119.n — the `on_chunk:` arm when this step also declares
-    // `stream<T> { … }`. `None` on every pre-§119.n path, which is then
+    // v2.83.0 — the `on_chunk:` arm when this step also declares
+    // `stream<T> { … }`. `None` on every pre-v2.83.0 path, which is then
     // byte-identical. Threaded through THIS function rather than given its own
     // drain so the handler inherits the budget gate, the channel permit, the
     // policy enforcement and the audit row unchanged.
     on_chunk: Option<&IRStep>,
     ctx: &mut DispatchCtx,
 ) -> Result<NodeOutcome, DispatchError> {
-    // §Fase 34.g convergence — the per-chunk drain loop now lives
+    // v1.29.0 convergence — the per-chunk drain loop now lives
     // in `flow_dispatcher::unified_stream::unified_stream_handler`.
     // Pre-34.g this function ran an inline drain loop with policy
     // capture-but-no-enforcement; 34.g shifts the drain to the
@@ -825,7 +825,7 @@ async fn run_step_streaming_tool(
     let tool_ctx = crate::tool_dispatch_bridge::build_tool_context(
         ctx.cancel.clone(),
         0, // 34.d-scope: trace_id placeholder. The dispatcher doesn't
-           // currently carry trace_id in DispatchCtx; future sub-fase
+           // currently carry trace_id in DispatchCtx; future step
            // (34.i audit extension) plumbs through.
     );
     let tool = crate::tool_dispatch_bridge::resolve_streaming_tool(&entry);
@@ -837,23 +837,23 @@ async fn run_step_streaming_tool(
         return Err(DispatchError::UpstreamCancelled);
     }
 
-    // §Fase 72.c — the LINEAR-EFFECT BUDGET GATE. When the flow is run by a
+    // v2.28.0 — the LINEAR-EFFECT BUDGET GATE. When the flow is run by a
     // budgeted daemon, a tool emission must consume a token from every quota on
     // that tool (`budget { … on Tool(X) }`). An exhausted quota under the
     // fail-closed `block` policy fails the step with a typed
     // `EffectQuotaExhausted` — the call is NOT emitted, so over-emission is
     // impossible by construction (the `effects_are_linear` doctrine). An
     // unbudgeted tool (no quota, or no budget at all) is granted unconditionally,
-    // byte-identical to pre-§72. (`defer`/`shed` refine the deny path in §72.d;
+    // byte-identical to pre-v2.28.0. (`defer`/`shed` refine the deny path in v2.28.0;
     // until then a deny fail-closes for every policy — the budget is always
     // honoured, only the failure MODE is coarser.)
-    // §Fase 114.a — the gate now lives in ONE place (`budget_gate::charge`) and
+    // v2.69.0 — the gate now lives in ONE place (`budget_gate::charge`) and
     // runs on EVERY tool path. It used to be inlined right here, and here ONLY —
     // reachable solely by a streaming tool, inside a daemon, on the enterprise
     // supervisor. The canonical `use Tool(…)` path had no budget at all.
     match crate::flow_dispatcher::budget_gate::charge(ctx, &entry.name)? {
         crate::flow_dispatcher::budget_gate::BudgetGrant::Granted => {}
-        // §Fase 72.d — `shed`: best-effort. Skip the call, but CONTINUE the flow:
+        // v2.28.0 — `shed`: best-effort. Skip the call, but CONTINUE the flow:
         // the step completes with no tool output (a downstream `${Step}` reference
         // resolves to empty). The audit row marks the shed so it is OBSERVABLE,
         // not silent — a skipped call that leaves no trace is indistinguishable
@@ -887,7 +887,7 @@ async fn run_step_streaming_tool(
                             chunks_degraded: 0,
                             timestamp_ms: now_ms(),
                             tool_name: Some(entry.name.clone()),
-                            // §Fase 119.e — the substrate travels with the row.
+                            // v2.83.0 — the substrate travels with the row.
                             substrate: entry
                                 .substrate
                                 .as_ref()
@@ -913,9 +913,9 @@ async fn run_step_streaming_tool(
     // errors (`EffectDeferred` / `EffectQuotaExhausted`) and the `?` above
     // propagates them. One law, one place.
 
-    // §Fase 114.f — charge the channel LEASE on the streaming path too. Governing
+    // v2.69.0 — charge the channel LEASE on the streaming path too. Governing
     // the canonical `use Tool(…)` path but not this one would be the exact
-    // "real-on-one-path, dead-on-the-other" defect §111 exists to end.
+    // "real-on-one-path, dead-on-the-other" defect v2.67.0 exists to end.
     if let Some(breach) =
         crate::flow_dispatcher::lambda_tools::charge_tool_lease_by_name(&entry.name, ctx)
     {
@@ -939,7 +939,7 @@ async fn run_step_streaming_tool(
         });
     }
 
-    // §Fase 114.e — hold a channel CONCURRENCY permit across the stream drain, so
+    // v2.69.0 — hold a channel CONCURRENCY permit across the stream drain, so
     // a streaming vendor tool is bounded by `resource.capacity` exactly as the
     // synchronous path is. Held to the end of this function (across the drain).
     let _channel_permit =
@@ -951,14 +951,14 @@ async fn run_step_streaming_tool(
     //    granularity (real enforcement, not just slug-capture-in-
     //    audit) + returns a typed summary the caller uses to
     //    populate the audit row + decide the outcome.
-    // §Fase 36.x.e (D4) — the interpolated `prompt` is the tool
+    // v1.31.0 (D4) — the interpolated `prompt` is the tool
     // argument (not the raw `step.ask`), so a `${retrieve_alias}`
     // resolved upstream reaches the streaming tool.
     let source = tool.stream(prompt.to_string(), tool_ctx).await;
-    // §Fase 119.n — `cancel`, `tx` and the branch path are CLONED out of `ctx`
+    // v2.83.0 — `cancel`, `tx` and the branch path are CLONED out of `ctx`
     // before the drain, because the `on_chunk` hook needs `&mut ctx` and
     // borrowing all four out of the same value at once does not compose. With
-    // no hook this is the same three values the pre-§119.n call passed by
+    // no hook this is the same three values the pre-v2.83.0 call passed by
     // reference.
     let drain_cancel = ctx.cancel.clone();
     let drain_tx = ctx.tx.clone();
@@ -974,7 +974,7 @@ async fn run_step_streaming_tool(
     )
     .await?;
 
-    // §Fase 36.x.e.2 — surface the enforcement summary. When the
+    // v1.31.0 — surface the enforcement summary. When the
     // step's applied tool declared a `<stream:<policy>>` effect, the
     // streaming-tool path runs the enforcer (via
     // `unified_stream_handler`) exactly as the LLM-side path does in
@@ -1030,7 +1030,7 @@ async fn run_step_streaming_tool(
     //     source-chunk count (summary.chunks_pushed including
     //     terminator + empty-delta intermediates), explicit
     //     tool_output_hash_hex (same scope as output_hash_hex for
-    //     34.i; diverges in future fases with degrader transforms),
+    // 34.i; diverges in future cycles with degrader transforms),
     //     and the closed-catalog terminator kind slug.
     {
         let terminator_kind = if summary.cancelled {
@@ -1051,7 +1051,7 @@ async fn run_step_streaming_tool(
             chunks_degraded: summary.chunks_degraded,
             timestamp_ms: now_ms(),
             tool_name: Some(entry.name.clone()),
-                            // §Fase 119.e — the substrate travels with the row.
+                            // v2.83.0 — the substrate travels with the row.
                             substrate: entry
                                 .substrate
                                 .as_ref()
@@ -1059,7 +1059,7 @@ async fn run_step_streaming_tool(
             tool_chunks_emitted: Some(summary.chunks_pushed),
             tool_output_hash_hex: Some(summary.output_hash_hex.clone()),
             tool_terminator_kind: Some(terminator_kind.to_string()),
-            // §Fase 65.C.3 — tool-stream path: no LLM output to anchor-check.
+            // v2.15.0 — tool-stream path: no LLM output to anchor-check.
             anchor_breaches: Vec::new(),
         };
         let mut guard = ctx.step_audit_records.lock().await;
@@ -1077,7 +1077,7 @@ async fn run_step_streaming_tool(
         });
     }
 
-    // §Fase 36.x.e (D4) — bind the tool's accumulated output under
+    // v1.31.0 (D4) — bind the tool's accumulated output under
     // the step name so a downstream `persist` / `step` can reference
     // it (`${StepName}`). Only on the success path — an
     // error-terminated step (handled above) has no output to thread.
@@ -1091,10 +1091,10 @@ async fn run_step_streaming_tool(
     })
 }
 
-/// §Fase 33.y.k — Resolve `step.apply_ref` into a `Vec<ToolSpec>`.
+/// v1.24.0 — Resolve `step.apply_ref` into a `Vec<ToolSpec>`.
 /// OSS reference: when `apply_ref` is non-empty, synthesizes a
 /// minimal `ToolSpec { name, description, parameters_json: "{}" }`.
-/// When the IRProgram tool registry surface lands (future Fase
+/// When the IRProgram tool registry surface lands (future cycle
 /// 33.y.k.2), this helper resolves the real `IRToolSpec` with
 /// `parameters_json` from `input_schema`.
 fn synthesize_tools_from_step(step: &IRStep) -> Vec<crate::backends::ToolSpec> {
@@ -1110,7 +1110,7 @@ fn synthesize_tools_from_step(step: &IRStep) -> Vec<crate::backends::ToolSpec> {
 
 /// Probe entry — investigative framing. The target is investigated
 /// deeply; the LLM surfaces what's hidden + returns concisely.
-/// §Fase 119.b — the mandated-step executor: `step S { mandate M on x … }`.
+/// v2.83.0 — the mandated-step executor: `step S { mandate M on x … }`.
 ///
 /// One StepStart, one StepComplete — the attempts in between are buffered
 /// through `enforce_mandate_over` and never reach the wire individually. The
@@ -1231,8 +1231,8 @@ pub async fn run_probe(
 /// Reason entry — deliberative framing reflecting the declared
 /// strategy (`chain_of_thought`, `tree_of_thought`, `analogical`, …).
 ///
-/// §Fase 119.f.8 — the BLOCK form's fields are now the prompt. Before this
-/// fase the handler could only build `"Reason about: <target>"`, because
+/// v2.83.0 — the BLOCK form's fields are now the prompt. Before this
+/// cycle the handler could only build `"Reason about: <target>"`, because
 /// `given` / `ask` / `depth` had no home in the AST: the sixteen README blocks
 /// that write `reason { given: X ask: "…" depth: N }` lowered to an empty node
 /// and this function was reachable, in practice, from nothing an adopter had
@@ -1266,10 +1266,10 @@ pub async fn run_reason(
     run_pure_shape(shape, ctx).await
 }
 
-/// §Fase 119.f.8 — assemble a `reason` node's prompt. Pure, so the assembly is
+/// v2.83.0 — assemble a `reason` node's prompt. Pure, so the assembly is
 /// testable without an LLM in the loop: the stub backend answers `"(stub)"`
 /// whatever it is asked, which means a prompt bug is invisible from the wire.
-/// The thing §119.f.8 repairs is exactly a prompt that never got built, so the
+/// The thing v2.83.0 repairs is exactly a prompt that never got built, so the
 /// prompt itself is what a gate has to be able to read.
 ///
 /// Returns `(user_prompt, framing_addendum)`.
@@ -1299,7 +1299,7 @@ pub fn reason_prompt(
         .collect();
 
     // The `ask:` is the deliberation's actual question and interpolates like
-    // every other prompt on this path (§36.x.e's contract).
+    // every other prompt on this path (v1.31.0's contract).
     let question = crate::exec_context::interpolate_vars(&reason.ask, bindings);
 
     let user_prompt = match (evidence.is_empty(), question.is_empty()) {
@@ -1307,7 +1307,7 @@ pub fn reason_prompt(
         (false, false) => format!("Given:\n{}\n\n{question}", evidence.join("\n\n")),
         (true, false) => question,
         (false, true) => format!("Given:\n{}\n\nReason over this.", evidence.join("\n\n")),
-        // The pre-§119.f.8 positional form `reason <target>`, unchanged.
+        // The pre-v2.83.0 positional form `reason <target>`, unchanged.
         (true, true) => format!("Reason about: {}{}", reason.target, strategy_clause),
     };
 
@@ -1345,17 +1345,17 @@ pub async fn run_validate(
         format!(" against rule `{}`", validate.rule)
     };
     let shape = PureShapeStep {
-        // §Fase 121 — the narration binds under ITS OWN identity, never the
+        // v2.88.0 — the narration binds under ITS OWN identity, never the
         // target's. It used to be named `validate.target` verbatim, and
         // `run_pure_shape` binds its output under the step name — so
         // `validate Assess.output` OVERWROTE `Assess.output` with the model's
         // prose narration. The validation destroyed the value it validated:
         // every downstream reader of the target (a `weave`, an `ask`
-        // interpolation, §121's own scorer) received an essay about the value
-        // instead of the value. Shipped since §33.y.c; invisible because
-        // nothing read the binding after a validate until §121's scorer did —
-        // found by this fase's own gate seeding a value and watching it
-        // vanish. The wire `step_type` stays `"validate"` (pinned by §33.y.c's
+        // interpolation, v2.88.0's own scorer) received an essay about the value
+        // instead of the value. Shipped since v1.24.0; invisible because
+        // nothing read the binding after a validate until v2.88.0's scorer did —
+        // found by this cycle's own gate seeding a value and watching it
+        // vanish. The wire `step_type` stays `"validate"` (pinned by v1.24.0's
         // gate); only the step NAME gains the suffix.
         name: if validate.target.is_empty() {
             "Validate".to_string()
@@ -1375,10 +1375,10 @@ pub async fn run_validate(
     };
     let outcome = run_pure_shape(shape, ctx).await?;
 
-    // §Fase 121 — SCORE THE EVIDENCE, not the narration about it.
+    // v2.88.0 — SCORE THE EVIDENCE, not the narration about it.
     //
     // Two distinct things happen in this function and conflating them was this
-    // fase's own first defect, caught in review before it shipped:
+    // cycle's own first defect, caught in review before it shipped:
     //
     //   * the LLM call above is the COGNITIVE act — the reasoning the author
     //     asked for. It is kept, and it is *narration*.
@@ -1391,14 +1391,14 @@ pub async fn run_validate(
     //
     // Scoring the value makes the verdict a PURE FUNCTION of the bindings:
     // `CSR = |{c ∈ C_T : value ⊨ c}| / |C_T|` from `pem::semantic_validator`
-    // (§119.b, already driving `mandate`) over the constraint set the declared
+    // (v2.83.0, already driving `mandate`) over the constraint set the declared
     // schema denotes (`pem::schema_constraints`). Deterministic, replayable,
     // and independent of the model's mood. Composition, not a subsystem.
     //
     // No schema (`against:` absent) ⇒ nothing is scored and nothing is bound.
     // Deliberate: with no declared structure there is no evidence to compute a
     // confidence FROM, and manufacturing one — a default 1.0, a prose
-    // heuristic — is the §112 kernel defect. A downstream `if confidence < …`
+    // heuristic — is the v2.67.0 kernel defect. A downstream `if confidence < …`
     // then finds no binding, which is what makes it refusable rather than
     // silently false.
     if let Some(schema) = validate.resolved_schema.as_deref() {
@@ -1411,12 +1411,12 @@ pub async fn run_validate(
             Ok(constraints) => {
                 let verdict = constraints.evaluate(&value);
 
-                // §Fase 121 — the guard: a floor over the CSR plus a BOUNDED,
+                // v2.88.0 — the guard: a floor over the CSR plus a BOUNDED,
                 // MONOTONE, NON-DEGRADING recovery.
                 //
                 //   * Bounded — `attempt` strictly increases toward
                 //     `max_attempts`, a `u32` from a source literal. The loop
-                //     terminates by construction, the §119.m discipline
+                // terminates by construction, the v2.83.0 discipline
                 //     (every control loop carries its termination argument).
                 //   * Monotone — an attempt is KEPT only if it strictly
                 //     improves the CSR. The stub-prose case is why this is not
@@ -1507,7 +1507,7 @@ pub async fn run_validate(
     Ok(outcome)
 }
 
-/// §Fase 121 — publish a validation verdict into the live bindings, under the
+/// v2.88.0 — publish a validation verdict into the live bindings, under the
 /// VALIDATION TARGET's name so a later `if confidence < …` reads THIS
 /// validation's score and not some other step's. One writer, used by the
 /// validate arm and by every guard re-score, so the two can never bind
@@ -1522,7 +1522,7 @@ fn bind_verdict(
         .insert(format!("{name}.confidence"), format!("{:.4}", verdict.csr));
     ctx.let_bindings
         .insert(format!("{name}.passed"), verdict.is_satisfied().to_string());
-    // The corrective payload `refine` consumes, already rendered by the §119.b
+    // The corrective payload `refine` consumes, already rendered by the v2.83.0
     // engine. Empty when nothing was violated.
     ctx.let_bindings
         .insert(format!("{name}.violations"), verdict.feedback());
@@ -1564,11 +1564,11 @@ pub async fn run_refine(
 /// target via `format_type`; `priority` orders the contribution
 /// weighting; `style` shapes the output voice.
 ///
-/// §Fase 119.f.9 — the sources are now RESOLVED. Before this fase the handler
+/// v2.83.0 — the sources are now RESOLVED. Before this cycle the handler
 /// sent `" from sources [Extract.output, Check.output]"` — the NAMES. `weave`'s
 /// entire job is to stitch prior outputs together, and it never had the
 /// outputs: the model was handed a list of identifiers it could not read and
-/// asked to synthesise them. Same defect as `reason`'s `given:` (§119.f.8), and
+/// asked to synthesise them. Same defect as `reason`'s `given:` (v2.83.0), and
 /// the same fix: resolve against the flow bindings, exactly as every other
 /// target-resolving handler on this path does.
 pub async fn run_weave(
@@ -1594,7 +1594,7 @@ pub async fn run_weave(
     run_pure_shape(shape, ctx).await
 }
 
-/// §Fase 119.f.9 — assemble a `weave` node's prompt. Pure, for the same reason
+/// v2.83.0 — assemble a `weave` node's prompt. Pure, for the same reason
 /// [`reason_prompt`] is: the stub backend answers `"(stub)"` whatever it is
 /// asked, so a prompt that was never built is invisible from the wire — and
 /// that is exactly the defect being repaired.
@@ -1629,7 +1629,7 @@ pub fn weave_prompt(
     };
 
     let user_prompt = if material.is_empty() {
-        // The pre-§119.f.9 shape, for a `weave` that named no sources.
+        // The pre-v2.83.0 shape, for a `weave` that named no sources.
         format!("Weave:{target_clause}{format_clause}")
     } else {
         format!(
@@ -1652,7 +1652,7 @@ pub fn weave_prompt(
         )
     };
     // `include:` is a REQUIREMENT on the synthesis, not decoration — a field
-    // decided by nothing is the §111 defect this fase exists to end.
+    // decided by nothing is the v2.67.0 defect this cycle exists to end.
     let include_clause = if weave.include.is_empty() {
         String::new()
     } else {
@@ -1695,7 +1695,7 @@ pub fn weave_prompt(
 /// # Effect-policy activation
 ///
 /// If `ctx.pending_effect_policy` is `Some(_)`, the backend's chunk
-/// stream is wrapped in `StreamPolicyEnforcer` per Fase 33.x.d
+/// stream is wrapped in `StreamPolicyEnforcer` per v1.24.0
 /// semantics — producer-side `tokio::spawn` runs the enforcer's
 /// `drain`; consumer-side this fn pops chunks via `pop_chunk`. The
 /// `EnforcementSummary` is captured post-drain + recorded under the
@@ -1740,10 +1740,10 @@ pub async fn run_pure_shape(
     // 5. Resolve backend through the streaming registry. Mirrors
     //    the resolution discipline of 33.x.b's `run_streaming_async_path`
     //    (deleted in 33.z.e; the discipline outlived the function).
-    // §Fase 65.C — pin the per-tenant API key (when the caller threaded one
+    // v2.15.0 — pin the per-tenant API key (when the caller threaded one
     // via `with_api_key`) so the LLM call uses THIS tenant's key, not the
     // process env var. `None` ⇒ the prior env-key behavior, unchanged.
-    // §Fase 24.g.2 (Kivi brief #37) — also thread the per-tenant LLM endpoint
+    // v1.18.0 (Kivi brief #37) — also thread the per-tenant LLM endpoint
     // override (base URL + chat path) so e.g. `glm` hits z.ai's `/api/paas/v4`
     // instead of the bigmodel.cn default. Both `None` ⇒ env/default, unchanged.
     let backend = crate::backends::resolve_streaming_backend_with_key_and_endpoint(
@@ -1768,7 +1768,7 @@ pub async fn run_pure_shape(
         None => ctx.system_prompt.clone(),
     };
 
-    // 6b. §Fase 91.b — declared cognitive time. When the step (or the frame)
+    // 6b. v2.46.0 — declared cognitive time. When the step (or the frame)
     //     declares `now:`, append the run's single captured instant rendered
     //     in that zone (`time_is_an_explicit_input` — the source declared it,
     //     the runtime supplies it, the envelope records it). A zone that
@@ -1789,7 +1789,7 @@ pub async fn run_pure_shape(
         })?
     };
 
-    // §Fase 65.C.2 — read the flow's conversation history (enforcing the char
+    // v2.15.0 — read the flow's conversation history (enforcing the char
     // budget) and prepend the prior turns so this step has multi-step
     // coherence — the runner's `ConversationHistory` discipline, brought to the
     // dispatcher's previously-stateless LLM path. The lock is held only to
@@ -1811,11 +1811,11 @@ pub async fn run_pure_shape(
             .collect()
     };
 
-    // §Fase 68.d — resolve the model from the step's declared capability
-    // requirement (`requires_context:`) against the RESOLVED backend's §68.a
+    // v2.22.0 — resolve the model from the step's declared capability
+    // requirement (`requires_context:`) against the RESOLVED backend's v2.22.0
     // catalog. A `None` requirement → empty model string → the backend's
-    // `default_model()` (byte-identical to every pre-§68 flow). An UNSATISFIABLE
-    // requirement fails CLOSED here (D68.3) — a loud error BEFORE the upstream
+    // `default_model()` (byte-identical to every pre-v2.22.0 flow). An UNSATISFIABLE
+    // requirement fails CLOSED here — a loud error BEFORE the upstream
     // request, never a too-small model that 400s mid-stream (the brief-#36
     // failure mode). This is the one production engine (dispatcher), so daemon
     // + axonendpoint flows both honor it.
@@ -1829,7 +1829,7 @@ pub async fn run_pure_shape(
     })?;
 
     // 7. Build the per-attempt ChatRequest (history + the current user turn).
-    //    §Fase 33.y.k D8 — `shape.tools` plumbs through; empty for cognitive-
+    // v1.24.0 D8 — `shape.tools` plumbs through; empty for cognitive-
     //    framing handlers whose IR shapes carry no tool reference today.
     let make_request = |user_prompt: &str, cancel: &crate::cancel_token::CancellationFlag| {
         let mut messages = history_msgs.clone();
@@ -1855,7 +1855,7 @@ pub async fn run_pure_shape(
         return Err(DispatchError::UpstreamCancelled);
     }
 
-    // 9/10. §Fase 65.C.4 — dispatch with anchor-aware retry.
+    // 9/10. v2.15.0 — dispatch with anchor-aware retry.
     //
     // NO anchors → stream live exactly as before (the common path; zero change).
     // WITH anchors → we cannot both stream live AND regenerate-on-breach (SSE
@@ -1864,7 +1864,7 @@ pub async fn run_pure_shape(
     // `execute_step_with_retry` discipline + prompt wording), then REPLAY the
     // accepted response's chunks to the wire — wire-identical to a live drain,
     // just deferred past the anchor gate. This brings the runner's anchor-retry
-    // to the streaming dispatcher (the last LLM-parity gap before the §65.E
+    // to the streaming dispatcher (the last LLM-parity gap before the v2.15.0
     // driver collapse).
     let (accumulated, tokens_emitted, drop_count, degrade_count, anchor_breaches): (
         String,
@@ -1942,7 +1942,7 @@ pub async fn run_pure_shape(
         }
     };
 
-    // §Fase 65.C.2 — record this turn into the flow's conversation so the NEXT
+    // v2.15.0 — record this turn into the flow's conversation so the NEXT
     // LLM step sees it (the runner's `add_user`/`add_assistant` discipline after
     // a successful call). System framing stays out of the history — it is sent
     // separately each call, exactly as in the runner.
@@ -1952,7 +1952,7 @@ pub async fn run_pure_shape(
         conv.add_assistant(&accumulated);
     }
 
-    // §Fase 65.C.3/C.4 — `anchor_breaches` was computed by the dispatch above
+    // v2.15.0/C.4 — `anchor_breaches` was computed by the dispatch above
     // (the anchored branch checks + retries; the non-anchored branch returns
     // empty). It carries the breaches that REMAIN after the retry budget, which
     // the audit record surfaces per-step.
@@ -2002,7 +2002,7 @@ pub async fn run_pure_shape(
         guard.push(record);
     }
 
-    // §Fase 36.x.e (D4) — bind the step's output under its name so a
+    // v1.31.0 (D4) — bind the step's output under its name so a
     // downstream `persist` / `step` / interpolation site can
     // reference it (`${StepName}`). The streaming dispatcher path
     // threads a step's output through `ctx.let_bindings` exactly as a
@@ -2038,7 +2038,7 @@ async fn drain_direct(
         }
         match chunk_result {
             Ok(chunk) => {
-                // §Fase 33.y.k D8 — emit ToolCall event when the
+                // v1.24.0 D8 — emit ToolCall event when the
                 // backend signals FinishReason::ToolUse. Carries
                 // the FIRST declared tool name from
                 // `shape.tools[0].name` so adopters correlate the
@@ -2076,7 +2076,7 @@ async fn drain_direct(
                         })
                         .map_err(|_| DispatchError::ChannelClosed)?;
 
-                    // §Fase 119.n — the `on_chunk:` arm, run over THIS chunk.
+                    // v2.83.0 — the `on_chunk:` arm, run over THIS chunk.
                     //
                     // The chunk binds under `chunk`, which is the name README
                     // block 15 uses (`probe chunk for [symbol, price, volume]`).
@@ -2090,7 +2090,7 @@ async fn drain_direct(
                     if let Some(arm) = &shape.stream_on_chunk {
                         ctx.let_bindings
                             .insert("chunk".to_string(), chunk.delta.clone());
-                        // §Fase 119.n.3 — tagged `stream:on_` so `on_error`
+                        // v2.83.0 — tagged `stream:on_` so `on_error`
                         // cannot catch the handler's OWN failure. See
                         // `is_source_failure`.
                         let outcome = Box::pin(run_step(arm, ctx)).await.map_err(|e| match e {
@@ -2104,7 +2104,7 @@ async fn drain_direct(
                         })?;
                         match outcome {
                             NodeOutcome::Completed { .. } => {}
-                            // §Fase 119.d discipline — suspending inside a
+                            // v2.83.0 discipline — suspending inside a
                             // per-chunk handler has no defined continuation
                             // shape (which chunk does it resume at?), and the
                             // loop/flow sentinels belong to the enclosing
@@ -2125,7 +2125,7 @@ async fn drain_direct(
                                             NodeOutcome::LoopContinue => "continue",
                                             NodeOutcome::Return { .. } => "return",
                                             NodeOutcome::Completed { .. } => "a completion",
-                                            // §Fase 120 — same refusal, same
+                                            // v2.87.0 — same refusal, same
                                             // reason: an effect discharged
                                             // mid-stream has no answer to
                                             // "which chunk does it resume at?".
@@ -2151,12 +2151,12 @@ async fn drain_direct(
     Ok((accumulated, tokens_emitted, 0, 0))
 }
 
-/// §Fase 65.C.4 — max regenerate attempts on an error-severity anchor breach.
+/// v2.15.0 — max regenerate attempts on an error-severity anchor breach.
 /// Mirrors the non-streaming runner's `MAX_ANCHOR_RETRIES` so both server paths
 /// converge after the same number of corrections.
 const MAX_ANCHOR_RETRIES: u32 = 2;
 
-/// §Fase 65.C.4 — drain the chunk stream into a BUFFER without emitting to the
+/// v2.15.0 — drain the chunk stream into a BUFFER without emitting to the
 /// wire. The anchor-retry path must see the FULL output before deciding whether
 /// to accept or regenerate, and SSE tokens can't be un-sent. Returns the
 /// accumulated text + the buffered `(delta, is_tool_use)` chunks to replay on
@@ -2194,7 +2194,7 @@ async fn drain_to_buffer(
     Ok((accumulated, buffered))
 }
 
-/// §Fase 65.C.4 — replay buffered chunks to the wire, reproducing `drain_direct`'s
+/// v2.15.0 — replay buffered chunks to the wire, reproducing `drain_direct`'s
 /// ToolCall + StepToken emission EXACTLY so the wire shape is identical to a live
 /// drain (only deferred past the anchor gate). Returns `tokens_emitted`.
 async fn emit_buffered(
@@ -2245,7 +2245,7 @@ async fn drain_through_enforcer(
     use crate::stream_effect_dispatcher::{StreamPolicyEnforcer, DEFAULT_STREAM_BUFFER_CAPACITY};
     use std::sync::Arc;
 
-    // Build enforcer per the established Fase 33.x.d dispatch
+    // Build enforcer per the established v1.24.0 dispatch
     // (identity degrader OSS default for DegradeQuality; enterprise
     // verticals override via separate R&D track).
     let enforcer = Arc::new(match policy {
@@ -2282,7 +2282,7 @@ async fn drain_through_enforcer(
         if ctx.cancel.is_cancelled() {
             return Err(DispatchError::UpstreamCancelled);
         }
-        // §Fase 33.y.k D8 — same ToolCall emission as `drain_direct`.
+        // v1.24.0 D8 — same ToolCall emission as `drain_direct`.
         // When the backend signals FinishReason::ToolUse on a chunk
         // pulled through the enforcer, surface the tool-call to the
         // wire BEFORE forwarding any text delta (the enforcer's
@@ -2326,7 +2326,7 @@ async fn drain_through_enforcer(
     })?;
 
     // Post-drain metrics snapshot. Pull the counters AFTER the
-    // consumer loop finished (matches Fase 33.x.d discipline — the
+    // consumer loop finished (matches v1.24.0 discipline — the
     // drain-returned `chunks_delivered` is captured before the
     // consumer terminates; the post-loop snapshot is authoritative
     // for delivered count). The drain summary keeps `failed` +
@@ -2465,8 +2465,8 @@ mod tests {
         assert!(matches!(events[2], FlowExecutionEvent::StepComplete { .. }));
     }
 
-    /// §Fase 68.d — a step with NO `requires_context:` runs exactly as before
-    /// (empty model → backend default). Back-compat (D68.4): the resolver is
+    /// v2.22.0 — a step with NO `requires_context:` runs exactly as before
+    /// (empty model → backend default). Back-compat: the resolver is
     /// invoked but yields the empty-model sentinel, so the stub path is untouched.
     #[tokio::test]
     async fn step_without_requires_context_runs_unchanged() {
@@ -2502,10 +2502,10 @@ mod tests {
         assert!(matches!(outcome, NodeOutcome::Completed { .. }));
     }
 
-    /// §Fase 68.d — a step whose `requires_context:` the resolved backend cannot
-    /// satisfy FAILS CLOSED (D68.3) BEFORE the upstream request — a loud
+    /// v2.22.0 — a step whose `requires_context:` the resolved backend cannot
+    /// satisfy FAILS CLOSED BEFORE the upstream request — a loud
     /// `BackendError`, never a too-small model that 400s mid-stream (the brief-#36
-    /// failure mode). `fresh_ctx` uses the `stub` backend (empty §68.a catalog),
+    /// failure mode). `fresh_ctx` uses the `stub` backend (empty v2.22.0 catalog),
     /// so ANY positive requirement is unsatisfiable → the resolver gates the call.
     #[tokio::test]
     async fn step_with_unsatisfiable_requires_context_fails_closed() {
@@ -2546,7 +2546,7 @@ mod tests {
         }
     }
 
-    /// §Fase 65.C.2 — two LLM steps on ONE ctx accumulate conversation history
+    /// v2.15.0 — two LLM steps on ONE ctx accumulate conversation history
     /// (user + assistant per turn), so the dispatcher's LLM path is no longer
     /// stateless single-shot. The second step's request carries the first
     /// turn's Q&A (coherence parity with the non-streaming runner).
@@ -2594,7 +2594,7 @@ mod tests {
         assert!(msgs[2].content.contains("second question"));
     }
 
-    /// §Fase 65.C.2 — the char budget drops the oldest turn pairs before a call,
+    /// v2.15.0 — the char budget drops the oldest turn pairs before a call,
     /// keeping at least the most recent turn (the runner's `ContextWindow`).
     #[tokio::test]
     async fn conversation_history_respects_char_budget() {
@@ -2677,7 +2677,7 @@ mod tests {
         }
     }
 
-    /// §Fase 65.C.3 — a flow anchor the step output BREACHES is now surfaced in
+    /// v2.15.0 — a flow anchor the step output BREACHES is now surfaced in
     /// the step audit (the streaming/SSE path previously ignored anchors
     /// entirely). `RequiresCitation` breaches on the stub output `(stub)` (no
     /// citation), deterministically.
@@ -2695,7 +2695,7 @@ mod tests {
         assert!(rec.anchor_breaches[0].contains("[error]"));
     }
 
-    /// §Fase 65.C.3 — back-compat: with no anchors declared the audit record's
+    /// v2.15.0 — back-compat: with no anchors declared the audit record's
     /// `anchor_breaches` is empty (serde elides it → byte-identical wire).
     #[tokio::test]
     async fn no_anchors_means_no_breaches_recorded() {
@@ -2705,7 +2705,7 @@ mod tests {
         assert!(audit.last().unwrap().anchor_breaches.is_empty());
     }
 
-    /// §Fase 65.C.4 — an ANCHORED step goes through the buffer-then-retry path
+    /// v2.15.0 — an ANCHORED step goes through the buffer-then-retry path
     /// (it can't stream live AND regenerate). After the retries resolve, the
     /// accepted response's chunks are REPLAYED to the wire — so the StepToken
     /// event still arrives (wire-identical to a live drain, just deferred). The

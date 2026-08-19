@@ -1,7 +1,7 @@
-//! §Fase 39.f — `axon fmt` subcommand (Rust binary parity).
+//! v2.0.0 — `axon fmt` subcommand (Rust binary parity).
 //!
 //! Token-level round-trip formatter. Direct port of the Python
-//! `axon.compiler.formatter.format_source` (Fase 14.d MVP).
+//! `axon.compiler.formatter.format_source` (v1.5.2 MVP).
 //!
 //! The algorithm walks every token (effective + comment) emitted by
 //! the lexer in source order, re-emits each at its original
@@ -15,11 +15,11 @@
 //! `format_source(format_source(x)) == format_source(x)` for every
 //! input. The MVP intentionally preserves the author's existing
 //! layout; canonicalisation rules (indent width, brace style) are
-//! deferred to a future fase — same scope as the Python MVP.
+//! deferred to a future cycle — same scope as the Python MVP.
 //!
 //! ## Why a token-level formatter
 //!
-//! The lexer's lossless channel (Fase 14.a) already records every
+//! The lexer's lossless channel (v1.5.2) already records every
 //! comment with its exact `(line, column)`. Combined with the
 //! effective tokens, the source byte stream can be reconstructed
 //! deterministically. This is enough to call `axon fmt --check` a
@@ -29,7 +29,7 @@
 use axon_frontend::lexer::Lexer;
 use axon_frontend::tokens::{Token, TokenType};
 
-/// §Fase 39.f — re-render a lexer token to source form. The lexer
+/// v2.0.0 — re-render a lexer token to source form. The lexer
 /// strips delimiters from certain token kinds (string literals
 /// store only their content sans `"..."`); the formatter MUST
 /// re-add them to produce re-lexable output.
@@ -98,7 +98,7 @@ pub fn format_source(src: &str) -> Result<String, String> {
             cur_col = tok.column;
         }
 
-        // §Fase 39.f — re-render token to source form. The lexer
+        // v2.0.0 — re-render token to source form. The lexer
         // strips delimiters from string literals (`"..."` → just
         // the content), so the formatter MUST re-add them to
         // produce re-lexable output. Same defensive shape for
@@ -135,14 +135,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn fase39f_fmt_empty_source_returns_newline() {
+    fn fmt_empty_source_returns_newline() {
         // Edge case: empty source → just a final \n.
         let out = format_source("").expect("empty source lexes");
         assert_eq!(out, "\n");
     }
 
     #[test]
-    fn fase39f_fmt_trailing_whitespace_trimmed() {
+    fn fmt_trailing_whitespace_trimmed() {
         let src = "persona Alice   \n";
         let out = format_source(src).expect("lexes");
         assert!(!out.contains("Alice   "));
@@ -150,7 +150,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39f_fmt_multiple_trailing_newlines_collapsed() {
+    fn fmt_multiple_trailing_newlines_collapsed() {
         let src = "persona Alice\n\n\n\n";
         let out = format_source(src).expect("lexes");
         assert!(out.ends_with("\n"));
@@ -159,7 +159,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39f_fmt_idempotent_on_well_formed_source() {
+    fn fmt_idempotent_on_well_formed_source() {
         let src = "persona Alice {\n  confidence_threshold: 0.85\n}\n";
         let once = format_source(src).expect("first pass");
         let twice = format_source(&once).expect("second pass");
@@ -167,35 +167,35 @@ mod tests {
     }
 
     #[test]
-    fn fase39f_fmt_line_comment_preserved() {
+    fn fmt_line_comment_preserved() {
         let src = "persona Alice {\n  // a comment\n}\n";
         let out = format_source(src).expect("lexes");
         assert!(out.contains("// a comment"));
     }
 
     #[test]
-    fn fase39f_fmt_block_comment_preserved() {
+    fn fmt_block_comment_preserved() {
         let src = "persona Alice {\n  /* block */\n}\n";
         let out = format_source(src).expect("lexes");
         assert!(out.contains("/* block */"));
     }
 
     #[test]
-    fn fase39f_fmt_doc_line_comment_preserved() {
+    fn fmt_doc_line_comment_preserved() {
         let src = "/// outer doc\npersona Alice {\n}\n";
         let out = format_source(src).expect("lexes");
         assert!(out.contains("/// outer doc"));
     }
 
     #[test]
-    fn fase39f_fmt_inner_doc_preserved() {
+    fn fmt_inner_doc_preserved() {
         let src = "//! inner doc\npersona Alice {\n}\n";
         let out = format_source(src).expect("lexes");
         assert!(out.contains("//! inner doc"));
     }
 
     #[test]
-    fn fase39f_fmt_lex_error_returns_err() {
+    fn fmt_lex_error_returns_err() {
         // Unterminated string literal — should fail to lex.
         let src = "persona Alice { name: \"unclosed\n";
         let r = format_source(src);
@@ -203,7 +203,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39f_fmt_check_mode_well_formed_returns_unchanged() {
+    fn fmt_check_mode_well_formed_returns_unchanged() {
         // The --check mode (handled by main.rs) compares
         // formatted vs original. For an already-formatted source,
         // the diff is empty.

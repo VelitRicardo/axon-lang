@@ -3,7 +3,7 @@ name: ensemble
 summary: Coordinates multiple cognitive entities under a consensus or quorum protocol with structured tie-breaking.
 category: cognitive_io
 top_level: true
-since: Fase 6
+since: v1.2.0
 grammar: |
   ensemble <Name> {
       observations: [<Obs1>, <Obs2>, ...]              # required — bound observations

@@ -1,4 +1,4 @@
-//! §Fase 37.x.j (D4) — pin observability emitter.
+//! v1.32.0 (D4) — pin observability emitter.
 //!
 //! Centralizes the `tracing::info!` events fired on every flow-scoped
 //! `PoolConnection<Postgres>` acquire. The structured fields are the
@@ -25,7 +25,7 @@
 //! tracing stream via standard subscriber-level filters
 //! (`RUST_LOG=axon::store::pin=info`).
 
-/// §Fase 37.x.j (D4) — Emit a structured `tracing::info!` event for a
+/// v1.32.0 (D4) — Emit a structured `tracing::info!` event for a
 /// flow-scoped pin acquisition.
 ///
 /// `source` is one of:
@@ -78,12 +78,12 @@ pub fn emit_pin_acquire(
     );
 }
 
-/// §Fase 37.x.j (D4) — Symmetric counterpart for the implicit release
+/// v1.32.0 (D4) — Symmetric counterpart for the implicit release
 /// at end-of-flow. Called once by the flow's outer scope (sync runner
 /// or async dispatcher) AFTER the pin map drops, with the total count
 /// of pins released. This is a SUMMARY event, not per-pin: per-pin
 /// drop happens via `PoolConnection::drop` which fires the `after_release
-/// DEALLOCATE ALL` hook (Fase 38.x.a D2) on the way back to the pool.
+/// DEALLOCATE ALL` hook (v1.31.0 D2) on the way back to the pool.
 ///
 /// A `released_count == acquired_count` is the canonical healthy
 /// signal. A persistent mismatch over time would suggest a code path
@@ -112,7 +112,7 @@ mod tests {
 
     // The emitters are tracing-side-effect-only. Their correctness is
     // verified by (a) the type signature compiling + (b) the anchor
-    // test at `axon-rs/tests/fase37xj_connection_pinning.rs` capturing
+    // test at `axon-rs/tests/connection_pinning.rs` capturing
     // a tracing subscriber and asserting the structured fields land.
     // Here we only pin that the API surface exists and is callable.
 

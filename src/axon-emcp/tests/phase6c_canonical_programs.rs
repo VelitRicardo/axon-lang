@@ -1,4 +1,4 @@
-//! §Fase 6.c — drift gate for the Tier 2 primitive docs.
+//! v1.2.0 — drift gate for the Tier 2 primitive docs.
 //!
 //! Every primitive doc shipped under `src/knowledge/primitives/` for
 //! Tier 2 (`resource`, `fabric`, `manifest`, `observe`, `reconcile`,
@@ -247,14 +247,14 @@ ensemble GlobalHealth {
 
 #[test]
 fn session_canonical_program_compiles() {
-    // The §41 duality checker is exhaustive over regular-coinductive
+    // The v2.3.0 duality checker is exhaustive over regular-coinductive
     // equality; rich recursive shapes (loop + select + branch nested)
     // are mathematically supported but computationally heavy in the
     // current implementation. For the drift gate we exercise a
     // **flat dual-pair** that proves the grammar surface end-to-end
     // (`session <Name> { role: [send/receive], ... }`) without
     // stressing the coinductive engine. The richer Chat example in
-    // `session.md` documents the full algebra; the §41 paper proves
+    // `session.md` documents the full algebra; the v2.3.0 paper proves
     // it; this test pins the grammar.
     let src = r#"
 type Request  { body: String }
@@ -337,7 +337,7 @@ axonstore Tenants {
 
 #[test]
 fn dataspace_canonical_program_compiles() {
-    // §Fase 108.b — the body is TYPED now: `column <name>: <Type>` over
+    // v2.63.0 — the body is TYPED now: `column <name>: <Type>` over
     // the closed 6-type catalog. (The pre-108.b "free-form body skipped
     // structurally" is gone — an unknown body entry is a parse error,
     // and an empty schema is an axon-T928 refusal: a dataspace IS its
@@ -375,7 +375,7 @@ corpus PolicyDocs {
 
 #[test]
 fn corpus_canonical_mdn_graph_compiles() {
-    // §Fase 63 — the MDN corpus graph (form c): typed weighted edges + the
+    // v2.13.0 — the MDN corpus graph (form c): typed weighted edges + the
     // `adaptive:` memory flag, navigated by `navigate <corpus>`.
     let src = r#"
 type SessA { text: String }
@@ -407,7 +407,7 @@ flow Recall(q: String) -> String {
 
 #[test]
 fn corpus_canonical_store_sourced_compiles() {
-    // §Fase 64 — the DYNAMIC, store-sourced MDN graph (form d): documents +
+    // v2.14.0 — the DYNAMIC, store-sourced MDN graph (form d): documents +
     // typed edges are rows in two axonstores; the graph is built from the live
     // rows at navigate-time and `adaptive:` persists its reinforcement.
     let src = r#"
@@ -460,7 +460,7 @@ corpus ClinicalGuidelines from mcp("clinical-mcp.internal", "kb://guidelines/202
 
 #[test]
 fn pix_canonical_program_compiles() {
-    // §Fase 62.0 — `pix` is the embeddings-free retrieval navigator (the
+    // v2.12.0 — `pix` is the embeddings-free retrieval navigator (the
     // audit-chain example moved to `ledger_canonical_program_compiles`).
     let src = r#"
 pix ContractIndex {
@@ -475,7 +475,7 @@ pix ContractIndex {
 
 #[test]
 fn ledger_canonical_program_compiles() {
-    // §Fase 62.0 — `ledger` is the append-only, hash-linked audit chain
+    // v2.12.0 — `ledger` is the append-only, hash-linked audit chain
     // (the former Provenance-Index reading of `pix`).
     let src = r#"
 ledger LedgerAudit {
@@ -487,7 +487,7 @@ ledger LedgerAudit {
     must_compile("ledger/canonical", src);
 }
 
-/// §Fase 111.h — this used to be `deliberate_canonical_program_compiles`, and
+/// v2.67.0 — this used to be `deliberate_canonical_program_compiles`, and
 /// the program below is worth reading twice before it is deleted.
 ///
 /// ```text

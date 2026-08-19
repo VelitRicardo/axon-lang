@@ -1,0 +1,45 @@
+// v2.89.0 — the `.axon` input the v2.63.0 data-plane proofs never had on disk.
+//
+// v2.63.0's finding is the one this fixture exists to keep closed: `dataspace` was
+// declared, type-checked, carried into the IR — and `dataspace_specs` was
+// `#[serde(skip)]`-hidden and read by nothing. A declared dataspace reached no
+// runtime state at all, and this exact program would have sent "You are
+// ingesting…" to a language model. `ingest`, `focus`, `associate`, `aggregate`
+// and `explore` were narration.
+//
+// Group C was scoped as "needs a live store". It does not: the v2.63.0 engine is
+// first-party COLUMNAR and in-process, and the server's deploy path builds it.
+// What cannot reach it is the parity corpus, which passes `None` for the engine
+// — so v2.63.0's verbs fail closed there BY DESIGN (the honesty floor). This
+// fixture therefore goes through `/v1/deploy` + `/v1/execute`, like v2.67.0's.
+//
+// The numbers below are chosen to be checkable by hand:
+//   three rows ingested; two regions; north = 0.9 + 0.7 = 1.6, south = 0.4.
+
+dataspace Leads {
+    column email:  Text
+    column region: Text
+    column score:  Float
+}
+
+dataspace Accounts {
+    column email: Text
+    column tier:  Text
+}
+
+flow LoadAndSummarise() -> Text {
+    let raw_leads = "email,region,score\na@x.com,north,0.9\nb@x.com,south,0.4\nc@x.com,north,0.7\n"
+
+    ingest raw_leads into Leads {
+        format: csv,
+        limits { max_bytes: 4096, max_rows: 100 }
+    }
+
+    focus Leads { where: "score >= 0.5", select: [email], as: hot }
+
+    associate Leads Accounts using email
+
+    aggregate Leads { group_by: [region], compute: [count, sum(score)], as: by_region }
+
+    explore Leads { as: shape }
+}

@@ -1,7 +1,7 @@
 ---
 name: a_derivative_is_derived_not_sampled
-title: "A derivative is DERIVED, not sampled — the proof-carrying gradient (§Fase 109)"
-summary: "The law governing `grad` (§109). Everywhere else, a gradient is something you must trust: a runtime tape ran over open Python (JAX/PyTorch — powerful, opaque, unverifiable) or a finite-difference quotient approximated it (with a step-size error nobody states). In axon the derivative is a COMPILE-TIME DERIVATION over the closed `Expr` (§70): `grad <let> wrt <x>` differentiates the EXPRESSION a prior rich `let` bound — symbolically, by the §5.2 rules (linearity, product, quotient, chain), then simplified deterministically — and the result lands IN THE IR as an inspectable artifact. The theorem that makes this work: the differentiable fragment of the closed Expr algebra is DIFFERENTIABLY CLOSED — a derivative is another closed expression, so it inherits totality, purity, provability, and is differentiable again (grad-of-grad is well-defined). The laws: `axon-T932` (the target must be a PRIOR rich `let`; at least one `wrt`) and `axon-T931` (a non-differentiable construct — `mod`, comparisons, logicals, string builtins, field/index access — is a REFUSAL naming the construct and its position, never a silent zero: a fabricated gradient is the same lie an unstated finite-difference error institutionalizes). At deploy, PCC `GradientSoundness` RE-DIFFERENTIATES the original expression and structurally compares — a hand-edited gradient is refuted (409). At runtime the handler only EVALUATES the stored derivatives with the same total evaluator `let` uses — no LLM, no tape, 0 tokens; an unresolvable binding refuses. The honest perimeter: scalars, first order, the arithmetic fragment (+, −, ×, ÷, negation, `as_float`) — small and total; no tensors, no NN-training claims, no performance claims pre-Sandbox."
+title: "A derivative is DERIVED, not sampled — the proof-carrying gradient (v2.65.0)"
+summary: "The law governing `grad` (v2.65.0). Everywhere else, a gradient is something you must trust: a runtime tape ran over open Python (JAX/PyTorch — powerful, opaque, unverifiable) or a finite-difference quotient approximated it (with a step-size error nobody states). In axon the derivative is a COMPILE-TIME DERIVATION over the closed `Expr` (v2.26.0): `grad <let> wrt <x>` differentiates the EXPRESSION a prior rich `let` bound — symbolically, by the section 5.2 rules (linearity, product, quotient, chain), then simplified deterministically — and the result lands IN THE IR as an inspectable artifact. The theorem that makes this work: the differentiable fragment of the closed Expr algebra is DIFFERENTIABLY CLOSED — a derivative is another closed expression, so it inherits totality, purity, provability, and is differentiable again (grad-of-grad is well-defined). The laws: `axon-T932` (the target must be a PRIOR rich `let`; at least one `wrt`) and `axon-T931` (a non-differentiable construct — `mod`, comparisons, logicals, string builtins, field/index access — is a REFUSAL naming the construct and its position, never a silent zero: a fabricated gradient is the same lie an unstated finite-difference error institutionalizes). At deploy, PCC `GradientSoundness` RE-DIFFERENTIATES the original expression and structurally compares — a hand-edited gradient is refuted (409). At runtime the handler only EVALUATES the stored derivatives with the same total evaluator `let` uses — no LLM, no tape, 0 tokens; an unresolvable binding refuses. The honest perimeter: scalars, first order, the arithmetic fragment (+, −, ×, ÷, negation, `as_float`) — small and total; no tensors, no NN-training claims, no performance claims pre-Sandbox."
 ---
 
 # A derivative is derived, not sampled
@@ -16,7 +16,7 @@ the weight moves?" — and you get one of three things:
    artifact you must trust.
 3. **A narration**: the model says "about 3". Unfalsifiable.
 
-axon refuses all three. **§109** makes the derivative a *compile-time
+axon refuses all three. **v2.65.0** makes the derivative a *compile-time
 theorem about your declared expression*:
 
 ```
@@ -29,9 +29,9 @@ flow Score(x: Float, y: Float) -> Text {
 
 ## The theorem — differential closure
 
-The differentiable fragment of the closed `Expr` (§70) — numeric
+The differentiable fragment of the closed `Expr` (v2.26.0) — numeric
 literals, references, negation, `+ − × ÷`, and the `as_float`
-embedding — is **closed under differentiation**: every §5.2 rule's
+embedding — is **closed under differentiation**: every section 5.2 rule's
 right-hand side is built from members of the fragment. So a derivative
 is *another closed expression*: evaluable by the evaluator that already
 exists, checkable by the checker that already exists, and differentiable
@@ -61,7 +61,7 @@ an artifact you can READ.
 
 PCC **`GradientSoundness`** re-differentiates every grad's original
 expression (the same rules, the same simplifier — prover and verifier
-agree post-simplification, D109.4) and structurally compares with the
+agree post-simplification, the design decision) and structurally compares with the
 stored derivatives. Swap a derivative for a flattering constant in a
 hand-edited artifact and the deploy is refused (409).
 
@@ -82,7 +82,7 @@ not a measurement of your runtime.*
 
 ## See also
 
-- `analysis_is_algebra_not_conversation` (§108) — the data plane this
+- `analysis_is_algebra_not_conversation` (v2.63.0) — the data plane this
   composes with (gradients over aggregates are the declared future).
 - `effects_are_linear` / `dispatch_vs_cognition` — why a derivative is
   control-plane math, not an effect (no RBAC, no audit row: nothing

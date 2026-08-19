@@ -3,7 +3,7 @@ name: reconcile
 summary: A typed reconciliation loop — observes drift against a manifest and applies bounded corrections.
 category: cognitive_io
 top_level: true
-since: Fase 6
+since: v1.2.0
 grammar: |
   reconcile <Name> {
       observe: <ObserveRef>                       # required — bound observation
@@ -123,7 +123,7 @@ reason about correction effectiveness.
 
 - **Not unsupervised.** A reconciler in production carries
   `shield:` AND typically `mandate:`. Unsupervised
-  reconcilers in regulated environments are a Fase 6 §λ-L-E
+  reconcilers in regulated environments are a v1.2.0 λ-L-E
   policy violation.
 - **Not unbounded.** The `max_retries:` budget is mandatory in
   practice — the parser permits its absence (defaulting to 3),

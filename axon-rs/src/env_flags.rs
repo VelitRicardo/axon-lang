@@ -1,4 +1,4 @@
-//! §Fase 118.b.2 — cross-stack environment-flag parsing, dependency-free.
+//! v2.81.0 — cross-stack environment-flag parsing, dependency-free.
 //!
 //! [`parse_truthy_env`] is the canonical truthy-value contract shared with the
 //! Python CLI (`axon/cli/serve_cmd.py`). It reads an env var and compares
@@ -8,11 +8,11 @@
 //! `axon::axon_server::parse_truthy_env` while assembling the `ServerConfig` —
 //! which is fine while the server is unconditional, and a hard build failure the
 //! moment it is not. Same shape as `AXON_VERSION` in the flow executor
-//! (§118.a.1) and `IngestProvenance` in the OOXML reader (§118.b.1): the general
+//! (v2.81.0) and `IngestProvenance` in the OOXML reader (v2.81.0): the general
 //! utility living wherever it was first needed. `axon_server` re-exports it, so
 //! `axon::axon_server::parse_truthy_env` keeps resolving under a `server` build.
 
-/// §Fase 31.f (D7) — Parse a truthy env var per the cross-stack
+/// v1.22.0 (D7) — Parse a truthy env var per the cross-stack
 /// contract. Truthy values (case-insensitive): "1", "true", "yes",
 /// "on". Empty / unset / any other value → false.
 ///
@@ -46,8 +46,8 @@ pub fn parse_truthy_env(name: &str) -> bool {
 mod tests {
     use super::*;
 
-    // §Fase 118.b.2 — the §31.f value-set contract, proved WHERE THE FUNCTION
-    // LIVES. Its coverage was `tests/fase31_flag_surface.rs`, which also names
+    // v2.81.0 — the v1.22.0 value-set contract, proved WHERE THE FUNCTION
+    // LIVES. Its coverage was `tests/flag_surface.rs`, which also names
     // `ServerConfig` and therefore moves behind the `server` feature — so gating
     // it would have left this function shipping in every profile with coverage
     // in only one. The cross-stack contract (`axon/cli/serve_cmd.py` parses the

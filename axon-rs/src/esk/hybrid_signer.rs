@@ -1,12 +1,12 @@
-//! §Fase 124.b — **the hybrid evidence signer: `Ed25519(H) ‖ ML-DSA-65(H)`.**
+//! v4.0.0 — **the hybrid evidence signer: `Ed25519(H) ‖ ML-DSA-65(H)`.**
 //!
-//! This is the paper's formula (`paper_compliance.md` §4.2) made runnable —
+//! This is the paper's formula (`paper_compliance.md` section 4.2) made runnable —
 //! the exact construction the document has been required to describe as
 //! *"diseñado y no construido"* until this module existed. `H` is SHA-256 of
 //! the message, computed by the module's own C kernel, so the entire pipeline
 //! — hash, classical signature, post-quantum signature, and the entropy that
 //! feeds both keypairs — lives inside the single cryptographic boundary that
-//! D124.3 declared in `axon-csys`. This file holds key material and
+//! the design decision declared in `axon-csys`. This file holds key material and
 //! concatenation; it implements no cryptography.
 //!
 //! # Why hybrid, and why AND
@@ -34,7 +34,7 @@
 //!
 //! # Availability
 //!
-//! Gated on `csys-native`, because the kernels are C and §119.h made the C
+//! Gated on `csys-native`, because the kernels are C and v2.83.0 made the C
 //! toolchain opt-in. Without the feature the HMAC-SHA256 baseline in
 //! [`super::provenance`] remains the signer — same trait, honestly weaker
 //! claim.
@@ -125,7 +125,7 @@ impl Signer for HybridSigner {
     /// randomness per call). The trait has no error channel, and the two
     /// non-panicking alternatives are both worse: an empty return is a
     /// signature that silently never verifies, and an Ed25519-only return is a
-    /// bundle that quietly dropped its post-quantum half — the §112 kernel
+    /// bundle that quietly dropped its post-quantum half — the v2.67.0 kernel
     /// defect ("if the evidence is missing, substitute the belief") applied to
     /// the evidence signer itself. Refusing loudly is the only honest exit.
     fn sign(&self, message: &[u8]) -> Vec<u8> {

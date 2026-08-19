@@ -1,16 +1,16 @@
-//! §Fase 124.c — **the compliance COVERAGE rule, computed over the IR.**
+//! v4.0.0 — **the compliance COVERAGE rule, computed over the IR.**
 //!
 //! # Why this exists
 //!
-//! Until this fase, both the risk register and the gap analyzer granted the
+//! Until this cycle, both the risk register and the gap analyzer granted the
 //! program feature `has_compliance_annotation` on `!compliance.is_empty()` —
 //! the mere PRESENCE of a label anywhere in the program. On that feature the
 //! risk register asserted that "Regulated data crosses an uncovered boundary"
 //! was *mitigated*, and the gap analyzer marked C1.1 / P1.1 / P6.1 / A.5.34
 //! as satisfied. A program whose PHI-labelled type flowed through a shield
 //! covering nothing scored identically to one whose every boundary was
-//! covered. That is the presence-vs-exercise defect §111 condemned and §122
-//! spent a fase on, sitting inside the engine that WRITES AUDIT DOSSIERS.
+//! covered. That is the presence-vs-exercise defect v2.67.0 condemned and v2.89.0
+//! spent a cycle on, sitting inside the engine that WRITES AUDIT DOSSIERS.
 //!
 //! # The rule
 //!
@@ -32,7 +32,7 @@
 //!
 //! One definition, called by both `risk_register` and `gap_analyzer`: their
 //! `program_features` copies are deliberately self-contained for the trivial
-//! presence facts, but a RULE duplicated is a rule that drifts (§120.e).
+//! presence facts, but a RULE duplicated is a rule that drifts (v2.87.0).
 
 use std::collections::HashSet;
 

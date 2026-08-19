@@ -1,9 +1,9 @@
 //! The operational state machine for a single session-typed dialogue.
 //!
-//! §Fase 41.d. A [`SessionRuntime`] is the runtime witness of a §41.a
+//! v2.3.0. A [`SessionRuntime`] is the runtime witness of a v2.3.0
 //! `SessionType`: it carries a **cursor** (the residual type after every
 //! step so far) and a [`CreditWindow`] (the dynamic counterpart of the
-//! §41.c index `!ⁿA.S`), and exposes one method per operational rule —
+//! v2.3.0 index `!ⁿA.S`), and exposes one method per operational rule —
 //! `try_send`, `try_recv`, `try_select`, `try_offer`, `try_end`. Each
 //! method enforces the static discipline *defence-in-depth*: a violation
 //! (wrong-kind frame, wrong payload, exhausted credit, post-`end` traffic)
@@ -26,7 +26,7 @@ use serde::{Deserialize, Serialize};
 
 use super::error::ProtocolError;
 
-/// Dynamic counterpart of the §41.c credit index `!ⁿA.S`. Tracks the
+/// Dynamic counterpart of the v2.3.0 credit index `!ⁿA.S`. Tracks the
 /// number of in-flight sends the producer is currently allowed; a `send`
 /// decrements `available`, a `recv` refills it (capped at `budget`,
 /// standard TCP-window semantics). The static analysis
@@ -34,7 +34,7 @@ use super::error::ProtocolError;
 /// conformant under this budget — this is the runtime safety net for an
 /// off-spec peer.
 ///
-/// `Serialize` + `Deserialize` — §Fase 41.g sealed-snapshot resume carries
+/// `Serialize` + `Deserialize` — v2.3.0 sealed-snapshot resume carries
 /// the *live* window (available count, not just the budget) so a resumed
 /// connection picks up exactly where the disconnected one left off.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -77,12 +77,12 @@ impl CreditWindow {
 /// the carrier delivers frames in order and the two cursors stay in lock
 /// step because they were initialised from a duality-checked pair.
 ///
-/// `Serialize` + `Deserialize` — §Fase 41.g sealed-snapshot resume. The
+/// `Serialize` + `Deserialize` — v2.3.0 sealed-snapshot resume. The
 /// serialised form is a stable JSON object containing the schema (so
 /// resume can verify the protocol hasn't been swapped), the residual
 /// cursor, and the live credit window. Encoded once via [`Self::seal`]
 /// into the AAD-bound `cognitive_states` ciphertext; decoded by
-/// [`Self::resume`] after the §40.k `EnvelopeEncryption::decrypt` verifies
+/// [`Self::resume`] after the v2.0.0 `EnvelopeEncryption::decrypt` verifies
 /// the (tenant, session, flow) binding.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SessionRuntime {
@@ -98,26 +98,26 @@ pub struct SessionRuntime {
     /// The dynamic credit window, or `None` for the unbounded fragment
     /// (no `backpressure` annotation in the socket).
     credit: Option<CreditWindow>,
-    /// §Fase 79.d — the active interruptible region, armed by
+    /// v2.36.0 — the active interruptible region, armed by
     /// [`Self::try_enter_interrupt`]: the declared signal + the handler to
     /// divert to. `#[serde(skip)]` — interrupt dispatch is live-only runtime
     /// state; the parked continuation that *survives* a reconnect is persisted
-    /// separately via the §41.g `cognitive_state` snapshot (§79.e), not here.
+    /// separately via the v2.3.0 `cognitive_state` snapshot (v2.36.0), not here.
     #[serde(skip, default)]
     interrupt: Option<InterruptFrame>,
-    /// §Fase 79.d — the emit cursor (D79.10): frames flushed to the carrier so
+    /// v2.36.0 — the emit cursor: frames flushed to the carrier so
     /// far. Snapshotted into the parked continuation so `resume` re-opens the
     /// body's `Stream<T>` at the exact flushed offset ("the exact word").
     #[serde(skip, default)]
     emit_count: u64,
-    /// §Fase 79.d — the captured **one-shot** continuation (paper κ), set by
+    /// v2.36.0 — the captured **one-shot** continuation (paper κ), set by
     /// [`Self::signal`] and consumed exactly once by [`Self::try_resume`]. A
-    /// second resume is [`ProtocolError::DoubleResume`] (D79.1 linearity).
+    /// second resume is [`ProtocolError::DoubleResume`] (the design decision linearity).
     #[serde(skip, default)]
     parked: Option<ParkedContinuation>,
 }
 
-/// §Fase 79.d — the armed interruptible region: what signal fires it and what
+/// v2.36.0 — the armed interruptible region: what signal fires it and what
 /// handler to divert to. Live runtime state (not serialized).
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct InterruptFrame {
@@ -125,13 +125,13 @@ struct InterruptFrame {
     handler: SessionType,
 }
 
-/// §Fase 79.d — a captured one-shot continuation of an interrupted body: the
-/// reified session cursor + credit window (the paper's κ ≅ (S₍>k₎, w), D79.9)
-/// plus the emit-cursor snapshot (D79.10) and the cause that fired. Consumed
+/// v2.36.0 — a captured one-shot continuation of an interrupted body: the
+/// reified session cursor + credit window (the paper's κ ≅ (S₍>k₎, w), the design decision)
+/// plus the emit-cursor snapshot and the cause that fired. Consumed
 /// exactly once by [`SessionRuntime::try_resume`].
 ///
-/// `Serialize` + `Deserialize` — §Fase 79.e: a parked κ survives a reconnect by
-/// riding the §41.g `cognitive_state` sealed snapshot (no new state store). The
+/// `Serialize` + `Deserialize` — v2.36.0: a parked κ survives a reconnect by
+/// riding the v2.3.0 `cognitive_state` sealed snapshot (no new state store). The
 /// wire shape is exactly the reified cursor + window the snapshot already seals.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ParkedContinuation {
@@ -140,7 +140,7 @@ pub struct ParkedContinuation {
     /// The body's live credit window at interruption — restored *exactly* on
     /// resume (credit symmetry, Theorem 3).
     pub credit: Option<CreditWindow>,
-    /// Frames flushed to the carrier at park time (the emit cursor, D79.10).
+    /// Frames flushed to the carrier at park time (the emit cursor, the design decision).
     pub emit_count: u64,
     /// The `CallInterruptCause` that fired the interruption.
     pub cause: Payload,
@@ -185,10 +185,10 @@ impl SessionRuntime {
         matches!(self.cursor, SessionType::End)
     }
 
-    // ── §Fase 41.g — typed reconnection via sealed snapshots ───────────
+    // ── v2.3.0 — typed reconnection via sealed snapshots ───────────
 
     /// Serialise the live runtime state into a stable JSON envelope —
-    /// the plaintext the §40.t `cognitive_states` AAD-bound ciphertext
+    /// the plaintext the v2.0.0 `cognitive_states` AAD-bound ciphertext
     /// wraps. Carries the schema (so resume can verify the protocol
     /// hasn't been swapped under the connection), the residual cursor,
     /// and the live credit window snapshot.
@@ -209,7 +209,7 @@ impl SessionRuntime {
             schema: self.schema.clone(),
             cursor: self.cursor.clone(),
             credit: self.credit,
-            // §Fase 79.e — carry the parked one-shot continuation across the
+            // v2.36.0 — carry the parked one-shot continuation across the
             // reconnect, so an interrupted-but-unresumed dialogue can still
             // `resume` into its body after the client comes back.
             parked: self.parked.clone(),
@@ -245,7 +245,7 @@ impl SessionRuntime {
             credit: sealed.credit,
             interrupt: None,
             emit_count: 0,
-            // §Fase 79.e — restore the parked κ so `resume` still works post-
+            // v2.36.0 — restore the parked κ so `resume` still works post-
             // reconnect (the `interrupted_by_peer` carrier state survives).
             parked: sealed.parked,
         })
@@ -256,7 +256,7 @@ impl SessionRuntime {
     /// Producer step `!A.S → S`. Succeeds iff:
     /// 1. the cursor is `Send { payload, … }` with `payload == got`;
     /// 2. the credit window (if any) has `available > 0` — otherwise the
-    ///    §41.c "no rule at n=0" axiom fires.
+    /// v2.3.0 "no rule at n=0" axiom fires.
     /// On success the cursor advances (unfolded) and one credit is
     /// consumed (when the window is present).
     pub fn try_send(&mut self, got: &str) -> Result<(), ProtocolError> {
@@ -289,8 +289,8 @@ impl SessionRuntime {
             }
         }
         self.advance(*cont);
-        // §Fase 79.d — advance the emit cursor: a producer step flushes one
-        // frame to the carrier (D79.10 "delivered = flushed").
+        // v2.36.0 — advance the emit cursor: a producer step flushes one
+        // frame to the carrier (the design decision "delivered = flushed").
         self.emit_count += 1;
         Ok(())
     }
@@ -351,9 +351,9 @@ impl SessionRuntime {
         }
     }
 
-    // ── §Fase 79.d — interruptible-session dispatch ─────────────────────
+    // ── v2.36.0 — interruptible-session dispatch ─────────────────────
 
-    /// The emit cursor (D79.10): producer frames flushed to the carrier so far.
+    /// The emit cursor: producer frames flushed to the carrier so far.
     pub fn emit_count(&self) -> u64 {
         self.emit_count
     }
@@ -370,7 +370,7 @@ impl SessionRuntime {
         self.parked.as_ref()
     }
 
-    /// §Fase 79.d — enter an interruptible region. The cursor must be
+    /// v2.36.0 — enter an interruptible region. The cursor must be
     /// `Interrupt { signal, body, handler }`; advances **into the body** while
     /// arming the region so a matching [`Self::signal`] can capture the body's
     /// residual and divert to the handler. The connection law is preserved:
@@ -392,10 +392,10 @@ impl SessionRuntime {
         Ok(())
     }
 
-    /// §Fase 79.d — fire the interrupt signal `cause`. Captures the body's exact
+    /// v2.36.0 — fire the interrupt signal `cause`. Captures the body's exact
     /// residual (cursor + credit window + emit cursor) as a **one-shot**
-    /// continuation (κ, D79.9), then diverts the cursor to the handler. A
-    /// fail-closed WCET watchdog (D79.5) asserts the reaction path completes
+    /// continuation (κ, the design decision), then diverts the cursor to the handler. A
+    /// fail-closed WCET watchdog asserts the reaction path completes
     /// within `max_reaction_steps` transitions — the capture-and-divert is a
     /// single transition, so any bound `≥ 1` holds and `0` trips the watchdog
     /// (the fault is never silently degraded).
@@ -414,7 +414,7 @@ impl SessionRuntime {
             self.interrupt = Some(frame); // region stays armed; this signal wasn't ours
             return Err(ProtocolError::SignalMismatch { expected, got });
         }
-        // WCET watchdog (D79.5): the reaction path here is one transition
+        // WCET watchdog: the reaction path here is one transition
         // (capture + divert). Fail closed on a declared bound it exceeds.
         const REACTION_STEPS: u32 = 1;
         if REACTION_STEPS > max_reaction_steps {
@@ -439,13 +439,13 @@ impl SessionRuntime {
         Ok(())
     }
 
-    /// §Fase 79.d — the handler's **normal exit** `resume`: consume the parked
+    /// v2.36.0 — the handler's **normal exit** `resume`: consume the parked
     /// one-shot continuation EXACTLY ONCE and return the body to its exact
     /// residual — cursor, credit window (symmetry, Theorem 3), and emit cursor
-    /// (D79.10). The cursor must be at the `Resume` leaf.
+    ///. The cursor must be at the `Resume` leaf.
     ///
     /// A second `resume` (or a resume with no capture) is
-    /// [`ProtocolError::DoubleResume`] — the runtime witness of D79.1 linearity.
+    /// [`ProtocolError::DoubleResume`] — the runtime witness of the design decision linearity.
     pub fn try_resume(&mut self) -> Result<(), ProtocolError> {
         if !matches!(self.cursor, SessionType::Resume) {
             return Err(ProtocolError::UnexpectedFrame {
@@ -463,10 +463,10 @@ impl SessionRuntime {
         Ok(())
     }
 
-    /// §Fase 79.d — the handler's **abandon exit** (D79.11a): the parked
+    /// v2.36.0 — the handler's **abandon exit**: the parked
     /// continuation is discarded (released exactly once, affine-by-default) and
     /// the region terminates at `end`. Driven on TTL expiry by the carrier
-    /// (§79.e). Safe to call whether or not a continuation is still parked.
+    /// (v2.36.0). Safe to call whether or not a continuation is still parked.
     pub fn abandon(&mut self) {
         self.parked = None;
         self.interrupt = None;
@@ -524,7 +524,7 @@ fn kind_of(t: &SessionType) -> &'static str {
         SessionType::Branch(_) => "branch",
         SessionType::Rec(_, _) => "rec", // never reached on a head-unfolded cursor
         SessionType::Var(_) => "var",    // ditto, on closed types
-        SessionType::Interrupt { .. } => "interrupt", // §Fase 79 — dispatch lands in 79.d
+        SessionType::Interrupt { .. } => "interrupt", // v2.36.0 — dispatch lands in 79.d
         SessionType::Resume => "resume",
     }
 }
@@ -533,17 +533,17 @@ fn keys_of(m: &BTreeMap<String, SessionType>) -> Vec<String> {
     m.keys().cloned().collect()
 }
 
-// ── §Fase 41.g — sealed-snapshot envelope ────────────────────────────────
+// ── v2.3.0 — sealed-snapshot envelope ────────────────────────────────
 
 /// On-wire version tag for the sealed-runtime JSON. Bumped only on a
 /// breaking schema change to the envelope shape.
 pub const SEALED_RUNTIME_VERSION: u8 = 1;
 
-/// The plaintext the §40.t `cognitive_states` AAD-bound ciphertext wraps —
+/// The plaintext the v2.0.0 `cognitive_states` AAD-bound ciphertext wraps —
 /// a stable JSON envelope containing the session-type schema, the residual
 /// cursor, and the live credit window. Issued by
 /// [`SessionRuntime::seal`]; opened by [`SessionRuntime::resume`] after the
-/// §40.k envelope decryption verifies the (tenant, session, flow) binding.
+/// v2.0.0 envelope decryption verifies the (tenant, session, flow) binding.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SealedRuntime {
     /// Envelope version — gates schema evolution.
@@ -557,9 +557,9 @@ pub struct SealedRuntime {
     /// The live credit window snapshot — `None` if the bound socket is
     /// in the unbounded fragment (no `backpressure` annotation).
     pub credit: Option<CreditWindow>,
-    /// §Fase 79.e — the parked one-shot continuation, present iff the runtime
+    /// v2.36.0 — the parked one-shot continuation, present iff the runtime
     /// was interrupted-and-not-yet-resumed at seal time. `skip_serializing_if`
-    /// keeps every non-interrupt snapshot byte-identical to the pre-§79 wire
+    /// keeps every non-interrupt snapshot byte-identical to the pre-v2.36.0 wire
     /// form (no version bump; back-compat by construction — the boot-hydrate
     /// self-heal discipline). On resume the `interrupted_by_peer` carrier state
     /// is restored so the handler can still `resume` into the body.
@@ -568,7 +568,7 @@ pub struct SealedRuntime {
 }
 
 impl SealedRuntime {
-    /// Serialise to bytes — the format the §Fase 40.t envelope encrypts.
+    /// Serialise to bytes — the format the v2.0.0 envelope encrypts.
     /// Deterministic JSON via `serde_json::to_vec`.
     pub fn to_bytes(&self) -> Vec<u8> {
         serde_json::to_vec(self).expect("SealedRuntime ⇒ JSON is total")
@@ -585,7 +585,7 @@ pub enum ResumeError {
     /// The sealed envelope's version is newer than this runtime supports.
     UnsupportedVersion(u8),
     /// The sealed schema does not match the live socket's declared
-    /// protocol. The §40.t envelope's AAD binds tenant+session+flow, so
+    /// protocol. The v2.0.0 envelope's AAD binds tenant+session+flow, so
     /// the *transport* can't be confused; this check catches the case
     /// where the socket's declared session-type itself drifted between
     /// seal + resume (e.g. a deploy bumped the protocol).
@@ -783,7 +783,7 @@ mod tests {
 
     // ── A realistic chat dialogue runs to completion ────────────────────
 
-    // ── §Fase 41.g — sealed snapshot round-trip + resume validation ────
+    // ── v2.3.0 — sealed snapshot round-trip + resume validation ────
 
     #[test]
     fn seal_returns_none_at_end_and_some_otherwise() {
@@ -822,7 +822,7 @@ mod tests {
         let r0 = SessionRuntime::new(schema.clone(), None);
         let sealed = r0.seal().expect("snapshot before recv");
         let bytes = sealed.to_bytes();
-        // Round-trip via JSON bytes (the §40.t envelope plaintext).
+        // Round-trip via JSON bytes (the v2.0.0 envelope plaintext).
         let recovered = SealedRuntime::from_bytes(&bytes).expect("parse");
         assert_eq!(recovered, sealed);
         // And resume → live runtime that picks up where we left off.
@@ -886,7 +886,7 @@ mod tests {
 
     #[test]
     fn resume_accepts_alpha_equivalent_schemas() {
-        // The schema match uses the §41.a regular-coinductive equality, so
+        // The schema match uses the v2.3.0 regular-coinductive equality, so
         // α-renamed recursion variables are accepted as equivalent.
         let schema_x = SessionType::rec("X", SessionType::send("T", SessionType::var("X")));
         let schema_y = SessionType::rec("Y", SessionType::send("T", SessionType::var("Y")));

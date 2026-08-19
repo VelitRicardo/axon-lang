@@ -3,7 +3,7 @@ name: upstream
 summary: "Outbound vendor connection (the client dual of socket): config-resolved dial, declared auth, and a compile-time-total wire↔session projection — a new vendor is a declaration, not new code."
 category: session_types
 top_level: true
-since: Fase 80.b (v2.37.0)
+since: v2.37.0
 grammar: |
   upstream <Name> [from <Preset>@v<N>] {
       transport: websocket
@@ -31,7 +31,7 @@ TTS vendor, or a fused speech-to-speech API. It is the dual
 transport role of `socket`: a `socket` is axon acting as
 *server* (the carrier or browser dials in), an `upstream` is
 axon acting as *client* (axon dials out). Both bind the same
-§41 session algebra — one algebra, two transport roles.
+v2.3.0 session algebra — one algebra, two transport roles.
 
 The doctrine is `voice_integration_is_a_declaration_not_a_rewrite`:
 every competing stack ties orchestration code to one vendor's
@@ -41,7 +41,7 @@ integration code. In axon the vendor is a **declaration**: the
 `.axon` source names a session, a role, and a wire projection;
 the runtime does the plumbing. Changing vendors is a config
 edit, the same property `tool { provider: http }` gave REST
-(§58.g), extended to persistent bidirectional streams.
+(v2.8.0), extended to persistent bidirectional streams.
 
 ## Surface
 
@@ -77,7 +77,7 @@ upstream DeepgramSTT {
 
 - **axon-T849 — projection totality.** Every message the bound
   role sends or receives (including inside `select`/`branch`
-  arms and §79 `interrupt` bodies/handlers) must have exactly
+  arms and v2.36.0 `interrupt` bodies/handlers) must have exactly
   one `map:` rule of the right direction; inbound JSON rules
   must have distinct discriminators; at most one
   `receive … as binary` rule. A message that would silently
@@ -89,7 +89,7 @@ upstream DeepgramSTT {
   URL or credential literal in source cannot compile.
 - **axon-T851 — session/role binding.** `protocol:` must be a
   declared `session` and `role:` one of its two roles. With
-  `backpressure: credit(n)`, the §41.c Presburger discharge
+  `backpressure: credit(n)`, the v2.3.0 Presburger discharge
   runs on the bound role.
 
 ## Projection semantics (the two shapes every 2026 vendor uses)
@@ -111,7 +111,7 @@ upstream DeepgramSTT {
 
 The projection deliberately does **not** ship a structural
 field-mapping language. An inbound vendor frame lands as the
-session message's payload typed `Json` (§73) with total
+session message's payload typed `Json` (v2.26.0) with total
 navigation — `Transcript.payload.channel.alternatives[0].transcript`
 — miss ⇒ null, never a crash. The session message name is the
 routing and duality skeleton; the open `Json` type absorbs

@@ -1,4 +1,4 @@
-//! §Fase 32.h — Replay-token binding for first-class axonendpoint routes.
+//! v1.23.0 — Replay-token binding for first-class axonendpoint routes.
 //!
 //! Per D9 (plan vivo numbering), every successful 2xx response to a
 //! POST/PUT axonendpoint with replay enabled is registered in an
@@ -50,18 +50,18 @@ use std::time::{Duration, Instant};
 use sha2::{Digest, Sha256};
 
 /// Default retention window for replay entries — 30 days per plan
-/// vivo §9.2. In-memory store uses a capacity-bounded LRU layered
+/// vivo section 9.2. In-memory store uses a capacity-bounded LRU layered
 /// on top of this; production deployments swap in the enterprise
 /// persistence backend for longer retention.
 pub const DEFAULT_RETENTION: Duration = Duration::from_secs(30 * 24 * 60 * 60);
 
-/// §Fase 33.x.f — One per-step audit record captured during a
+/// v1.24.0 — One per-step audit record captured during a
 /// streaming flow's execution. Multiple records per replay entry
 /// (one per step that executed). Surfaced to auditors via
 /// `GET /v1/replay/<trace_id>` so regulators see the per-step
 /// sequence rather than just the final response. Per-token chain
 /// signature (each `axon.token` cryptographically chained) stays
-/// deferred to Fase 34.
+/// deferred to v1.29.0.
 ///
 /// # Required for regulated verticals
 ///
@@ -73,7 +73,7 @@ pub const DEFAULT_RETENTION: Duration = Duration::from_secs(30 * 24 * 60 * 60);
 /// - **Legal** (FRE 502 waiver-doctrine) — appellate review traces
 ///   the per-step privilege-assessment reasoning, not just the
 ///   conclusion.
-/// - **Medicine** (21 CFR Part 11 §11.10) — CDS clinician trails
+/// - **Medicine** (21 CFR Part 11 section 11.10) — CDS clinician trails
 ///   require per-step recommendation provenance.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct StepAuditRecord {
@@ -111,7 +111,7 @@ pub struct StepAuditRecord {
     /// within a single flow execution.
     pub timestamp_ms: u64,
 
-    // ── §Fase 34.i — Tool-stream provenance fields ────────────────
+    // ── v1.29.0 — Tool-stream provenance fields ────────────────
     //
     // The four fields below capture per-step tool-stream provenance
     // distinct from the LLM-side `tokens_emitted` / `output_hash_hex`
@@ -128,13 +128,13 @@ pub struct StepAuditRecord {
     /// impl backing the stream.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tool_name: Option<String>,
-    /// §Fase 119.e — the `fabric` substrate this dispatch ran on:
+    /// v2.83.0 — the `fabric` substrate this dispatch ran on:
     /// `"<provider>/<region>"`, resolved from the tool's `resource`'s
     /// `within:`. The knowledge doc's compliance propagation, made a fact:
     /// *"every audit row emitted under a fabric carries
     /// (fabric.provider, fabric.region) so cross-jurisdiction data movement
     /// is auditable."* Elided when the tool names no fabric-placed resource,
-    /// so every pre-§119.e row is byte-identical.
+    /// so every pre-v2.83.0 row is byte-identical.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub substrate: Option<String>,
     /// `Some(n)` where `n` is the count of `ToolChunk`s the source
@@ -150,7 +150,7 @@ pub struct StepAuditRecord {
     /// `Some(hash)` SHA-256 hex of the concatenated tool-stream
     /// deltas (same scope as `output_hash_hex` for tool-stream
     /// steps). Distinct field exists for D6 audit provenance: a
-    /// future fase may diverge `tool_output_hash_hex` (raw tool
+    /// future cycle may diverge `tool_output_hash_hex` (raw tool
     /// chunks pre-degrader) from `output_hash_hex` (post-policy
     /// wire emission) when degrader transforms ship. `None` for
     /// non-tool-stream steps.
@@ -166,13 +166,13 @@ pub struct StepAuditRecord {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tool_terminator_kind: Option<String>,
 
-    /// §Fase 65.C.3 — the flow anchors this step's output BREACHED, each
+    /// v2.15.0 — the flow anchors this step's output BREACHED, each
     /// `"<anchor> [<severity>]: <first violation>"`. Empty when the step
-    /// satisfied every anchor (or the flow declared none). Before §65.C.3 the
+    /// satisfied every anchor (or the flow declared none). Before v2.15.0 the
     /// streaming/SSE path NEVER checked anchors — declared `require:`
     /// constraints were silently ignored on SSE; now they are enforced (the
     /// breach is surfaced per-step). The regenerate-on-breach RETRY stays on the
-    /// non-streaming runner until §65.D unifies the driver — surfacing here is
+    /// non-streaming runner until v2.15.0 unifies the driver — surfacing here is
     /// the faithful tail of the runner's behavior (after exhausting retries it
     /// also just records the breach and continues). `Vec::is_empty` ⇒ serde
     /// elides the field, so the no-breach wire shape is byte-identical.
@@ -222,15 +222,15 @@ pub struct AxonendpointReplayEntry {
     /// + locked-model backends; `false` for temperature>0 LLM calls.
     /// Surfaces in the `Replay-Status` HTTP header.
     pub deterministic: bool,
-    /// §Fase 33.x.f — Per-step audit records. Populated for SSE
+    /// v1.24.0 — Per-step audit records. Populated for SSE
     /// routes whose `replay: true` declaration fired the streaming
     /// path's per-step recording. Empty for legacy JSON 2xx
-    /// replay entries (Fase 32.h shape; D4 byte-compat preserved
+    /// replay entries (v1.23.0 shape; D4 byte-compat preserved
     /// because the field is elided when empty via `skip_serializing_if`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub step_audit: Vec<StepAuditRecord>,
 
-    /// §Fase 33.x.g — Closed-catalog runtime warnings. Mirrors
+    /// v1.24.0 — Closed-catalog runtime warnings. Mirrors
     /// the `axon.complete.warnings` wire field so auditors who
     /// retrieve the replay entry post-hoc see the same diagnostic
     /// as the live SSE consumer. Populated when the SSE handler's
@@ -338,14 +338,14 @@ impl AxonendpointReplayLog {
     }
 }
 
-/// §Fase 32.h — Resolve the effective `replay` boolean for a route.
+/// v1.23.0 — Resolve the effective `replay` boolean for a route.
 ///
 /// Pure + total function over `(method, replay_explicit, replay)`.
 /// When the source declared `replay:` explicitly, the declared value
 /// wins regardless of method. Otherwise the method-default fires:
 /// POST/PUT → true, GET/DELETE/PATCH/* → false.
 ///
-/// PATCH semantically updates state but the plan vivo §9 only
+/// PATCH semantically updates state but the plan vivo section 9 only
 /// guarantees the binding for POST/PUT. Adopters who want replay on
 /// PATCH declare `replay: true` explicitly.
 pub fn resolve_replay_enabled(method: &str, replay_explicit: bool, replay: bool) -> bool {
@@ -359,7 +359,7 @@ pub fn resolve_replay_enabled(method: &str, replay_explicit: bool, replay: bool)
 /// the resolved backend. Stub backends are deterministic by
 /// construction; production LLM calls with temperature>0 are not.
 /// Locked-model backends with seed + temperature=0 are deterministic
-/// per the Fase 22.g.2 locked-model machinery.
+/// per the v1.16.0 locked-model machinery.
 ///
 /// For the OSS surface this is conservatively reported as
 /// `backend == "stub"` (always deterministic). The enterprise

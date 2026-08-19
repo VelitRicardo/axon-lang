@@ -1,4 +1,4 @@
-//! §Fase 32.c + 32.d — Schema validation for first-class axonendpoint routes.
+//! v1.23.0 — Schema validation for first-class axonendpoint routes.
 //!
 //! Given an axonendpoint's declared `body: T` (request side, D4) or
 //! `output: T` (response side, D5), validate that every accepted body
@@ -37,7 +37,7 @@
 //!   source + KNOWS exactly what bodies are accepted at every endpoint.
 //!   Free-form bodies require explicitly omitting `body:` (D9).
 //! - **COMPUTING** — backwards-compat: when `body_type` is empty, no
-//!   validation runs (free-form JSON, as before Fase 32). Adopters opt in
+//! validation runs (free-form JSON, as before v1.23.0). Adopters opt in
 //!   by declaring `body:` on their axonendpoints.
 //!
 //! ## Cross-stack mirror (D11)
@@ -45,7 +45,7 @@
 //! Python sibling lives at `axon/runtime/route_schema.py`. Both stacks
 //! produce byte-identical `(type_name, field_path, expected, got)` tuples
 //! for the same input under the shared drift-gate corpus at
-//! `tests/fixtures/fase32_body_schema/corpus.json`.
+//! `tests/fixtures/body_schema/corpus.json`.
 
 use std::collections::HashMap;
 
@@ -56,7 +56,7 @@ use crate::ast::{Declaration, Program, TypeDefinition};
 /// Snapshot of a `type T { … }` declaration relevant to body validation.
 /// Only the fields the validator consults are projected — `compliance`,
 /// `where_clause`, and `range_constraint` are out of scope for 32.c
-/// (where/compliance ship in their own future fases).
+/// (where/compliance ship in their own future cycles).
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypeSchema {
     pub name: String,
@@ -99,7 +99,7 @@ pub struct BodyValidationError {
     /// Adopter-facing diagnostic — full sentence with a corrective hint.
     /// Stable across versions per D8 backwards-compat surface.
     pub hint: String,
-    /// §Fase 38.x.f (D2) — Declared cardinality kind of the expected
+    /// v1.31.0 (D2) — Declared cardinality kind of the expected
     /// type: `"singular"` | `"plural"` | `"stream"` | `"unit"` |
     /// `"unknown"`. Empty string for primitive-type validation errors
     /// where the cardinality isn't load-bearing (the existing v1.39.0
@@ -107,20 +107,20 @@ pub struct BodyValidationError {
     /// older versions byte-compatible.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub expected_cardinality: String,
-    /// §Fase 38.x.f (D2) — Observed cardinality kind of the response
+    /// v1.31.0 (D2) — Observed cardinality kind of the response
     /// body: same alphabet as `expected_cardinality`. Empty when not
     /// applicable. The asymmetry expected/got is the diagnostic
     /// payload adopters reach for first when D5 fires.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub got_cardinality: String,
-    /// §Fase 38.x.f (D2) — Length of the observed value when it is
+    /// v1.31.0 (D2) — Length of the observed value when it is
     /// `array` (plural). `None` for non-array gots. Helps adopters
     /// confirm "the flow returned 1 row, but the contract said
     /// singular — collapse with `result[0]` or change the endpoint
     /// to `output: List<T>`".
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub got_length: Option<u64>,
-    /// §Fase 38.x.f (D2) — Documentation URL adopters can follow for
+    /// v1.31.0 (D2) — Documentation URL adopters can follow for
     /// the canonical remediation steps. Empty when the error is not
     /// a cardinality mismatch (the existing v1.39.0 surface). The
     /// URL is stable; the page may evolve.
@@ -166,7 +166,7 @@ pub fn builtin_range(name: &str) -> Option<(f64, f64)> {
 /// produce a `name → TypeSchema` lookup table. Last-wins on collision
 /// is the same semantics as Rust's `HashMap::insert` — type-name
 /// collisions across deploys are out of scope for 32.c (deferred to a
-/// future type-registry fase). For 32.c the only consumer is the
+/// future type-registry cycle). For 32.c the only consumer is the
 /// dynamic-route fallback handler which captures the table once per
 /// deploy.
 pub fn collect_type_table(program: &Program) -> HashMap<String, TypeSchema> {
@@ -231,9 +231,9 @@ fn json_tag(v: &Value) -> &'static str {
 ///
 /// **Backwards-compat (D9)**: when `type_name` is empty, returns
 /// `Ok(())` immediately. Adopters who don't declare `body:` keep the
-/// pre-Fase-32 free-form behavior.
+/// pre-cycle-32 free-form behavior.
 ///
-/// **§Fase 39.d — Canonical FlowEnvelope-aware entry**. As of v2.0.0
+/// **v2.0.0 — Canonical FlowEnvelope-aware entry**. As of v2.0.0
 /// (39.d) `validate_body` is the SINGLE place that knows about wire
 /// shapes:
 ///
@@ -243,7 +243,7 @@ fn json_tag(v: &Value) -> &'static str {
 ///      `result` slot).
 ///   2. Bare generics (`List<T>`, `Stream<T>`) — parsed at the
 ///      canonical entry via [`parse_generic_head`]. The internal
-///      [`validate_value`] no longer carries a §0 preamble for
+/// [`validate_value`] no longer carries a section 0 preamble for
 ///      string-stripping (the v1.40.2 / v1.40.3 bridge is retired).
 ///   3. Primitives, structs, ranges — passed through to validate_value.
 ///
@@ -261,7 +261,7 @@ pub fn validate_body(
     if t.is_empty() {
         return Ok(());
     }
-    // §Fase 39.d — FlowEnvelope<T> canonical unwrap. When the adopter
+    // v2.0.0 — FlowEnvelope<T> canonical unwrap. When the adopter
     // declares `output: FlowEnvelope<T>` (the v2.0.0 mandatory wire
     // shape), the body is `{ontological_type, result, certainty, …}`
     // and we validate `result` against T. The outer envelope shape
@@ -299,17 +299,17 @@ pub fn validate_body(
         // like `List<X>` or a struct or a primitive).
         return validate_body(&result_slot, &inner, table);
     }
-    // §Fase 39.d — bare generic parsing at the canonical entry.
+    // v2.0.0 — bare generic parsing at the canonical entry.
     // `List<T>` / `Stream<T>` get split into `(head, inner)` before
     // dispatching to validate_value, which now assumes pre-parsed
-    // input. Pre-39.d this parsing lived in validate_value's §0
+    // input. Pre-39.d this parsing lived in validate_value's section 0
     // preamble (v1.40.2 / v1.40.3 bridge); 39.d retires it because
     // FlowEnvelope<T> is the canonical wire shape.
     let (head, generic) = parse_generic_head(t);
     validate_value(body, &head, &generic, "", table, t)
 }
 
-/// §Fase 39.d — Strip the outer `FlowEnvelope<…>` wrapper from a
+/// v2.0.0 — Strip the outer `FlowEnvelope<…>` wrapper from a
 /// declared type string. Returns the inner T verbatim (which may
 /// be a nested generic like `List<X>` or a struct name). Returns
 /// `None` when the input is NOT a FlowEnvelope wrapper.
@@ -319,7 +319,7 @@ fn strip_flow_envelope(t: &str) -> Option<String> {
     Some(inner.trim().to_string())
 }
 
-/// §Fase 39.d — Parse the closed-catalog generic head + inner. Used
+/// v2.0.0 — Parse the closed-catalog generic head + inner. Used
 /// by [`validate_body`] (the canonical entry) and by recursive
 /// callers like [`validate_list`] that need to split a string-form
 /// element type before calling [`validate_value`].
@@ -353,8 +353,8 @@ fn parse_generic_head(t: &str) -> (String, String) {
 /// `generic_param` carries `List<T>`'s element type when validating a
 /// list — empty otherwise.
 ///
-/// **§Fase 39.d**: post-39.d this function assumes the input is
-/// PRE-PARSED. The v1.40.2/v1.40.3 §0 preamble (string-stripping for
+/// **v2.0.0**: post-39.d this function assumes the input is
+/// PRE-PARSED. The v1.40.2/v1.40.3 section 0 preamble (string-stripping for
 /// `List<T>` / `Stream<T>`) is retired in favour of one canonical
 /// parse at the [`validate_body`] entry. Recursive callers
 /// ([`validate_list`], [`validate_struct`]) pre-parse via
@@ -367,27 +367,27 @@ fn validate_value(
     table: &HashMap<String, TypeSchema>,
     body_type: &str,
 ) -> Result<(), BodyValidationError> {
-    // §Fase 39.d — `Stream<T>` defensive accept. Top-level Stream<T>
+    // v2.0.0 — `Stream<T>` defensive accept. Top-level Stream<T>
     // body validation is structurally unreachable from the v2.0.0
     // production path (SSE chunks validate at the streaming wire,
-    // not via this body validator — D9 of plan vivo Fase 39). When
+    // not via this body validator — D9 of plan vivo v2.0.0). When
     // we DO observe it defensively, return Ok early.
     if type_name == "Stream" {
         return Ok(());
     }
-    // §1 — primitives
+    // section 1 — primitives
     if BUILTIN_PRIMITIVES.contains(&type_name) {
         return validate_primitive(v, type_name, field_path, body_type);
     }
-    // §2 — range-constrained built-ins (RiskScore, ConfidenceScore, …)
+    // section 2 — range-constrained built-ins (RiskScore, ConfidenceScore, …)
     if let Some((lo, hi)) = builtin_range(type_name) {
         return validate_ranged_number(v, type_name, lo, hi, field_path, body_type);
     }
-    // §3 — generic List<T>
+    // section 3 — generic List<T>
     if type_name == "List" {
         return validate_list(v, generic_param, field_path, table, body_type);
     }
-    // §4 — structured types declared in the program
+    // section 4 — structured types declared in the program
     if let Some(schema) = table.get(type_name) {
         // Numeric range-constrained user types (`type RiskScore(0.0..1.0)`)
         if let Some((lo, hi)) = schema.range {
@@ -395,7 +395,7 @@ fn validate_value(
         }
         return validate_struct(v, schema, field_path, table, body_type);
     }
-    // §5 — unknown type. Adopter misspell or undeclared type. We surface
+    // section 5 — unknown type. Adopter misspell or undeclared type. We surface
     // it instead of silently passing so the diagnostic is actionable.
     Err(BodyValidationError {
         expected_type: body_type.to_string(),
@@ -468,7 +468,7 @@ fn validate_ranged_number(
     field_path: &str,
     body_type: &str,
 ) -> Result<(), BodyValidationError> {
-    // §32.c — `Number::is_i64() || is_u64() || is_f64()` already covers
+    // v1.23.0 — `Number::is_i64() || is_u64() || is_f64()` already covers
     // every JSON-number variant; bool excluded explicitly because
     // `serde_json::Value::as_f64` does NOT coerce booleans.
     let n = match (v, v.as_f64()) {
@@ -533,7 +533,7 @@ fn validate_list(
                     path = if field_path.is_empty() { "<body>" } else { field_path },
                     got = json_tag(v),
                 ),
-                // §Fase 38.x.f (D2) — When this validation fires at
+                // v1.31.0 (D2) — When this validation fires at
                 // the TOP-LEVEL body (empty field_path), the mismatch
                 // is between the declared `List<T>` (plural) and the
                 // observed JSON shape (not an array). Populate the
@@ -570,9 +570,9 @@ fn validate_list(
         // declaration; parser should ideally warn but doesn't today).
         return Ok(());
     }
-    // §Fase 39.d — pre-parse the element type ONCE for the whole
+    // v2.0.0 — pre-parse the element type ONCE for the whole
     // iteration. This replaces the per-element string-stripping that
-    // the v1.40.2/v1.40.3 §0 preamble in validate_value used to do.
+    // the v1.40.2/v1.40.3 section 0 preamble in validate_value used to do.
     let (elem_head, elem_generic) = parse_generic_head(element_type);
     for (idx, elem) in arr.iter().enumerate() {
         let elem_path = if field_path.is_empty() {
@@ -628,7 +628,7 @@ fn validate_struct(
                         String::new()
                     },
                 ),
-                // §Fase 38.x.f (D2) — when the top-level body got an
+                // v1.31.0 (D2) — when the top-level body got an
                 // array but expected an object, this is the canonical
                 // singular-vs-plural mismatch. Populate the structured
                 // cardinality diagnostic fields for the audit_log.
@@ -898,14 +898,14 @@ mod tests {
         assert_eq!(json_tag(&serde_json::json!(3.14)), "number");
     }
 
-    // ── §Fase 38.x.f.9 — generic-aware §0 preamble tests ────────────
+    // ── v1.31.0 — generic-aware section 0 preamble tests ────────────
 
     #[test]
-    fn fase38xf9_validate_body_accepts_list_of_primitive() {
-        // §Fase 38.x.f.9 — pre-hotfix the T9XX hint suggested
+    fn validate_body_accepts_list_of_primitive() {
+        // v1.31.0 — pre-hotfix the T9XX hint suggested
         // `output: List<String>` but `validate_body` rejected it as
-        // unknown_type. Post-hotfix: §0 preamble strips the generic
-        // and dispatches to §3 (`validate_list`) properly.
+        // unknown_type. Post-hotfix: section 0 preamble strips the generic
+        // and dispatches to section 3 (`validate_list`) properly.
         let table: HashMap<String, TypeSchema> = HashMap::new();
         let body = serde_json::json!(["alice", "bob"]);
         let r = validate_body(&body, "List<String>", &table);
@@ -916,7 +916,7 @@ mod tests {
     }
 
     #[test]
-    fn fase38xf9_validate_body_accepts_list_of_struct() {
+    fn validate_body_accepts_list_of_struct() {
         let mut table: HashMap<String, TypeSchema> = HashMap::new();
         table.insert("Person".to_string(), person_schema());
         let body = serde_json::json!([{"name": "alice", "age": 30}, {"name": "bob", "age": 25}]);
@@ -928,8 +928,8 @@ mod tests {
     }
 
     #[test]
-    fn fase38xf9_validate_body_rejects_list_of_unknown_inner() {
-        // Inner type unknown → unknown_type error from §5 with the
+    fn validate_body_rejects_list_of_unknown_inner() {
+        // Inner type unknown → unknown_type error from section 5 with the
         // inner type name, NOT a generic-string failure.
         let table: HashMap<String, TypeSchema> = HashMap::new();
         let body = serde_json::json!([{}]);
@@ -945,9 +945,9 @@ mod tests {
     }
 
     #[test]
-    fn fase38xf9_validate_body_rejects_list_against_non_array() {
-        // §3 (validate_list) handles the non-array case; we test the
-        // wiring catches it via the §0 preamble.
+    fn validate_body_rejects_list_against_non_array() {
+        // section 3 (validate_list) handles the non-array case; we test the
+        // wiring catches it via the section 0 preamble.
         let table: HashMap<String, TypeSchema> = HashMap::new();
         let body = serde_json::json!({"not": "an array"});
         let r = validate_body(&body, "List<String>", &table);
@@ -958,11 +958,11 @@ mod tests {
     }
 
     #[test]
-    fn fase38xf9_validate_body_accepts_nested_list_of_list() {
-        // Recursive — §0 strips outer, recurses with type_name="List",
-        // generic_param="List<String>". §3's validate_list iterates
+    fn validate_body_accepts_nested_list_of_list() {
+        // Recursive — section 0 strips outer, recurses with type_name="List",
+        // generic_param="List<String>". section 3's validate_list iterates
         // the outer array's elements; per-element validate_value lands
-        // back in §0 which strips the inner.
+        // back in section 0 which strips the inner.
         let table: HashMap<String, TypeSchema> = HashMap::new();
         let body = serde_json::json!([["a", "b"], ["c"]]);
         let r = validate_body(&body, "List<List<String>>", &table);
@@ -973,12 +973,12 @@ mod tests {
     }
 
     #[test]
-    fn fase38xf9_validate_body_stream_returns_ok_early() {
-        // §Fase 38.x.f.9 — Stream<T> body validation is structurally
+    fn validate_body_stream_returns_ok_early() {
+        // v1.31.0 — Stream<T> body validation is structurally
         // unreachable (SSE chunks are validated at the wire layer, not
         // the body layer). Defensive Ok early.
         //
-        // §Fase 39.d — preserved verbatim. The §0 preamble that
+        // v2.0.0 — preserved verbatim. The section 0 preamble that
         // implemented this case in v1.40.2/v1.40.3 was deleted; the
         // defensive Ok now lives in validate_value (top of function)
         // for the `Stream` head case after the canonical entry parses.
@@ -992,24 +992,24 @@ mod tests {
         );
     }
 
-    // ── §Fase 39.d — canonical entry + helpers ────────────────────
+    // ── v2.0.0 — canonical entry + helpers ────────────────────
 
     #[test]
-    fn fase39d_parse_generic_head_list() {
+    fn parse_generic_head_list() {
         let (h, g) = parse_generic_head("List<TenantRecord>");
         assert_eq!(h, "List");
         assert_eq!(g, "TenantRecord");
     }
 
     #[test]
-    fn fase39d_parse_generic_head_stream() {
+    fn parse_generic_head_stream() {
         let (h, g) = parse_generic_head("Stream<Token>");
         assert_eq!(h, "Stream");
         assert_eq!(g, "Token");
     }
 
     #[test]
-    fn fase39d_parse_generic_head_nested_list() {
+    fn parse_generic_head_nested_list() {
         // Nested generic `List<List<X>>` returns the outer split.
         // The inner `List<X>` is parsed by the recursive entry into
         // validate_list → parse_generic_head again.
@@ -1019,21 +1019,21 @@ mod tests {
     }
 
     #[test]
-    fn fase39d_parse_generic_head_bare_type() {
+    fn parse_generic_head_bare_type() {
         let (h, g) = parse_generic_head("TenantRecord");
         assert_eq!(h, "TenantRecord");
         assert_eq!(g, "");
     }
 
     #[test]
-    fn fase39d_parse_generic_head_inner_whitespace_trimmed() {
+    fn parse_generic_head_inner_whitespace_trimmed() {
         let (h, g) = parse_generic_head("List<  TenantRecord  >");
         assert_eq!(h, "List");
         assert_eq!(g, "TenantRecord");
     }
 
     #[test]
-    fn fase39d_strip_flow_envelope_singular() {
+    fn strip_flow_envelope_singular() {
         assert_eq!(
             strip_flow_envelope("FlowEnvelope<TenantRecord>"),
             Some("TenantRecord".to_string())
@@ -1041,7 +1041,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39d_strip_flow_envelope_list() {
+    fn strip_flow_envelope_list() {
         assert_eq!(
             strip_flow_envelope("FlowEnvelope<List<TenantRecord>>"),
             Some("List<TenantRecord>".to_string())
@@ -1049,15 +1049,15 @@ mod tests {
     }
 
     #[test]
-    fn fase39d_strip_flow_envelope_returns_none_on_bare() {
+    fn strip_flow_envelope_returns_none_on_bare() {
         assert_eq!(strip_flow_envelope("TenantRecord"), None);
         assert_eq!(strip_flow_envelope("List<X>"), None);
         assert_eq!(strip_flow_envelope(""), None);
     }
 
     #[test]
-    fn fase39d_validate_body_unwraps_flow_envelope_with_struct() {
-        // §39.d canonical: declared `FlowEnvelope<Person>`, body is
+    fn validate_body_unwraps_flow_envelope_with_struct() {
+        // v2.0.0 canonical: declared `FlowEnvelope<Person>`, body is
         // the FlowEnvelope wire shape, validation targets `result`
         // slot against `Person`.
         let mut table: HashMap<String, TypeSchema> = HashMap::new();
@@ -1078,8 +1078,8 @@ mod tests {
     }
 
     #[test]
-    fn fase39d_validate_body_unwraps_flow_envelope_with_list() {
-        // §39.d canonical: declared `FlowEnvelope<List<Person>>`, the
+    fn validate_body_unwraps_flow_envelope_with_list() {
+        // v2.0.0 canonical: declared `FlowEnvelope<List<Person>>`, the
         // result slot is an array of Person.
         let mut table: HashMap<String, TypeSchema> = HashMap::new();
         table.insert("Person".to_string(), person_schema());
@@ -1106,8 +1106,8 @@ mod tests {
     }
 
     #[test]
-    fn fase39d_validate_body_rejects_flow_envelope_with_wrong_inner_type() {
-        // §39.d — the canonical unwrap recurses on the inner T;
+    fn validate_body_rejects_flow_envelope_with_wrong_inner_type() {
+        // v2.0.0 — the canonical unwrap recurses on the inner T;
         // if the `result` slot doesn't match T, validation fails
         // with the inner-T error context.
         let mut table: HashMap<String, TypeSchema> = HashMap::new();
@@ -1134,8 +1134,8 @@ mod tests {
     }
 
     #[test]
-    fn fase39d_validate_body_rejects_flow_envelope_with_non_object_body() {
-        // §39.d — when declared is FlowEnvelope<T> but the body isn't
+    fn validate_body_rejects_flow_envelope_with_non_object_body() {
+        // v2.0.0 — when declared is FlowEnvelope<T> but the body isn't
         // a JSON object, validation surfaces a structural error (the
         // wire wrapper is mandated to be an object).
         let table: HashMap<String, TypeSchema> = HashMap::new();
@@ -1150,8 +1150,8 @@ mod tests {
     }
 
     #[test]
-    fn fase39d_validate_body_flow_envelope_any_skips_inner_validation() {
-        // §39.d — `FlowEnvelope<Any>` is the universal accept
+    fn validate_body_flow_envelope_any_skips_inner_validation() {
+        // v2.0.0 — `FlowEnvelope<Any>` is the universal accept
         // (degraded surface); the inner result is not validated.
         let table: HashMap<String, TypeSchema> = HashMap::new();
         let envelope = serde_json::json!({
@@ -1170,8 +1170,8 @@ mod tests {
     }
 
     #[test]
-    fn fase39d_validate_body_flow_envelope_with_missing_result_slot() {
-        // §39.d — when the body lacks `result`, the unwrapper
+    fn validate_body_flow_envelope_with_missing_result_slot() {
+        // v2.0.0 — when the body lacks `result`, the unwrapper
         // treats it as Value::Null and validates Null against T.
         // For T=Any this is Ok; for T=Person it's a struct mismatch.
         let mut table: HashMap<String, TypeSchema> = HashMap::new();
@@ -1189,14 +1189,14 @@ mod tests {
     }
 
     #[test]
-    fn fase39d_validate_value_no_longer_carries_section_0_preamble() {
-        // §Fase 39.d — STATIC grep gate. The §0 preamble that
+    fn validate_value_no_longer_carries_section_0_preamble() {
+        // v2.0.0 — STATIC grep gate. The section 0 preamble that
         // string-stripped List<X> / Stream<X> in v1.40.2/v1.40.3 is
         // RETIRED. Any future PR that reintroduces it inside
         // validate_value breaks this assertion.
         let src = std::fs::read_to_string("src/route_schema.rs")
             .expect("read route_schema.rs");
-        // The §0 marker text was unique; if it reappears we know the
+        // The section 0 marker text was unique; if it reappears we know the
         // bridge was reinstated.
         assert!(
             !src.contains("(POST-CLOSE HOTFIX 2026-05-21) — generic-\n    // aware parsing"),
@@ -1207,8 +1207,8 @@ mod tests {
     }
 
     #[test]
-    fn fase39d_d5_gate_simplified_calls_validate_body_directly() {
-        // §Fase 39.d — STATIC grep gate on axon_server.rs. The pre-39.d
+    fn gate_simplified_calls_validate_body_directly() {
+        // v2.0.0 — STATIC grep gate on axon_server.rs. The pre-39.d
         // gate manually extracted inner-T + result slot; post-39.d
         // validate_body is the canonical entry and the gate just calls
         // it with the raw declared type.

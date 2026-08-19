@@ -1,6 +1,6 @@
-//! §Fase 101.e — the IDP-E image-decode sidecar.
+//! v2.54.0 — the IDP-E image-decode sidecar.
 //!
-//! **This binary is the crash domain (D101.5).** Image decode — PNG / JPEG / BMP
+//! **This binary is the crash domain.** Image decode — PNG / JPEG / BMP
 //! / TIFF — is the CVE-prone step, fed untrusted bytes by definition: in-process,
 //! one malformed JPEG is the whole runtime. So it runs HERE, in a separate
 //! process the runtime spawns, never linked into the main binary (the `image`
@@ -10,13 +10,13 @@
 //! grayscale raster — denoised by the deterministic front-end (Perona-Malik) — to
 //! stdout and exit `0`. On any refusal write a typed reason to stderr and exit
 //! non-zero. The runtime's extraction engine reads the PGM and hands it to the
-//! recognizer kernel (§101.c): hostile bytes never cross back, only numbers do.
+//! recognizer kernel (v2.54.0): hostile bytes never cross back, only numbers do.
 //!
-//! **Bounded before decode (D101.12).** The input byte cap and the decoder's own
+//! **Bounded before decode.** The input byte cap and the decoder's own
 //! dimension limits are set BEFORE a pixel is produced, so a decompression-bomb
 //! image is refused, not expanded. The process is meant to be run under an OS
 //! sandbox (seccomp / job object / least-priv user) by the enterprise host
-//! (§101.f); this binary adds the algorithmic bounds.
+//! (v2.54.0); this binary adds the algorithmic bounds.
 
 use std::io::{Read, Write};
 
@@ -72,7 +72,7 @@ fn main() {
 
 /// Decode a hostile image format (PNG/JPEG/BMP/TIFF) under strict limits, in this
 /// isolated process. Dimensions are bounded BEFORE the full pixel buffer is
-/// produced (D101.12).
+/// produced.
 fn decode_hostile(bytes: &[u8]) -> RasterTile {
     use image::ImageReader;
 

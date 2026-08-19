@@ -1,4 +1,4 @@
-//! §Fase 119.b — the `mandate` enforcement engine: the loop that makes the
+//! v2.83.0 — the `mandate` enforcement engine: the loop that makes the
 //! cage real.
 //!
 //! # What this is
@@ -24,8 +24,8 @@
 //!   converts a breach into a success.
 //! - A mandate whose constraint text lowers to **zero checkable predicates**
 //!   is [`MandateRefusal::Unfalsifiable`] — refused before any token is spent,
-//!   because a mandate that cannot fail enforces nothing (§113's
-//!   lease-with-no-subject, §119.b's founding refusal).
+//! because a mandate that cannot fail enforces nothing (v2.67.0's
+//! lease-with-no-subject, v2.83.0's founding refusal).
 //! - **Mandated generation is BUFFERED, never streamed raw.** A token that has
 //!   reached the wire cannot be unshipped, so a mandate that streamed its
 //!   attempts would ship non-compliance mid-sentence and apologise afterwards.
@@ -33,8 +33,8 @@
 //!
 //! # The proof obligations, discharged
 //!
-//! §119.b.3's compile-time band check is CONDITIONAL on the declared drift
-//! bound `D` (`sup|drift(t)| ≤ D`, `paper_mandate.md` §3). This engine is where
+//! v2.83.0's compile-time band check is CONDITIONAL on the declared drift
+//! bound `D` (`sup|drift(t)| ≤ D`, `paper_mandate.md` section 3). This engine is where
 //! the hypothesis meets reality. The plant model is
 //!
 //! ```text
@@ -55,7 +55,7 @@
 //!
 //! - **Tier 2 (universal):** the violated obligations of each attempt are fed
 //!   back verbatim as the next attempt's corrective directive — the CSP
-//!   solver's backtracking step (`prompt_opt` §5.3: *identify violated `c_j` →
+//! solver's backtracking step (`prompt_opt` section 5.3: *identify violated `c_j` →
 //!   inject as feedback → regenerate*). Works on every backend that can
 //!   complete a chat, which is every backend.
 //! - **Tier 1 (token-level, where the wire admits it):** every
@@ -274,7 +274,7 @@ impl MandateRuntime {
                     gains: Gains {
                         kp,
                         // Absent term = zero term in the control law — the
-                        // §119.b.3 rule, same arithmetic as the compiler.
+                        // v2.83.0 rule, same arithmetic as the compiler.
                         ki: spec.ki.unwrap_or(0.0),
                         kd: spec.kd.unwrap_or(0.0),
                     },
@@ -563,7 +563,7 @@ mod tests {
         }
     }
 
-    /// §Fase 119.h — Tier 1 without the C23 tokeniser.
+    /// v2.83.0 — Tier 1 without the C23 tokeniser.
     ///
     /// `logit_bias_bans` needs BPE ranks to name the tokens it wants
     /// banned, so a toolchain-free build cannot emit them. The design

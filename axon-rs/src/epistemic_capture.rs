@@ -1,4 +1,4 @@
-//! §Fase 55.a — capture the epistemic envelope from a tool's effect row.
+//! v2.7.0 — capture the epistemic envelope from a tool's effect row.
 //!
 //! When a `use_tool` step dispatches a tool whose declared effect row
 //! carries `epistemic:<level>`, the result inherits an epistemic CEILING:
@@ -6,12 +6,12 @@
 //! speculative knowledge, so any confidence derived *through* it is clamped
 //! to the `speculate` ceiling. That clamp is the Theorem 5.1
 //! (*Stochastic Degenerative Soundness*) degradation made observable — the
-//! exact contract the §50.i.4 parity gate names and §Fase 55 surfaces.
+//! exact contract the v2.4.0 parity gate names and v2.7.0 surfaces.
 //!
 //! This module is the pure **capture** half: it derives the
 //! `(base, scope, confidence)` triple from `(effect_row, scope,
-//! input_confidence)`. §55.b wires the captured envelope onto the
-//! `FlowEnvelope` in both transports; §55.c locks cross-transport parity.
+//! input_confidence)`. v2.7.0 wires the captured envelope onto the
+//! `FlowEnvelope` in both transports; v2.7.0 locks cross-transport parity.
 //! Keeping capture pure and side-effect-free makes the lattice arithmetic
 //! exhaustively testable without the runner.
 
@@ -25,7 +25,7 @@ use serde::{Deserialize, Serialize};
 /// level reaching this module is always a member of this set).
 pub const EPISTEMIC_LEVELS: &[&str] = &["doubt", "speculate", "believe", "know"];
 
-/// §Theorem 5.1 — the ceiling for `know`, the apex of *derived* knowledge.
+/// Theorem 5.1 — the ceiling for `know`, the apex of *derived* knowledge.
 /// Mirrors the C23 kernel constant `AXON_CSYS_THEOREM_5_1_CEILING`
 /// (`axon-csys/c-src/effects/envelope.c`): a stochastically derived claim
 /// never reaches `1.0` — `⊤` (apodictic certainty) is reserved for
@@ -54,7 +54,7 @@ pub fn level_ceiling(level: &str) -> Option<f64> {
 /// The captured epistemic envelope of one tool dispatch — the Theorem 5.1
 /// `(base, scope, confidence)` triple. Serialized verbatim onto the wire
 /// (`FlowEnvelope.epistemic_envelopes` on the sync path; the `epistemic`
-/// array on the streaming `axon.complete`) — §Fase 55.b.
+/// array on the streaming `axon.complete`) — v2.7.0.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EpistemicEnvelope {
     /// The lattice position imposed by the tool's `epistemic:<level>`
@@ -67,16 +67,16 @@ pub struct EpistemicEnvelope {
     /// The input certainty `ψ.c` clamped to the level's ceiling
     /// (`min(input, ceiling)` — never raised; "no silent upgrade").
     pub confidence: f64,
-    /// §Fase 58.i.2 (D9) — the tool's DECLARED output type (`output_type:`,
-    /// §58 D8), when it has one. This ties the epistemic ceiling to the
+    /// v2.8.0 (D9) — the tool's DECLARED output type (`output_type:`,
+    /// v2.8.0 D8), when it has one. This ties the epistemic ceiling to the
     /// TYPED output the dispatch produces: the `(base, scope, confidence)`
     /// triple is the ceiling on a value of THIS type, so a downstream
     /// `${Step.output}` / `reason { given: Step }` reference inherits the
     /// declared output's epistemic position in the lattice. `None` for a
-    /// tool that declares no `output_type` (the §55 byte-identical wire —
+    /// tool that declares no `output_type` (the v2.7.0 byte-identical wire —
     /// the field is ELIDED, not emitted as null, so existing flows are
-    /// unchanged). Additive: a tool with `output_type` is a §58-new
-    /// construct, so no pre-§58 flow's wire shifts.
+    /// unchanged). Additive: a tool with `output_type` is a v2.8.0-new
+    /// construct, so no pre-v2.8.0 flow's wire shifts.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub output_type: Option<String>,
 }
@@ -92,7 +92,7 @@ pub fn epistemic_level_of(effect_row: &[String]) -> Option<&str> {
         .filter(|level| !level.is_empty())
 }
 
-/// §Fase 55.a — derive the epistemic envelope for one tool dispatch.
+/// v2.7.0 — derive the epistemic envelope for one tool dispatch.
 ///
 /// * `effect_row` — the tool's declared effects, e.g.
 ///   `["network", "epistemic:speculate"]`.
@@ -105,8 +105,8 @@ pub fn epistemic_level_of(effect_row: &[String]) -> Option<&str> {
 /// `confidence` is `apply_provenance_ceiling(input_confidence, ceiling)` —
 /// the ceiling is a maximum, so a high-confidence input is degraded to the
 /// level's cap while a low-confidence input is left untouched.
-/// * `output_type` — the tool's declared `output_type:` (§58 D8), or
-///   `None`. §58.i.2 (D9): when present, it rides the envelope so the
+/// * `output_type` — the tool's declared `output_type:` (v2.8.0 D8), or
+/// `None`. v2.8.0 (D9): when present, it rides the envelope so the
 ///   ceiling is tied to the typed output the dispatch yields.
 pub fn capture(
     effect_row: &[String],
@@ -124,7 +124,7 @@ pub fn capture(
     })
 }
 
-/// §Fase 55.b — derive the epistemic envelopes for one flow's tool
+/// v2.7.0 — derive the epistemic envelopes for one flow's tool
 /// dispatches, straight from the IR. For each flow-level `use <Tool>` step,
 /// look up the tool's declared effect row in `tools` and [`capture`] its
 /// epistemic envelope. Steps whose tool has no epistemic base (or whose
@@ -137,7 +137,7 @@ pub fn capture(
 /// This is the SINGLE derivation both transports call (the sync runner with
 /// its in-hand `ir`, the streaming resolver after re-deriving the IR from
 /// source), so the wire carries byte-identical envelopes by construction —
-/// the §55.c parity invariant.
+/// the v2.7.0 parity invariant.
 pub fn collect_for_flow(
     flow: &IRFlow,
     tools: &[IRToolSpec],
@@ -152,16 +152,16 @@ pub fn collect_for_flow(
                     &tool.effect_row,
                     &format!("tool:{}", u.tool_name),
                     input_confidence,
-                    // §58.i.2 (D9) — the declared output type rides the
+                    // v2.8.0 (D9) — the declared output type rides the
                     // envelope so the ceiling binds to the typed result.
                     tool.output_type.as_deref(),
                 )
             }
-            // §Fase 62.A.3 — PIX retrieval reads controlled, pre-indexed
+            // v2.12.0 — PIX retrieval reads controlled, pre-indexed
             // content: its intrinsic effect row is ⟨io, epistemic:believe⟩
-            // (paper §5.2). Retrieved leaf content is `believe` — trusted but
+            // (paper section 5.2). Retrieved leaf content is `believe` — trusted but
             // unverified, so it is degraded to the believe ceiling (0.95) and
-            // never reaches `know` without anchor/shield validation (paper §5.1,
+            // never reaches `know` without anchor/shield validation (paper section 5.1,
             // program invariant #4). `navigate`/`drill` carry this base
             // intrinsically (not a user-declared effect), so we capture it here.
             IRFlowNode::Navigate(n) => {
@@ -177,7 +177,7 @@ pub fn collect_for_flow(
         .collect()
 }
 
-/// §Fase 62.A.3 — the intrinsic effect row of a PIX retrieval step:
+/// v2.12.0 — the intrinsic effect row of a PIX retrieval step:
 /// `io` (reads pre-indexed content) + `epistemic:believe` (trusted, unverified).
 pub fn pix_believe_row() -> Vec<String> {
     vec!["io".to_string(), "epistemic:believe".to_string()]
@@ -203,8 +203,8 @@ mod tests {
 
     #[test]
     fn pix_retrieval_carries_a_believe_envelope() {
-        // §62.A.3 — navigate/drill surface ⟨io, believe⟩ at the believe ceiling
-        // (paper §5.2); leaf content is trusted-but-unverified, never `know`.
+        // v2.12.0 — navigate/drill surface ⟨io, believe⟩ at the believe ceiling
+        // (paper section 5.2); leaf content is trusted-but-unverified, never `know`.
         let row = pix_believe_row();
         assert_eq!(epistemic_level_of(&row), Some("believe"));
         let env = capture(&row, "navigate:sections", 1.0, None).unwrap();
@@ -271,7 +271,7 @@ mod tests {
         assert_eq!(capture(&row, "tool:T", -0.2, None).unwrap().confidence, 0.0);
     }
 
-    // ── §55.b — collect_for_flow (IR-driven derivation) ──────────────
+    // ── v2.7.0 — collect_for_flow (IR-driven derivation) ──────────────
 
     fn tool(name: &str, effects: &[&str]) -> IRToolSpec {
         IRToolSpec {
@@ -352,7 +352,7 @@ mod tests {
         });
     }
 
-    // ── §Fase 58.i.2 (D9) — output_type rides the lattice envelope ────
+    // ── v2.8.0 (D9) — output_type rides the lattice envelope ────
 
     /// A tool declaring BOTH an epistemic level AND an `output_type` ties
     /// the ceiling to the typed output: the envelope carries the declared
@@ -405,8 +405,8 @@ mod tests {
 
     #[test]
     fn output_type_is_elided_from_the_wire_when_absent() {
-        // §55 wire byte-compat: a tool with no output_type serializes
-        // WITHOUT the field (skip-if-none), so pre-§58 flows are unchanged.
+        // v2.7.0 wire byte-compat: a tool with no output_type serializes
+        // WITHOUT the field (skip-if-none), so pre-v2.8.0 flows are unchanged.
         let env = capture(&["epistemic:doubt".to_string()], "tool:T", 0.4, None).unwrap();
         let json = serde_json::to_value(&env).unwrap();
         assert!(
@@ -446,7 +446,7 @@ mod tests {
 
     #[test]
     fn legacy_wire_without_output_type_deserializes_to_none() {
-        // §55 back-compat: an old (pre-§58) wire envelope carries no
+        // v2.7.0 back-compat: an old (pre-v2.8.0) wire envelope carries no
         // `output_type` key; `#[serde(default)]` restores it as None.
         let legacy = r#"{"base":"speculate","scope":"tool:Old","confidence":0.8}"#;
         let env: EpistemicEnvelope = serde_json::from_str(legacy).unwrap();

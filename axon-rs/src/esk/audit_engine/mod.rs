@@ -1,4 +1,4 @@
-//! AXON Runtime — Audit Evidence Engine (§ESK Fase 7.x, external audits).
+//! AXON Runtime — Audit Evidence Engine (v1.2.0, external audits).
 //!
 //! Direct port of `axon/runtime/esk/audit_engine/`. Closes the gap between
 //! Axon's runtime primitives and external audits (SOC 2 Type II / ISO

@@ -1,4 +1,4 @@
-//! §Fase 35.d (v1.30.0) — `StoreRegistry`, the closed-catalog
+//! v1.30.0 — `StoreRegistry`, the closed-catalog
 //! SQL-vs-KV dispatch chokepoint of the `axonstore` cognitive data
 //! plane.
 //!
@@ -68,7 +68,7 @@ pub enum StoreBackendKind {
     InMemory,
     /// A `sqlx::PgPool`-backed SQL store (35.c `PostgresStoreBackend`).
     Postgresql,
-    /// §Fase 94.a — the read-only METADATA view over the tenant's secret
+    /// v2.48.0 — the read-only METADATA view over the tenant's secret
     /// custody (`rotation_without_revelation`). No connection string, no
     /// adopter table: the dispatch handlers route it to the
     /// `axon::secret_custody` port (fail-closed when absent).
@@ -101,7 +101,7 @@ pub fn classify_backend(backend: &str) -> Option<StoreBackendKind> {
     match backend.trim().to_ascii_lowercase().as_str() {
         "" | "in_memory" => Some(StoreBackendKind::InMemory),
         "postgresql" => Some(StoreBackendKind::Postgresql),
-        // §Fase 94.a — the secret-custody metadata view.
+        // v2.48.0 — the secret-custody metadata view.
         "secrets" => Some(StoreBackendKind::Secrets),
         _ => None,
     }
@@ -119,11 +119,11 @@ pub enum RegistryError {
     UnknownBackend { store: String, backend: String },
     /// Two `axonstore` declarations share a name.
     DuplicateStore { store: String },
-    /// §Fase 113 — the store names a `resource:` that the program does not
+    /// v2.67.0 — the store names a `resource:` that the program does not
     /// declare. `axon-T946` refuses this at compile; reaching it here means the
     /// IR was assembled by hand, and we refuse rather than fall back.
     UnknownResource { store: String, resource: String },
-    /// §Fase 113 — the store's `resource.endpoint` config key could not be
+    /// v2.67.0 — the store's `resource.endpoint` config key could not be
     /// resolved to an address. **Never a fallback**: a resolver that invents an
     /// address turns a misconfiguration into a silent connection to nothing.
     UnresolvedEndpoint {
@@ -131,7 +131,7 @@ pub enum RegistryError {
         resource: String,
         detail: String,
     },
-    /// §Fase 113.d — a `lease` could not be acquired: it targets a `persistent`
+    /// v2.67.0 — a `lease` could not be acquired: it targets a `persistent`
     /// resource (the `!` exponential has no τ to decay), or its duration is
     /// unparseable.
     LeaseRefused {
@@ -198,7 +198,7 @@ pub enum StoreHandle {
     InMemory,
     /// A Postgres-backed store, with its (shared, cached) backend.
     Postgres(PostgresStoreBackend),
-    /// §Fase 94.a — the secret-custody metadata view: the store's
+    /// v2.48.0 — the secret-custody metadata view: the store's
     /// declared `class:` (WITHOUT the trailing dot; callers derive the
     /// key prefix as `class + "."`). Routed to the `secret_custody`
     /// port by the dispatch handlers — never to SQL, never to KV.
@@ -216,7 +216,7 @@ impl StoreHandle {
         matches!(self, StoreHandle::Postgres(_))
     }
 
-    /// §Fase 94.a — `true` iff this resolves to the secret-custody
+    /// v2.48.0 — `true` iff this resolves to the secret-custody
     /// metadata view.
     pub fn is_secrets(&self) -> bool {
         matches!(self, StoreHandle::Secrets { .. })
@@ -224,7 +224,7 @@ impl StoreHandle {
 }
 
 // ════════════════════════════════════════════════════════════════════
-//  §Fase 37.x.g (D8) — deploy-time schema-verification report
+// v1.32.0 (D8) — deploy-time schema-verification report
 // ════════════════════════════════════════════════════════════════════
 
 /// The outcome of [`StoreRegistry::verify_postgres_schemas`] — the
@@ -287,20 +287,20 @@ impl SchemaVerifyReport {
 struct RegisteredStore {
     spec: IRAxonStore,
     kind: StoreBackendKind,
-    /// §Fase 113 — the DSN this store actually connects with.
+    /// v2.67.0 — the DSN this store actually connects with.
     ///
     /// For a store on a `resource:` this is the RESOLVED `resource.endpoint`
     /// config key. For the legacy un-resourced form it is `spec.connection`
     /// verbatim. Either way it is settled ONCE, at build, so `resolve()` cannot
     /// disagree with the schema verifier about where a store points.
     dsn_source: String,
-    /// §Fase 113 — the pool size: `resource.capacity`, or the legacy hardcoded
+    /// v2.67.0 — the pool size: `resource.capacity`, or the legacy hardcoded
     /// default when the store names no resource.
     ///
-    /// This is the field that makes §113 a wire. `capacity` was declared,
+    /// This is the field that makes v2.67.0 a wire. `capacity` was declared,
     /// lowered, and read by NOTHING; every pool was 10.
     capacity: u32,
-    /// §Fase 113 — the resource this store derives from (empty = legacy form).
+    /// v2.67.0 — the resource this store derives from (empty = legacy form).
     /// Carried for diagnostics: an error about a pool must be able to name the
     /// declaration the operator has to edit.
     resource_ref: String,
@@ -320,7 +320,7 @@ pub struct StoreRegistry {
     /// first `resolve` of a postgresql store with that DSN. Stores that
     /// share a DSN share one pool.
     pool_cache: Mutex<HashMap<String, PostgresStoreBackend>>,
-    /// §Fase 113.d — **the lease's use-site, which is the reason §113 exists.**
+    /// v2.67.0 — **the lease's use-site, which is the reason v2.67.0 exists.**
     ///
     /// The README promises `lease` is a τ-decaying affine capability whose
     /// **post-expiry USE is a CT-2 Anchor Breach**. `LeaseKernel` implements that
@@ -329,9 +329,9 @@ pub struct StoreRegistry {
     ///
     /// > **A flow could not `use` a `resource`, so the breach had no moment to
     /// > fire in. The headline guarantee was structurally impossible, not merely
-    /// > un-plumbed.** (§111 F14.)
+    /// > un-plumbed.** (v2.67.0 F14.)
     ///
-    /// §113 created the moment. A flow uses an `axonstore`; the store runs on a
+    /// v2.67.0 created the moment. A flow uses an `axonstore`; the store runs on a
     /// `resource`; **that store operation IS the use of the resource.** So every
     /// `resolve()` of a leased store's handle passes through `use_token`, and a
     /// post-expiry one refuses.
@@ -340,7 +340,7 @@ pub struct StoreRegistry {
     leases: Option<Mutex<LeaseGuard>>,
 }
 
-/// §Fase 113.d — the leases held over this program's resources.
+/// v2.67.0 — the leases held over this program's resources.
 ///
 /// One token per leased resource, acquired at build (`acquire: on_start`) and
 /// checked on every use.
@@ -379,9 +379,9 @@ impl StoreRegistry {
         Self::build_with_resources(specs, &[], &crate::resource_resolver::EnvResourceResolver)
     }
 
-    /// §Fase 113 — **build a registry where a store DERIVES from its `resource`.**
+    /// v2.67.0 — **build a registry where a store DERIVES from its `resource`.**
     ///
-    /// This is the sub-fase the plan warned itself about, in advance and by name:
+    /// This is the step the plan warned itself about, in advance and by name:
     ///
     /// > *"A nominal link is not a fix. `axonstore { resource: Db }` as a LABEL —
     /// > with the store still connecting through its own `connection:` — would
@@ -393,7 +393,7 @@ impl StoreRegistry {
     ///
     /// - its **DSN**, by resolving `resource.endpoint` — a config key, never a
     ///   URL in source (`axon-T944`);
-    /// - its **pool size**, from `resource.capacity` — which until §113 was read
+    /// - its **pool size**, from `resource.capacity` — which until v2.67.0 was read
     ///   by *zero lines of code in either repository* while every pool in
     ///   existence sat at a hardcoded 10.
     ///
@@ -409,7 +409,7 @@ impl StoreRegistry {
         Self::build_governed(specs, resources, &[], resolver)
     }
 
-    /// §Fase 113.d — build a registry that also HOLDS THE LEASES over its
+    /// v2.67.0 — build a registry that also HOLDS THE LEASES over its
     /// resources, so a store operation is a *use* of the resource it runs on.
     ///
     /// This is the seam `lease` waited for. Its kernel was complete years ago;
@@ -429,11 +429,11 @@ impl StoreRegistry {
         )
     }
 
-    /// §Fase 113.d — as [`Self::build_governed`], with an injectable clock.
+    /// v2.67.0 — as [`Self::build_governed`], with an injectable clock.
     ///
     /// τ-decay is only *testable* if time can be moved. A gate that had to sleep
     /// for an hour to observe an expiry would never run, and a guarantee whose
-    /// gate never runs is the guarantee §111 spent itself deleting.
+    /// gate never runs is the guarantee v2.67.0 spent itself deleting.
     pub fn build_governed_with_clock(
         specs: &[IRAxonStore],
         resources: &[crate::ir_nodes::IRResource],
@@ -457,7 +457,7 @@ impl StoreRegistry {
                 });
             }
 
-            // §Fase 113 — derive from the resource, or keep the legacy shape.
+            // v2.67.0 — derive from the resource, or keep the legacy shape.
             let (dsn_source, capacity) = if spec.resource_ref.is_empty() {
                 (spec.connection.clone(), super::row::MAX_POOL_CONNECTIONS)
             } else {
@@ -472,7 +472,7 @@ impl StoreRegistry {
                 // only way an address reaches the runtime at all — and an
                 // unresolved key **REFUSES**. It is never defaulted.
                 //
-                // §112 cost three kernel bugs to learn that, and all three were
+                // v2.67.0 cost three kernel bugs to learn that, and all three were
                 // the same bug: *when the evidence is missing, substitute the
                 // belief and report agreement.* A resolver that quietly returns
                 // `localhost` for an unset key is that bug wearing a helpful
@@ -505,7 +505,7 @@ impl StoreRegistry {
             );
         }
 
-        // §Fase 113.d — acquire the leases. `acquire: on_start` takes the token
+        // v2.67.0 — acquire the leases. `acquire: on_start` takes the token
         // now; `on_demand` is acquired lazily on first use. Either way the token
         // exists BEFORE any store op can happen, which is what makes the
         // post-expiry use a detectable event rather than a philosophical one.
@@ -538,11 +538,11 @@ impl StoreRegistry {
         })
     }
 
-    /// §Fase 113.d — **the use-site.** Charge a store operation against the lease
+    /// v2.67.0 — **the use-site.** Charge a store operation against the lease
     /// held over the resource it runs on.
     ///
     /// The README's promise is that a `lease` is a τ-decaying affine capability
-    /// and that **post-expiry USE is a CT-2 Anchor Breach**. Until §113 a flow
+    /// and that **post-expiry USE is a CT-2 Anchor Breach**. Until v2.67.0 a flow
     /// could not *use* a resource at all, so the breach had no moment to fire in
     /// — **structurally impossible, not merely unwired**. This is that moment.
     ///
@@ -556,7 +556,7 @@ impl StoreRegistry {
             return Ok(());
         };
         if reg.resource_ref.is_empty() {
-            // §113's ratified posture, enforced here: an UN-RESOURCED store is
+            // v2.67.0's ratified posture, enforced here: an UN-RESOURCED store is
             // INELIGIBLE for lease governance. You cannot govern what you did not
             // declare — and silently governing it would be worse, because the
             // adopter would believe a guarantee they never asked for.
@@ -597,16 +597,16 @@ impl StoreRegistry {
         }
     }
 
-    /// §Fase 113 — the pool size a store ACTUALLY got.
+    /// v2.67.0 — the pool size a store ACTUALLY got.
     ///
     /// Exposed so a gate can *prove* `capacity: 20` produced twenty connections
     /// rather than trusting that it did. **An unobservable wire is
-    /// indistinguishable from a label**, and this fase exists to tell them apart.
+    /// indistinguishable from a label**, and this cycle exists to tell them apart.
     pub fn pool_capacity_of(&self, store_name: &str) -> Option<u32> {
         self.stores.get(store_name).map(|r| r.capacity)
     }
 
-    /// §Fase 113 — the resource a store derives from. `None` ⇒ the legacy
+    /// v2.67.0 — the resource a store derives from. `None` ⇒ the legacy
     /// un-resourced form.
     pub fn resource_of(&self, store_name: &str) -> Option<&str> {
         self.stores
@@ -615,7 +615,7 @@ impl StoreRegistry {
             .filter(|s| !s.is_empty())
     }
 
-    /// §Fase 113 — the DSN a store resolves to (the resolved `resource.endpoint`,
+    /// v2.67.0 — the DSN a store resolves to (the resolved `resource.endpoint`,
     /// or the legacy `connection:` verbatim). For diagnostics and gates.
     pub fn dsn_source_of(&self, store_name: &str) -> Option<&str> {
         self.stores.get(store_name).map(|r| r.dsn_source.as_str())
@@ -644,7 +644,7 @@ impl StoreRegistry {
     /// Must be called within a Tokio runtime context when it may
     /// connect a postgresql backend (the lazy pool, per 35.c).
     pub fn resolve(&self, store_name: &str) -> Result<StoreHandle, StoreError> {
-        // §Fase 113.d — THE USE-SITE. A store operation is a *use* of the
+        // v2.67.0 — THE USE-SITE. A store operation is a *use* of the
         // resource the store runs on, and that is the moment `lease`'s CT-2
         // Anchor Breach has been waiting for since it was written. Charged
         // BEFORE the handle is produced: an expired capability must not hand back
@@ -660,14 +660,14 @@ impl StoreRegistry {
 
         match registered.kind {
             StoreBackendKind::InMemory => Ok(StoreHandle::InMemory),
-            // §Fase 94.a — pure resolution: the class rides the handle;
+            // v2.48.0 — pure resolution: the class rides the handle;
             // the custody port itself lives on the DispatchCtx (it is a
             // per-request/per-tenant seam, not a registry-cached pool).
             StoreBackendKind::Secrets => Ok(StoreHandle::Secrets {
                 class: registered.spec.class.clone(),
             }),
             StoreBackendKind::Postgresql => {
-                // §Fase 113 — `dsn_source` is the RESOLVED `resource.endpoint`
+                // v2.67.0 — `dsn_source` is the RESOLVED `resource.endpoint`
                 // when the store runs on a resource, and `spec.connection`
                 // verbatim otherwise. Settled once at build, so this cannot
                 // disagree with the schema verifier about where a store points.
@@ -677,7 +677,7 @@ impl StoreRegistry {
                 // than a silent KV fallback.
                 let _dsn = resolve_dsn(&registered.dsn_source)?;
 
-                // §Fase 118.b.3 — without the driver `resolve_dsn` above has already
+                // v2.81.0 — without the driver `resolve_dsn` above has already
                 // returned the written refusal, so everything below is unreachable.
                 // Gated rather than stubbed: a build with no driver must not carry a
                 // pool cache, and the refusal belongs at RESOLVE time — the earliest
@@ -690,7 +690,7 @@ impl StoreRegistry {
                 if let Some(backend) = cache.get(&_dsn) {
                     return Ok(StoreHandle::Postgres(backend.clone()));
                 }
-                // §Fase 113 — the pool is sized by `resource.capacity`. This one
+                // v2.67.0 — the pool is sized by `resource.capacity`. This one
                 // argument is the difference between a wire and a label: without
                 // it, `capacity:` would remain what it has always been — parsed,
                 // lowered, advertised as a pool cap, and read by nothing.
@@ -707,7 +707,7 @@ impl StoreRegistry {
         }
     }
 
-    /// §Fase 37.x.g (D8) — EAGERLY verify every declared `postgresql`
+    /// v1.32.0 (D8) — EAGERLY verify every declared `postgresql`
     /// store's schema against the live database, at deploy time.
     ///
     /// For each `postgresql` store — the table name is the store name
@@ -727,12 +727,12 @@ impl StoreRegistry {
         self.verify_postgres_schemas_with_manifest(None).await
     }
 
-    /// §Fase 38.f (D3 + D8 strengthening) — extended deploy-time
+    /// v1.31.0 (D3 + D8 strengthening) — extended deploy-time
     /// verification that honors a declared column schema on each
     /// `axonstore`.
     ///
     /// When the optional `manifest` argument is `Some`, the verifier
-    /// resolves the three closed Fase 38 `schema:` declaration forms
+    /// resolves the three closed v1.31.0 `schema:` declaration forms
     /// against it:
     ///
     ///   * **Form (a) — inline column block** — the columns live on the
@@ -784,7 +784,7 @@ impl StoreRegistry {
                 .get(name)
                 .and_then(|r| r.spec.column_schema.clone());
 
-            // §38.f — resolve per-tenant env-var FIRST when present
+            // v1.31.0 — resolve per-tenant env-var FIRST when present
             // (form c), so a T806 fails fast without touching the DB.
             let resolved_namespace = match &column_schema {
                 Some(IRStoreColumnSchema::EnvVar { var_name }) => {
@@ -805,7 +805,7 @@ impl StoreRegistry {
                 _ => None,
             };
 
-            // §38.f — for form (c) with a resolved namespace, REPLACE
+            // v1.31.0 — for form (c) with a resolved namespace, REPLACE
             // the pool-cache entry with a namespace-stamped backend
             // so every runtime session carries the tenant in its
             // `application_name`. The replacement is idempotent — a
@@ -824,7 +824,7 @@ impl StoreRegistry {
                     let masked = backend.masked_dsn();
                     match backend.warm_schema(name).await {
                         Ok(()) => {
-                            // §38.f D8 strengthening — when a column
+                            // v1.31.0 D8 strengthening — when a column
                             // schema is declared, compare declared
                             // columns vs live introspection (T807).
                             if let Some(drift) = verify_declared_columns(
@@ -880,7 +880,7 @@ impl StoreRegistry {
         report
     }
 
-    /// §Fase 38.f (D3) — re-stamp a postgresql store's pooled backend
+    /// v1.31.0 (D3) — re-stamp a postgresql store's pooled backend
     /// with the resolved per-tenant namespace so every session's
     /// `application_name` carries `axon-store/<store>/<namespace>`.
     ///
@@ -901,7 +901,7 @@ impl StoreRegistry {
             }
         })?;
         let _dsn = resolve_dsn(&registered.spec.connection)?;
-        // §Fase 118.b.3 — as above: `resolve_dsn` has already refused.
+        // v2.81.0 — as above: `resolve_dsn` has already refused.
         #[cfg(not(feature = "postgres"))]
         unreachable!("resolve_dsn refuses when the `postgres` feature is absent");
         #[cfg(feature = "postgres")]
@@ -959,7 +959,7 @@ impl StoreRegistry {
 }
 
 // ════════════════════════════════════════════════════════════════════
-//  §Fase 38.f (D8 strengthening) — declared-vs-live column verification
+// v1.31.0 (D8 strengthening) — declared-vs-live column verification
 // ════════════════════════════════════════════════════════════════════
 
 /// Resolve the declared columns for a store from its IR `column_schema`
@@ -1070,7 +1070,7 @@ fn manifest_store_to_btreemap(
 /// Honest scope: NOT-NULL parity is NOT yet checked — the 37.x
 /// introspection query doesn't capture `attnotnull`. Documented as
 /// 38.f.1 deferral.
-// §Fase 118.b.3 — takes a `&PostgresStoreBackend` and reads its live schema
+// v2.81.0 — takes a `&PostgresStoreBackend` and reads its live schema
 // cache: driver work end to end, and unreachable without one (its only caller is
 // the gated eager-verify arm above).
 #[cfg(feature = "postgres")]
@@ -1510,7 +1510,7 @@ mod tests {
         }
     }
 
-    // ── §Fase 37.x.g — deploy-time schema verification (D8) ──────────
+    // ── v1.32.0 — deploy-time schema verification (D8) ──────────
 
     #[test]
     fn schema_verify_report_has_fatal_iff_a_table_is_missing() {
@@ -1561,7 +1561,7 @@ mod tests {
         assert!(!report.has_fatal());
     }
 
-    // ── §Fase 38.f — D3 per-tenant env-var + D8 strengthening (T807) ─
+    // ── v1.31.0 — D3 per-tenant env-var + D8 strengthening (T807) ─
 
     /// Build an `IRAxonStore` with a declared `column_schema`.
     fn spec_with_schema(
@@ -1868,7 +1868,7 @@ mod tests {
 
     #[test]
     fn declared_columns_for_env_var_uses_first_match_heuristic_at_deploy() {
-        // Mirrors §38.d's load_columns_for_schema heuristic — the
+        // Mirrors v1.31.0's load_columns_for_schema heuristic — the
         // deploy verifier uses the same shape.
         let m = Manifest::parse_json(
             r#"{

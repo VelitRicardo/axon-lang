@@ -16,7 +16,7 @@ pub struct Loc {
     pub column: u32,
 }
 
-// ── Trivia channel (Fase 14.a — Lossless lexing) ─────────────────────────────
+// ── Trivia channel (v1.5.2 — Lossless lexing) ─────────────────────────────
 //
 // The Python AST attaches `leading_trivia` / `trailing_trivia` directly
 // to each ASTNode (97+ subclasses inherit empty defaults). The Rust
@@ -56,7 +56,7 @@ pub struct DeclarationTrivia {
 #[derive(Debug)]
 pub struct Program {
     pub declarations: Vec<Declaration>,
-    /// Fase 14.a — comment trivia attached per declaration (parallel
+    /// v1.5.2 — comment trivia attached per declaration (parallel
     /// with `declarations`). Empty by default; populated by the parser
     /// when source carries comments. Defaults preserve every existing
     /// `Program { declarations, loc }` constructor — `..Default::default()`
@@ -76,8 +76,8 @@ pub enum Declaration {
     Tool(ToolDefinition),
     Type(TypeDefinition),
     Flow(FlowDefinition),
-    /// §Fase 120 — `effect E { Op(p: T) -> R }`. A peer of `tool`, per
-    /// `fase_23` §3.1.
+    /// v2.87.0 — `effect E { Op(p: T) -> R }`. A peer of `tool`, per
+    /// `the design plan` section 3.1.
     Effect(EffectDefinition),
     Intent(IntentNode),
     Run(RunStatement),
@@ -88,9 +88,9 @@ pub enum Declaration {
     // ── Tier 2 declarations (full AST) ──
     Agent(AgentDefinition),
     Shield(ShieldDefinition),
-    /// §Fase 71.a — a temporal execution-window guard.
+    /// v2.27.0 — a temporal execution-window guard.
     Window(WindowDefinition),
-    /// §Fase 114.a — a TOP-LEVEL `budget <Name> { … }`. Governs every flow that
+    /// v2.69.0 — a TOP-LEVEL `budget <Name> { … }`. Governs every flow that
     /// calls the tools its quotas name — not just a daemon's.
     Budget(BudgetBlock),
     Pix(PixDefinition),
@@ -104,119 +104,119 @@ pub enum Declaration {
     Daemon(DaemonDefinition),
     AxonStore(AxonStoreDefinition),
     AxonEndpoint(AxonEndpointDefinition),
-    /// §Fase 53 — Closed-catalog extension mechanism. Declares
+    /// v2.5.0 — Closed-catalog extension mechanism. Declares
     /// adopter-specific PROVENANCE members for a closed catalog
     /// (`effects` bases or shield `scan` categories) so the
     /// type-checker + PCC treat them as first-class. Auditable +
     /// gateable; never extends the enforceable effect set (invariant
     /// #2 — provenance-class only).
     Extension(ExtensionDefinition),
-    /// §λ-L-E Fase 1 — I/O cognitivo primitives.
+    /// v1.1.0 — I/O cognitivo primitives.
     Resource(ResourceDefinition),
     Fabric(FabricDefinition),
     Manifest(ManifestDefinition),
     Observe(ObserveDefinition),
-    /// §λ-L-E Fase 3 — Control cognitivo primitives.
+    /// v1.1.0 — Control cognitivo primitives.
     Reconcile(ReconcileDefinition),
     Lease(LeaseDefinition),
     Ensemble(EnsembleDefinition),
-    /// §λ-L-E Fase 4 — Topology + π-calculus binary sessions.
+    /// v1.1.0 — Topology + π-calculus binary sessions.
     Session(SessionDefinition),
     Topology(TopologyDefinition),
-    /// §λ-L-E Fase 5 — Cognitive immune system (per docs/paper_immune_v2.md).
+    /// v1.1.0 — Cognitive immune system (per docs/paper_immune_v2.md).
     Immune(ImmuneDefinition),
     Reflex(ReflexDefinition),
     Heal(HealDefinition),
-    /// §λ-L-E Fase 9 — UI cognitiva declarativa.
+    /// v1.3.1 — UI cognitiva declarativa.
     Component(ComponentDefinition),
     View(ViewDefinition),
-    /// §λ-L-E Fase 13 — Mobile typed channels (paper_mobile_channels.md).
+    /// v1.6.0 — Mobile typed channels (paper_mobile_channels.md).
     Channel(ChannelDefinition),
-    /// §Fase 41.b — typed WebSocket transport binding a `session` protocol
+    /// v2.3.0 — typed WebSocket transport binding a `session` protocol
     /// (paper_websocket_cognitive_primitive.md).
     Socket(SocketDefinition),
-    /// §Fase 80.b — the dual transport role of `socket`: a persistent,
+    /// v2.37.0 — the dual transport role of `socket`: a persistent,
     /// config-resolved OUTBOUND connection to a third-party vendor, typed by
-    /// the same §41.a session algebra on the axon-facing side and transcoded
+    /// the same v2.3.0 session algebra on the axon-facing side and transcoded
     /// to the vendor's wire frames by a declared total projection
-    /// (docs/fase/fase_80_upstream_design.md).
+    /// (docs/cycle/upstream_design.md).
     Upstream(UpstreamDefinition),
-    /// §Fase 80.g — the voice-agent simplicity layer: macro-expands
-    /// (inspectable via `axon desugar`, D80.6) to `ots` + carrier
+    /// v2.37.0 — the voice-agent simplicity layer: macro-expands
+    /// (inspectable via `axon desugar`, the design decision) to `ots` + carrier
     /// `session`/`socket` + `upstream` legs. The declaration stays in the
-    /// AST for provenance + §80.c validation (T852); the IR carries only
+    /// AST for provenance + v2.37.0 validation (T852); the IR carries only
     /// the expansion — sugar the compliance reviewer can always see through.
     Voice(VoiceDefinition),
-    /// §Fase 83.a — a named, referenced browser-origin policy (mirrors
+    /// v2.38.0 — a named, referenced browser-origin policy (mirrors
     /// `shield`'s shape exactly), resolved per `axonendpoint.cors:`
-    /// reference (docs/fase/fase_83_cors_first_class_endpoint_property.md).
+    /// reference (docs/cycle/cors_first_class_endpoint_property.md).
     Cors(CorsDefinition),
-    /// §Fase 85.a — a named, referenced result-memoization policy (mirrors
+    /// v2.40.0 — a named, referenced result-memoization policy (mirrors
     /// `cors`'s shape), resolved per `tool.cache:` / `retrieve.cache:`
-    /// (docs/fase/fase_85_native_cache_primitive.md).
+    /// (docs/cycle/native_cache_primitive.md).
     Cache(CacheDefinition),
-    /// §Fase 87.a — the long-horizon autonomous research primitive: a governed
+    /// v2.42.0 — the long-horizon autonomous research primitive: a governed
     /// ORCHESTRATOR (not a monolith) that composes existing primitives
-    /// (`memory`/`corpus`, `par`, `quant`, `forge`, `daemon`, the §72 budget,
-    /// the §79 interruptible session, the §77 signed egress) into a
+    /// (`memory`/`corpus`, `par`, `quant`, `forge`, `daemon`, the v2.28.0 budget,
+    /// the v2.36.0 interruptible session, the v2.34.0 signed egress) into a
     /// budget-bounded, interruptible, fail-closed, provenance-witnessed
     /// research loop. Enterprise-exclusive at scale (charter split R1); the
     /// keyword + type discipline + ports live in OSS
-    /// (docs/fase/fase_87_savant.md).
+    /// (docs/cycle/savant_2.md).
     Savant(SavantDefinition),
-    /// §Fase 87.d — a dynamic tool-synthesis policy: the closed set of
+    /// v2.42.0 — a dynamic tool-synthesis policy: the closed set of
     /// conditions (risk ceiling, source language, mandatory WASM zero-trust
     /// sandbox, Coder/Reviewer consensus) under which a `savant` may
     /// synthesise + execute a tool at runtime. The paper's "OTS = Ontological
     /// Tool Synthesis" grounded to a real keyword (`ots` already means
-    /// one-shot media transform — paper §9.1). OSS declares + statically
+    /// one-shot media transform — paper section 9.1). OSS declares + statically
     /// disciplines the policy and ships a DENY-BY-DEFAULT reference; the real
-    /// Extism/WASM executor is enterprise (§87.j).
+    /// Extism/WASM executor is enterprise (v2.42.0).
     Synth(SynthDefinition),
-    /// §Fase 88.a — an authorization scope: the signed envelope (`targets`
+    /// v2.43.0 — an authorization scope: the signed envelope (`targets`
     /// allowlist + `depth` ceiling + `approver`) a `warden` adversarial-analysis
     /// block MUST run `within`. The load-bearing safety construct that makes
     /// warden a governed auditor, not a weapon: no in-scope authorization ⇒ no
     /// analysis (fail-closed). Referenced by `warden(t) within <Scope>`
-    /// (docs/fase/fase_88_warden.md).
+    /// (docs/cycle/warden_2.md).
     Scope(ScopeDefinition),
-    /// §Fase 92.a — a named ephemeral-credential contract: TTL-bounded,
+    /// v2.46.0 — a named ephemeral-credential contract: TTL-bounded,
     /// capability-attenuated bearer minting (`authority_only_attenuates` —
     /// grants ⊆ the minter's own capabilities at mint, TTL ≤ the closed
     /// ceiling). Declared once (the `cors`/`scope` shape), referenced by the
     /// `mint <Credential> as <binding>` flow verb
-    /// (docs/fase/fase_92_ephemeral_visitor_credentials.md).
+    /// (docs/cycle/ephemeral_visitor_credentials.md).
     Credential(CredentialDefinition),
-    /// §Fase 51.c.2 — a Pauli-sum observable `M = Σ cₖ Pₖ` that a `quant`
-    /// block measures against (paper §3.2; plan D5).
+    /// v2.4.0 — a Pauli-sum observable `M = Σ cₖ Pₖ` that a `quant`
+    /// block measures against (paper section 3.2; plan D5).
     Observable(ObservableDefinition),
-    /// §Fase 69.a — an Advantage Witness: a machine-checkable proof obligation
+    /// v2.23.0 — an Advantage Witness: a machine-checkable proof obligation
     /// that a primitive's `claim` beats a cheaper `baseline` by a `metric` above
     /// a `threshold` on real `data` (doctrine `axon://logic/no_unwitnessed_advantage`).
     Witness(WitnessDefinition),
-    /// §Fase 99.a — Native Document Synthesis: a declarative, compile-time-
+    /// v2.53.0 — Native Document Synthesis: a declarative, compile-time-
     /// validated DOCX/PPTX/XLSX structure that is the point where a value LEAVES
     /// the epistemic lattice and becomes a human artifact. `target:` selects a
-    /// serializer, not a capability (D99.6 — identical effect rows). The
-    /// assertion-laundering barrier (D99.1) refuses a value below `believe` in
+    /// serializer, not a capability (the design decision — identical effect rows). The
+    /// assertion-laundering barrier refuses a value below `believe` in
     /// an assertive slot without an `attribute:` or a shield
-    /// (docs/fase/fase_99_native_document_synthesis.md).
+    /// (docs/cycle/native_document_synthesis.md).
     Document(DocumentDefinition),
-    /// §Fase 105 — Governed CRM Delivery: a declarative, compile-time-validated
+    /// v2.60.0 — Governed CRM Delivery: a declarative, compile-time-validated
     /// egress of assertions into a system of record (a CRM). The dual of
-    /// acquisition (`scrape`, §98): where `document` leaves the lattice into a
+    /// acquisition (`scrape`, v2.52.0): where `document` leaves the lattice into a
     /// human artifact, `deliver` leaves it into a machine system others treat as
-    /// fact. The provenance-stripping barrier (D105.2, axon-T920) refuses a
+    /// fact. The provenance-stripping barrier (the design decision, axon-T920) refuses a
     /// `provenance: cleared` delivery of an unshielded flow value — a guess must
-    /// arrive labeled as a guess (docs/fase/fase_105_governed_crm_delivery.md).
+    /// arrive labeled as a guess (docs/cycle/governed_crm_delivery.md).
     Deliver(DeliverDefinition),
-    /// §Fase 110 — governed human notification.
+    /// v2.66.0 — governed human notification.
     Notify(NotifyDefinition),
     /// Tier 3+ declarations parsed structurally (balanced braces, no detailed AST).
     Generic(GenericDeclaration),
 }
 
-/// §Fase 115.b — the named surface of a declaration: `(name, kind, loc)`,
+/// v2.76.0 — the named surface of a declaration: `(name, kind, loc)`,
 /// or `None` for the statement-like declarations that do not bind a
 /// referenceable top-level name (`import` / `run` / `let` / the epistemic
 /// block wrapper, whose body registers recursively).
@@ -242,7 +242,7 @@ pub fn declaration_surface(decl: &Declaration) -> Option<(String, String, Loc)> 
         Declaration::Tool(n) => Some((n.name.clone(), "tool".into(), n.loc.clone())),
         Declaration::Type(n) => Some((n.name.clone(), "type".into(), n.loc.clone())),
         Declaration::Flow(n) => Some((n.name.clone(), "flow".into(), n.loc.clone())),
-        // §Fase 120 — an `effect` IS exportable. A module that declares one and
+        // v2.87.0 — an `effect` IS exportable. A module that declares one and
         // a flow in another module that handles it is the compositional case
         // the whole paradigm rests on; hiding it from the module surface would
         // make an effect usable only in the file that declares it.
@@ -306,26 +306,26 @@ pub fn declaration_surface(decl: &Declaration) -> Option<(String, String, Loc)> 
     }
 }
 
-// ── §Fase 99 — Native Document Synthesis ─────────────────────────────────────
+// ── v2.53.0 — Native Document Synthesis ─────────────────────────────────────
 
-/// §Fase 99.b — a declarative document. `target:` picks the serializer
+/// v2.53.0 — a declarative document. `target:` picks the serializer
 /// (docx|pptx|xlsx); `provenance:` picks how the provenance part is emitted
 /// (none|embedded|signed); `template:` names an enterprise template; `effects:`
 /// carries the propagated `sensitive:`/`legal:` basis. `blocks` is the body —
 /// a closed-catalog tree of [`DocBlock`]s whose vocabulary the checker validates
-/// against `target` (a `slide` in a `docx` is `axon-T9xx`, D99.6).
+/// against `target` (a `slide` in a `docx` is `axon-T9xx`, the design decision).
 #[derive(Debug, Default)]
 pub struct DocumentDefinition {
     pub name: String,
     /// `docx | pptx | xlsx` — closed catalog (axon-T910).
     pub target: String,
-    /// Optional enterprise template reference (`.dotx/.potx/.xltx`, §99.g).
+    /// Optional enterprise template reference (`.dotx/.potx/.xltx`, v2.53.0).
     pub template: String,
     /// `none | embedded | signed` — how the provenance part is emitted
-    /// (D99.2). Empty ⇒ `none`. Closed catalog (axon-T911).
+    ///. Empty ⇒ `none`. Closed catalog (axon-T911).
     pub provenance: String,
     /// The propagated effect row — `io`, `storage` (blob sink), and any
-    /// `sensitive:<cat>`/`legal:<basis>` the bound data carries (D99.4).
+    /// `sensitive:<cat>`/`legal:<basis>` the bound data carries.
     pub effects: Option<EffectRow>,
     /// The document body — the closed-catalog block tree.
     pub blocks: Vec<DocBlock>,
@@ -334,7 +334,7 @@ pub struct DocumentDefinition {
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
 
-/// §Fase 99.b — one block in a document body. A generic-but-closed node: `kind`
+/// v2.53.0 — one block in a document body. A generic-but-closed node: `kind`
 /// is validated against the `target`'s vocabulary, `fields` against the kind's
 /// allowed set, and `children` are nested blocks (a `section` holds `para`s; a
 /// `slide` holds `bullets`; a `sheet` holds `row`s). Keeping the node generic
@@ -364,7 +364,7 @@ impl DocBlock {
     }
 }
 
-/// §Fase 99.b — a document field value. A `Ref` is a binding to a flow value
+/// v2.53.0 — a document field value. A `Ref` is a binding to a flow value
 /// (the epistemic-egress barrier reads its level); a `Text` is a literal; a
 /// `List` is a bracketed set; `Int` is a scalar count.
 #[derive(Debug, Clone, PartialEq)]
@@ -399,13 +399,13 @@ impl DocScalar {
     }
 }
 
-// ── §Fase 105 — Governed CRM Delivery ────────────────────────────────────────
+// ── v2.60.0 — Governed CRM Delivery ────────────────────────────────────────
 
-/// §Fase 105 — a declarative CRM delivery. `target:` picks the destination class
+/// v2.60.0 — a declarative CRM delivery. `target:` picks the destination class
 /// (`crm`, closed catalog — axon-T921); `provenance:` picks how the epistemic
 /// origin of each delivered field is treated at the boundary (`attached` default
 /// | `cleared` — axon-T922); `secret:` names the per-tenant credential key
-/// (§94 custody, required — axon-T923); `effects:` carries the propagated row
+/// (v2.48.0 custody, required — axon-T923); `effects:` carries the propagated row
 /// (must include `web` — axon-T924). `ops` is the body — a non-empty list of
 /// [`DeliverOp`]s whose `kind` the checker validates against a closed operation
 /// catalog (axon-T925). Field values reuse [`DocScalar`]: a `Ref` is a binding to
@@ -417,10 +417,10 @@ pub struct DeliverDefinition {
     /// `crm` — closed catalog (axon-T921).
     pub target: String,
     /// `attached | cleared` — how field provenance crosses the boundary
-    /// (D105.2). Empty ⇒ `attached` (the safe default: provenance travels).
+    ///. Empty ⇒ `attached` (the safe default: provenance travels).
     /// Closed catalog (axon-T922).
     pub provenance: String,
-    /// The per-tenant credential key resolved via §94 custody at dispatch — the
+    /// The per-tenant credential key resolved via v2.48.0 custody at dispatch — the
     /// value never enters cognition. Required (axon-T923).
     pub secret: String,
     /// The propagated effect row — must include `web` (a CRM write crosses the
@@ -433,11 +433,11 @@ pub struct DeliverDefinition {
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
 
-/// §Fase 110 — Governed Human Notification: the third egress dual
+/// v2.66.0 — Governed Human Notification: the third egress dual
 /// (`deliver` = systems of record, `document` = artifacts, `notify` =
 /// human attention). Three laws: T933 (the evidence barrier — a guess
 /// reaches a human labeled as a guess, or is refused), T934 (structure:
-/// closed channel catalog; the recipient is a §94 secret-class ref,
+/// closed channel catalog; the recipient is a v2.48.0 secret-class ref,
 /// NEVER a literal — PII never rides source or IR), T935 (attention:
 /// a `window:` is mandatory — unbounded interruption is refused).
 #[derive(Debug, Default)]
@@ -445,7 +445,7 @@ pub struct NotifyDefinition {
     pub name: String,
     /// `sms | whatsapp | telegram` — closed catalog (axon-T934).
     pub channel: String,
-    /// The §94 secret-class ref the recipient resolves from AT DISPATCH
+    /// The v2.48.0 secret-class ref the recipient resolves from AT DISPATCH
     /// (`to: secret(ops.oncall_phone)`). The literal number/chat-id never
     /// appears anywhere axon stores or reasons over.
     pub to_secret: String,
@@ -454,11 +454,11 @@ pub struct NotifyDefinition {
     pub to_is_secret: bool,
     /// The message template; `${ref}` slots bind flow values post-run.
     pub template: String,
-    /// §71-style duration (`30m`, `4h`, `1d`) — at-most-once-per-window
+    /// v2.27.0-style duration (`30m`, `4h`, `1d`) — at-most-once-per-window
     /// per recipient (axon-T935; enforced durably by the ENT ledger).
     pub window: String,
     /// `attached | cleared` — how epistemic labels cross to the human
-    /// (D110.2). Empty ⇒ `attached` (the safe default).
+    ///. Empty ⇒ `attached` (the safe default).
     pub provenance: String,
     /// Must include `web` (a notification crosses the trust boundary).
     pub effects: Option<EffectRow>,
@@ -467,11 +467,11 @@ pub struct NotifyDefinition {
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
 
-/// §Fase 105 — one CRM operation in a delivery body. `kind ∈ {upsert_contact,
+/// v2.60.0 — one CRM operation in a delivery body. `kind ∈ {upsert_contact,
 /// create_deal, add_note}` (validated per-target, axon-T925). Each operation
 /// binds a set of `(field, value)` pairs; a `Ref` field carries a flow value
 /// into the CRM and is the T920 barrier's subject. Every operation requires a
-/// `key:` field — the idempotency key (D105.5, axon-T926) so an at-least-once
+/// `key:` field — the idempotency key (the design decision, axon-T926) so an at-least-once
 /// retry never double-creates a record.
 #[derive(Debug, Default)]
 pub struct DeliverOp {
@@ -500,7 +500,7 @@ impl DeliverOp {
     }
 }
 
-// ── §λ-L-E Fase 1 — Resource primitive ───────────────────────────────────────
+// ── v1.1.0 — Resource primitive ───────────────────────────────────────
 
 /// `resource Name { kind, endpoint, capacity, lifetime, certainty_floor, shield }`
 ///
@@ -510,35 +510,35 @@ impl DeliverOp {
 #[derive(Debug, Default)]
 pub struct ResourceDefinition {
     pub name: String,
-    /// §Fase 113 — a CLOSED catalog (`VALID_RESOURCE_KINDS`). Until §113 this
+    /// v2.67.0 — a CLOSED catalog (`VALID_RESOURCE_KINDS`). Until v2.67.0 this
     /// was a free string that **nothing validated**: `check_resource` never
     /// read it, and no catalog const existed anywhere in the workspace.
     pub kind: String,
-    /// §Fase 113 — the DSN, as a **per-tenant config key** (`axon-T944`).
+    /// v2.67.0 — the DSN, as a **per-tenant config key** (`axon-T944`).
     ///
     /// A production DB URI in source is exactly what `axon-T850` already
     /// forbids one declaration over (*"URLs and credentials never appear in
-    /// source"*) and what §94 custody exists to refuse. `resource` was a
+    /// source"*) and what v2.48.0 custody exists to refuse. `resource` was a
     /// grandfathered violation of the language's own law.
     pub endpoint: String,
-    /// §Fase 113 — **the pool size**, and the proof this fase is a wire and not
-    /// a label. Before §113 every axonstore pool was hardcoded at 10.
+    /// v2.67.0 — **the pool size**, and the proof this cycle is a wire and not
+    /// a label. Before v2.67.0 every axonstore pool was hardcoded at 10.
     pub capacity: Option<i64>,
-    /// §Fase 113 — **how many holders may name this resource** (Linear Logic):
+    /// v2.67.0 — **how many holders may name this resource** (Linear Logic):
     /// `linear` = exactly one · `affine` = at most one (sharing is a breach) ·
     /// `persistent` = the `!` exponential, freely shared. Default: `affine`.
     pub lifetime: String,
     pub certainty_floor: Option<f64>, // epistemic gate c ∈ [0.0, 1.0]
     pub shield_ref: String,           // optional shield reference
-    /// §Fase 113 — the `fabric` this resource lives in. **One field ⇒
+    /// v2.67.0 — the `fabric` this resource lives in. **One field ⇒
     /// Separation-Logic disjointness is unrepresentable, not verified.**
     pub within: String,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
@@ -556,11 +556,11 @@ pub struct FabricDefinition {
     pub ephemeral: Option<bool>, // true = destroy on program end
     pub shield_ref: String, // optional shield reference
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
@@ -577,13 +577,13 @@ pub struct ManifestDefinition {
     pub fabric_ref: String,     // reference to FabricDefinition name
     pub region: String,
     pub zones: Option<i64>,
-    pub compliance: Vec<String>, // κ — regulatory class (Fase 6.1)
+    pub compliance: Vec<String>, // κ — regulatory class (v1.2.0)
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
@@ -603,16 +603,16 @@ pub struct ObserveDefinition {
     pub on_partition: String, // fail (CT-3) | shield_quarantine
     pub certainty_floor: Option<f64>,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
 
-// ── §λ-L-E Fase 3 — Control cognitivo primitives ─────────────────────────────
+// ── v1.1.0 — Control cognitivo primitives ─────────────────────────────
 
 /// `reconcile Name { observe, threshold, tolerance, on_drift, shield, mandate, max_retries }`
 ///
@@ -631,11 +631,11 @@ pub struct ReconcileDefinition {
     pub mandate_ref: String,
     pub max_retries: i64, // default: 3
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
@@ -653,11 +653,11 @@ pub struct LeaseDefinition {
     pub acquire: String,   // on_start | on_demand (default: on_start)
     pub on_expire: String, // anchor_breach | release | extend (default: anchor_breach)
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
@@ -675,20 +675,20 @@ pub struct EnsembleDefinition {
     pub aggregation: String, // majority | weighted | byzantine (default: majority)
     pub certainty_mode: String, // min | weighted | harmonic (default: min)
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
 
-// ── §λ-L-E Fase 4 — Topology + π-calculus binary sessions ──────────────────
+// ── v1.1.0 — Topology + π-calculus binary sessions ──────────────────
 
 /// One step in a session protocol.
 ///
-/// §Fase 4: `send T` | `receive T` | `loop` | `end`. §Fase 41.b adds **choice**:
+/// v1.1.0: `send T` | `receive T` | `loop` | `end`. v2.3.0 adds **choice**:
 /// `select { ℓ: [..], … }` (⊕ — this role chooses) and `branch { ℓ: [..], … }`
 /// (& — this role offers); for those `op`s the labelled continuations live in
 /// [`SessionStep::branches`] (a nested sub-protocol per label).
@@ -696,26 +696,26 @@ pub struct EnsembleDefinition {
 pub struct SessionStep {
     pub op: String,           // send | receive | loop | end | select | branch | interrupt
     pub message_type: String, // send/receive: payload type · interrupt: the `on <Signal>` cause
-    /// §Fase 41.b — populated only for `op == "select" | "branch"`: the labelled
+    /// v2.3.0 — populated only for `op == "select" | "branch"`: the labelled
     /// branches, each a nested step sequence (its own sub-protocol).
     ///
-    /// §Fase 79.b — reused for `op == "interrupt"`: exactly two labelled arms,
+    /// v2.36.0 — reused for `op == "interrupt"`: exactly two labelled arms,
     /// `body` (the interruptible region) and `handler` (runs on the signal). The
     /// handler may end in a `resume` step (back to `body`) or reach `end` (the
-    /// abandon exit) — see the paper §3.5 two-exit construct.
+    /// abandon exit) — see the paper section 3.5 two-exit construct.
     pub branches: Vec<SessionBranch>,
-    /// §Fase 79.b — `op == "interrupt"` only: the handler's signal binder from
+    /// v2.36.0 — `op == "interrupt"` only: the handler's signal binder from
     /// `... as <sig> ...`. Empty for every other op. The handler references the
     /// received `CallInterruptCause` value under this name.
     pub binder: String,
-    /// §Fase 79.b — `op == "interrupt"` only: `true` when the block declares a
+    /// v2.36.0 — `op == "interrupt"` only: `true` when the block declares a
     /// `resumable { … }` handler (the v1 surface always does). Default `false`
     /// keeps every non-interrupt step byte-identical in the IR (skip-if-false).
     pub resumable: bool,
     pub loc: Loc,
 }
 
-/// §Fase 41.b — one labelled arm of a `select`/`branch` choice: `ℓ: [steps]`.
+/// v2.3.0 — one labelled arm of a `select`/`branch` choice: `ℓ: [steps]`.
 #[derive(Debug, Clone, Default)]
 pub struct SessionBranch {
     pub label: String,
@@ -741,11 +741,11 @@ pub struct SessionDefinition {
     pub name: String,
     pub roles: Vec<SessionRole>,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
@@ -753,11 +753,11 @@ pub struct SessionDefinition {
 /// `socket Name { protocol: SessionRef, backpressure: credit(n), reconnect:
 /// cognitive_state, legal_basis: ... }`
 ///
-/// §Fase 41.b — the typed WebSocket transport (paper_websocket_cognitive_primitive.md).
+/// v2.3.0 — the typed WebSocket transport (paper_websocket_cognitive_primitive.md).
 /// `socket` is NOT the protocol — the protocol is a `session` it references by
 /// name (protocol and transport kept separate but composable). The type checker
 /// resolves `protocol` to a declared `session` (whose two roles are already
-/// duality-checked via the §41.a algebra), so the dialogue carried over the WS
+/// duality-checked via the v2.3.0 algebra), so the dialogue carried over the WS
 /// connection is conformant + deadlock-free by construction.
 #[derive(Debug, Default)]
 pub struct SocketDefinition {
@@ -768,28 +768,28 @@ pub struct SocketDefinition {
     /// `None` if unspecified. A `0` credit is rejected by the type checker.
     pub backpressure_credit: Option<i64>,
     /// `reconnect: cognitive_state` → `true` (resume mid-dialogue via a sealed
-    /// §40.t snapshot); absent or `reconnect: none` → `false`.
+    /// v2.0.0 snapshot); absent or `reconnect: none` → `false`.
     pub reconnect: bool,
     /// Optional `legal_basis:` annotation (enterprise audit/shield gate).
     pub legal_basis: Option<String>,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia.
+    /// v1.5.2 — leading comment trivia.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia.
+    /// v1.5.2 — trailing comment trivia.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
 
 /// `upstream Name { transport:, protocol:, role:, resolve:, secret:, auth:,
 /// map: [...], reconnect: {...}, overflow:, backpressure: credit(n) }`
 ///
-/// §Fase 80.b — the client dual of `socket`: axon dials OUT to a third-party
+/// v2.37.0 — the client dual of `socket`: axon dials OUT to a third-party
 /// vendor (STT/TTS/realtime speech APIs). The axon-facing interface is a
 /// declared `session` (referenced by `protocol:`, same field meaning as
 /// `socket`) of which axon plays `role:`; the vendor side is realised by the
 /// `map:` projection rules — a compile-time-total transcoding contract
-/// (§80.c, axon-T849). `resolve:`/`secret:` name per-tenant config keys,
+/// (v2.37.0, axon-T849). `resolve:`/`secret:` name per-tenant config keys,
 /// never URL/credential literals (axon-T850) — the same "config, not code"
-/// property §58.g gave `tool`, extended to persistent duplex streams.
+/// property v2.8.0 gave `tool`, extended to persistent duplex streams.
 #[derive(Debug, Default)]
 pub struct UpstreamDefinition {
     pub name: String,
@@ -803,7 +803,7 @@ pub struct UpstreamDefinition {
     /// Per-tenant config key holding the vendor URL (dot-separated,
     /// `SecretKeyPolicy`-shaped — never a URL literal).
     pub resolve: String,
-    /// §Fase 114.u — the `resource` this upstream's channel runs on
+    /// v2.69.0 — the `resource` this upstream's channel runs on
     /// (`upstream X { resource: Api }`). When present, the upstream DERIVES
     /// its dial address from `resource.endpoint` (a per-tenant config key,
     /// axon-T944) and its **max concurrent connection INSTANCES** from
@@ -811,7 +811,7 @@ pub struct UpstreamDefinition {
     /// `backpressure_credit`, so capacity bounds CONNECTIONS, never frames
     /// (making it frames would state one fact twice). Mutually exclusive
     /// with `resolve:` (axon-T951): `resource:` beside a `resolve:` would
-    /// declare the channel's address twice — the §113 islands defect.
+    /// declare the channel's address twice — the v2.67.0 islands defect.
     /// Authority attenuation: the resource encapsulates its own address
     /// resolution; the upstream only names WHICH channel it rides.
     pub resource_ref: String,
@@ -823,7 +823,7 @@ pub struct UpstreamDefinition {
     pub auth_name: Option<String>,
     /// Optional header value prefix (`header("Authorization", "Token ")`).
     pub auth_prefix: Option<String>,
-    /// The wire↔session transcoding contract; totality checked at §80.c.
+    /// The wire↔session transcoding contract; totality checked at v2.37.0.
     pub map: Vec<UpstreamMapRule>,
     /// `reconnect: { backoff_ms:, max_attempts:, on_exhausted: }`.
     pub reconnect: Option<UpstreamReconnect>,
@@ -833,19 +833,19 @@ pub struct UpstreamDefinition {
     pub overflow: Option<String>,
     /// Axon-facing credit window, identical semantics to `socket`.
     pub backpressure_credit: Option<i64>,
-    /// §Fase 80.f — set when declared via `upstream X from Preset@vN {…}`;
+    /// v2.37.0 — set when declared via `upstream X from Preset@vN {…}`;
     /// carries the `Preset@vN` reference the desugar pass expanded.
     pub preset: Option<String>,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia.
+    /// v1.5.2 — leading comment trivia.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia.
+    /// v1.5.2 — trailing comment trivia.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
 
 /// One `map:` projection rule: `send M as json [tag "X"]` /
 /// `send M as binary` / `receive M as json [when "f" [= "v"]]` /
-/// `receive M as binary`. Inbound `json` payloads land as §73 `Json` (total
+/// `receive M as binary`. Inbound `json` payloads land as v2.26.0 `Json` (total
 /// navigation); the session message name is the routing + duality skeleton.
 #[derive(Debug, Default)]
 pub struct UpstreamMapRule {
@@ -874,12 +874,12 @@ pub struct UpstreamMapRule {
 /// `voice Name { stt:/tts: XOR realtime:, carrier:, interruptible:,
 /// legal_basis:, persona:, context: }`
 ///
-/// §Fase 80.g — the simplicity layer over §80's `upstream`: a blessed-
+/// v2.37.0 — the simplicity layer over v2.37.0's `upstream`: a blessed-
 /// preset phone agent in under 20 lines. `stt:`+`tts:` (cascaded) XOR
-/// `realtime:` (fused) — D80.1: one grammar, both architectures, never a
+/// `realtime:` (fused) — the design decision: one grammar, both architectures, never a
 /// special-cased second path. Each leg is a `Preset@vN` reference or a
 /// declared `upstream` name. Expansion is pure macro-lowering to existing
-/// primitives; `axon desugar` prints it (D80.6).
+/// primitives; `axon desugar` prints it.
 #[derive(Debug, Default)]
 pub struct VoiceDefinition {
     pub name: String,
@@ -889,49 +889,49 @@ pub struct VoiceDefinition {
     pub tts: Option<String>,
     /// Fused speech-to-speech leg (mutually exclusive with stt/tts — T852).
     pub realtime: Option<String>,
-    /// Carrier codec: `mulaw8k` (default — PSTN; expansion emits the §ots
+    /// Carrier codec: `mulaw8k` (default — PSTN; expansion emits the ots
     /// μ-law↔PCM16 pair) or `pcm16` (browser/WebRTC-style, no transcode).
     pub carrier: String,
-    /// `true` ⇒ the carrier session is a §79 interruptible region (barge-in
+    /// `true` ⇒ the carrier session is a v2.36.0 interruptible region (barge-in
     /// capable) and the socket parks residuals — which REQUIRES
     /// `legal_basis:` (T852; the sugar must not generate a program
     /// `ParkedResidualSoundness` refutes).
     pub interruptible: bool,
-    /// Rides onto the generated socket (the §79 data-at-rest obligation).
+    /// Rides onto the generated socket (the v2.36.0 data-at-rest obligation).
     pub legal_basis: Option<String>,
     /// Optional references wired for the flow layer (validated to exist).
     pub persona: Option<String>,
     pub context: Option<String>,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia.
+    /// v1.5.2 — leading comment trivia.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia.
+    /// v1.5.2 — trailing comment trivia.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
 
 /// `cors Name { allow_origins:, allow_methods:, allow_headers:,
 /// allow_credentials:, max_age:, expose_headers: }`
 ///
-/// §Fase 83.a — a named, referenced origin-policy declaration, mirroring
+/// v2.38.0 — a named, referenced origin-policy declaration, mirroring
 /// `shield`'s shape exactly: declared once, referenced from any number of
 /// `axonendpoint`s via `cors: <Name>` (`AxonEndpointDefinition::cors_ref`).
 /// Makes the browser-facing origin policy a property of the ENDPOINT,
 /// resolved per the tenant's live deployed bundle — the shape a single
 /// process-wide CORS knob (the market-standard pattern) cannot express for
 /// a multi-tenant deploy where different bundles need different origins
-/// for a path with the same name (D83.1/D83.3).
+/// for a path with the same name.
 ///
-/// **Unknown fields are a hard parse error** (D83.7) — a CORS policy is
+/// **Unknown fields are a hard parse error** — a CORS policy is
 /// security-relevant, so `upstream`/`voice`'s stricter posture is followed
 /// here, not `shield`'s lenient `axon-W010` record-and-skip.
 #[derive(Debug, Default)]
 pub struct CorsDefinition {
     pub name: String,
     /// `["https://app.example.com", "https://*.kivi.io"]` — exact origins
-    /// or a single leading-wildcard host-label glob (D83.1/T854); no full
+    /// or a single leading-wildcard host-label glob (the design decision/T854); no full
     /// regex, matching the closed/decidable spirit of the rest of the
     /// language. `["*"]` (any-origin) is legal UNLESS `allow_credentials`
-    /// is also `true` — that combination is `axon-T853` (D83.2, the CORS
+    /// is also `true` — that combination is `axon-T853` (the design decision, the CORS
     /// spec's own rule, caught at compile time instead of a silent browser
     /// rejection).
     pub allow_origins: Vec<String>,
@@ -956,18 +956,18 @@ pub struct CorsDefinition {
     /// rationale as `allow_headers`.
     pub expose_headers: Vec<String>,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia.
+    /// v1.5.2 — leading comment trivia.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia.
+    /// v1.5.2 — trailing comment trivia.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
 
-/// §Fase 92.a — `credential <Name> { ttl: grants: }`: a named
-/// ephemeral-credential contract. `mint <Name> as <binding>` (§92.b) mints
+/// v2.46.0 — `credential <Name> { ttl: grants: }`: a named
+/// ephemeral-credential contract. `mint <Name> as <binding>` (v2.46.0) mints
 /// a TTL-bounded bearer carrying exactly `grants` — and the runtime law
 /// (`authority_only_attenuates`) admits the mint only when
 /// `grants ⊆ capabilities(minter)`. An unknown field in a `credential { }`
-/// block is a HARD PARSE ERROR (the §83 posture — this is security
+/// block is a HARD PARSE ERROR (the v2.38.0 posture — this is security
 /// surface; a typo'd field must not silently produce a permissive
 /// contract).
 #[derive(Debug, Default)]
@@ -976,7 +976,7 @@ pub struct CredentialDefinition {
     /// The bearer's lifetime — a duration literal (`"15m"`, `"900s"`),
     /// REQUIRED. Validated by `axon-T894`: parseable, > 0, and ≤ the closed
     /// 24h ceiling (an "ephemeral" credential that lives for days is a
-    /// service account wearing a costume — §81 covers that shape).
+    /// service account wearing a costume — v2.46.0 covers that shape).
     pub ttl: String,
     /// The capability slugs the minted bearer carries — REQUIRED,
     /// non-empty (`axon-T893`), each a dotted slug per
@@ -984,18 +984,18 @@ pub struct CredentialDefinition {
     /// (`⊆ minter`) is the runtime/mint-time half of the law.
     pub grants: Vec<String>,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia.
+    /// v1.5.2 — leading comment trivia.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia.
+    /// v1.5.2 — trailing comment trivia.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
 
 /// `cache Name { backend:, ttl:, key:, default:, apply_to_effects:,
-/// invalidate_on: }` — §Fase 85.a, a named, referenced result-memoization
+/// invalidate_on: }` — v2.40.0, a named, referenced result-memoization
 /// policy resolved per `tool.cache:` / `retrieve.cache:` (mirrors
 /// `CorsDefinition`'s named-and-referenced shape).
 ///
-/// The load-bearing idea (D85.1): cacheability derives from the type system's
+/// The load-bearing idea: cacheability derives from the type system's
 /// existing `effects: pure` proof — a `pure` tool is safe to cache by
 /// construction. A `default: true` cache auto-covers every `pure` tool with
 /// zero per-tool annotation; widening `apply_to_effects:` beyond `[pure]` is
@@ -1003,7 +1003,7 @@ pub struct CredentialDefinition {
 /// forces a finite `ttl:` (T865 — you may cache a proven-deterministic result
 /// forever, never a non-deterministic one).
 ///
-/// **Unknown fields are a hard parse error** (the §83 D83.7 discipline) — a
+/// **Unknown fields are a hard parse error** (the v2.38.0 the design decision discipline) — a
 /// cache governs correctness (serving a stale/foreign result is a real bug), so
 /// a typo'd field can never silently mean "no policy."
 #[derive(Debug, Default)]
@@ -1016,7 +1016,7 @@ pub struct CacheDefinition {
     /// Time-to-live as a duration literal (`"10s"`, `"5m"`, `"1h"`), same lexer
     /// convention as `cors.max_age`/`tool.timeout`. `None` ⇒ "cache forever" —
     /// sound ONLY for a provably-`pure` cache; a non-pure cache with no `ttl:`
-    /// is `axon-T865` (D85.9).
+    /// is `axon-T865`.
     pub ttl: Option<String>,
     /// `key: [param, ...]` — the SUBSET of the covered tool's `parameters:`
     /// whose bound values form the cache key. Empty ⇒ ALL bound parameters
@@ -1034,30 +1034,30 @@ pub struct CacheDefinition {
     pub apply_to_effects: Vec<String>,
     /// `invalidate_on: [Channel, ...]` — an `emit` on any listed channel
     /// flushes this cache's namespace. Each must resolve to a declared
-    /// `channel` (`axon-T864`). Reuses the §13 pub/sub, not a second mechanism.
+    /// `channel` (`axon-T864`). Reuses the v1.6.0 pub/sub, not a second mechanism.
     pub invalidate_on: Vec<String>,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia.
+    /// v1.5.2 — leading comment trivia.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia.
+    /// v1.5.2 — trailing comment trivia.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
 
-/// §Fase 87.a — `savant <Name> { domain:, cognition{…}, memory{…}, budget{…},
+/// v2.42.0 — `savant <Name> { domain:, cognition{…}, memory{…}, budget{…},
 /// mandate <M> {…} … }` — the long-horizon autonomous research primitive.
 ///
 /// A `savant` is a declarative ORCHESTRATOR, not a new engine: it composes the
 /// primitives Axon already ships (memory/corpus retention, `par` swarms, the
 /// `quant` Hilbert substrate, `forge` novelty synthesis, the `daemon` host, the
-/// §72 linear budget, the §79 interruptible session, the §77 signed egress)
+/// v2.28.0 linear budget, the v2.36.0 interruptible session, the v2.34.0 signed egress)
 /// into a single governed research loop. The paper's vision (docs/papers/
-/// paper_primitiva_savant.md) grounded to real primitives in its §9.
+/// paper_primitiva_savant.md) grounded to real primitives in its section 9.
 ///
-/// §87.a parses the FULL block surface; the semantics land incrementally:
-/// param-catalog + typed-output validation is §87.b (checker), memory-ref
-/// resolution + §72 budget binding + §79 interruptibility is §87.c, and the
-/// `SavantSoundness` PCC proof is §87.g. **Unknown fields are a hard parse
-/// error** (the §83 D83.7 discipline, as `cache`/`cors`): a savant governs an
+/// v2.42.0 parses the FULL block surface; the semantics land incrementally:
+/// param-catalog + typed-output validation is v2.42.0 (checker), memory-ref
+/// resolution + v2.28.0 budget binding + v2.36.0 interruptibility is v2.42.0, and the
+/// `SavantSoundness` PCC proof is v2.42.0. **Unknown fields are a hard parse
+/// error** (the v2.38.0 the design decision discipline, as `cache`/`cors`): a savant governs an
 /// expensive, risk-bearing autonomous process, so a typo'd field can never
 /// silently mean "no policy."
 #[derive(Debug, Default)]
@@ -1065,41 +1065,41 @@ pub struct SavantDefinition {
     pub name: String,
     /// `domain: "…"` — the ontological scope of the generative boundary (the
     /// research topic the free-energy loop minimises surprise over). Required
-    /// (§87.b `axon-T873`); empty until parsed.
+    /// (v2.42.0 `axon-T873`); empty until parsed.
     pub domain: String,
     /// `cognition { … }` — the epistemic parameters of the active-inference
     /// engine (depth / entropic threshold / divergence). `None` ⇒ engine
-    /// defaults (§87.b supplies a catalog-checked default).
+    /// defaults (v2.42.0 supplies a catalog-checked default).
     pub cognition: Option<SavantCognition>,
     /// `memory { … }` — the retention layer. `backend` resolves to a declared
-    /// `memory`/`corpus` primitive in §87.c (`axon-T875`); `None` ⇒ ephemeral.
+    /// `memory`/`corpus` primitive in v2.42.0 (`axon-T875`); `None` ⇒ ephemeral.
     pub memory: Option<SavantMemory>,
-    /// `budget { … }` — the compute ceiling. Bound to a §72 linear budget
-    /// (`RateLease`) in §87.c so `max_iterations` is a TYPE-enforced ceiling,
-    /// not a hope. `None` ⇒ §87.c rejects (a weeks-long autonomous loop with no
+    /// `budget { … }` — the compute ceiling. Bound to a v2.28.0 linear budget
+    /// (`RateLease`) in v2.42.0 so `max_iterations` is a TYPE-enforced ceiling,
+    /// not a hope. `None` ⇒ v2.42.0 rejects (a weeks-long autonomous loop with no
     /// budget is uninsurable).
     pub budget: Option<SavantBudget>,
     /// `mandate <Name> { objective:, output: }` — one or more epistemic
     /// mandates the savant autonomously decomposes into tasks. At least one
-    /// required (§87.b `axon-T874`).
+    /// required (v2.42.0 `axon-T874`).
     pub mandates: Vec<SavantMandate>,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia.
+    /// v1.5.2 — leading comment trivia.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia.
+    /// v1.5.2 — trailing comment trivia.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
 
-/// §Fase 87.a — the `cognition { … }` sub-block of a [`SavantDefinition`]: the
-/// active-inference engine's epistemic parameters (paper §3, §7.1).
+/// v2.42.0 — the `cognition { … }` sub-block of a [`SavantDefinition`]: the
+/// active-inference engine's epistemic parameters (paper section 3, section 7.1).
 #[derive(Debug, Default)]
 pub struct SavantCognition {
     /// `depth: standard | deep | hyper` — the HRR dimensionality tier of the
-    /// holographic memory codec. Closed catalog (§87.b `axon-T876`).
+    /// holographic memory codec. Closed catalog (v2.42.0 `axon-T876`).
     pub depth: String,
     /// `entropic_threshold: <float>` — the Expected-Free-Energy convergence
     /// bound: the loop halts synthesis when no policy reduces EFE below this.
-    /// Must be `> 0` (§87.b). `None` ⇒ engine default.
+    /// Must be `> 0` (v2.42.0). `None` ⇒ engine default.
     pub entropic_threshold: Option<f64>,
     /// `divergence: low | med | high` — how aggressively the loop explores
     /// epistemic (β₂) voids vs. exploiting known structure. Closed catalog.
@@ -1107,12 +1107,12 @@ pub struct SavantCognition {
     pub loc: Loc,
 }
 
-/// §Fase 87.a — the `memory { … }` sub-block of a [`SavantDefinition`]: the
+/// v2.42.0 — the `memory { … }` sub-block of a [`SavantDefinition`]: the
 /// durable retention layer, composed from existing `memory`/`corpus` primitives.
 #[derive(Debug, Default)]
 pub struct SavantMemory {
     /// `backend: <Name>` — a reference to a declared `memory` or `corpus`
-    /// primitive (resolved in §87.c `axon-T875`). Empty ⇒ ephemeral memory.
+    /// primitive (resolved in v2.42.0 `axon-T875`). Empty ⇒ ephemeral memory.
     pub backend: String,
     /// `corpus_graph: <bool>` — whether to iteratively index the ingested
     /// corpus as a simplicial-complex graph for the topological (β_n) reading.
@@ -1123,79 +1123,79 @@ pub struct SavantMemory {
     pub loc: Loc,
 }
 
-/// §Fase 87.a — the `budget { … }` sub-block of a [`SavantDefinition`]: the
-/// compute ceiling, bound to a §72 linear budget in §87.c.
+/// v2.42.0 — the `budget { … }` sub-block of a [`SavantDefinition`]: the
+/// compute ceiling, bound to a v2.28.0 linear budget in v2.42.0.
 #[derive(Debug, Default)]
 pub struct SavantBudget {
     /// `max_iterations: <int>` — the hard ceiling on FEP-loop iterations before
-    /// the savant pauses (the paper's `compute_budget`). `> 0` (§87.b).
+    /// the savant pauses (the paper's `compute_budget`). `> 0` (v2.42.0).
     pub max_iterations: Option<i64>,
-    /// `max_tool_synth: <int>` — the hard ceiling on `synth` (§87.d) dynamic
+    /// `max_tool_synth: <int>` — the hard ceiling on `synth` (v2.42.0) dynamic
     /// tool-creation events per mandate. `None` ⇒ 0 (no synthesis).
     pub max_tool_synth: Option<i64>,
     pub loc: Loc,
 }
 
-/// §Fase 87.a — a `mandate <Name> { objective:, output: }` sub-block of a
+/// v2.42.0 — a `mandate <Name> { objective:, output: }` sub-block of a
 /// [`SavantDefinition`]: one epistemic research goal the savant pursues.
 #[derive(Debug, Default)]
 pub struct SavantMandate {
     pub name: String,
     /// `objective: "…"` — the natural-language research goal. Required
-    /// (non-empty, §87.b `axon-T874`).
+    /// (non-empty, v2.42.0 `axon-T874`).
     pub objective: String,
     /// `output: <Type>` — the declared type the final report must inhabit
-    /// (resolved to a declared `type` in §87.b). Required.
+    /// (resolved to a declared `type` in v2.42.0). Required.
     pub output_type: String,
     pub loc: Loc,
 }
 
-/// §Fase 87.d — `synth <Name> { target:, risk:, language:, sandbox:, review:,
+/// v2.42.0 — `synth <Name> { target:, risk:, language:, sandbox:, review:,
 /// max_lines: }` — a dynamic tool-synthesis policy.
 ///
 /// A `savant` that hits an epistemic gap it has no tool for can, under such a
 /// policy, deduce + write a tool (a Coder sub-agent, a Reviewer sub-agent — a
 /// `par` with an agreement condition), compile it to `wasm32-wasi`, and run it
 /// in an Extism zero-trust sandbox, feeding stdout back as empirical evidence
-/// (paper §6). The policy declares the SAFETY ENVELOPE; the runtime enforces it.
+/// (paper section 6). The policy declares the SAFETY ENVELOPE; the runtime enforces it.
 ///
 /// **Deny-by-default (D87.d):** OSS parses + statically disciplines this policy
 /// but ships a `SynthBackend` reference that REFUSES to execute — running
 /// untrusted synthesised code needs the enterprise Extism/gVisor isolation
-/// (§87.j). The checker therefore requires `sandbox: wasm` (T882): a synth
+/// (v2.42.0). The checker therefore requires `sandbox: wasm` (T882): a synth
 /// policy that would run code outside a sandbox can never compile.
 ///
-/// **Unknown fields are a hard parse error** (D83.7): a synth policy governs
+/// **Unknown fields are a hard parse error**: a synth policy governs
 /// arbitrary-code execution — the highest-stakes surface in the language.
 #[derive(Debug, Default)]
 pub struct SynthDefinition {
     pub name: String,
     /// `target: "…"` — what the synthesised tools are for (the capability scope).
-    /// Required (§87.d `axon-T879`).
+    /// Required (v2.42.0 `axon-T879`).
     pub target: String,
     /// `risk: low | medium | high | critical` — the ceiling risk class the
     /// policy admits; governs review + isolation strictness. Required
-    /// (§87.d `axon-T880`).
+    /// (v2.42.0 `axon-T880`).
     pub risk: String,
     /// `language: rust | c | python` — the allowed synthesis source language
     /// (all compiled to `wasm32-wasi`). Empty ⇒ any admitted language
-    /// (§87.d `axon-T881` validates when present).
+    /// (v2.42.0 `axon-T881` validates when present).
     pub language: String,
-    /// `sandbox: wasm` — the isolation tier. MUST be `wasm` (§87.d `axon-T882`
+    /// `sandbox: wasm` — the isolation tier. MUST be `wasm` (v2.42.0 `axon-T882`
     /// deny-by-default): synthesised code may only run in a zero-trust WASM
     /// sandbox. Empty ⇒ error (never a silent "no sandbox").
     pub sandbox: String,
     /// `review: required | none` — the Coder/Reviewer consensus requirement.
     /// Empty ⇒ `required` (the safe default). `none` is FORBIDDEN for
-    /// `high`/`critical` risk (§87.d `axon-T883`).
+    /// `high`/`critical` risk (v2.42.0 `axon-T883`).
     pub review: String,
     /// `max_lines: <int>` — an optional hard cap on synthesised source length
     /// (a smaller attack + review surface). `None` ⇒ engine default.
     pub max_lines: Option<i64>,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia.
+    /// v1.5.2 — leading comment trivia.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia.
+    /// v1.5.2 — trailing comment trivia.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
 
@@ -1234,21 +1234,21 @@ pub struct TopologyDefinition {
     pub nodes: Vec<String>,
     pub edges: Vec<TopologyEdge>,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
 
-// ── §λ-L-E Fase 5 — Cognitive immune system (per paper_immune_v2.md) ────────
+// ── v1.1.0 — Cognitive immune system (per paper_immune_v2.md) ────────
 
 /// `immune Name { watch, sensitivity, baseline, window, scope, tau, decay }`
 ///
 /// A continuous anomaly sensor over a declared observation vector.
-/// Computes D_KL(q_baseline || p_observed) (paper §3.2) and emits a
+/// Computes D_KL(q_baseline || p_observed) (paper section 3.2) and emits a
 /// HealthReport at an epistemic level derived from the KL magnitude.
 ///
 /// Pure sensor — `immune` takes NO action. Actions belong to `reflex`
@@ -1260,22 +1260,22 @@ pub struct ImmuneDefinition {
     pub sensitivity: Option<f64>, // [0.0, 1.0]
     pub baseline: String,         // "learned" (default) or name of a prior
     pub window: i64,              // samples used to estimate baseline (default: 100)
-    pub scope: String,            // tenant | flow | global (MANDATORY, paper §8.2)
+    pub scope: String, // tenant | flow | global (MANDATORY, paper section 8.2)
     pub tau: String,              // duration half-life
     pub decay: String,            // exponential (default) | linear | none
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
 
 /// `reflex Name { trigger, on_level, action, scope, sla }`
 ///
-/// Deterministic, O(1) motor response. Contract invariants (paper §4.2):
+/// Deterministic, O(1) motor response. Contract invariants (paper section 4.2):
 /// never invokes an LLM; no long-running I/O; every activation emits a
 /// signed_trace; idempotent on the same HealthReport.
 #[derive(Debug, Default)]
@@ -1284,14 +1284,14 @@ pub struct ReflexDefinition {
     pub trigger: String,  // immune name (MANDATORY)
     pub on_level: String, // know | believe | speculate | doubt (default: doubt)
     pub action: String,   // drop | revoke | emit | redact | quarantine | terminate | alert
-    pub scope: String,    // MANDATORY, paper §8.2
+    pub scope: String, // MANDATORY, paper section 8.2
     pub sla: String,      // duration budget (e.g. "1ms")
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
@@ -1299,11 +1299,11 @@ pub struct ReflexDefinition {
 /// `heal Name { source, on_level, mode, scope, review_sla, shield, max_patches }`
 ///
 /// Linear-Logic one-shot patch synthesis. Patch type:
-/// `!Synthesized ⊸ Applied ⊸ Collapsed` (paper §6) — each transition
+/// `!Synthesized ⊸ Applied ⊸ Collapsed` (paper section 6) — each transition
 /// consumes its predecessor, guaranteeing single application + forced collapse.
 ///
 /// Mode ∈ {audit_only | human_in_loop | adversarial} controls automation
-/// (paper §7); `adversarial` REQUIRES a shield gate (paper §7.3).
+/// (paper section 7); `adversarial` REQUIRES a shield gate (paper section 7.3).
 #[derive(Debug, Default)]
 pub struct HealDefinition {
     pub name: String,
@@ -1315,16 +1315,16 @@ pub struct HealDefinition {
     pub shield_ref: String, // optional shield gate (required for adversarial)
     pub max_patches: i64,   // bounded heal attempts (default: 3)
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
 
-// ── §λ-L-E Fase 9 — UI cognitiva (component / view) ─────────────────────────
+// ── v1.3.1 — UI cognitiva (component / view) ─────────────────────────
 
 /// `component Name { renders, via_shield, on_interact, render_hint }`.
 ///
@@ -1339,11 +1339,11 @@ pub struct ComponentDefinition {
     pub on_interact: String,
     pub render_hint: String, // card | list | form | chart | custom
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
@@ -1359,11 +1359,11 @@ pub struct ViewDefinition {
     pub components: Vec<String>,
     pub route: String,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
@@ -1377,11 +1377,11 @@ pub struct GenericDeclaration {
     pub keyword: String,
     pub name: String,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
@@ -1412,21 +1412,21 @@ pub struct AgentDefinition {
     /// the parser discarded these blocks and `custom` was refused at dispatch.
     pub body: Vec<StepNode>,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
 
-// ── §Fase 53 — Closed-catalog extension mechanism ────────────────────────────
+// ── v2.5.0 — Closed-catalog extension mechanism ────────────────────────────
 
 /// One member of an `extension` declaration. For `category: effects`
 /// the `name` is a provenance base (e.g. `"epistemic:believe"`) with
 /// optional `semantics` + `default_confidence` (a CEILING, never a
-/// floor — §53.d tainted-overriding). For `category: scan` the `name`
+/// floor — v2.5.0 tainted-overriding). For `category: scan` the `name`
 /// is a scan-category identifier and the metadata is typically absent.
 #[derive(Debug, Clone)]
 pub struct ExtensionMember {
@@ -1438,9 +1438,9 @@ pub struct ExtensionMember {
 
 /// `extension Name { category: effects|scan, members: [ "x" : { … }, … ] }`
 ///
-/// §Fase 53. A first-class, auditable + gateable declaration that
+/// v2.5.0. A first-class, auditable + gateable declaration that
 /// expands a closed catalog with adopter-specific PROVENANCE members.
-/// Soundness invariants (validated in §53.c/§53.d): members are
+/// Soundness invariants (validated in v2.5.0/v2.5.0): members are
 /// provenance-class only (never the enforceable effect set), must not
 /// shadow a canonical base/category, and ride in the IR + proof bundle
 /// so an independent PCC verifier re-derives against the same artifact.
@@ -1448,32 +1448,32 @@ pub struct ExtensionMember {
 pub struct ExtensionDefinition {
     pub name: String,
     /// `effects` | `scan` — validated against the closed category set
-    /// in §53.c (the type-checker), not the parser.
+    /// in v2.5.0 (the type-checker), not the parser.
     pub category: String,
     pub members: Vec<ExtensionMember>,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia. Empty by default.
+    /// v1.5.2 — leading comment trivia. Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia. Empty by default.
+    /// v1.5.2 — trailing comment trivia. Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
 
 // ── Shield ───────────────────────────────────────────────────────────────────
 
-/// §Fase 71.a — a temporal execution-window guard. Where `shield` guards the
+/// v2.27.0 — a temporal execution-window guard. Where `shield` guards the
 /// CONTENT of an emission and `anchor` guards its TRUTH, `window` guards its
 /// TIMING: whether a scheduled (cron) tick runs, by timezone-aware day/hour
-/// windows. The runtime decision (`is_in_window`) lands in §71.b; the daemon
-/// binding + the defer ledger in §71.c/d.
+/// windows. The runtime decision (`is_in_window`) lands in v2.27.0; the daemon
+/// binding + the defer ledger in v2.27.0.
 #[derive(Debug)]
 pub struct WindowDefinition {
     pub name: String,
     /// IANA timezone (`"America/Bogota"`). Format-checked at compile time
-    /// (§71.a); full IANA membership validated by the runtime (§71.b, chrono-tz).
+    /// (v2.27.0); full IANA membership validated by the runtime (v2.27.0, chrono-tz).
     pub timezone: String,
     /// The allowed day/hour spans (at least one). A tick inside ANY span runs.
     pub allow: Vec<WindowSpan>,
-    /// §Fase 71.e — excluded dates (holidays): ISO `YYYY-MM-DD` date-string
+    /// v2.27.0 — excluded dates (holidays): ISO `YYYY-MM-DD` date-string
     /// literals (`exclude: [ "2026-12-25", "2026-01-01" ]`). A tick whose local
     /// date (in `timezone`) is in this set is OUTSIDE the window regardless of the
     /// hour spans. The dates are LITERAL — part of the verified program, so the
@@ -1488,7 +1488,7 @@ pub struct WindowDefinition {
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
 
-/// §Fase 71.a — one allowed day/hour span, `{ days: Mon..Fri, hours: 9..18 }`.
+/// v2.27.0 — one allowed day/hour span, `{ days: Mon..Fri, hours: 9..18 }`.
 /// `days` are inclusive weekday-name bounds; `hours` are inclusive 0–23 bounds.
 #[derive(Debug)]
 pub struct WindowSpan {
@@ -1516,26 +1516,26 @@ pub struct ShieldDefinition {
     pub log: String,
     pub deflect_message: String,
     pub taint: String,
-    /// §ESK Fase 6.1 — regulatory coverage (HIPAA, PCI_DSS, GDPR, …).
+    /// ESK — regulatory coverage (HIPAA, PCI_DSS, GDPR, …).
     pub compliance: Vec<String>,
-    /// §Fase 77.a — egress signing algorithm (closed catalog: `hmac_sha256`,
+    /// v2.34.0 — egress signing algorithm (closed catalog: `hmac_sha256`,
     /// `axon-T846`). Empty = the shield does not sign. A shield with `sign:`
     /// is an EGRESS shield: `publish <Channel> within <Shield>` marks the
-    /// channel for signed external delivery (§77.b).
+    /// channel for signed external delivery (v2.34.0).
     pub sign: String,
-    /// §Fase 77.a (`axon-W010`) — block fields the parser did not recognize,
+    /// v2.34.0 (`axon-W010`) — block fields the parser did not recognize,
     /// with their source locations. Pre-77 the parser silently discarded
     /// these (`_ => skip_value()`), so a typo or an unsupported field passed
-    /// `axon check` unremarked (Kivi brief #51 §B.3). The parser still skips
+    /// `axon check` unremarked (Kivi brief #51 B.3). The parser still skips
     /// the VALUE (leniency preserved — existing programs keep compiling) but
     /// records the NAME so the type checker can warn honestly.
     pub unknown_fields: Vec<(String, Loc)>,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
@@ -1550,17 +1550,17 @@ pub struct PixDefinition {
     pub branching: Option<i64>,
     pub model: String,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
 
 // ── Ledger ─────────────────────────────────────────────────────────────────
-// §Fase 62.0 — the append-only, hash-linked audit chain. Took over the
+// v2.12.0 — the append-only, hash-linked audit chain. Took over the
 // Provenance-Index role that `pix` historically (and only in the ℰMCP doc)
 // occupied, so `pix` is freed for its true meaning: the PIX retrieval
 // navigator (paper `paper_pix_formal_research.md`). A `ledger` binds a chain
@@ -1591,18 +1591,18 @@ pub struct PsycheDefinition {
     pub quantum_enabled: Option<bool>,
     pub inference_mode: String, // active | passive
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
 
 // ── Corpus ───────────────────────────────────────────────────────────────────
 
-/// §Fase 63.A — a typed, weighted edge of an MDN corpus graph: `etype(from, to,
+/// v2.13.0 — a typed, weighted edge of an MDN corpus graph: `etype(from, to,
 /// weight)`. `etype` is from the closed relation catalog (cite / elaborate /
 /// corroborate / depend / implement / exemplify / contradict / supersede);
 /// `from`/`to` name documents declared in the corpus; `weight ∈ (0, 1]`.
@@ -1619,38 +1619,38 @@ pub struct CorpusRelation {
 pub struct CorpusDefinition {
     pub name: String,
     pub documents: Vec<String>, // simplified: list of pix refs
-    /// §Fase 63.A — the typed weighted edges that make this corpus an MDN graph
+    /// v2.13.0 — the typed weighted edges that make this corpus an MDN graph
     /// `C = (D, R, τ, ω, σ)`. Empty ⇒ the flat (edgeless) corpus.
     pub relations: Vec<CorpusRelation>,
-    /// §Fase 63.C — `adaptive: true` enables the memory endofunctor: navigations
+    /// v2.13.0 — `adaptive: true` enables the memory endofunctor: navigations
     /// over this corpus learn (semantic edge reinforcement + procedural bias),
     /// and subsequent navigations use the memory-modified EPR. Requires the
     /// graph to carry edges (static `relations:` OR a store-sourced edge store).
     pub adaptive: bool,
     pub mcp_server: String,
     pub mcp_resource_uri: String,
-    /// §Fase 64.A — when `Some`, this is a DYNAMIC store-sourced MDN graph
+    /// v2.14.0 — when `Some`, this is a DYNAMIC store-sourced MDN graph
     /// (`corpus N from axonstore { documents: DocStore(id, title)  relations:
     /// EdgeStore(from, to, etype, weight) }`): the documents and typed edges live
     /// as ROWS in two declared `axonstore`s and the graph is built from the live
     /// rows at navigate-time (per-tenant, growing). Mutually exclusive with the
-    /// static §63 form — the `documents`/`relations`/`mcp_*` fields stay empty.
+    /// static v2.13.0 form — the `documents`/`relations`/`mcp_*` fields stay empty.
     /// `None` ⇒ the static compile-time corpus (back-compat byte-identical).
     pub store_source: Option<CorpusStoreSource>,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
 
-/// §Fase 64.A — the dynamic, `axonstore`-sourced backing of an MDN corpus graph.
+/// v2.14.0 — the dynamic, `axonstore`-sourced backing of an MDN corpus graph.
 /// The graph's documents and typed edges are ROWS in two declared `axonstore`s,
 /// so the graph grows at runtime (a new `persist` = a new node/edge) and is
-/// per-tenant by inheritance from the store's §40 column-proof / RLS scope. The
+/// per-tenant by inheritance from the store's v2.0.0 column-proof / RLS scope. The
 /// runtime builds the `mdn::Corpus` from the live rows at navigate-time.
 ///
 /// Surface:
@@ -1663,7 +1663,7 @@ pub struct CorpusDefinition {
 /// ```
 /// Documents and edges live in SEPARATE stores (an `axonstore` is one table with
 /// one column schema). The type-checker (`check_corpus`) validates that both
-/// stores are declared and — when they carry a §38 column schema — that the
+/// stores are declared and — when they carry a v1.31.0 column schema — that the
 /// mapped columns exist with compatible types (id present; title text-like;
 /// from/to match the id type; etype text-like; weight numeric). The weight-range
 /// invariant `ω ∈ (0, 1]` (G4) becomes a RUNTIME check here, since weights are
@@ -1683,10 +1683,10 @@ pub struct CorpusStoreSource {
 
 // ── Dataspace ────────────────────────────────────────────────────────────────
 
-/// §Fase 108.b (D108.1) — the closed dataspace column-type catalog.
+/// v2.63.0 — the closed dataspace column-type catalog.
 ///
 /// Six types, because a dataspace column type maps 1:1 to a physical
-/// columnar buffer layout in the deterministic engine (§108.b, plan §5.1):
+/// columnar buffer layout in the deterministic engine (v2.63.0, plan section 5.1):
 ///
 /// | Type        | Physical layout                                    |
 /// |-------------|----------------------------------------------------|
@@ -1697,14 +1697,14 @@ pub struct CorpusStoreSource {
 /// | `Timestamp` | contiguous `i64` epoch-microseconds buffer         |
 /// | `Json`      | offsets + raw serialized-JSON byte buffer          |
 ///
-/// Deliberately NOT `StoreColumnType` (§38): that catalog is
+/// Deliberately NOT `StoreColumnType` (v1.31.0): that catalog is
 /// SQL-backend-oriented (Uuid, Numeric, Bytea, …); this one is the
 /// engine's physical truth. `Float` is **f64** — diverging from the
 /// research paper's Float32 on purpose: axon's determinism norm is
-/// exact f64 (the §51 reference-simulator precedent), and halving
-/// width is a performance claim we do not make pre-Sandbox (D101.19).
+/// exact f64 (the v2.4.0 reference-simulator precedent), and halving
+/// width is a performance claim we do not make pre-Sandbox.
 /// Every column is nullable via the validity bitmap; nullability is
-/// the ONLY flexibility (D108.7).
+/// the ONLY flexibility.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DataspaceColumnType {
     Text,
@@ -1744,7 +1744,7 @@ impl DataspaceColumnType {
     }
 
     /// Resolve a declared type token — canonical names plus the common
-    /// lowercase aliases (the §38 `from_token` convention).
+    /// lowercase aliases (the v1.31.0 `from_token` convention).
     pub fn from_token(name: &str) -> Option<DataspaceColumnType> {
         match name {
             "Text" | "text" | "string" | "String" => Some(DataspaceColumnType::Text),
@@ -1758,9 +1758,9 @@ impl DataspaceColumnType {
     }
 }
 
-/// §Fase 108.b — one declared dataspace column: `column <name>: <Type>`.
+/// v2.63.0 — one declared dataspace column: `column <name>: <Type>`.
 /// The type is kept RAW at parse time (the string the adopter wrote);
-/// the §108.b type-checker resolves it against the closed catalog and
+/// the v2.63.0 type-checker resolves it against the closed catalog and
 /// emits `axon-T928` on a miss — so ALL schema errors in a declaration
 /// accumulate in one compile, instead of dying at the first bad token.
 #[derive(Debug)]
@@ -1773,15 +1773,15 @@ pub struct DataspaceColumn {
 #[derive(Debug)]
 pub struct DataspaceDefinition {
     pub name: String,
-    /// §Fase 108.b — the typed columnar schema. A dataspace IS its
-    /// schema: the §108.b type-checker refuses an empty one (axon-T928).
+    /// v2.63.0 — the typed columnar schema. A dataspace IS its
+    /// schema: the v2.63.0 type-checker refuses an empty one (axon-T928).
     pub columns: Vec<DataspaceColumn>,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
@@ -1795,11 +1795,11 @@ pub struct OtsDefinition {
     pub homotopy_search: String, // shallow | deep | speculative
     pub loss_function: String,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
@@ -1815,19 +1815,19 @@ pub struct MandateDefinition {
     pub kd: Option<f64>,
     pub tolerance: Option<f64>,
     pub max_steps: Option<i64>,
-    /// §Fase 119.b — declared drift bound `D` (`sup|drift(t)|`, paper_mandate
-    /// §3). A HYPOTHESIS the runtime must discharge by measurement, not a fact.
+    /// v2.83.0 — declared drift bound `D` (`sup|drift(t)|`, paper_mandate
+    /// section 3). A HYPOTHESIS the runtime must discharge by measurement, not a fact.
     pub drift_bound: Option<f64>,
-    /// §Fase 119.b — declared Lipschitz constant `L` of the refinement map
-    /// (prompt_opt §6.3). Same standing as `drift_bound`.
+    /// v2.83.0 — declared Lipschitz constant `L` of the refinement map
+    /// (prompt_opt section 6.3). Same standing as `drift_bound`.
     pub lipschitz: Option<f64>,
     pub on_violation: String, // coerce | halt | retry
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
@@ -1838,33 +1838,33 @@ pub struct MandateDefinition {
 pub struct ComputeDefinition {
     pub name: String,
     pub shield_ref: String,
-    /// §Fase 111.f — the typed parameters. Before §111, `parse_compute` SKIPPED
+    /// v2.67.0 — the typed parameters. Before v2.67.0, `parse_compute` SKIPPED
     /// everything between the name and the brace ("Skip optional parameters/
     /// return type"), so a compute had no inputs at all — which is one reason it
     /// could not compute anything.
     pub parameters: Vec<Parameter>,
-    /// §Fase 111.f — the declared result type.
+    /// v2.67.0 — the declared result type.
     pub return_type: String,
-    /// §Fase 111.f — **the body**: a §70 `Expr`.
+    /// v2.67.0 — **the body**: a v2.26.0 `Expr`.
     ///
     /// This is what makes `compute` honest. The README sells it as "Deterministic
     /// muscle — native Fast-Path execution BYPASSING the LLM" and even asserts a
-    /// complexity class ("compute steps: O(n)"). A §70 expression is exactly that
+    /// complexity class ("compute steps: O(n)"). A v2.26.0 expression is exactly that
     /// and nothing more: a closed, total, side-effect-free term the runtime
     /// evaluates with `eval_expr` — the same native evaluator `let`, `grad` and
     /// `conditional` already use. Linear in the term. No model in the loop.
     ///
     /// `None` ⇒ a compute that cannot compute; applying it is refused
     /// (axon-T941), rather than binding the literal string `"compute:Name(args)"`
-    /// as the pre-§111 runtime did — which a downstream step then consumed as if
+    /// as the pre-v2.67.0 runtime did — which a downstream step then consumed as if
     /// it were a number.
     pub body: Option<Expr>,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
@@ -1880,57 +1880,57 @@ pub struct DaemonDefinition {
     pub strategy: String, // react | reflexion | plan_and_execute | custom
     pub on_stuck: String, // hibernate | escalate | retry | forge
     pub shield_ref: String,
-    /// §Fase 71.c — the `window:` temporal binding (a `window` primitive name,
-    /// §71.a). When set, the supervisor evaluates the bound window before
+    /// v2.27.0 — the `window:` temporal binding (a `window` primitive name,
+    /// v2.27.0). When set, the supervisor evaluates the bound window before
     /// claiming a scheduled tick: inside ⇒ fire; outside ⇒ `skip`/`warn`/`defer`
     /// per the window's `on_outside`. Empty for daemons with no temporal guard.
     pub window_ref: String,
-    /// §Fase 72.a — the `budget { … }` linear-effect rate limit. When set, each
+    /// v2.28.0 — the `budget { … }` linear-effect rate limit. When set, each
     /// `on Tool(X)` quota gates that tool's dispatch on a renewable token bucket
-    /// (the §72.b `RateLease`): a call consumes a token, exhaustion applies
+    /// (the v2.28.0 `RateLease`): a call consumes a token, exhaustion applies
     /// `on_exhausted`. `None` for daemons with no effect budget.
     pub budget: Option<BudgetBlock>,
     pub max_tokens: Option<i64>,
     pub max_time: String,
     pub max_cost: Option<f64>,
-    /// §λ-L-E Fase 13 D4 — listen blocks captured for type-checker
+    /// v1.6.0 D4 — listen blocks captured for type-checker
     /// validation (typed-channel ref + dual-mode deprecation warning).
-    /// Pre-Fase 13 the parser discarded these structurally; we now
+    /// Pre-v1.6.0 the parser discarded these structurally; we now
     /// retain them so 13.b/13.f can validate emit/publish/discover
     /// inside listener bodies and surface D4 string-topic warnings.
     pub listeners: Vec<ListenStep>,
-    /// §Fase 52.d — the capability scope a daemon's runs are confined to
+    /// v2.4.0 — the capability scope a daemon's runs are confined to
     /// (`requires: [cap, …]`, the same closed slug grammar as `axonendpoint
     /// requires:`). A scheduled (cron) daemon MUST declare this (it is a
     /// standing autonomous privilege); the enterprise supervisor mints a
     /// per-run principal scoped to EXACTLY these capabilities (least privilege,
-    /// §52.d). Empty for event-only daemons / pre-§52 daemons.
+    /// v2.4.0). Empty for event-only daemons / pre-v2.4.0 daemons.
     pub requires_capabilities: Vec<String>,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
 
-/// §Fase 72.a — a `budget { … }` block: a set of per-effect rate quotas plus the
+/// v2.28.0 — a `budget { … }` block: a set of per-effect rate quotas plus the
 /// exhaustion policy. Where `window` guards an effect's TIMING, `budget` guards
 /// its RATE — a tool call consumes one token from a renewable bucket, and
 /// over-emission is impossible by construction (the Logic pillar's linearity
 /// made real for external effects).
 #[derive(Debug)]
 pub struct BudgetBlock {
-    /// §Fase 114.a — the budget's NAME when it is declared **top-level**.
+    /// v2.69.0 — the budget's NAME when it is declared **top-level**.
     ///
     /// Empty ⇒ the daemon-attached form (`daemon D { budget { … } }`), which is
     /// anonymous and scoped to that daemon's ticks.
     ///
     /// # Why top-level had to exist
     ///
-    /// Until §114, `budget` was a **field of `daemon` and nothing else**. So an
+    /// Until v2.69.0, `budget` was a **field of `daemon` and nothing else**. So an
     /// adopter deploying an HTTP endpoint that calls a vendor tool had **no way in
     /// the language to bound how often it does that.** Not "the bound did not
     /// work" — **the bound could not be written.** And the HTTP endpoint is what
@@ -1939,17 +1939,17 @@ pub struct BudgetBlock {
     /// The per-effect quotas (`rate:`/`max:` lines). At least one.
     pub quotas: Vec<BudgetQuota>,
     /// What to do when a quota is exhausted: `block` (fail-closed, the default) |
-    /// `defer` (reschedule via the §71 defer ledger) | `shed` (skip the call).
+    /// `defer` (reschedule via the v2.27.0 defer ledger) | `shed` (skip the call).
     pub on_exhausted: String,
     pub loc: Loc,
-    /// §Fase 114.a — comment trivia, so a top-level `budget` does not silently lose
-    /// its doc comments through the formatter (Fase 14.b). Empty for the
+    /// v2.69.0 — comment trivia, so a top-level `budget` does not silently lose
+    /// its doc comments through the formatter (v1.5.2). Empty for the
     /// daemon-attached form.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
 
-/// §Fase 72.a — one quota line of a [`BudgetBlock`]:
+/// v2.28.0 — one quota line of a [`BudgetBlock`]:
 /// `<kind>: <limit> per <period> on Tool(<effect>)`.
 #[derive(Debug)]
 pub struct BudgetQuota {
@@ -1974,25 +1974,25 @@ pub struct AxonStoreDefinition {
     /// The DSN — **the field that actually runs today**. `connection:` →
     /// `resolve_dsn` → a real sqlx pool, with no global-pool fallback.
     ///
-    /// §Fase 113: still accepted (the live deployment depends on it), but it
+    /// v2.67.0: still accepted (the live deployment depends on it), but it
     /// **warns**, and a store declared this way is INELIGIBLE for
     /// `lease` / `observe` / `reconcile`. *You cannot govern what you did not
     /// declare.*
     pub connection: String,
-    /// §Fase 113 — the `resource` this store runs on. When present, the store
+    /// v2.67.0 — the `resource` this store runs on. When present, the store
     /// DERIVES its DSN, its **pool size** and its sharing discipline from the
     /// resource. The derivation is the point; a bare reference would be the
-    /// nominal link this fase exists to avoid.
+    /// nominal link this cycle exists to avoid.
     pub resource_ref: String,
     pub confidence_floor: Option<f64>,
     pub isolation: String, // read_committed | repeatable_read | serializable
     pub on_breach: String, // rollback | raise | log
-    /// §Fase 35.j (D11) — Pillar IV: the capability slug required to
+    /// v1.30.0 (D11) — Pillar IV: the capability slug required to
     /// access this store. Empty = no capability gate. Validated at
     /// parse time against the closed slug grammar (shared with the
-    /// Fase 32.g `requires:` grammar).
+    /// v1.23.0 `requires:` grammar).
     pub capability: String,
-    /// §Fase 94.a — the secret-class prefix of a `backend: secrets`
+    /// v2.48.0 — the secret-class prefix of a `backend: secrets`
     /// metadata store (doctrine `rotation_without_revelation`). A
     /// dotted lowercase identifier, e.g. `crm` — the store enumerates
     /// the tenant's secrets whose keys live under `<class>.` (so
@@ -2002,21 +2002,21 @@ pub struct AxonStoreDefinition {
     /// tenant's ENTIRE secret namespace (`llm.*` included) — that
     /// over-broad view is unrepresentable, not discouraged.
     pub class: String,
-    /// §Fase 38.b (D1) — the OPTIONAL column-schema declaration. Three
+    /// v1.31.0 (D1) — the OPTIONAL column-schema declaration. Three
     /// closed forms (inline / manifest-ref / env-var); `None` means the
     /// 37.x runtime+deploy path applies verbatim (D5 absolute). The
-    /// §38.d / §38.e `StoreColumnProof` pass consumes this; the §38.h
+    /// v1.31.0 / v1.31.0 `StoreColumnProof` pass consumes this; the v1.31.0
     /// CLI exports it. For a `backend: secrets` store this is always
     /// `None` in the AST (declaring one is `axon-T900`) — the fixed
     /// metadata schema is synthesized at IR time
     /// (`store_schema::secrets_metadata_schema`).
     pub column_schema: Option<crate::store_schema::StoreColumnSchema>,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
@@ -2032,27 +2032,27 @@ pub struct AxonEndpointDefinition {
     pub execute_flow: String,
     pub output_type: String,
     pub shield_ref: String,
-    /// §Fase 83.a — the `cors: <Name>` reference, or `""` if absent
-    /// (D83.5: absent ⇒ no CORS headers, ever — secure by default). Same
+    /// v2.38.0 — the `cors: <Name>` reference, or `""` if absent
+    /// (the design decision: absent ⇒ no CORS headers, ever — secure by default). Same
     /// empty-string sentinel convention as `shield_ref`, not `Option`.
     pub cors_ref: String,
     pub retries: Option<i64>,
     pub timeout: String,
-    /// §ESK Fase 6.1 — regulatory coverage on the boundary.
+    /// ESK — regulatory coverage on the boundary.
     pub compliance: Vec<String>,
-    /// §Fase 30 — HTTP wire transport for the response. Closed enum
+    /// v1.21.0 — HTTP wire transport for the response. Closed enum
     /// per D2 ratified 2026-05-10: {"json" | "sse" | "ndjson"}.
     /// Default "json" (D1 — backwards-compat preserved). When set
     /// to "sse", the type-checker (30.c) verifies that
     /// `execute_flow` produces a Stream<T> (D3).
     pub transport: String,
-    /// §Fase 30 — Keepalive comment interval for SSE transport (D6).
+    /// v1.21.0 — Keepalive comment interval for SSE transport (D6).
     /// Optional; default applied at runtime when transport == "sse"
     /// (default 15s). Closed enum at parse time:
     /// {"5s" | "15s" | "30s" | "60s"}. Empty string means
     /// "use runtime default".
     pub keepalive: String,
-    /// §Fase 31.b — Type-Driven Wire Inference (D1, D7).
+    /// v1.22.0 — Type-Driven Wire Inference (D1, D7).
     /// `transport_explicit` is `true` if the source declared
     /// `transport:` explicitly (any of json/sse/ndjson). `false` if
     /// the field was omitted, in which case `transport` reflects the
@@ -2060,7 +2060,7 @@ pub struct AxonEndpointDefinition {
     /// `axon_frontend::type_checker::compute_implicit_transports`
     /// pass) carries the inferred value.
     pub transport_explicit: bool,
-    /// §Fase 31.b — Inferred wire transport per D1:
+    /// v1.22.0 — Inferred wire transport per D1:
     ///   implicit_transport(E) =
     ///     declared_transport(E)   if transport_explicit
     ///     "sse"                    if produces_stream(execute_flow) ∧ ¬explicit
@@ -2069,7 +2069,7 @@ pub struct AxonEndpointDefinition {
     /// reference implementation in `axon/compiler/type_checker.py`
     /// sets the field byte-identically (D7 cross-stack contract).
     pub implicit_transport: String,
-    /// §Fase 32.g (D8) — Auth scope: capability slugs the request
+    /// v1.23.0 (D8) — Auth scope: capability slugs the request
     /// bearer must hold for the endpoint to dispatch. Empty vec
     /// means "no auth gate" (D9 backwards-compat). Slug grammar
     /// (closed): `^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$`. Examples:
@@ -2077,18 +2077,18 @@ pub struct AxonEndpointDefinition {
     /// declared_requires ⊆ token_capabilities (AND semantics — every
     /// declared capability must be present in the bearer's claims).
     pub requires_capabilities: Vec<String>,
-    /// §Fase 89.a — `public: true` is the EXPLICIT authorization-coverage
+    /// v2.44.0 — `public: true` is the EXPLICIT authorization-coverage
     /// opt-out (doctrine `every_boundary_is_guarded`). An `axonendpoint`
     /// compiles iff it is covered by ≥1 discipline (`requires:` / `shield:` /
     /// `compliance:`) OR declares `public: true`. Omitting BOTH is a hard
-    /// error (`axon-T890`, §89.b) — this is what closes Modo 1 (a guard
+    /// error (`axon-T890`, v2.44.0) — this is what closes Modo 1 (a guard
     /// bypassable by silent omission). `public: true` does NOT bypass HTTP
     /// authentication (the enterprise `require_auth` middleware is a
     /// SEPARATE concern); it declares — deliberately + auditably — that the
     /// endpoint carries no capability/shield/compliance coverage. Default
-    /// `false` (parser + programmatic construction); the §89.b rule reads it.
+    /// `false` (parser + programmatic construction); the v2.44.0 rule reads it.
     pub public: bool,
-    /// §Fase 32.h — Replay-token binding (D9 plan-vivo).
+    /// v1.23.0 — Replay-token binding (D9 plan-vivo).
     /// `replay_explicit` is `true` when the source declared `replay:`
     /// explicitly. `false` when the field was omitted, in which case
     /// `replay` reflects the method-default (POST/PUT → true, GET/
@@ -2098,7 +2098,7 @@ pub struct AxonEndpointDefinition {
     /// trace_id; auditors retrieve it via GET /v1/replay/<trace_id>.
     pub replay_explicit: bool,
     pub replay: bool,
-    /// §Fase 33.z.k.b (v1.28.0) — Selected SSE wire-format dialect.
+    /// v1.28.0 — Selected SSE wire-format dialect.
     ///
     /// Populated when the source uses the parametrized grammar
     /// `transport: sse(<dialect>)`. Closed catalog
@@ -2116,10 +2116,10 @@ pub struct AxonEndpointDefinition {
     /// false). D3 explicit `transport: sse(<dialect>)` overrides the
     /// default.
     pub transport_dialect: String,
-    /// §Fase 33.z.k.1 (v1.27.1) — Algebraic-effect override predicate.
+    /// v1.27.1 — Algebraic-effect override predicate.
     ///
     /// `true` when `execute_flow` references a tool that declares
-    /// `effects: <stream:<policy>>` (Fase 30 algebraic-effect surface).
+    /// `effects: <stream:<policy>>` (v1.21.0 algebraic-effect surface).
     /// Mirrors `type_checker::flow_uses_streaming_tool(execute_flow, program)`.
     ///
     /// Used by the runtime classifier
@@ -2137,9 +2137,9 @@ pub struct AxonEndpointDefinition {
     /// pass runs (matches AST construction defaults; D9 backwards-
     /// compat preserved for older AST consumers).
     pub has_algebraic_stream_effect: bool,
-    /// §Fase 36.d (D2) — the declared execution backend for the flow
+    /// v1.31.0 (D2) — the declared execution backend for the flow
     /// behind this endpoint. Empty string `""` means "not declared"
-    /// (the endpoint resolves its backend down the Fase 36 D1
+    /// (the endpoint resolves its backend down the v1.31.0 D1
     /// precedence ladder — server default → environment-available
     /// `auto`). When non-empty the parser has validated it against the
     /// closed catalog [`crate::parser::AXONENDPOINT_BACKEND_VALUES`]
@@ -2147,7 +2147,7 @@ pub struct AxonEndpointDefinition {
     /// error. A declared `backend:` is rung 2 of the resolution
     /// contract.
     pub backend: String,
-    /// §Fase 37.y (D1) — Path parameter names extracted from the
+    /// v1.32.0 (D1) — Path parameter names extracted from the
     /// `path:` string at parse time. For `path: "/api/tenants/{tenant_id}/secrets/{secret_name}"`
     /// this is `["tenant_id", "secret_name"]`. Empty Vec when the
     /// path has no `{name}` placeholders (D5 backwards-compat — an
@@ -2158,15 +2158,15 @@ pub struct AxonEndpointDefinition {
     /// duplicate `{tenant_id}` in the same path is a parse error
     /// (HTTP route patterns reject duplicates structurally — `axum`
     /// would panic at registration). Type binding is always `Text`
-    /// in v1.38.5 (HTTP path-segment convention); a future Fase 37.z
+    /// in v1.38.5 (HTTP path-segment convention); a future v1.32.0
     /// may add per-placeholder type-override grammar `{tenant_id: Uuid}`.
     ///
-    /// The Fase 37 D2 totality check (extended by 37.y D3) treats
+    /// The v1.32.0 D2 totality check (extended by 37.y D3) treats
     /// every name here as covering an equivalent flow parameter
     /// declared `Text`. Collision with a body field of the same name
     /// is a compile error (`axon-T901`, D4).
     pub path_params: Vec<String>,
-    /// §Fase 37.y (D2) — Query parameters declared via the inline
+    /// v1.32.0 (D2) — Query parameters declared via the inline
     /// `query: { name: Type, name: Type? }` block on the endpoint.
     /// Empty Vec when the source omits the block (D5 backwards-compat).
     ///
@@ -2190,11 +2190,11 @@ pub struct AxonEndpointDefinition {
     /// query params.
     pub query_params: Vec<TypeField>,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
@@ -2205,17 +2205,17 @@ pub struct AxonEndpointDefinition {
 pub struct ImportNode {
     pub module_path: Vec<String>,
     pub names: Vec<String>,
-    /// §Fase 115.c — the `@allow_downgrade` ECC valve: acknowledges an
+    /// v2.76.0 — the `@allow_downgrade` ECC valve: acknowledges an
     /// epistemic downgrade across this import edge (silences `axon-W017`,
     /// downgrades `axon-T954` to a *visible* `axon-W017`). `false` for
-    /// every import written before §115.
+    /// every import written before v2.76.0.
     pub allow_downgrade: bool,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
@@ -2233,11 +2233,11 @@ pub struct PersonaDefinition {
     pub language: String,
     pub description: String,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
@@ -2253,18 +2253,18 @@ pub struct ContextDefinition {
     pub max_tokens: Option<i64>,
     pub temperature: Option<f64>,
     pub cite_sources: Option<bool>,
-    /// §Fase 91.a — the conversational frame's declared cognitive timezone
+    /// v2.46.0 — the conversational frame's declared cognitive timezone
     /// (IANA name). Every step running within this context carries the run's
     /// captured instant rendered in this zone, unless the step declares its
     /// own `now:` override. Format-checked (`axon-T892`); `None` → no
     /// temporal injection (back-compat).
     pub now_tz: Option<String>,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
@@ -2283,11 +2283,11 @@ pub struct AnchorConstraint {
     pub on_violation: String,
     pub on_violation_target: String,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
@@ -2302,11 +2302,11 @@ pub struct MemoryDefinition {
     pub retrieval: String,
     pub decay: String,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
@@ -2321,7 +2321,7 @@ pub struct ToolDefinition {
     pub filter_expr: String,
     pub timeout: String,
     pub runtime: String,
-    /// §Fase 114.c — the `resource` this tool's channel runs on (`tool T { resource: Api }`).
+    /// v2.69.0 — the `resource` this tool's channel runs on (`tool T { resource: Api }`).
     ///
     /// When present, the tool DERIVES its endpoint from `resource.endpoint`, its
     /// concurrency bound from `resource.capacity`, and (via `lease`/`observe`) its
@@ -2338,40 +2338,40 @@ pub struct ToolDefinition {
     pub resource_ref: String,
     pub sandbox: Option<bool>,
     pub effects: Option<EffectRow>,
-    /// §Fase 58.a — the tool's typed INPUT SCHEMA (W2: the caller↔tool
+    /// v2.8.0 — the tool's typed INPUT SCHEMA (W2: the caller↔tool
     /// contract). Each entry is a named, typed parameter that the canonical
     /// `use Tool(k = v, …)` invocation binds against and the type-checker
     /// validates the caller's args against (CT-2 caller blame, pre-HTTP).
     /// Empty for a schema-less tool — the legacy single-`on <arg>` form still
-    /// applies (§58 D5 back-compat). Reuses `Parameter` (same `TypeExpr`
+    /// applies (v2.8.0 D5 back-compat). Reuses `Parameter` (same `TypeExpr`
     /// grammar as flow params).
     pub parameters: Vec<Parameter>,
-    /// §Fase 58.a — the tool's declared OUTPUT type, so a tool-step's result
-    /// is referenceable as `${Step.output}` with a real type (§58 D8). Flat
+    /// v2.8.0 — the tool's declared OUTPUT type, so a tool-step's result
+    /// is referenceable as `${Step.output}` with a real type (v2.8.0 D8). Flat
     /// string (mirrors step `output:`); `None` when undeclared.
     pub output_type: Option<String>,
-    /// §Fase 116.a (D116.9) — the authorization scopes this tool's operation
+    /// v2.77.0 — the authorization scopes this tool's operation
     /// requires (`requires: ["w_organization_social"]`): flat capability atoms,
-    /// the same vocabulary as `credential.grants` (§92) and endpoint
-    /// `requires_capabilities` (§51.x). `axon-T956` enforces subset coverage —
+    /// the same vocabulary as `credential.grants` (v2.46.0) and endpoint
+    /// `requires_capabilities` (v2.4.0). `axon-T956` enforces subset coverage —
     /// every `use` of a tool with a non-empty `requires` must occur where the
     /// program's granted set covers it. Empty = no scope demand (every
-    /// pre-§116 tool, unchanged). Flat SETS by design: OAuth scopes are
+    /// pre-v2.77.0 tool, unchanged). Flat SETS by design: OAuth scopes are
     /// per-platform atoms with no hierarchy — a scope tree would model
     /// structure the domain does not have.
     pub requires: Vec<String>,
-    /// §Fase 94.c — the per-tenant secret KEY injected into every dispatch
+    /// v2.48.0 — the per-tenant secret KEY injected into every dispatch
     /// of this tool (doctrine `rotation_without_revelation`): at `use`
     /// time the runtime resolves the key against the tenant's secret
     /// custody and injects the value into the tool-server request under
     /// the reserved `axon_secret` field — the flow never touches it. The
-    /// §80.c posture extended to tools: this is a config KEY, never a
+    /// v2.37.0 posture extended to tools: this is a config KEY, never a
     /// credential literal (`axon-T902`, the T850 charset mirror). Empty =
-    /// no injection (every pre-§94 tool). Meaningless on a
+    /// no injection (every pre-v2.48.0 tool). Meaningless on a
     /// `target:`-bound technician tool (execve dispatch, no HTTP request
     /// to inject into) — declaring both is `axon-T902`.
     pub secret: String,
-    /// §Fase 95.a — the `secret_partition:` field (doctrine
+    /// v2.49.0 — the `secret_partition:` field (doctrine
     /// `selection_without_revelation`): the name of one of THIS tool's own
     /// `parameters:` whose runtime value is appended as a single key
     /// SEGMENT to `secret:` at dispatch, so one tool serves N sub-tenants
@@ -2381,106 +2381,106 @@ pub struct ToolDefinition {
     /// `secret:` class prefix is pinned at compile time (a literal); only
     /// this bounded segment is dynamic — the resolved key can NEVER leave
     /// the tool's declared class (the segment is charset-checked to a
-    /// single dot-free run at dispatch, fail-closed). Empty = the §94
+    /// single dot-free run at dispatch, fail-closed). Empty = the v2.48.0
     /// static-key behaviour, unchanged. `axon-T903` governs its laws:
     /// requires a non-empty `secret:`, must name a `String` parameter of
     /// this tool, forbidden on a technician tool. The value SELECTED is
     /// still never revealed to cognition — `secret_partition` chooses
     /// WHICH borrowed authority to spend, never reads it.
     pub secret_partition: String,
-    /// §Fase 84.b — Remote Hands. The `socket` this technician tool dispatches
+    /// v2.39.0 — Remote Hands. The `socket` this technician tool dispatches
     /// over: a program acting on a real machine dials `axon` as a `socket`
     /// client, and a `target:`-bound tool call sends its rendered argv down
     /// that connection. `None` ⇒ today's unchanged in-process / model-surface
-    /// behaviour (zero regression; the whole §84 surface is inert unless
+    /// behaviour (zero regression; the whole v2.39.0 surface is inert unless
     /// `target:` is set). Resolved to a declared `socket` and duality-checked
     /// by `axon-T861`.
     pub target: Option<String>,
-    /// §Fase 84.b — the operation's risk class, a v1-closed catalog of exactly
+    /// v2.39.0 — the operation's risk class, a v1-closed catalog of exactly
     /// `safe | destructive` (`technician::VALID_RISK_LEVELS`). `destructive`
     /// forces the bound session to carry a reachable `branch{approved/denied}`
     /// confirmation (`axon-T860`). `None` on a non-technician tool.
     pub risk: Option<String>,
-    /// §Fase 84.b — the **argv template**: an ordered list of argv elements,
+    /// v2.39.0 — the **argv template**: an ordered list of argv elements,
     /// each either a literal token (`"ping"`, `"-c"`) or a *whole-element*
     /// `${param}` placeholder (`"${host}"`). A placeholder binds to a declared
     /// `parameters:` entry and is substituted as ONE opaque argv argument at
-    /// dispatch — never concatenated, never re-parsed by a shell (D84.1). This
+    /// dispatch — never concatenated, never re-parsed by a shell. This
     /// is the injection-safety keystone: the market's free `template:` STRING
     /// is deliberately NOT offered. Empty for a non-technician tool; required
     /// (`axon-T858`) when `target:` is set on a `provider: bash` tool.
     pub argv: Vec<String>,
-    /// §Fase 85.b — the result-memoization policy for this tool. Names a
+    /// v2.40.0 — the result-memoization policy for this tool. Names a
     /// declared `cache` (`axon-T864`), or the reserved sentinel `none` to opt
     /// OUT of an active `cache { default: true }` policy (the escape hatch for
     /// a rare mislabeled-`pure` tool). Empty ⇒ governed by the module default
     /// if one exists and this tool is eligible (`pure`, or covered by the
-    /// default's `apply_to_effects`). Distinct from `memory` (D85.6).
+    /// default's `apply_to_effects`). Distinct from `memory`.
     pub cache: String,
-    /// §Fase 98.b — Native Web Acquisition. The closed-catalog scrape
+    /// v2.52.0 — Native Web Acquisition. The closed-catalog scrape
     /// configuration for a tool whose `provider:` is one of the three
     /// web-acquisition engines (`scrape_http` | `scrape_dom` |
     /// `scrape_crawl`). `None` ⇒ this is not a scrape tool — the entire
-    /// §98 surface is inert (zero regression). Present ⇒ the tool acquires
+    /// v2.52.0 surface is inert (zero regression). Present ⇒ the tool acquires
     /// content from the OPEN, ADVERSARIAL web: its output is born
-    /// epistemically Untrusted (⊥, D98.1) and its `effects:` row MUST
+    /// epistemically Untrusted (⊥, the design decision) and its `effects:` row MUST
     /// carry the first-class `web` base (`axon-T904`, effect honesty).
     /// The sub-block is a closed catalog — an unknown field is a hard
-    /// parse error (the §83/§84 discipline, D98.2).
+    /// parse error (the v2.38.0/v2.39.0 discipline, the design decision).
     pub scrape: Option<ScrapeSpec>,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
 
-/// §Fase 98.b — the closed-catalog scrape configuration block
+/// v2.52.0 — the closed-catalog scrape configuration block
 /// (`scrape: { … }`) on a web-acquisition `tool`. Every field is
 /// optional/defaulted so a minimal `scrape: {}` is legal; the fields
 /// that apply depend on the tool's `provider:` (the type-checker cross-
 /// validates provider ↔ field applicability, `axon-T905`). The whole
 /// struct is deliberately flat + serializable-friendly (`Option`/`Vec`/
-/// scalar), mirroring the §84 technician-field discipline, so the IR
+/// scalar), mirroring the v2.39.0 technician-field discipline, so the IR
 /// stays byte-stable and the runtime classifies identically.
 #[derive(Debug, Default)]
 pub struct ScrapeSpec {
     /// The acquisition engine: `impersonate` (HTTP-fingerprint stealth,
     /// the GA tier) | `browser` (headless-render sidecar, the gray tier).
-    /// `None` ⇒ `impersonate` (D98.3). Closed catalog (`axon-T905`).
+    /// `None` ⇒ `impersonate`. Closed catalog (`axon-T905`).
     /// Applies to `scrape_http` / `scrape_crawl`.
     pub engine: Option<String>,
     /// The browser-fingerprint impersonation PROFILE name
     /// (`chrome`, `firefox`, `safari` — closed catalog). Only meaningful
     /// with `engine: impersonate`. The concrete JA3/JA4 + HTTP/2 profile
-    /// is resolved by the enterprise engine (§98.g); OSS records the
+    /// is resolved by the enterprise engine (v2.52.0); OSS records the
     /// declared intent. `None` ⇒ the engine's default profile.
     pub impersonate: Option<String>,
     /// The post-navigation settle wait for `engine: browser` (a Duration,
     /// e.g. `2s`) — how long to let JS render before snapshotting. Bounded
-    /// (D98.11). Ignored by the impersonate engine (no JS runtime).
+    ///. Ignored by the impersonate engine (no JS runtime).
     pub render_wait: Option<String>,
     /// The per-tenant proxy-pool config KEY (a dotted key, resolved via
-    /// the same SecretResolver `secret:`/`tool.base_url` use — D98.9),
+    /// the same SecretResolver `secret:`/`tool.base_url` use — the design decision),
     /// never a proxy URL literal. Empty ⇒ direct connection.
     pub proxy: String,
-    /// Whether `robots.txt` is honored (default TRUE, D98.6). Setting
+    /// Whether `robots.txt` is honored (default TRUE, the design decision). Setting
     /// `respect_robots: false` is the audited, `scrape.aggressive`-gated
-    /// override (enforced enterprise-side, §98.h); in OSS it is recorded.
+    /// override (enforced enterprise-side, v2.52.0); in OSS it is recorded.
     pub respect_robots: Option<bool>,
     /// `scrape_dom` extraction spec: an ordered list of `name=selector`
     /// FieldSpecs (`["title=h1", "price=.amount"]`). A closed, bracketed
-    /// string list (reuses the §83/§84 list helper). Each entry must be a
+    /// string list (reuses the v2.38.0/v2.39.0 list helper). Each entry must be a
     /// single `name=selector` pair (`axon-T906`).
     pub extract: Vec<String>,
     /// `scrape_dom` adaptive relocation: when a declared selector misses,
     /// the engine attempts a HEURISTIC relocation above `similarity_floor`
-    /// (D98.4 — a heuristic, NOT a proof). `None`/`false` ⇒ strict
+    /// (the design decision — a heuristic, NOT a proof). `None`/`false` ⇒ strict
     /// selectors only. Enabling it makes the tool carry `<storage>` (the
-    /// per-tenant selector-memory, §98.h).
+    /// per-tenant selector-memory, v2.52.0).
     pub adaptive: Option<bool>,
     /// The similarity threshold ∈ [0,1] governing adaptive relocation
     /// (`axon-T907`). Only meaningful with `adaptive: true`.
@@ -2488,15 +2488,15 @@ pub struct ScrapeSpec {
     /// `scrape_crawl` link-follow selector/pattern: which links to enqueue
     /// from each fetched page. Empty ⇒ no expansion (single-page crawl).
     pub follow: String,
-    /// `scrape_crawl` maximum link depth from the seed (bounded, D98.11).
+    /// `scrape_crawl` maximum link depth from the seed (bounded, the design decision).
     pub max_depth: Option<i64>,
-    /// `scrape_crawl` maximum total pages fetched (bounded, D98.11). A
+    /// `scrape_crawl` maximum total pages fetched (bounded, the design decision). A
     /// hostile/infinite site can never exhaust the crawler (`axon-T908`).
     pub max_pages: Option<i64>,
     /// `scrape_crawl` fetch concurrency (bounded, ≥ 1).
     pub concurrency: Option<i64>,
     /// `scrape_crawl` politeness/rate reference: a declared `budget`
-    /// (`budget{rate:/max:}`, §72) governing per-host request pacing
+    /// (`budget{rate:/max:}`, v2.28.0) governing per-host request pacing
     /// (D98 reuse of the budget kernel). Empty ⇒ engine default pacing.
     pub politeness: String,
     /// `scrape_crawl` checkpoint store reference: a declared `axonstore`
@@ -2521,14 +2521,14 @@ pub struct TypeDefinition {
     pub fields: Vec<TypeField>,
     pub range_constraint: Option<RangeConstraint>,
     pub where_clause: Option<WhereClause>,
-    /// §ESK Fase 6.1 — κ regulatory class attached to a type.
+    /// ESK — κ regulatory class attached to a type.
     pub compliance: Vec<String>,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
@@ -2570,11 +2570,11 @@ pub struct FlowDefinition {
     pub return_type: Option<TypeExpr>,
     pub body: Vec<FlowStep>,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
@@ -2594,10 +2594,10 @@ pub enum FlowStep {
     ForIn(ForInStatement),
     Let(LetStatement),
     Return(ReturnStatement),
-    /// Fase 19.e — `break` keyword. Payload-free; carries only its
+    /// v1.14.0 — `break` keyword. Payload-free; carries only its
     /// source location for error reporting.
     Break(BreakStatement),
-    /// Fase 19.e — `continue` keyword. Payload-free; same shape as
+    /// v1.14.0 — `continue` keyword. Payload-free; same shape as
     /// `Break`.
     Continue(ContinueStatement),
     /// Lambda Data application in a flow step.
@@ -2617,7 +2617,7 @@ pub enum FlowStep {
     Consensus(ConsensusBlock),
     Forge(ForgeBlock),
     Focus(FocusStep),
-    /// §Fase 109 — the proof-carrying derivative step.
+    /// v2.65.0 — the proof-carrying derivative step.
     Grad(GradStep),
     Associate(AssociateStep),
     Aggregate(AggregateStep),
@@ -2625,18 +2625,18 @@ pub enum FlowStep {
     Ingest(IngestStep),
     ShieldApply(ShieldApplyStep),
     Stream(StreamBlock),
-    /// §Fase 120 — `handle E { … } in { … }`, the delimited handler scope.
+    /// v2.87.0 — `handle E { … } in { … }`, the delimited handler scope.
     Handle(HandleBlock),
-    /// §Fase 120 — `perform Op(args)`. Legal at flow level and inside a step
+    /// v2.87.0 — `perform Op(args)`. Legal at flow level and inside a step
     /// body (where it lands on [`StepNode::performs`], NOT on `pix_ops`: a
     /// `pix_op` is an ELEVATION that runs BEFORE generation, and a `perform`
     /// whose argument is the step's own output must run AFTER it).
     Perform(PerformStep),
-    /// §Fase 120 — `resume(v)`. Clause bodies only.
+    /// v2.87.0 — `resume(v)`. Clause bodies only.
     Resume(ResumeStep),
-    /// §Fase 120 — `abort(v)`. Clause bodies only.
+    /// v2.87.0 — `abort(v)`. Clause bodies only.
     Abort(AbortStep),
-    /// §Fase 120 — `forward Op(args)` (D12). Clause bodies only.
+    /// v2.87.0 — `forward Op(args)` (D12). Clause bodies only.
     Forward(ForwardStep),
     Navigate(NavigateStep),
     Drill(DrillStep),
@@ -2645,45 +2645,45 @@ pub enum FlowStep {
     OtsApply(OtsApplyStep),
     MandateApply(MandateApplyStep),
     ComputeApply(ComputeApplyStep),
-    /// §Fase 119.m.3 — `<Agent>(arg, …)`, the step-body invocation of a
-    /// declared agent. Dispatches §119.m.1's bounded control loop.
+    /// v2.83.0 — `<Agent>(arg, …)`, the step-body invocation of a
+    /// declared agent. Dispatches v2.83.0's bounded control loop.
     AgentCall(AgentCallStep),
     Listen(ListenStep),
     DaemonStep(DaemonStepNode),
-    /// §λ-L-E Fase 13 — π-calculus output prefix `c⟨v⟩.P` (Chan-Output / Chan-Mobility).
+    /// v1.6.0 — π-calculus output prefix `c⟨v⟩.P` (Chan-Output / Chan-Mobility).
     Emit(EmitStatement),
-    /// §Fase 92.b — `mint <Credential> as <binding>`: ephemeral-credential
+    /// v2.46.0 — `mint <Credential> as <binding>`: ephemeral-credential
     /// minting (attenuated, TTL-bounded; `authority_only_attenuates`).
     Mint(MintStep),
-    /// §Fase 94.b — `rotate <SecretsStore> [where "…"] with <Tool> as
+    /// v2.48.0 — `rotate <SecretsStore> [where "…"] with <Tool> as
     /// <binding>`: mediated secret renewal (`rotation_without_revelation`).
     Rotate(RotateStep),
-    /// §λ-L-E Fase 13 — capability extrusion (Publish-Ext, paper §4.3).
+    /// v1.6.0 — capability extrusion (Publish-Ext, paper section 4.3).
     Publish(PublishStatement),
-    /// §λ-L-E Fase 13 — dual of publish (dynamic typed handle import).
+    /// v1.6.0 — dual of publish (dynamic typed handle import).
     Discover(DiscoverStatement),
     Persist(PersistStep),
     Retrieve(RetrieveStep),
     Mutate(MutateStep),
     Purge(PurgeStep),
     Transact(TransactBlock),
-    /// §Fase 88.a — `warden(<target>) within <Scope> { … }` adversarial
+    /// v2.43.0 — `warden(<target>) within <Scope> { … }` adversarial
     /// security-analysis block. A flow-body block (like `quant`): a target
     /// reference + a mandatory `within <Scope>` authorization clause + a nested
     /// body (`find_exploits()` → `list[Vulnerability]`, `fortify`). NOT a
     /// top-level declaration.
     Warden(WardenBlock),
-    /// §Fase 51.a — `quant { … }` cognitive block (Hilbert-space projection).
+    /// v2.4.0 — `quant { … }` cognitive block (Hilbert-space projection).
     /// Carries an optional attribute header + a real nested body of flow steps
-    /// (so §51.b's Continuous Type Invariant can scan it). Lives inside a flow
+    /// (so v2.4.0's Continuous Type Invariant can scan it). Lives inside a flow
     /// body like `par`; NOT a top-level declaration.
     Quant(QuantBlock),
-    /// §Fase 51.d.2 — `yield <expr>` measurement point inside a `quant` block.
+    /// v2.4.0 — `yield <expr>` measurement point inside a `quant` block.
     /// Collapses the evolved amplitudes back to classical silicon; the effect
     /// operation whose resolution is a one-shot delimited continuation. Only
     /// well-formed inside a `quant` block (the checker rejects it elsewhere).
     Yield(YieldStatement),
-    /// §Fase 52.c — `run <Flow>(args)` as a flow-step: invoke a declared flow
+    /// v2.4.0 — `run <Flow>(args)` as a flow-step: invoke a declared flow
     /// from inside a body (notably a `daemon`'s `listen` handler — the Q3 ask).
     /// Reuses the top-level [`RunStatement`] shape (flow name + args + optional
     /// persona/context/anchors). Distinct from `Declaration::Run` only by
@@ -2702,11 +2702,11 @@ pub struct GenericFlowStep {
 
 // ── Step ─────────────────────────────────────────────────────────────────────
 
-/// §Fase 119 (D119.4) — a governance application written INSIDE the step it
+/// v2.83.0 — a governance application written INSIDE the step it
 /// governs: `mandate SECCompliance on data`, `shield PatientShield on symptoms
 /// -> clean_data`, `ots Extract on raw`.
 ///
-/// README §XV has always written the application in this position — a mandate
+/// README XV has always written the application in this position — a mandate
 /// next to the `output:` it constrains, scoped to THIS step's generation — and
 /// the parser accepted the same form only at flow level, which is why README
 /// blocks 40–42 never compiled. The AST node is deliberately the same shape as
@@ -2736,25 +2736,25 @@ pub struct StepNode {
     pub confidence_floor: Option<f64>,
     pub navigate_ref: String,
     pub apply_ref: String,
-    /// §Fase 68.b — the step's declared MODEL CAPABILITY requirement: the
-    /// context window (in tokens) the cognitive act needs. The §68.c resolver
+    /// v2.22.0 — the step's declared MODEL CAPABILITY requirement: the
+    /// context window (in tokens) the cognitive act needs. The v2.22.0 resolver
     /// maps it to the smallest concrete model that satisfies it (per the
-    /// resolved backend's §68.a catalog); `None` → the backend default
-    /// (back-compat). Declare the NEED, not the vendor SKU (D68.1).
+    /// resolved backend's v2.22.0 catalog); `None` → the backend default
+    /// (back-compat). Declare the NEED, not the vendor SKU.
     pub requires_context: Option<u32>,
-    /// §Fase 91.a — the step's declared cognitive timezone: an IANA name
+    /// v2.46.0 — the step's declared cognitive timezone: an IANA name
     /// (`"America/Bogota"`, `"UTC"`). When present, the runtime injects the
     /// run's captured instant — rendered in THIS zone — into the step's
-    /// cognitive context (`time_is_an_explicit_input`, the §71 doctrine
+    /// cognitive context (`time_is_an_explicit_input`, the v2.27.0 doctrine
     /// applied to cognition). Format-checked at compile time (`axon-T892`);
-    /// full IANA membership is the runtime's job (chrono-tz, §91.b).
+    /// full IANA membership is the runtime's job (chrono-tz, v2.46.0).
     /// Overrides a bound `context`'s `now:` for this step. `None` → no
     /// temporal injection (back-compat).
     pub now_tz: Option<String>,
-    /// §Fase 119 (D119.4) — the governance applications declared in this
-    /// step's body, in source order. Empty for every pre-§119 program.
+    /// v2.83.0 — the governance applications declared in this
+    /// step's body, in source order. Empty for every pre-v2.83.0 program.
     pub guards: Vec<StepGuardNode>,
-    /// §Fase 119.f — the STATEMENTS written in this step's body, in source
+    /// v2.83.0 — the STATEMENTS written in this step's body, in source
     /// order: the PIX verbs (`navigate` / `drill` / `trail` / `validate`)
     /// and the step-scoped invocations (`probe … for […]`, `use_tool … with
     /// …`, a bare `<Agent>(args)` call, `par { … }`).
@@ -2762,11 +2762,11 @@ pub struct StepNode {
     /// README's pix/corpus family writes them exactly here, with a braceless
     /// field list, and each produces a binding (`as: relevant_sections`) the
     /// step's own `ask:` then interpolates. So they are ELEVATIONS, the same
-    /// shape §119.c gave `lambda`/`ots`: dispatch runs them BEFORE the step's
+    /// shape v2.83.0 gave `lambda`/`ots`: dispatch runs them BEFORE the step's
     /// generation. Reusing the flow-level node types (no new AST shapes) is
-    /// the D119.4 doctrine — one concept, two positions.
+    /// the the design decision doctrine — one concept, two positions.
     pub pix_ops: Vec<FlowStep>,
-    /// §Fase 119.n — a `stream<T> { … }` written in THIS step's body.
+    /// v2.83.0 — a `stream<T> { … }` written in THIS step's body.
     ///
     /// Deliberately NOT a [`Self::pix_ops`] entry, and the distinction is the
     /// whole design. Every `pix_ops` statement is an ELEVATION: dispatch runs it
@@ -2781,11 +2781,11 @@ pub struct StepNode {
     /// on nothing, once per run. The field is what tells the dispatcher this
     /// step's output IS the stream.
     pub stream: Option<Box<StreamBlock>>,
-    /// §Fase 120 — the `perform Op(args)` statements written in THIS step's
+    /// v2.87.0 — the `perform Op(args)` statements written in THIS step's
     /// body, in source order.
     ///
-    /// A THIRD position, and for the same reason §119.n needed a second one.
-    /// `fase_23` §3.1 publishes:
+    /// A THIRD position, and for the same reason v2.83.0 needed a second one.
+    /// `the design plan` section 3.1 publishes:
     ///
     /// ```text
     /// step generate {
@@ -2816,11 +2816,11 @@ pub struct IntentNode {
     pub output_type: Option<TypeExpr>,
     pub confidence_floor: Option<f64>,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
@@ -2839,11 +2839,11 @@ pub struct RunStatement {
     pub output_to: String,
     pub effort: String,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
@@ -2855,22 +2855,22 @@ pub struct EpistemicBlock {
     pub mode: String,
     pub body: Vec<Declaration>,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
 
-// ── §Fase 70.a — the pure expression engine (`Expr`) ─────────────────────────
+// ── v2.26.0 — the pure expression engine (`Expr`) ─────────────────────────
 
 /// A pure, total expression in AXON's closed-catalog expression sublanguage
-/// (§Fase 70). Evaluates to a value with no side effects, no I/O, no recursion
+/// (v2.26.0). Evaluates to a value with no side effects, no I/O, no recursion
 /// and no unbounded loops — so it is decidable and const-foldable. Mounted as
-/// the condition of an `if` (and, in later sub-fases, `let` values + `where:`
-/// predicates). Field/index access and the builtin catalog land in §70.c/d.
+/// the condition of an `if` (and, in later steps, `let` values + `where:`
+/// predicates). Field/index access and the builtin catalog land in v2.26.0.
 #[derive(Debug, Clone)]
 pub enum Expr {
     /// A typed literal (`42`, `3.14`, `true`, `"hello"`).
@@ -2881,19 +2881,19 @@ pub enum Expr {
     Unary(UnOp, Box<Expr>),
     /// A binary operation (`a + b`, `a >= b`, `a and b`).
     Binary(BinOp, Box<Expr>, Box<Expr>),
-    /// §Fase 70.c — a closed-catalog builtin call. `args[0]` is the receiver
+    /// v2.26.0 — a closed-catalog builtin call. `args[0]` is the receiver
     /// (the value before the `.`); any further entries are the call arguments.
     /// E.g. `recent.length` → `Call(Length, [Ref("recent")])`,
     /// `name.starts_with("Dr")` → `Call(StartsWith, [Ref("name"), Lit(Str)])`.
     Call(Builtin, Vec<Expr>),
-    /// §Fase 70.d — field access on a non-reference base (`items[0].name`,
+    /// v2.26.0 — field access on a non-reference base (`items[0].name`,
     /// `(expr).field`). A plain dotted path stays a `Ref` (`a.b.c`) for
     /// back-compat; this node is the structured form the JSONB SQL lowering
-    /// (deferred §73) consumes. The `String` is the field name.
+    /// (deferred v2.26.0) consumes. The `String` is the field name.
     Field(Box<Expr>, String),
-    /// §Fase 70.d — index access `base[index]` (array element / string char).
+    /// v2.26.0 — index access `base[index]` (array element / string char).
     Index(Box<Expr>, Box<Expr>),
-    /// §Fase 119.o — `let <name> = <value>` scoped over `<body>`: the classic
+    /// v2.83.0 — `let <name> = <value>` scoped over `<body>`: the classic
     /// let-in term, `let x = e₁ in e₂`.
     ///
     /// **Why the expression engine and not a list of bindings on the compute.**
@@ -2916,7 +2916,7 @@ pub enum Expr {
     },
 }
 
-/// The closed catalog of pure builtins (§Fase 70.c). All are total + pure.
+/// The closed catalog of pure builtins (v2.26.0). All are total + pure.
 /// Collection/string predicates only; the predicate-taking folds (`any`/`all`/
 /// `none`) need lambdas and are deferred, as are `sum`/`min`/`max` and `in`/`??`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -2935,17 +2935,17 @@ pub enum Builtin {
     StartsWith,
     /// `.ends_with(s)` — string suffix test.
     EndsWith,
-    /// §Fase 73.c — `.as_int` — honest coercion of a `Json` value to an
+    /// v2.26.0 — `.as_int` — honest coercion of a `Json` value to an
     /// integer. Fail-closed: a value that is not a JSON integer resolves
     /// to `null`, never a panic (doctrine `open_data_is_total`).
     AsInt,
-    /// §Fase 73.c — `.as_float` — honest coercion to a float (an integer
+    /// v2.26.0 — `.as_float` — honest coercion to a float (an integer
     /// widens; anything else → `null`).
     AsFloat,
-    /// §Fase 73.c — `.as_string` — honest coercion to a string (only a
+    /// v2.26.0 — `.as_string` — honest coercion to a string (only a
     /// JSON string succeeds; a number / bool / null → `null`).
     AsString,
-    /// §Fase 73.c — `.as_bool` — honest coercion to a boolean (only a
+    /// v2.26.0 — `.as_bool` — honest coercion to a boolean (only a
     /// JSON bool succeeds; anything else → `null`).
     AsBool,
 }
@@ -3004,7 +3004,7 @@ impl Builtin {
 }
 
 /// A literal value inside an [`Expr`]. The lexical form is preserved enough to
-/// round-trip; the runtime evaluator (§70.f) coerces across these per the
+/// round-trip; the runtime evaluator (v2.26.0) coerces across these per the
 /// existing string-runtime discipline.
 #[derive(Debug, Clone)]
 pub enum ExprLit {
@@ -3052,9 +3052,9 @@ pub struct ConditionalNode {
     pub else_body: Vec<FlowStep>,
     pub conditions: Vec<(String, String, String)>,
     pub conjunctor: String,
-    /// §Fase 70.a — the parsed expression form of the condition. `None` when
+    /// v2.26.0 — the parsed expression form of the condition. `None` when
     /// the condition fits the legacy `(condition, op, value)` + `or` shape
-    /// (then the legacy fields drive evaluation, byte-identical to pre-§70);
+    /// (then the legacy fields drive evaluation, byte-identical to pre-v2.26.0);
     /// `Some` only for the richer forms the legacy triple cannot express
     /// (`and`, `not`, arithmetic, parentheses, nesting), which the runtime
     /// evaluates via the pure expression evaluator. Zero IR drift for existing
@@ -3075,31 +3075,31 @@ pub struct ForInStatement {
 pub struct LetStatement {
     pub identifier: String,
     pub value_expr: String,
-    /// Fase 17.a — preserves the parser's tokenization intent so the
+    /// v1.12.0 — preserves the parser's tokenization intent so the
     /// runtime dispatcher can distinguish a quoted literal from a
     /// dotted-identifier reference. One of "literal", "reference",
-    /// "expression". Defaults to "literal" so any pre-Fase-17 caller
+    /// "expression". Defaults to "literal" so any pre-cycle-17 caller
     /// that constructs a LetStatement directly behaves as a literal.
     pub value_kind: String,
-    /// §Fase 51.c.3 — optional type annotation `let x: <TypeExpr> = …`.
+    /// v2.4.0 — optional type annotation `let x: <TypeExpr> = …`.
     /// `None` for the bare `let x = …` form (all pre-51.c.3 lets). Inside a
     /// `quant` block the Continuous Type Invariant inspects this to enforce the
     /// continuous-carrier discipline (`DensityMatrix[D]` D=2ⁿ; reject discrete
     /// conversational types). Carries the typed encoder-boundary contract.
     pub type_annotation: Option<TypeExpr>,
-    /// §Fase 70.f — the parsed expression form of the value, present only when
+    /// v2.26.0 — the parsed expression form of the value, present only when
     /// `value_kind == "expression"` (`let total = price * qty + tax`). The
     /// runtime evaluates it via the pure expression evaluator instead of the
-    /// pre-§70 behaviour (which treated an expression as an opaque literal
+    /// pre-v2.26.0 behaviour (which treated an expression as an opaque literal
     /// string). `None` for literal / reference / list values (byte-identical to
-    /// pre-§70.f).
+    /// pre-v2.26.0).
     pub value_ast: Option<Expr>,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
@@ -3110,7 +3110,7 @@ pub struct ReturnStatement {
     pub loc: Loc,
 }
 
-/// §Fase 51.d.2 — `yield <expr>` measurement point inside a `quant` block.
+/// v2.4.0 — `yield <expr>` measurement point inside a `quant` block.
 #[derive(Debug)]
 pub struct YieldStatement {
     /// The measured expression (the structural hypothesis / density-matrix
@@ -3122,7 +3122,7 @@ pub struct YieldStatement {
     pub loc: Loc,
 }
 
-/// Fase 19.e — `break` keyword inside a for-in body. Carries no
+/// v1.14.0 — `break` keyword inside a for-in body. Carries no
 /// payload; the runner translates it into a sentinel that
 /// terminates the loop. Parser scope check (`loop_depth`)
 /// guarantees this only appears inside a for-in body.
@@ -3131,7 +3131,7 @@ pub struct BreakStatement {
     pub loc: Loc,
 }
 
-/// Fase 19.e — `continue` keyword inside a for-in body. Same
+/// v1.14.0 — `continue` keyword inside a for-in body. Same
 /// shape as ``BreakStatement``; the runner uses a different
 /// sentinel type to distinguish loop-exit from iteration-skip.
 #[derive(Debug)]
@@ -3152,11 +3152,11 @@ pub struct LambdaDataDefinition {
     pub provenance: String,           // ρ ∈ EntityRef — causal origin
     pub derivation: String, // δ ∈ Δ — see derivation catalogue (raw, derived, inferred, aggregated, transformed)
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
@@ -3175,16 +3175,16 @@ pub struct LambdaDataApplyNode {
 #[derive(Debug)]
 pub struct ProbeStep {
     pub target: String,
-    /// §Fase 119.f — the extraction list README writes:
-    /// `probe doc for [parties, obligations, dates]`. Pre-§119.f the step
+    /// v2.83.0 — the extraction list README writes:
+    /// `probe doc for [parties, obligations, dates]`. Pre-v2.83.0 the step
     /// body reached `probe` and ran `skip_flow_step_structural`, which
-    /// DISCARDED it (the §111 silent-drop shape); the flow-level form kept
+    /// DISCARDED it (the v2.67.0 silent-drop shape); the flow-level form kept
     /// only the target and never had a slot for the fields at all.
     pub fields: Vec<String>,
     pub loc: Loc,
 }
-/// §Fase 119.f.8 — `reason { given: … ask: "…" depth: N }`, the README's
-/// most-published cognitive block (16 occurrences) and, until this fase, the
+/// v2.83.0 — `reason { given: … ask: "…" depth: N }`, the README's
+/// most-published cognitive block (16 occurrences) and, until this cycle, the
 /// most expensive silent drop in the language.
 ///
 /// **What was wrong.** The block form had NO home in this struct: `strategy`
@@ -3196,17 +3196,17 @@ pub struct ProbeStep {
 /// block passed `axon check` with exit 0 and lowered to `"ask": ""`,
 /// `"given": ""`. `advertised.rs` attested `reason` as
 /// `Real { proof: "pure_shape::run_reason" }` — and the attestation was true
-/// of an engine no published program could reach. §111's own words: motor
+/// of an engine no published program could reach. v2.67.0's own words: motor
 /// real, cable muerto.
 ///
-/// The field set is CLOSED (§119.h.2's rule: when a block skips what it does
+/// The field set is CLOSED (v2.83.0's rule: when a block skips what it does
 /// not recognise, ask which direction the silence fails in — a typo'd `ask:`
 /// yields a promptless deliberation, which is weaker, not louder).
 #[derive(Debug)]
 pub struct ReasonStep {
     /// `chain_of_thought: enabled` and `strategy: <name>` both land here.
     pub strategy: String,
-    /// The pre-§119.f.8 positional form `reason <target>`. Empty for the
+    /// The pre-v2.83.0 positional form `reason <target>`. Empty for the
     /// block form, which names its evidence in `given` instead.
     pub target: String,
     /// `given:` — the evidence this deliberation reasons OVER. One reference,
@@ -3215,7 +3215,7 @@ pub struct ReasonStep {
     /// in the published README. Resolved against the flow bindings at dispatch.
     pub given: String,
     /// `ask:` — the question. This is the deliberation's actual prompt; before
-    /// §119.f.8 it reached the model in exactly zero published programs.
+    /// v2.83.0 it reached the model in exactly zero published programs.
     pub ask: String,
     /// `depth:` — the declared deliberation depth. Consumed by the dispatch
     /// FRAMING (like `strategy`, the other declared-posture field), not by a
@@ -3228,7 +3228,7 @@ pub struct ReasonStep {
 pub struct ValidateStep {
     pub target: String,
     pub rule: String,
-    /// §Fase 121 — `if confidence < 0.8 -> refine(max_attempts: 2)`, ATTACHED
+    /// v2.88.0 — `if confidence < 0.8 -> refine(max_attempts: 2)`, ATTACHED
     /// to the validation it governs.
     ///
     /// The guard is a field of the `validate` rather than a sibling statement,
@@ -3243,7 +3243,7 @@ pub struct ValidateStep {
     pub loc: Loc,
 }
 
-/// §Fase 121 — the self-correction guard three README blocks publish:
+/// v2.88.0 — the self-correction guard three README blocks publish:
 ///
 /// ```text
 /// validate Assess.output against: ContractSchema
@@ -3277,7 +3277,7 @@ pub struct RefineStep {
     pub strategy: String,
     pub loc: Loc,
 }
-/// §Fase 119.f.9 — `weave [a, b] format: T include: [x, y]`, the synthesis
+/// v2.83.0 — `weave [a, b] format: T include: [x, y]`, the synthesis
 /// statement the README closes fourteen of its examples with.
 ///
 /// **What was wrong.** The parser accepted only the BRACED field form
@@ -3294,21 +3294,21 @@ pub struct WeaveStep {
     pub format_type: String,
     pub priority: Vec<String>,
     pub style: String,
-    /// §Fase 119.f.9 — `include: [summary, risks, recommendations]`: the parts
+    /// v2.83.0 — `include: [summary, risks, recommendations]`: the parts
     /// the synthesis must contain. Published in twelve of the fourteen README
-    /// weaves and, until this fase, had no slot at any position. Consumed by
+    /// weaves and, until this cycle, had no slot at any position. Consumed by
     /// the dispatch framing, like `priority` and `style`.
     pub include: Vec<String>,
     pub loc: Loc,
 }
-/// §Fase 58.b — the closed catalog of `use <Tool>` argument forms. The
+/// v2.8.0 — the closed catalog of `use <Tool>` argument forms. The
 /// invocation surfaces are mutually exclusive, so a sum type models them
 /// exactly (no ambiguous dual-empty state). NOTE: `apply: Tool given: <struct>`
 /// (the splat form) is NOT here — it rides `StepNode.apply_ref` and is
-/// validated against the tool schema in §58.d, not parsed as a `use`.
+/// validated against the tool schema in v2.8.0, not parsed as a `use`.
 #[derive(Debug, Clone, PartialEq)]
 pub enum UseArgs {
-    /// `use Tool on "${arg}"` / `use Tool on query` — the §54.b single
+    /// `use Tool on "${arg}"` / `use Tool on query` — the v2.7.0 single
     /// positional argument. D5 back-compat: behaves byte-identically to the
     /// pre-58 `argument: String` (empty string when no `on` clause).
     LegacyPositional(String),
@@ -3316,19 +3316,19 @@ pub enum UseArgs {
     /// keyword args. Each entry is `(name, value, value_kind)`: `value` is the
     /// expression STRING (the frontend has no structured `Expr`; mirrors
     /// `argument` / `parse_argument_list`); `value_kind` is `"literal"` or
-    /// `"reference"` — the §Fase 60 classification from `parse_let_atom`, so the
+    /// `"reference"` — the v2.10.0 classification from `parse_let_atom`, so the
     /// runtime resolves a bare identifier / `Step.output` as a binding lookup
     /// (like `let`) instead of passing the name literally. The type-checker
-    /// (§58.d + §60.c) validates each entry against the tool's declared input
+    /// (v2.8.0 + v2.10.0) validates each entry against the tool's declared input
     /// schema (W2 / CT-2 caller blame) and references against their source.
     Named(Vec<(String, String, String)>),
 }
 
 impl UseArgs {
-    /// §58.b transitional — the legacy single-arg string for the IR `argument`
-    /// field (still `String` until §58.c carries structured named args).
+    /// v2.8.0 transitional — the legacy single-arg string for the IR `argument`
+    /// field (still `String` until v2.8.0 carries structured named args).
     /// `Named` projects an empty argument here; the type-checker validates
-    /// named args from the AST, and §58.c/e wire their structured dispatch.
+    /// named args from the AST, and v2.8.0 wire their structured dispatch.
     pub fn legacy_argument(&self) -> String {
         match self {
             UseArgs::LegacyPositional(s) => s.clone(),
@@ -3357,10 +3357,10 @@ pub struct RecallStep {
 }
 #[derive(Debug)]
 pub struct ParBlock {
-    /// §Fase 65 — the concurrent branches. Each top-level statement inside
+    /// v2.15.0 — the concurrent branches. Each top-level statement inside
     /// `par { … }` is one branch (a single-statement body); they execute
     /// concurrently at runtime. Empty for a `par {}` with no statements
-    /// (degenerate no-op). Before §65 this was payload-free (the branches were
+    /// (degenerate no-op). Before v2.15.0 this was payload-free (the branches were
     /// skipped at parse time), so `par` ran as a stub.
     pub branches: Vec<Vec<FlowStep>>,
     pub loc: Loc,
@@ -3379,15 +3379,15 @@ pub struct DeliberateBlock {
 pub struct ConsensusBlock {
     pub loc: Loc,
 }
-/// §Fase 86 — `forge <Name>(seed: <string>) -> <Type> { mode:, novelty:,
+/// v2.41.0 — `forge <Name>(seed: <string>) -> <Type> { mode:, novelty:,
 /// depth:, branches:, constraints: }` — Directed Creative Synthesis. A
 /// flow-body block that runs the Poincaré-Hadamard four-phase creative process
 /// (Preparation → Incubation → Illumination → Verification) under a **measured,
-/// fail-closed novelty guarantee** (D86.4/D86.6): the returned typed value must
+/// fail-closed novelty guarantee**: the returned typed value must
 /// clear a Normalized-Compression-Distance novelty floor against the obvious
 /// baseline AND its `constraints:` anchor, or the forge fails structurally.
 ///
-/// Before §86 this was a no-op stub (`{ loc }` only, body discarded). §86 makes
+/// Before v2.41.0 this was a no-op stub (`{ loc }` only, body discarded). v2.41.0 makes
 /// the README's long-standing claim true.
 #[derive(Debug, Default)]
 pub struct ForgeBlock {
@@ -3416,22 +3416,22 @@ pub struct ForgeBlock {
 }
 #[derive(Debug)]
 pub struct FocusStep {
-    /// §Fase 108.d — the declared dataspace this σ∘π reads (the field
+    /// v2.63.0 — the declared dataspace this σ∘π reads (the field
     /// keeps its historical name; T930 requires it to resolve to a
     /// `dataspace` symbol).
     pub expression: String,
-    /// §Fase 108.d — the data-plane `where:` clause (the §35 closed
-    /// filter grammar, shared with retrieve/navigate — D108.9). Empty
+    /// v2.63.0 — the data-plane `where:` clause (the v1.30.0 closed
+    /// filter grammar, shared with retrieve/navigate — the design decision). Empty
     /// ⇒ no filter. Validated fail-closed at dispatch, like retrieve.
     pub where_expr: String,
-    /// §Fase 108.d — π: the projected columns (empty ⇒ all).
+    /// v2.63.0 — π: the projected columns (empty ⇒ all).
     pub select: Vec<String>,
-    /// §Fase 108.d — the binding name for the result (`as:`). Empty ⇒
+    /// v2.63.0 — the binding name for the result (`as:`). Empty ⇒
     /// the dataspace name.
     pub output: String,
     pub loc: Loc,
 }
-/// §Fase 109.a — `grad <letName> wrt <x> [as <name>]`: differentiate the
+/// v2.65.0 — `grad <letName> wrt <x> [as <name>]`: differentiate the
 /// EXPRESSION a prior rich `let` bound (its AST rides the IR), at compile
 /// time, symbolically. The derivative is checked (T931/T932), simplified,
 /// and stored in the IR — a proof-carrying artifact, re-derived at deploy.
@@ -3451,7 +3451,7 @@ pub struct AssociateStep {
     pub left: String,
     pub right: String,
     pub using_field: String,
-    /// §Fase 108.d — result binding name (`as:`). Empty ⇒ `<L>_<R>`.
+    /// v2.63.0 — result binding name (`as:`). Empty ⇒ `<L>_<R>`.
     pub output: String,
     pub loc: Loc,
 }
@@ -3460,11 +3460,11 @@ pub struct AggregateStep {
     pub target: String,
     pub group_by: Vec<String>,
     pub alias: String,
-    /// §Fase 108.d — the closed aggregate catalog entries
+    /// v2.63.0 — the closed aggregate catalog entries
     /// (`count` | `count(col)` | `sum(col)` | `avg(col)` | `min(col)` |
     /// `max(col)`), kept RAW here; T930 validates shape + columns.
     pub compute: Vec<String>,
-    /// §Fase 108.d — data-plane `where:` (D108.9). Empty ⇒ no filter.
+    /// v2.63.0 — data-plane `where:`. Empty ⇒ no filter.
     pub where_expr: String,
     pub loc: Loc,
 }
@@ -3472,7 +3472,7 @@ pub struct AggregateStep {
 pub struct ExploreStepNode {
     pub target: String,
     pub limit: Option<i64>,
-    /// §Fase 108.d — result binding name (`as:`). Empty ⇒ the target.
+    /// v2.63.0 — result binding name (`as:`). Empty ⇒ the target.
     pub output: String,
     pub loc: Loc,
 }
@@ -3480,13 +3480,13 @@ pub struct ExploreStepNode {
 pub struct IngestStep {
     pub source: String,
     pub target: String,
-    /// §Fase 108.c — the declared wire format of the source bytes
-    /// (closed catalog: `csv` | `json`). Kept RAW at parse; the §108.c
+    /// v2.63.0 — the declared wire format of the source bytes
+    /// (closed catalog: `csv` | `json`). Kept RAW at parse; the v2.63.0
     /// type-checker requires it and validates it (`axon-T929`) — an
     /// ingest that does not declare what it is parsing is refused.
     pub format: String,
-    /// §Fase 108.c — bounds enforced on the RAW byte stream BEFORE any
-    /// parsing (the §100 discipline). `None` ⇒ the engine's conservative
+    /// v2.63.0 — bounds enforced on the RAW byte stream BEFORE any
+    /// parsing (the v2.54.0 discipline). `None` ⇒ the engine's conservative
     /// defaults apply (bounded by default, never unbounded).
     pub max_bytes: Option<u64>,
     pub max_rows: Option<u64>,
@@ -3499,7 +3499,7 @@ pub struct ShieldApplyStep {
     pub output_type: String,
     pub loc: Loc,
 }
-/// §Fase 34 / §Fase 111.e / **§Fase 119.n** — `stream<T> { on_chunk … on_complete … }`.
+/// v1.29.0 / v2.67.0 / **v2.83.0** — `stream<T> { on_chunk … on_complete … }`.
 ///
 /// The body used to NOT EXIST. `parse_block_step` — shared with `deliberate`,
 /// `consensus` and (pre-retraction) `transact` — called `skip_braced_block()`
@@ -3508,9 +3508,9 @@ pub struct ShieldApplyStep {
 /// body never reached the AST for anything to execute. Four advertised
 /// primitives died in that one function.
 ///
-/// **§119.n — and §111.e closed that with the WRONG SHAPE.** It gave the block a
+/// **v2.83.0 — and v2.67.0 closed that with the WRONG SHAPE.** It gave the block a
 /// `body: Vec<FlowStep>`, which no published block and no paper writes. The
-/// specified surface — `docs/fase/fase_23_algebraic_effects_runtime.md` §3.7, whose D8
+/// specified surface — `docs/cycle/algebraic_effects_runtime.md` section 3.7, whose D8
 /// promises *"backward compat for `stream<τ>` 100%, cero cambios en `.axon`
 /// source files de adopters"* — is `stream<T> { on_chunk: B₁ on_complete: B₂ }`,
 /// and README block 15 publishes exactly that. Measured before this landed:
@@ -3522,10 +3522,10 @@ pub struct ShieldApplyStep {
 ///     dispatcher with `pix_ops=0`, `ask=""`, `output=""` — an EMPTY step, whose
 ///     `Stream.output` the next step then reasoned over.
 ///
-/// So §111.e's attestation was the §119.f.8 `reason` defect one more time: a real
+/// So v2.67.0's attestation was the v2.83.0 `reason` defect one more time: a real
 /// engine behind a grammar no adopter could write. `body` is KEPT (it parses, it
 /// lowers, it runs, and removing it would break any program written against
-/// §111.e), but it is no longer the primitive's published face.
+/// v2.67.0), but it is no longer the primitive's published face.
 #[derive(Debug)]
 pub struct StreamBlock {
     /// The `<T>` in `stream<T>` — the CHUNK type. Empty when the block is
@@ -3533,7 +3533,7 @@ pub struct StreamBlock {
     ///
     /// It used to be discarded silently: `parse_stream_block`'s "tolerate the
     /// pre-111 form" loop advanced to the first `{`, eating `<QuoteData>` on the
-    /// way. A type parameter consumed by nothing is the §111 defect, so it is
+    /// way. A type parameter consumed by nothing is the v2.67.0 defect, so it is
     /// captured here and type-checked at the handler boundary.
     pub chunk_type: String,
     /// `on_chunk: { … }` — run ONCE PER CHUNK, with the chunk bound under
@@ -3543,13 +3543,13 @@ pub struct StreamBlock {
     /// body is a STEP body and not a flow body: block 15 writes
     /// `on_chunk: { probe chunk for […] output: QuoteSnapshot }`, and `output:`
     /// is a step field that has no flow-level position at all. Sharing the shape
-    /// means the arm reuses `run_step` — D119.4's "one concept, two positions",
+    /// means the arm reuses `run_step` — the design decision's "one concept, two positions",
     /// so there is no second dispatch implementation to drift.
     pub on_chunk: Option<StepNode>,
     /// `on_complete: { … }` — run ONCE, after the source closes, with the
     /// accumulated stream bound under `complete`. `None` when absent.
     pub on_complete: Option<StepNode>,
-    /// §Fase 119.n.3 — `on_error: { … }` — run when the SOURCE fails, with the
+    /// v2.83.0 — `on_error: { … }` — run when the SOURCE fails, with the
     /// failure bound under `error`.
     ///
     /// It handles a failure of the **producer**, never a failure of the author's
@@ -3562,15 +3562,15 @@ pub struct StreamBlock {
     /// output: the author declared what to do, so the recovery is explicit
     /// rather than a swallowed error. When absent, the failure propagates.
     pub on_error: Option<StepNode>,
-    /// §Fase 111.e's body form: `stream { <steps> }`. Executed in order; each
+    /// v2.67.0's body form: `stream { <steps> }`. Executed in order; each
     /// one's fragments are emitted on the flow's event channel as produced.
     /// Retained for compatibility — see the type-level note above.
     pub body: Vec<FlowStep>,
     pub loc: Loc,
 }
-// ── §Fase 120 — algebraic effects (Plotkin/Pretnar) ─────────────────────────
+// ── v2.87.0 — algebraic effects (Plotkin/Pretnar) ─────────────────────────
 //
-// The four constructs `fase_23` §3.6/§3.7 fixes: a top-level `effect`
+// The four constructs `the design plan` section 3.6/section 3.7 fixes: a top-level `effect`
 // declaration, `perform` in a step or flow body, `handle … in …` in a flow
 // body, and `resume()` / `abort()` / `forward` inside a handler clause.
 //
@@ -3578,15 +3578,15 @@ pub struct StreamBlock {
 // That module is a self-contained FSM over a JSON instruction alphabet whose
 // catch-all variant (`Instruction::Passthrough`, `#[serde(other)]`) is INERT —
 // lowering a handler body onto it would make every non-effect node in the body
-// a no-op, which is precisely the §111 defect this fase exists not to repeat.
-// D120.1: the effect machine is the DISPATCHER, and the instruction alphabet is
+// a no-op, which is precisely the v2.67.0 defect this cycle exists not to repeat.
+// the design decision: the effect machine is the DISPATCHER, and the instruction alphabet is
 // `IRFlowNode`, so a handler clause can `emit`, `use` a tool or `persist` like
-// any other body. See `docs/fase/fase_120_the_effect_system.md`.
+// any other body. See `docs/cycle/the_effect_system.md`.
 
 /// `effect SSE { Emit(token: Token) -> Unit  Done() -> Never }` — a top-level
-/// declaration, a peer of `tool` / `persona` / `anchor` per `fase_23` §3.1.
+/// declaration, a peer of `tool` / `persona` / `anchor` per `the design plan` section 3.1.
 ///
-/// The declaration is what makes the operation catalog CLOSED. D120.2 resolves
+/// The declaration is what makes the operation catalog CLOSED. the design decision resolves
 /// a bare `perform Emit(x)` against exactly this set: one declarer ⇒ resolved,
 /// two ⇒ a compile error naming both, zero ⇒ a compile error. Without the
 /// declaration there is no catalog and `effect_name` would have to be guessed.
@@ -3595,9 +3595,9 @@ pub struct EffectDefinition {
     pub name: String,
     pub operations: Vec<EffectOperation>,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration.
+    /// v1.5.2 — leading comment trivia attached to this declaration.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia.
+    /// v1.5.2 — trailing comment trivia.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
 
@@ -3606,7 +3606,7 @@ pub struct EffectDefinition {
 pub struct EffectOperation {
     pub name: String,
     pub parameters: Vec<Parameter>,
-    /// The declared return type. `Never` is the bottom sentinel `fase_23` §3.1
+    /// The declared return type. `Never` is the bottom sentinel `the design plan` section 3.1
     /// writes on `Done() -> Never` — an operation whose handler is not expected
     /// to `resume`. Empty when the source omits `-> T`.
     pub return_type: String,
@@ -3618,11 +3618,11 @@ pub struct EffectOperation {
 #[derive(Debug)]
 pub struct HandleBlock {
     /// `handle E1, E2 { … }` — the effects this frame intercepts. More than one
-    /// is legal; `IRHandlerFrame.effect_names` in the Fase-23 IR is a `Vec` for
+    /// is legal; `IRHandlerFrame.effect_names` in the cycle-23 IR is a `Vec` for
     /// the same reason.
     pub effect_names: Vec<String>,
     pub clauses: Vec<HandlerClause>,
-    /// The `in { … }` block. Ordinary flow steps — this is what D120.1 buys.
+    /// The `in { … }` block. Ordinary flow steps — this is what the design decision buys.
     pub body: Vec<FlowStep>,
     pub loc: Loc,
 }
@@ -3642,16 +3642,16 @@ pub struct HandlerClause {
 
 /// `perform Emit(x)` (bare) or `perform SSE.Emit(x)` (qualified).
 ///
-/// D120.2 accepts both. `effect_name` is `None` for the bare form as written;
+/// the design decision accepts both. `effect_name` is `None` for the bare form as written;
 /// the IR generator resolves it against the declared catalog and the
 /// type-checker refuses an ambiguous or unknown operation with the offending
-/// location. The bare form is what `fase_23` §3.1 publishes, and under §119's
+/// location. The bare form is what `the design plan` section 3.1 publishes, and under v2.83.0's
 /// doctrine the published surface is the promise.
 #[derive(Debug)]
 pub struct PerformStep {
     pub effect_name: Option<String>,
     pub operation_name: String,
-    /// Argument expressions, verbatim source text. The Fase-23 IR carries
+    /// Argument expressions, verbatim source text. The cycle-23 IR carries
     /// `arguments: Vec<String>` for the same reason: resolution against the
     /// live bindings is a RUNTIME act, and pre-resolving here would freeze a
     /// value the enclosing step has not produced yet.
@@ -3689,23 +3689,23 @@ pub struct ForwardStep {
 
 #[derive(Debug)]
 pub struct NavigateStep {
-    /// §Fase 119.f — per-navigation `depth:` override (README's pix family
+    /// v2.83.0 — per-navigation `depth:` override (README's pix family
     /// writes it inline). `None` ⇒ the navigator's bounded-rationality
     /// default. Threaded into `NavConfig.d_max` at dispatch, so this field
-    /// DECIDES something — adding one consumed by nothing would be the §111
-    /// defect this fase exists to end.
+    /// DECIDES something — adding one consumed by nothing would be the v2.67.0
+    /// defect this cycle exists to end.
     pub depth: Option<i64>,
     pub pix_name: String,
     pub corpus_name: String,
     pub query_expr: String,
     pub trail_enabled: bool,
     pub output_name: String,
-    /// §Fase 63.B — for MDN corpus-graph navigation: the seed document `from:`
+    /// v2.13.0 — for MDN corpus-graph navigation: the seed document `from:`
     /// to start the ε-informative traversal. Empty for PIX tree navigation.
     pub seed: String,
-    /// §Fase 63.B — for MDN: the `budget:` (max documents). `None` = default.
+    /// v2.13.0 — for MDN: the `budget:` (max documents). `None` = default.
     pub budget: Option<i64>,
-    /// §Fase 66 (Q2) — optional column-scope filter (`where:`) for a
+    /// v2.17.0 (Q2) — optional column-scope filter (`where:`) for a
     /// `corpus from axonstore`. A raw filter expr (same shape as `retrieve …
     /// where`) pushed to the SELECT sourcing the corpus rows, so an adopter
     /// multiplexing sub-tenants in one axon-tenant via a column can scope the
@@ -3746,9 +3746,9 @@ pub struct MandateApplyStep {
     pub output_type: String,
     pub loc: Loc,
 }
-/// §Fase 119.m.3 — `<Agent>(arg, …)` written as a step-body statement: the
+/// v2.83.0 — `<Agent>(arg, …)` written as a step-body statement: the
 /// form the README uses in every one of its agent examples, and the last piece
-/// that makes §119.m.1's executor reachable from source.
+/// that makes v2.83.0's executor reachable from source.
 ///
 /// It is a distinct node rather than a reuse of [`ComputeApplyStep`] because
 /// the two are opposites: a `compute` is a PURE function with no model in the
@@ -3759,7 +3759,7 @@ pub struct MandateApplyStep {
 pub struct AgentCallStep {
     /// The declared `agent` being invoked. A NAME — never dotted.
     pub agent_name: String,
-    /// Positional arguments, each a §119.f.10 SUBJECT (a dotted reference or a
+    /// Positional arguments, each a v2.83.0 SUBJECT (a dotted reference or a
     /// literal). README writes `TrendAnalyzer(Gather.output)`.
     pub arguments: Vec<String>,
     pub loc: Loc,
@@ -3771,18 +3771,18 @@ pub struct ComputeApplyStep {
     pub output_name: String,
     pub loc: Loc,
 }
-/// §λ-L-E Fase 13 D4 — dual-mode listen.
+/// v1.6.0 D4 — dual-mode listen.
 ///
 /// `channel_is_ref = true` ⇒ `channel` is the name of a declared
-/// `ChannelDefinition` (canonical Fase 13 form).  `false` ⇒ legacy
+/// `ChannelDefinition` (canonical v1.6.0 form). `false` ⇒ legacy
 /// string topic (deprecated; type checker emits a warning).
 #[derive(Debug)]
 pub struct ListenStep {
     pub channel: String,
     pub channel_is_ref: bool,
     pub event_alias: String,
-    /// §Fase 52.a — the handler body: real flow-steps executed on each event /
-    /// scheduled tick. Pre-§52.a the `{ … }` block was `skip_braced_block`'d
+    /// v2.4.0 — the handler body: real flow-steps executed on each event /
+    /// scheduled tick. Pre-v2.4.0 the `{ … }` block was `skip_braced_block`'d
     /// (the listener was inert); now it is parsed so a `daemon` can run logic
     /// (e.g. `run <Flow>(…)`) per trigger. Empty for a bodyless `listen`.
     pub body: Vec<FlowStep>,
@@ -3796,7 +3796,7 @@ pub struct DaemonStepNode {
 #[derive(Debug)]
 pub struct PersistStep {
     pub store_name: String,
-    /// §Fase 35.o — the `{ col: value }` field block. Empty when the
+    /// v1.30.0 — the `{ col: value }` field block. Empty when the
     /// step is written without a block (`persist <store>`), in which
     /// case the runtime falls back to writing the flow's user
     /// bindings as a row (backward-compatible with v1.30.0).
@@ -3808,28 +3808,28 @@ pub struct RetrieveStep {
     pub store_name: String,
     pub where_expr: String,
     pub alias: String,
-    /// §Fase 67.b — optional `order_by:` clause: a closed
+    /// v2.21.0 — optional `order_by:` clause: a closed
     /// comma-separated list of `column [asc|desc]` (same identifier
     /// discipline as `where:` columns — no injection). Empty = no
     /// ordering. Raw string, parsed + validated by the runtime
-    /// (`filter::render_bounds`) and at `axon check` (§38.d `axon-T807`).
+    /// (`filter::render_bounds`) and at `axon check` (v1.31.0 `axon-T807`).
     pub order_by: String,
-    /// §Fase 67.b — optional `limit:` clause: a `u32` literal OR a
+    /// v2.21.0 — optional `limit:` clause: a `u32` literal OR a
     /// `${binding}` resolved to a `u32` at runtime. Empty = no limit.
     /// Raw string (`"100"` or `"${max}"`), validated at `axon check`
-    /// (§38.d `axon-T808`).
+    /// (v1.31.0 `axon-T808`).
     pub limit_expr: String,
-    /// §Fase 76.d — optional `aggregate:` clause: a member of the CLOSED
+    /// v2.33.0 — optional `aggregate:` clause: a member of the CLOSED
     /// catalog `count` | `sum(<col>)` | `avg(<col>)` | `min(<col>)` |
     /// `max(<col>)`. Empty = a plain `SELECT *` retrieve. Raw string,
     /// parsed + validated by the runtime (`filter::parse_aggregate_clause`)
-    /// and at `axon check` (§76.d `axon-T843`/`T844`/`T845`).
+    /// and at `axon check` (v2.33.0 `axon-T843`/`T844`/`T845`).
     pub aggregate: String,
-    /// §Fase 76.d — optional `group_by:` clause: a comma-separated list
+    /// v2.33.0 — optional `group_by:` clause: a comma-separated list
     /// of column identifiers (same discipline as `order_by:` columns).
     /// Requires an `aggregate:`. Empty = no grouping.
     pub group_by: String,
-    /// §Fase 85.b — optional `cache:` reference. A `retrieve` reads a store
+    /// v2.40.0 — optional `cache:` reference. A `retrieve` reads a store
     /// (a `storage` effect — never `pure`), so caching it is always a WIDENING
     /// that accepts staleness: the named `cache` MUST carry a finite `ttl:`
     /// (`axon-T865`) and typically an `invalidate_on:`. Names a declared
@@ -3842,7 +3842,7 @@ pub struct RetrieveStep {
 pub struct MutateStep {
     pub store_name: String,
     pub where_expr: String,
-    /// §Fase 35.p — the `{ col: value }` SET assignments. Empty when
+    /// v1.30.0 — the `{ col: value }` SET assignments. Empty when
     /// the step declares no columns, in which case the runtime falls
     /// back to writing the flow's user bindings as the `SET` clause
     /// (backward-compatible with v1.31.0).
@@ -3860,59 +3860,59 @@ pub struct TransactBlock {
     pub loc: Loc,
 }
 
-/// §Fase 88.a — `scope <Name> { targets:, depth:, approver: }` — the
+/// v2.43.0 — `scope <Name> { targets:, depth:, approver: }` — the
 /// authorization scope a `warden` block runs `within`. The load-bearing safety
-/// construct (paper §5.2): it declares which resources may be analysed
+/// construct (paper section 5.2): it declares which resources may be analysed
 /// (`targets` allowlist), how invasively (`depth` ceiling), and who authorised
 /// it (`approver` capability). A `warden` with no resolvable in-scope
 /// authorization does not compile (fail-closed). Named + referenced, like
-/// `cache`/`cors`. **Unknown fields are a hard parse error** (D83.7): a scope
+/// `cache`/`cors`. **Unknown fields are a hard parse error**: a scope
 /// governs an offensive-capable analysis, so a typo can never silently widen it.
 #[derive(Debug, Default)]
 pub struct ScopeDefinition {
     pub name: String,
     /// `targets: [ "<resource>", … ]` — the allowlist of resources the operator
-    /// owns/controls and authorises for analysis. Required + non-empty (§88.c
+    /// owns/controls and authorises for analysis. Required + non-empty (v2.43.0
     /// `axon-T88x`); a target outside this list is a typed rejection.
     pub targets: Vec<String>,
     /// `depth: static_artifact | memory_dump | live_network` — the MOST invasive
     /// analysis depth this scope permits (the ceiling). Closed catalog, ordered
-    /// least→most invasive; empty ⇒ the safest default `static_artifact` (§88.c).
+    /// least→most invasive; empty ⇒ the safest default `static_artifact` (v2.43.0).
     pub depth: String,
     /// `approver: [requires] "<capability>"` — the capability whose holder
-    /// authorised this scope (segregation of duties, the `mandate` §21 model).
-    /// Required (§88.c).
+    /// authorised this scope (segregation of duties, the `mandate` v1.13.1 model).
+    /// Required (v2.43.0).
     pub approver: String,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia.
+    /// v1.5.2 — leading comment trivia.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia.
+    /// v1.5.2 — trailing comment trivia.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
 
-/// §Fase 88.a — the `warden(<target>) within <Scope> { … }` adversarial
+/// v2.43.0 — the `warden(<target>) within <Scope> { … }` adversarial
 /// security-analysis block. A flow-body block (like `quant`): it audits a
 /// `target` under a paraconsistent adversarial framing, emitting attested
 /// `Vulnerability` findings — but ONLY `within` a signed authorization `scope`.
-/// §88.a ships the SURFACE only; scope resolution + the depth/witness discipline
-/// is §88.c, and the real analysis engine is §88.d/f (enterprise).
+/// v2.43.0 ships the SURFACE only; scope resolution + the depth/witness discipline
+/// is v2.43.0, and the real analysis engine is v2.43.0 (enterprise).
 #[derive(Debug, Default)]
 pub struct WardenBlock {
     /// `warden(<target>)` — a reference to the resource under analysis (a
-    /// let-bound value / declared target). §88.c checks it is within the scope's
+    /// let-bound value / declared target). v2.43.0 checks it is within the scope's
     /// `targets` allowlist.
     pub target: String,
     /// `within <Scope>` — the MANDATORY authorization scope reference. Empty is a
-    /// hard error (§88.c `axon-T88x`, fail-closed): no scope ⇒ no analysis.
+    /// hard error (v2.43.0 `axon-T88x`, fail-closed): no scope ⇒ no analysis.
     pub scope_ref: String,
     /// The nested flow-body statements (`find_exploits()`, `fortify`, `emit`),
-    /// parsed like `par`/`quant` branches so §88.c can walk them.
+    /// parsed like `par`/`quant` branches so v2.43.0 can walk them.
     pub body: Vec<FlowStep>,
     pub loc: Loc,
 }
 
-/// §Fase 51.a — the `quant` cognitive primitive block surface
-/// (`docs/papers/paper_primitiva_quant.md`; enterprise §Fase 51).
+/// v2.4.0 — the `quant` cognitive primitive block surface
+/// (`docs/papers/paper_primitiva_quant.md`; enterprise v2.4.0).
 ///
 /// `quant` projects an MEK semantic tensor into a complex Hilbert space,
 /// evolves it under a variational / kernel-feature map, and collapses back to
@@ -3923,48 +3923,48 @@ pub struct WardenBlock {
 /// the Pauli-sum observable (D5), the register width / circuit depth, the
 /// projected-kernel bandwidth γ (D7), and the algebraic-effect backend (D1/D9).
 ///
-/// §51.a ships the SURFACE only. The Continuous Type Invariant over `body`
-/// (§51.b), the typed continuous grammar incl. typed `let` + `Observable`
-/// (§51.c), and the `quant_sim`/`qpu_native` effect injection + `yield`
-/// measurement point (§51.d) land in subsequent sub-fases.
+/// v2.4.0 ships the SURFACE only. The Continuous Type Invariant over `body`
+/// (v2.4.0), the typed continuous grammar incl. typed `let` + `Observable`
+/// (v2.4.0), and the `quant_sim`/`qpu_native` effect injection + `yield`
+/// measurement point (v2.4.0) land in subsequent steps.
 #[derive(Debug, Default)]
 pub struct QuantBlock {
     /// `encoding:` — `amplitude` (default) or `angle` (shallow). `None` = the
-    /// compiler default (amplitude). Carried as the surface spelling; §51.c
+    /// compiler default (amplitude). Carried as the surface spelling; v2.4.0
     /// validates against the closed scheme set.
     pub encoding: Option<String>,
     /// `observable:` — the name of a declared `Observable` (Pauli-sum, D5).
-    /// `None` if unspecified (§51.c resolves + Hermiticity-checks it).
+    /// `None` if unspecified (v2.4.0 resolves + Hermiticity-checks it).
     pub observable: Option<String>,
     /// `qubits:` — the register width n (D = 2ⁿ). `None` = inferred from the
     /// encoded tensor dimensionality. The OSS reference backend caps n ≤ 10
-    /// (D1); that bound is enforced at §51.e, not here.
+    /// (D1); that bound is enforced at v2.4.0, not here.
     pub qubits: Option<i64>,
     /// `depth:` — the variational circuit depth L. `None` = backend default.
     pub depth: Option<i64>,
     /// `bandwidth:` — the projected-quantum-kernel bandwidth γ (D7). `None` =
     /// backend default.
     pub bandwidth: Option<f64>,
-    /// §Fase 69.c — `reupload:` L, the number of DATA RE-UPLOADING layers. `None`
+    /// v2.23.0 — `reupload:` L, the number of DATA RE-UPLOADING layers. `None`
     /// or `1` = no re-uploading (the data enters once → a quadratic form, provably
-    /// classical for amplitude+Pauli, §69.b). `L ≥ 2` interleaves the data
+    /// classical for amplitude+Pauli, v2.23.0). `L ≥ 2` interleaves the data
     /// encoding with entangling layers L times — the ONLY provable escape from the
     /// quadratic bound (Havlíček-style; canonical with `encoding: angle`). The
     /// resulting kernel must still pass an Advantage Witness to be deployed
-    /// claiming advantage (§69.a/b).
+    /// claiming advantage (v2.23.0).
     pub reupload: Option<i64>,
     /// The algebraic-effect backend tag: `quant_sim` (default) or `qpu_native`
-    /// (D1/D9). Stored as the bare backend name; §51.d injects the full
+    /// (D1/D9). Stored as the bare backend name; v2.4.0 injects the full
     /// `ots:backend:<tag>` effect into the enclosing flow's effect row.
     pub effect: String,
-    /// The nested flow-body statements (parsed like `par` branches, so §51.b
+    /// The nested flow-body statements (parsed like `par` branches, so v2.4.0
     /// can apply the Continuous Type Invariant to real AST). Empty for an
     /// empty `quant {}`.
     pub body: Vec<FlowStep>,
     pub loc: Loc,
 }
 
-/// §Fase 51.c.2 — one term `cₖ · Pₖ` of a Pauli-sum observable.
+/// v2.4.0 — one term `cₖ · Pₖ` of a Pauli-sum observable.
 ///
 /// `coefficient` is a real scalar (parsed as `f64`); `pauli` is a Pauli string
 /// over the closed alphabet `{I, X, Y, Z}` (one char per qubit), e.g. `"ZZ"` or
@@ -3978,8 +3978,8 @@ pub struct PauliTerm {
     pub loc: Loc,
 }
 
-/// §Fase 51.c.2 — the `observable <Name> { qubits, term: cₖ·Pₖ … }` declaration
-/// (paper §3.2; plan D5). A typed Pauli-sum `M = Σ cₖ Pₖ` that a `quant` block
+/// v2.4.0 — the `observable <Name> { qubits, term: cₖ·Pₖ … }` declaration
+/// (paper section 3.2; plan D5). A typed Pauli-sum `M = Σ cₖ Pₖ` that a `quant` block
 /// measures the evolved state against. The type-checker validates the closed
 /// `{I,X,Y,Z}` alphabet + equal term lengths + non-empty sum; Hermiticity is
 /// guaranteed by construction (real coefficients).
@@ -3991,17 +3991,17 @@ pub struct ObservableDefinition {
     pub qubits: Option<i64>,
     pub terms: Vec<PauliTerm>,
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia.
+    /// v1.5.2 — leading comment trivia.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia.
+    /// v1.5.2 — trailing comment trivia.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
 
-/// §Fase 69.a — `witness <Name> { claim: <ref>  against: <baseline>
+/// v2.23.0 — `witness <Name> { claim: <ref> against: <baseline>
 /// metric: <metric>  threshold: <ε>  data: <source> }`. The Advantage-Witness
-/// proof obligation. The compiler proves it WELL-FORMED (§69.a, `axon-E0790`);
+/// proof obligation. The compiler proves it WELL-FORMED (v2.23.0, `axon-E0790`);
 /// the advantage VALUE is computed on real `data` at deploy/runtime and carried
-/// as a verdict (§69.b+). Fields are order-free `key: value` pairs.
+/// as a verdict (v2.23.0+). Fields are order-free `key: value` pairs.
 #[derive(Debug)]
 pub struct WitnessDefinition {
     pub name: String,
@@ -4024,14 +4024,14 @@ pub struct WitnessDefinition {
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
 
-// ── §λ-L-E Fase 13 — Mobile Typed Channels ──────────────────────────────────
+// ── v1.6.0 — Mobile Typed Channels ──────────────────────────────────
 
 /// `channel Name { message: T, qos: X, lifetime: ℓ, persistence: π, shield: σ }`.
 ///
 /// First-class affine resource carrying a typed message.  Direct port
 /// of `axon.compiler.ast_nodes.ChannelDefinition`.  `message` retains
 /// the surface spelling (e.g. `"Order"` or `"Channel<Order>"`) so the
-/// type checker can resolve nested mobility (paper §3.3).
+/// type checker can resolve nested mobility (paper section 3.3).
 #[derive(Debug)]
 pub struct ChannelDefinition {
     pub name: String,
@@ -4041,11 +4041,11 @@ pub struct ChannelDefinition {
     pub persistence: String, // ephemeral | persistent_axonstore
     pub shield_ref: String,  // optional σ-shield gate for publish (D8)
     pub loc: Loc,
-    /// Fase 14.b — leading comment trivia attached to this declaration
+    /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
     /// previous declaration or file start). Empty by default.
     pub leading_trivia: Vec<crate::tokens::Trivia>,
-    /// Fase 14.b — trailing comment trivia (same line as the
+    /// v1.5.2 — trailing comment trivia (same line as the
     /// declaration's last effective token). Empty by default.
     pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
@@ -4063,7 +4063,7 @@ pub struct EmitStatement {
     pub loc: Loc,
 }
 
-/// §Fase 92.b — `mint <Credential> as <binding>`: the flow-step verb that
+/// v2.46.0 — `mint <Credential> as <binding>`: the flow-step verb that
 /// mints a declared ephemeral `credential` at runtime. The binding
 /// receives the raw bearer string (shown once — the type checker forbids
 /// it from flowing into a `persist` payload, `axon-T896`: credentials do
@@ -4075,7 +4075,7 @@ pub struct MintStep {
     pub loc: Loc,
 }
 
-/// §Fase 94.b — `rotate <SecretsStore> [where "<filter>"] with <Tool> as
+/// v2.48.0 — `rotate <SecretsStore> [where "<filter>"] with <Tool> as
 /// <binding>`: the mediated secret-renewal flow verb (doctrine
 /// `rotation_without_revelation`). Set-oriented like `mutate`: every
 /// custody entry of the store's class matching the filter (whole class
@@ -4090,7 +4090,7 @@ pub struct MintStep {
 #[derive(Debug)]
 pub struct RotateStep {
     pub store_ref: String,
-    /// The §67-grammar metadata filter (`expires_at < now() + interval
+    /// The v2.21.0-grammar metadata filter (`expires_at < now() + interval
     /// '10 minutes'`, `key LIKE 'crm.%'`, …). Empty = the whole class.
     pub where_expr: String,
     pub tool_ref: String,
@@ -4100,10 +4100,10 @@ pub struct RotateStep {
 
 /// `publish ChannelName within ShieldName` — capability extrusion.
 ///
-/// Paper §4.3 (Publish-Ext) materialized as a flow step.  The `within
+/// Paper section 4.3 (Publish-Ext) materialized as a flow step. The `within
 /// <Shield>` clause is mandatory (D8) — the parser rejects bare
 /// `publish C`, the type checker rejects publishes whose shield does
-/// not cover κ(message_type) (Fase 6.1 + paper §3.4).
+/// not cover κ(message_type) (v1.2.0 + paper section 3.4).
 #[derive(Debug)]
 pub struct PublishStatement {
     pub channel_ref: String,

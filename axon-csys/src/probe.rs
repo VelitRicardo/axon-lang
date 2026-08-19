@@ -1,9 +1,9 @@
-//! §Fase 25.b — Build-infrastructure probe (Rust shim).
+//! v1.19.0 — Build-infrastructure probe (Rust shim).
 //!
 //! Mirrors `c-src/probe/probe.c`. The probe surface is intentionally tiny:
 //! it exists to verify that the whole pipeline (cc-rs → C23 compilation →
 //! static link → FFI from Rust) works end-to-end across the CI matrix.
-//! Subsequent sub-fases (25.c onward) reuse the same plumbing for real
+//! Subsequent steps (25.c onward) reuse the same plumbing for real
 //! kernels.
 //!
 //! The compile-time feature bitmask returned by [`probe_features`] is

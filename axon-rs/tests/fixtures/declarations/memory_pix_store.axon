@@ -1,0 +1,36 @@
+// v2.89.0 — the last three declaration-shaped rows, on disk.
+//
+// `memory`, `pix` and `axonstore` were each attested on an engine name
+// (`cognitive::run_remember`, `pix_navigator`,
+// `wire_integrations::run_{persist,retrieve,mutate,purge}`) — the v2.83.0
+// shape. What no file held was a program declaring them the way an adopter
+// would.
+//
+// `backend: in_memory` on the store is deliberate and follows v2.67.0's
+// precedent: it keeps the gate free of a database, and the properties under
+// test are the DECLARED ones — the closed backend catalog, the isolation level,
+// and the typed inline schema (v1.31.0) — not the wire to Postgres, which
+// `typed_store_integration` owns.
+
+memory Recall {
+    store:     session
+    retrieval: semantic
+    decay:     30m
+}
+
+pix ContractIndex {
+    source:    "contracts/master.pdf"
+    depth:     4
+    branching: 3
+}
+
+axonstore Ledger {
+    backend:   in_memory
+    isolation: serializable
+    on_breach: raise
+
+    schema {
+        entry_ref: String
+        amount:    Real
+    }
+}

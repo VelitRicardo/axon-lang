@@ -1,11 +1,11 @@
-//! §Fase 118.b.3 — the `axonstore` ROW SHAPE and pool sizing, driver-free.
+//! v2.81.0 — the `axonstore` ROW SHAPE and pool sizing, driver-free.
 //!
-//! The fifth instance of the §118 smell was not one type but a CLUSTER, all
+//! The fifth instance of the v2.81.0 smell was not one type but a CLUSTER, all
 //! parked in `store/postgres_backend.rs` because it was the first module that
 //! needed them:
 //!
 //!   * [`StoreError`](super::error::StoreError) — the error catalog (see
-//!     `store/error.rs`), including §113's `LeaseExpired` anchor breach.
+//! `store/error.rs`), including v2.67.0's `LeaseExpired` anchor breach.
 //!   * [`StoreRow`] — JSON-safe column/value pairs. `store::epistemic`, which
 //!     links no driver, is built on it.
 //!   * [`MAX_POOL_CONNECTIONS`] — a number. Its own doc comment records that it
@@ -17,11 +17,11 @@
 
 use serde_json::Value as JsonValue;
 
-/// The legacy pool size — what EVERY `postgresql` axonstore got before §Fase 113,
+/// The legacy pool size — what EVERY `postgresql` axonstore got before v2.67.0,
 /// with no environment variable, no config and no source-level knob.
 ///
 /// It survives as the default for a store that names no `resource:` (the soft
-/// migration: the live deployment runs on that form). `pub` since §113 so the
+/// migration: the live deployment runs on that form). `pub` since v2.67.0 so the
 /// registry uses THIS constant rather than a copy of the number — a second copy
 /// of a fact is how the islands happened.
 pub const MAX_POOL_CONNECTIONS: u32 = 10;

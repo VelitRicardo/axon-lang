@@ -3,7 +3,7 @@ name: ledger
 summary: Audit chain — an append-only, hash-linked record of every state transition over a bound surface, tamper-evident by construction.
 category: data_plane
 top_level: true
-since: Fase 62
+since: v2.12.0
 grammar: |
   ledger <Name> {
       source: "<uri>"               # required — the audited surface
@@ -23,11 +23,11 @@ by construction**: any post-hoc modification to a historical row breaks
 the chain head, surfaced by `axon-emcp.audit verify`.
 
 This is the foundation of AXON's audit-chain integrity story
-(§Fase 19 Production Hardening, §27.k FIPS-friendly hashing). Without a
+(v1.14.0 Production Hardening, v1.19.1 FIPS-friendly hashing). Without a
 `ledger`, the audit trail is append-only-by-convention; with one, it is
 append-only-by-cryptographic-construction.
 
-> **Note — naming (§Fase 62.0).** This primitive was formerly documented
+> **Note — naming (v2.12.0).** This primitive was formerly documented
 > under `pix`. `pix` is the embeddings-free retrieval
 > [navigator](axon://primitives/pix); the audit chain is `ledger`. Same
 > field shape (`source`/`depth`/`branching`/`model`), audit semantics.
@@ -77,7 +77,7 @@ degenerate and rejected.
 
 A **single identifier** naming the hash model — `sha256` (default),
 `blake3`, `sha3`. The runtime selects a FIPS 140-3 validated
-implementation when available (§Fase 27.k).
+implementation when available (v1.19.1).
 
 ## Runtime behaviour
 
@@ -113,4 +113,4 @@ tamper-evidence.
 
 - `axon://primitives/axonstore` — the most common `ledger` source.
 - `axon://primitives/pix` — the retrieval navigator (took the `pix` name).
-- `axon://compliance/sox` — SOX §404 attestation via the chain head.
+- `axon://compliance/sox` — SOX section 404 attestation via the chain head.

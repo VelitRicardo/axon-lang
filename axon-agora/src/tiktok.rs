@@ -1,6 +1,6 @@
-//! §Fase 116.f — the TikTok native core: READ/ANALYTICS-FIRST (D116.7).
+//! v2.77.0 — the TikTok native core: READ/ANALYTICS-FIRST.
 //!
-//! TikTok has the hardest zero-input regime of the four platforms (paper §2.4):
+//! TikTok has the hardest zero-input regime of the four platforms (paper section 2.4):
 //! unaudited clients are SELF_ONLY, public posting requires an audit, and the
 //! guidelines require EXPRESS PER-POST USER CONSENT before content is even
 //! transmitted — so fully unattended public posting is not permitted at the
@@ -14,7 +14,7 @@
 //! nested envelope `{"data":…,"error":{"code":"ok"|…,"message":…,"log_id":…}}`
 //! where a 200 with `error.code != "ok"` is STILL a failure — the connector
 //! checks the envelope, not just the HTTP status. Tokens are the rotating kind
-//! ([`crate::oauth::RefreshMechanism::RotatingRefreshGrant`]); the §116.b engine
+//! ([`crate::oauth::RefreshMechanism::RotatingRefreshGrant`]); the v2.77.0 engine
 //! keeps them alive.
 
 use std::time::Duration;
@@ -61,7 +61,7 @@ impl std::fmt::Debug for TikTokConfig {
     }
 }
 
-/// The TikTok connector core (§116.f), read/analytics-first.
+/// The TikTok connector core (v2.77.0), read/analytics-first.
 pub struct TikTokConnector {
     config: TikTokConfig,
     client: reqwest::blocking::Client,
@@ -226,7 +226,7 @@ impl SocialConnector for TikTokConnector {
 
     /// **Publishing is REFUSED.** TikTok requires express per-post user consent
     /// before content is transmitted; fully unattended public posting is not
-    /// permitted (paper §2.4). The refusal is the crate's own `posture_check`
+    /// permitted (paper section 2.4). The refusal is the crate's own `posture_check`
     /// — the single source of truth for `axon-T958`.
     fn publish(
         &self,

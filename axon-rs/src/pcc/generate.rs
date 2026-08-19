@@ -1,4 +1,4 @@
-//! §Fase 51.a — Proof generation (the producer / compiler side).
+//! v2.4.0 — Proof generation (the producer / compiler side).
 //!
 //! Walks an [`IRProgram`] and emits one [`ProofTerm`] per apx /
 //! axonendpoint that declares a `compliance:` set. Generation records
@@ -6,7 +6,7 @@
 //! it does NOT decide the verdict — that is the independent checker's
 //! job ([`crate::pcc::checker::check_proof`]). This split is deliberate:
 //! the producer hands the consumer a derivation, the consumer
-//! re-checks it (D51.2). A defective endpoint (phantom class / no
+//! re-checks it. A defective endpoint (phantom class / no
 //! shield) still gets a proof term; the checker renders `Refuted` so
 //! the defect is surfaced, not hidden.
 
@@ -57,11 +57,11 @@ fn canonical_classes(raw: &[String]) -> Vec<String> {
     v
 }
 
-/// §51.a — derive a [`ComplianceCoverageWitness`] for one endpoint
+/// v2.4.0 — derive a [`ComplianceCoverageWitness`] for one endpoint
 /// against the program IR. Pure + total. Shared with the checker's
 /// re-derivation path so producer + verifier compute identically (the
 /// checker calls this to recompute, then compares against the proof's
-/// witness — D51.2).
+/// witness — the design decision).
 pub fn derive_compliance_coverage_witness(
     endpoint_name: &str,
     declared_compliance: &[String],
@@ -107,10 +107,10 @@ pub fn derive_compliance_coverage_witness(
     }
 }
 
-/// §51.a — generate compliance-coverage proofs for every apx /
+/// v2.4.0 — generate compliance-coverage proofs for every apx /
 /// axonendpoint in `ir` that declares a non-empty `compliance:` set.
 ///
-/// D51.5 — apx (`axpoint`) and `axonendpoint` share the IR
+/// the design decision — apx (`axpoint`) and `axonendpoint` share the IR
 /// `endpoints` node family, so this one walk covers both. Endpoints
 /// with no compliance declaration produce no proof (nothing to
 /// certify).
@@ -133,8 +133,8 @@ pub fn generate_compliance_coverage_proofs(ir: &IRProgram, axon_version: &str) -
     proofs
 }
 
-/// §89.c — derive an [`AuthorizationCoverageWitness`] for one endpoint. Pure +
-/// total. Shared with the checker's re-derivation path (D51.2): both the prover
+/// v2.44.0 — derive an [`AuthorizationCoverageWitness`] for one endpoint. Pure +
+/// total. Shared with the checker's re-derivation path: both the prover
 /// and the verifier compute coverage the SAME way, so the witnesses agree by
 /// construction, and a forged `authorized: true` is caught by recomputation.
 pub fn derive_authorization_coverage_witness(
@@ -145,7 +145,7 @@ pub fn derive_authorization_coverage_witness(
     let has_shield = !ep.shield_ref.is_empty();
     let has_compliance = !ep.compliance.is_empty();
     let public = ep.public;
-    // The §89.b rule EXACTLY: covered by ≥1 discipline OR the explicit opt-out.
+    // The v2.44.0 rule EXACTLY: covered by ≥1 discipline OR the explicit opt-out.
     let authorized = has_requires || has_shield || has_compliance || public;
     AuthorizationCoverageWitness {
         endpoint_name: ep.name.clone(),
@@ -158,7 +158,7 @@ pub fn derive_authorization_coverage_witness(
     }
 }
 
-/// §90.b — derive the whole-program [`CapabilityGrantabilityWitness`] given the
+/// v2.45.0 — derive the whole-program [`CapabilityGrantabilityWitness`] given the
 /// grantable authority catalog (RBAC colon perms ∪ reserved dotted caps ∪
 /// SA-grantable). Collects the distinct `requires:` scopes across DISPATCHING
 /// endpoints, re-projects the catalog through `π`, and records whether the
@@ -197,7 +197,7 @@ pub fn derive_capability_grantability_witness(
     }
 }
 
-/// §89.c — generate an AuthorizationCoverage proof for every DISPATCHING
+/// v2.44.0 — generate an AuthorizationCoverage proof for every DISPATCHING
 /// `axonendpoint` (non-empty `execute:` — a real trust boundary). A
 /// non-dispatching endpoint crosses no boundary → no proof (mirrors "no
 /// compliance → no compliance proof"). The doctrine `every_boundary_is_guarded`
@@ -222,7 +222,7 @@ pub fn generate_authorization_coverage_proofs(
     proofs
 }
 
-/// §90.b — emit the whole-program [`PropertyClass::CapabilityGrantability`]
+/// v2.45.0 — emit the whole-program [`PropertyClass::CapabilityGrantability`]
 /// proof, GIVEN the grantable authority catalog. One proof per program (like
 /// `CacheSoundness`). Emitted only when the program has ≥1 dispatching endpoint
 /// declaring a `requires:` — a program with no capability requirements has no
@@ -252,17 +252,17 @@ pub fn generate_capability_grantability_proofs(
     }]
 }
 
-/// §51.b — derive an [`EffectRowSoundnessWitness`] for one tool's
+/// v2.4.0 — derive an [`EffectRowSoundnessWitness`] for one tool's
 /// declared effect row. Pure + total. Shared with the checker's
-/// re-derivation path (D51.2).
+/// re-derivation path.
 pub fn derive_effect_row_soundness_witness(
     tool_name: &str,
     effect_row: &[String],
-    // §Fase 53.d — the extension-declared PROVENANCE members the checker
+    // v2.5.0 — the extension-declared PROVENANCE members the checker
     // honors, re-derived INDEPENDENTLY from the artifact's own
     // `extensions` by the caller (see `extension_effect_members`). Empty
     // for an artifact with no `extension` declarations (byte-identical
-    // pre-§53 behavior).
+    // pre-v2.5.0 behavior).
     extension_effect_members: &std::collections::HashSet<String>,
 ) -> EffectRowSoundnessWitness {
     let declared_effects = canonical_classes(effect_row);
@@ -274,7 +274,7 @@ pub fn derive_effect_row_soundness_witness(
     let mut has_other = false;
 
     for entry in &declared_effects {
-        // §Fase 53.d / §53.c.2 — a PROVENANCE member is accepted VERBATIM
+        // v2.5.0 / v2.5.0 — a PROVENANCE member is accepted VERBATIM
         // (the full entry). Two sources: an `extension`-declared member,
         // or the built-in `epistemic:<level>` confidence axis. Both carry
         // no runtime capability (invariant #2), so neither is an unknown
@@ -323,10 +323,10 @@ pub fn derive_effect_row_soundness_witness(
     }
 }
 
-/// §Fase 53.d — the set of extension-declared PROVENANCE effect members
+/// v2.5.0 — the set of extension-declared PROVENANCE effect members
 /// the PCC checker honors, re-derived INDEPENDENTLY from the artifact's
 /// own `extensions` (soundness invariant #1 — the verifier never trusts
-/// an external registry or the producer's compiler; D51.2). Invariant #2
+/// an external registry or the producer's compiler; the design decision). Invariant #2
 /// is enforced here independently: a member whose base IS a canonical
 /// enforceable base is NOT a provenance member (it is not "rescued" by
 /// the extension), so it is excluded and falls through to the canonical
@@ -348,12 +348,12 @@ pub fn extension_effect_members(ir: &IRProgram) -> std::collections::HashSet<Str
     set
 }
 
-/// §51.b — generate effect-row-soundness proofs for every tool in `ir`
+/// v2.4.0 — generate effect-row-soundness proofs for every tool in `ir`
 /// that declares a non-empty `effects: <...>` row. Tools with no
 /// declared effects produce no proof (nothing to certify).
 pub fn generate_effect_row_soundness_proofs(ir: &IRProgram, axon_version: &str) -> Vec<ProofTerm> {
     let digest = artifact_digest(ir);
-    // §Fase 53.d — provenance members declared by the artifact's own
+    // v2.5.0 — provenance members declared by the artifact's own
     // extensions, re-derived once for the whole program.
     let ext_members = extension_effect_members(ir);
     let mut proofs = Vec::new();
@@ -373,9 +373,9 @@ pub fn generate_effect_row_soundness_proofs(ir: &IRProgram, axon_version: &str) 
     proofs
 }
 
-/// §51.c — derive a [`CapabilityIsolationWitness`] for one store's
+/// v2.4.0 — derive a [`CapabilityIsolationWitness`] for one store's
 /// capability gate. Pure + total. Shared with the checker's
-/// re-derivation path (D51.2). Grammar validity delegates to the OSS
+/// re-derivation path. Grammar validity delegates to the OSS
 /// single-source-of-truth `axon_frontend::parser::is_valid_capability_slug`
 /// (re-exported as `crate::parser`) — the checker re-derives the FACT
 /// (this store's gate slug) and re-runs the canonical validator; it
@@ -392,7 +392,7 @@ pub fn derive_capability_isolation_witness(
     }
 }
 
-/// §51.c — generate capability-isolation proofs for every `axonstore`
+/// v2.4.0 — generate capability-isolation proofs for every `axonstore`
 /// in `ir` that declares a non-empty `capability` gate. Stores with no
 /// gate produce no proof (nothing to certify — an ungated store is out
 /// of scope for the gate-integrity property).
@@ -414,8 +414,8 @@ pub fn generate_capability_isolation_proofs(ir: &IRProgram, axon_version: &str) 
     proofs
 }
 
-/// §51.d — derive the retry-bound witness for one endpoint. Pure +
-/// total. Shared with the checker (D51.2).
+/// v2.4.0 — derive the retry-bound witness for one endpoint. Pure +
+/// total. Shared with the checker.
 pub fn derive_endpoint_retry_witness(endpoint_name: &str, retries: i64) -> ResourceBoundsWitness {
     ResourceBoundsWitness::EndpointRetry {
         endpoint_name: endpoint_name.to_string(),
@@ -424,7 +424,7 @@ pub fn derive_endpoint_retry_witness(endpoint_name: &str, retries: i64) -> Resou
     }
 }
 
-/// §51.d — derive the credit-positivity witness for one socket's
+/// v2.4.0 — derive the credit-positivity witness for one socket's
 /// DECLARED credit window. Pure + total. Shared with the checker.
 pub fn derive_socket_credit_witness(socket_name: &str, credit: i64) -> ResourceBoundsWitness {
     ResourceBoundsWitness::SocketCredit {
@@ -434,7 +434,7 @@ pub fn derive_socket_credit_witness(socket_name: &str, credit: i64) -> ResourceB
     }
 }
 
-/// §51.d — generate resource-bound proofs: one retry-bound proof per
+/// v2.4.0 — generate resource-bound proofs: one retry-bound proof per
 /// apx/axonendpoint, plus one credit-positivity proof per socket that
 /// DECLARES a `backpressure: credit(k)` window. Sockets with an
 /// unspecified credit produce no proof (unspecified is a legitimate
@@ -466,10 +466,10 @@ pub fn generate_resource_bounds_proofs(ir: &IRProgram, axon_version: &str) -> Ve
     proofs
 }
 
-/// §51.e — derive a [`ShieldHaltGuaranteeWitness`] for one shield's
-/// breach policy. Pure + total. Shared with the checker (D51.2).
+/// v2.4.0 — derive a [`ShieldHaltGuaranteeWitness`] for one shield's
+/// breach policy. Pure + total. Shared with the checker.
 ///
-/// §Fase 77.a (D77.6) — a shield whose enforcement is `sign:` (egress
+/// v2.34.0 — a shield whose enforcement is `sign:` (egress
 /// signing) is NOT vacuous: the signature is what it enforces, so
 /// `on_breach: halt` has a breach to react to (a delivery it refuses to
 /// sign). `vacuous_halt` therefore requires BOTH `scan` and `sign` empty.
@@ -491,7 +491,7 @@ pub fn derive_shield_halt_witness(
     }
 }
 
-/// §51.e — generate shield-halt-guarantee proofs for every shield in
+/// v2.4.0 — generate shield-halt-guarantee proofs for every shield in
 /// `ir` that declares a non-empty `on_breach` policy. Shields with no
 /// breach policy declared produce no proof (no guarantee to certify).
 pub fn generate_shield_halt_guarantee_proofs(ir: &IRProgram, axon_version: &str) -> Vec<ProofTerm> {
@@ -517,14 +517,14 @@ pub fn generate_shield_halt_guarantee_proofs(ir: &IRProgram, axon_version: &str)
     proofs
 }
 
-/// §51.x — recursively collect every store name a flow's steps reach
+/// v2.4.0 — recursively collect every store name a flow's steps reach
 /// (Retrieve / Persist / Mutate / Purge), descending into BOTH
 /// conditional branches + the for-in loop body. A SOUND
 /// over-approximation: every statically-reachable store op is counted
 /// (we do not know which branch fires at runtime, so both count), so a
 /// containment proof never misses a reachable gate. Total + bounded.
 ///
-/// ## §51.x.3 — no-silent-gap invariant (compiler-enforced)
+/// ## v2.4.0 — no-silent-gap invariant (compiler-enforced)
 ///
 /// The match below is **exhaustive — there is NO `_` wildcard arm**.
 /// Every [`IRFlowNode`](crate::ir_nodes::IRFlowNode) variant is
@@ -554,12 +554,12 @@ pub fn generate_shield_halt_guarantee_proofs(ir: &IRProgram, axon_version: &str)
 /// - If a flow-invocation node (cf. the top-level [`IRRun`](crate::ir_nodes::IRRun),
 ///   which today lives ONLY at program level and is unreachable from a
 ///   flow body) ever enters `IRFlowNode`, this is where transitive
-///   cross-flow reachability must be REOPENED (§51.x.3).
+/// cross-flow reachability must be REOPENED (v2.4.0).
 fn collect_store_accesses(steps: &[crate::ir_nodes::IRFlowNode], out: &mut Vec<String>) {
     use crate::ir_nodes::IRFlowNode as N;
     for step in steps {
         match step {
-            // §Fase 109 — a grad touches no store.
+            // v2.65.0 — a grad touches no store.
             N::Grad(_) => {}
             // ── store ops — the only axonstore-touching nodes ──
             N::Retrieve(s) => out.push(s.store_name.clone()),
@@ -572,26 +572,26 @@ fn collect_store_accesses(steps: &[crate::ir_nodes::IRFlowNode], out: &mut Vec<S
                 collect_store_accesses(&c.else_body, out);
             }
             N::ForIn(f) => collect_store_accesses(&f.body, out),
-            // §Fase 51.a — `quant` carries a nested flow body; descend so any
+            // v2.4.0 — `quant` carries a nested flow body; descend so any
             // store op reachable inside it is still soundness-checked.
             N::Quant(q) => collect_store_accesses(&q.body, out),
-            // §Fase 88.a — `warden` carries a nested flow body; descend so any
+            // v2.43.0 — `warden` carries a nested flow body; descend so any
             // store op reachable inside it is still soundness-checked.
             N::Warden(w) => collect_store_accesses(&w.body, out),
-            // §Fase 51.d.2 — `yield` is a leaf (measurement value, no store op).
+            // v2.4.0 — `yield` is a leaf (measurement value, no store op).
             N::Yield(_) => {}
-            // §Fase 92.b — `mint` is a leaf effect (no store op by
+            // v2.46.0 — `mint` is a leaf effect (no store op by
             // construction — axon-T896 forbids its binding from entering one).
             N::Mint(_) => {}
-            // §Fase 94.b — `rotate` READS its secrets store (the class
+            // v2.48.0 — `rotate` READS its secrets store (the class
             // metadata view) to enumerate matching keys; its capability
             // gate must be honored like any other store access.
             N::Rotate(s) => out.push(s.store_ref.clone()),
-            // §Fase 52.a — a `listen` handler body can contain store ops (a
+            // v2.4.0 — a `listen` handler body can contain store ops (a
             // daemon cleaner that `persist`s); descend so they're soundness-
             // checked, like the quant body above.
             N::Listen(l) => collect_store_accesses(&l.body, out),
-            // §Fase 120 — a `handle` carries TWO kinds of nested body, and BOTH
+            // v2.87.0 — a `handle` carries TWO kinds of nested body, and BOTH
             // must be descended or the proof omits a store the program reaches.
             // The clause bodies are the subtle half: a handler that `persist`s
             // what it intercepts is a natural shape (audit every emitted
@@ -603,18 +603,18 @@ fn collect_store_accesses(steps: &[crate::ir_nodes::IRFlowNode], out: &mut Vec<S
                     collect_store_accesses(&clause.body, out);
                 }
             }
-            // §Fase 120 — `perform` / `resume` / `abort` / `forward` are pure
+            // v2.87.0 — `perform` / `resume` / `abort` / `forward` are pure
             // control transfers: no store ref, no nested body. The store ops
             // they may CAUSE live in the clause bodies descended above.
             N::Perform(_) | N::Resume(_) | N::Abort(_) | N::Forward(_) => {}
-            // §Fase 52.c — `run <Flow>` invokes a flow by NAME (no nested body),
+            // v2.4.0 — `run <Flow>` invokes a flow by NAME (no nested body),
             // so it touches no store DIRECTLY. Transitive store access through
             // the invoked flow is the cross-flow reachability this fn's header
             // flagged — deferred to the PCC DaemonSoundness follow-up; a leaf here.
             N::Run(_) => {}
             // ── leaves — no axonstore ref, no nested body. Listed
             // EXPLICITLY (no `_` wildcard) so a future variant forces a
-            // deliberate classification at compile time (§51.x.3). ──
+            // deliberate classification at compile time (v2.4.0). ──
             N::Step(_)
             | N::Probe(_)
             | N::Reason(_)
@@ -648,9 +648,9 @@ fn collect_store_accesses(steps: &[crate::ir_nodes::IRFlowNode], out: &mut Vec<S
             | N::OtsApply(_)
             | N::MandateApply(_)
             | N::ComputeApply(_)
-            // §Fase 119.m.3 — an agent call touches no store and dispatches no
+            // v2.83.0 — an agent call touches no store and dispatches no
             // keyword-arg tool DIRECTLY; the tools its loop reaches go through
-            // un_use_tool, which is where those obligations are already
+            // run_use_tool, which is where those obligations are already
             // collected. If an agent ever gains a direct store surface, this is
             // the arm that must reopen.
             | N::AgentCall(_)
@@ -663,9 +663,9 @@ fn collect_store_accesses(steps: &[crate::ir_nodes::IRFlowNode], out: &mut Vec<S
     }
 }
 
-/// §51.x — derive a [`CapabilityContainmentWitness`] for one endpoint
+/// v2.4.0 — derive a [`CapabilityContainmentWitness`] for one endpoint
 /// against the program IR. Pure + total. Shared with the checker
-/// (D51.2). Resolves `execute_flow` in `ir.flows`, walks its reachable
+///. Resolves `execute_flow` in `ir.flows`, walks its reachable
 /// store ops, resolves each store's capability gate, and computes the
 /// uncovered set (`reached_gates \ declared_requires`).
 pub fn derive_capability_containment_witness(
@@ -718,7 +718,7 @@ pub fn derive_capability_containment_witness(
     }
 }
 
-/// §51.x — generate capability-containment proofs. One proof per
+/// v2.4.0 — generate capability-containment proofs. One proof per
 /// apx/axonendpoint where the property is non-trivial: the endpoint
 /// declares `requires:` OR its flow reaches at least one gated store.
 /// (An endpoint with no requires that reaches no gated store has
@@ -752,10 +752,10 @@ pub fn generate_capability_containment_proofs(
     proofs
 }
 
-// ── §Fase 58.i — ToolCallSoundness ───────────────────────────────────
+// ── v2.8.0 — ToolCallSoundness ───────────────────────────────────
 
-/// §58.i — mirror of the §58.d `infer_arg_literal_type` (a type-checker
-/// private fn). PCC re-states the spec INDEPENDENTLY (D51.2 — the
+/// v2.8.0 — mirror of the v2.8.0 `infer_arg_literal_type` (a type-checker
+/// private fn). PCC re-states the spec INDEPENDENTLY (the design decision — the
 /// verifier never trusts the compiler): only an UNAMBIGUOUS literal is
 /// typed. A bare identifier (`x` — the frontend stored the value as a
 /// bare string, so the literal `"x"` and the reference `x` are
@@ -776,7 +776,7 @@ fn infer_arg_literal_type(value: &str) -> Option<&'static str> {
     None
 }
 
-/// §58.i — mirror of the §58.d `tool_arg_types_align`. `Any` accepts
+/// v2.8.0 — mirror of the v2.8.0 `tool_arg_types_align`. `Any` accepts
 /// anything; an `Int` coerces into a `Float` parameter; otherwise the
 /// declared base type (stripping the `?` optional marker + any
 /// `<generic>`) must equal the inferred literal type.
@@ -785,10 +785,10 @@ fn tool_arg_types_align(value_ty: &str, decl_ty: &str) -> bool {
     base == "Any" || base == value_ty || (base == "Float" && value_ty == "Int")
 }
 
-/// §58.i — collect, in deterministic walk order, every NAMED-args
+/// v2.8.0 — collect, in deterministic walk order, every NAMED-args
 /// `use <Tool>(k = v, …)` call in a flow's steps, recursing into
 /// conditional branches + for-in bodies (a `use` cannot nest in a step
-/// body — §54.a — but the IR model permits it inside flow-level control
+/// body — v2.7.0 — but the IR model permits it inside flow-level control
 /// flow, so the walk descends there). The legacy `use <Tool> on <arg>`
 /// form has empty `named_args` and is excluded (schema-less, D5).
 ///
@@ -804,7 +804,7 @@ fn collect_named_use_tool_calls<'a>(
     use crate::ir_nodes::IRFlowNode as N;
     for step in steps {
         match step {
-            // §Fase 109 — a grad dispatches no tool.
+            // v2.65.0 — a grad dispatches no tool.
             N::Grad(_) => {}
             // ── target — a structured (keyword-arg) tool dispatch ──
             N::UseTool(u) => {
@@ -818,29 +818,29 @@ fn collect_named_use_tool_calls<'a>(
                 collect_named_use_tool_calls(&c.else_body, out);
             }
             N::ForIn(f) => collect_named_use_tool_calls(&f.body, out),
-            // §Fase 51.a — `quant` carries a nested flow body; descend so a
+            // v2.4.0 — `quant` carries a nested flow body; descend so a
             // structured `use` inside it cannot escape soundness checking.
             N::Quant(q) => collect_named_use_tool_calls(&q.body, out),
-            // §Fase 88.a — `warden` carries a nested flow body; descend so a
+            // v2.43.0 — `warden` carries a nested flow body; descend so a
             // structured `use` inside it cannot escape soundness checking.
             N::Warden(w) => collect_named_use_tool_calls(&w.body, out),
-            // §Fase 51.d.2 — `yield` is a leaf (no nested body, no `use`).
+            // v2.4.0 — `yield` is a leaf (no nested body, no `use`).
             N::Yield(_) => {}
-            // §Fase 92.b — `mint` is a leaf (no nested body, no `use`).
+            // v2.46.0 — `mint` is a leaf (no nested body, no `use`).
             N::Mint(_) => {}
-            // §Fase 94.b — `rotate` is a leaf here: it references a tool,
+            // v2.48.0 — `rotate` is a leaf here: it references a tool,
             // but NOT as a structured `use` call — the exchange rides the
             // reserved `axon_rotation` envelope, not the tool's declared
-            // `parameters:` schema, so §58.i schema-soundness does not
-            // apply to it (the §94.e SecretCustodySoundness class owns it).
+            // `parameters:` schema, so v2.8.0 schema-soundness does not
+            // apply to it (the v2.48.0 SecretCustodySoundness class owns it).
             N::Rotate(_) => {}
-            // §Fase 52.a — a `listen` handler body can contain a `use <Tool>`;
+            // v2.4.0 — a `listen` handler body can contain a `use <Tool>`;
             // descend so it is soundness-checked.
             N::Listen(l) => collect_named_use_tool_calls(&l.body, out),
-            // §Fase 120 — descend BOTH of a `handle`'s bodies. A structured
+            // v2.87.0 — descend BOTH of a `handle`'s bodies. A structured
             // `use <Tool> with …` inside a handler clause is the natural shape
             // for a handler that ships what it intercepts (send the token, hit
-            // the webhook), and it must not escape §58.i schema-soundness just
+            // the webhook), and it must not escape v2.8.0 schema-soundness just
             // because it sits behind an effect.
             N::Handle(h) => {
                 collect_named_use_tool_calls(&h.body, out);
@@ -848,9 +848,9 @@ fn collect_named_use_tool_calls<'a>(
                     collect_named_use_tool_calls(&clause.body, out);
                 }
             }
-            // §Fase 120 — pure control transfers, no nested body.
+            // v2.87.0 — pure control transfers, no nested body.
             N::Perform(_) | N::Resume(_) | N::Abort(_) | N::Forward(_) => {}
-            // §Fase 52.c — `run <Flow>` invokes a flow by name (no nested body).
+            // v2.4.0 — `run <Flow>` invokes a flow by name (no nested body).
             N::Run(_) => {}
             // ── leaves — no nested body. Listed EXPLICITLY (no `_`
             // wildcard) so a future nesting variant forces a deliberate
@@ -887,9 +887,9 @@ fn collect_named_use_tool_calls<'a>(
             | N::OtsApply(_)
             | N::MandateApply(_)
             | N::ComputeApply(_)
-            // §Fase 119.m.3 — an agent call touches no store and dispatches no
+            // v2.83.0 — an agent call touches no store and dispatches no
             // keyword-arg tool DIRECTLY; the tools its loop reaches go through
-            // un_use_tool, which is where those obligations are already
+            // run_use_tool, which is where those obligations are already
             // collected. If an agent ever gains a direct store surface, this is
             // the arm that must reopen.
             | N::AgentCall(_)
@@ -906,7 +906,7 @@ fn collect_named_use_tool_calls<'a>(
     }
 }
 
-/// §58.i — sort + dedup a name list into the canonical witness form.
+/// v2.8.0 — sort + dedup a name list into the canonical witness form.
 fn canonical_names(raw: &[String]) -> Vec<String> {
     let mut v = raw.to_vec();
     v.sort();
@@ -914,9 +914,9 @@ fn canonical_names(raw: &[String]) -> Vec<String> {
     v
 }
 
-/// §58.i — derive a [`ToolCallSoundnessWitness`] for the `use Tool(k=v)`
+/// v2.8.0 — derive a [`ToolCallSoundnessWitness`] for the `use Tool(k=v)`
 /// call at `call_index` (deterministic walk order) in flow `flow_name`.
-/// Pure + total. Shared with the checker's re-derivation path (D51.2) —
+/// Pure + total. Shared with the checker's re-derivation path —
 /// the checker re-walks the SAME digest-bound IR, so producer + verifier
 /// compute identically. `None` when the flow is absent or the index is
 /// out of range (the checker renders that as a "call site not present"
@@ -1013,7 +1013,7 @@ pub fn derive_tool_call_soundness_witness(
     })
 }
 
-/// §58.i — generate tool-call-soundness proofs: one proof per structured
+/// v2.8.0 — generate tool-call-soundness proofs: one proof per structured
 /// `use <Tool>(k = v, …)` call whose called tool declares a NON-EMPTY
 /// `parameters:` schema. A call to a schema-less tool, an undeclared
 /// tool, or the legacy `on <arg>` form carries no contract → no proof
@@ -1047,9 +1047,9 @@ pub fn generate_tool_call_soundness_proofs(ir: &IRProgram, axon_version: &str) -
     proofs
 }
 
-// ── §Fase 72.f — EffectBudgeted ──────────────────────────────────────
+// ── v2.28.0 — EffectBudgeted ──────────────────────────────────────
 
-/// §72.f — re-derive an [`EffectBudgetedWitness`] for the daemon named
+/// v2.28.0 — re-derive an [`EffectBudgetedWitness`] for the daemon named
 /// `daemon_name`. `None` if no such daemon exists, or it has no `budget`
 /// (nothing to certify). RE-DERIVES every fact from the artifact — the same
 /// computation the checker runs — so producer + checker agree by construction.
@@ -1100,7 +1100,7 @@ pub fn derive_effect_budgeted_witness(
     })
 }
 
-/// §72.f — generate effect-budgeted proofs: one per daemon that declares a
+/// v2.28.0 — generate effect-budgeted proofs: one per daemon that declares a
 /// `budget { … }`. A daemon with no budget carries no contract → no proof
 /// (mirrors "no effects → no effect-row proof").
 pub fn generate_effect_budgeted_proofs(ir: &IRProgram, axon_version: &str) -> Vec<ProofTerm> {
@@ -1123,12 +1123,12 @@ pub fn generate_effect_budgeted_proofs(ir: &IRProgram, axon_version: &str) -> Ve
     proofs
 }
 
-// ── §Fase 73.g — JsonShapeSoundness ──────────────────────────────────
+// ── v2.26.0 — JsonShapeSoundness ──────────────────────────────────
 
-/// §73.g — derive a [`JsonShapeSoundnessWitness`] for one store's column
+/// v2.26.0 — derive a [`JsonShapeSoundnessWitness`] for one store's column
 /// shape lenses against the program IR. Pure + total. Shared with the
 /// checker's re-derivation path so producer + verifier compute identically
-/// (D51.2). `None` when the store is absent OR declares no inline
+///. `None` when the store is absent OR declares no inline
 /// `Json<T>` lens column — no contract → no proof. (A `manifest_ref` /
 /// `env_var` schema form carries no INLINE lens shape to certify; only the
 /// inline form's declared shapes are in the artifact.)
@@ -1173,7 +1173,7 @@ pub fn derive_json_shape_soundness_witness(
     })
 }
 
-/// §73.g — generate JsonShapeSoundness proofs: one per `axonstore` that
+/// v2.26.0 — generate JsonShapeSoundness proofs: one per `axonstore` that
 /// declares ≥1 inline `Json<T>` lens column. A store with no shape lens
 /// carries no contract → no proof.
 pub fn generate_json_shape_soundness_proofs(ir: &IRProgram, axon_version: &str) -> Vec<ProofTerm> {
@@ -1193,11 +1193,11 @@ pub fn generate_json_shape_soundness_proofs(ir: &IRProgram, axon_version: &str) 
     proofs
 }
 
-// ── §Fase 74.g — ChannelDeliverySoundness ────────────────────────────
+// ── v2.31.0 — ChannelDeliverySoundness ────────────────────────────
 
-/// §74.g — every channel `emit`ted to (a PRODUCER) anywhere in the program:
+/// v2.31.0 — every channel `emit`ted to (a PRODUCER) anywhere in the program:
 /// walk all flow bodies + every daemon listener body, recursing into nested
-/// `if` / `for` bodies. Shared by producer + checker (D51.2).
+/// `if` / `for` bodies. Shared by producer + checker.
 fn collect_emitted_channels(ir: &IRProgram) -> std::collections::HashSet<String> {
     fn walk(steps: &[crate::ir_nodes::IRFlowNode], out: &mut std::collections::HashSet<String>) {
         use crate::ir_nodes::IRFlowNode as N;
@@ -1229,7 +1229,7 @@ fn collect_emitted_channels(ir: &IRProgram) -> std::collections::HashSet<String>
     out
 }
 
-/// §74.g — every channel a `daemon` `listen`s on (a non-cron event
+/// v2.31.0 — every channel a `daemon` `listen`s on (a non-cron event
 /// listener — the consumers). Cron listeners are timer-driven, not channel
 /// consumers.
 fn collect_listened_channels(ir: &IRProgram) -> std::collections::HashSet<String> {
@@ -1244,7 +1244,7 @@ fn collect_listened_channels(ir: &IRProgram) -> std::collections::HashSet<String
     out
 }
 
-/// §74.g — derive a [`ChannelDeliverySoundnessWitness`] for one channel.
+/// v2.31.0 — derive a [`ChannelDeliverySoundnessWitness`] for one channel.
 /// Pure + total. `None` when the channel is absent OR has NO consumer (a
 /// daemon `listen`er) — a channel with no listener carries no delivery
 /// contract, so no proof is generated (mirrors "no effects → no
@@ -1268,7 +1268,7 @@ pub fn derive_channel_delivery_soundness_witness(
     })
 }
 
-/// §74.g — generate ChannelDeliverySoundness proofs: one per `channel`
+/// v2.31.0 — generate ChannelDeliverySoundness proofs: one per `channel`
 /// that a daemon `listen`s on.
 pub fn generate_channel_delivery_soundness_proofs(
     ir: &IRProgram,
@@ -1290,13 +1290,13 @@ pub fn generate_channel_delivery_soundness_proofs(
     proofs
 }
 
-// ── §Fase 76.e — AggregateSoundness ──────────────────────────────────
+// ── v2.33.0 — AggregateSoundness ──────────────────────────────────
 
-/// §76.e — every aggregate-`retrieve` site in the program: walk all flow
+/// v2.33.0 — every aggregate-`retrieve` site in the program: walk all flow
 /// bodies + every daemon listener body, recursing into nested `if` /
 /// `for` bodies. A site is any retrieve with a non-empty `aggregate:` OR
 /// `group_by:` (the latter alone is a T845 violation the witness records).
-/// Shared by producer + checker (D51.2). Sorted + deduped so the
+/// Shared by producer + checker. Sorted + deduped so the
 /// derivation is canonical.
 pub fn derive_aggregate_soundness_witnesses(
     ir: &IRProgram,
@@ -1320,7 +1320,7 @@ pub fn derive_aggregate_soundness_witnesses(
             group_columns: Vec::new(),
             violations: Vec::new(),
         };
-        // The SAME closed-catalog parser the engines run (D51.2 — the
+        // The SAME closed-catalog parser the engines run (the design decision — the
         // checker re-derives through it too, so the proof certifies the
         // exact runtime semantics, not a reimplementation).
         match crate::store::filter::parse_aggregate_clause(
@@ -1382,9 +1382,9 @@ pub fn derive_aggregate_soundness_witnesses(
     out
 }
 
-/// §76.e — generate AggregateSoundness proofs: one per aggregate-retrieve
+/// v2.33.0 — generate AggregateSoundness proofs: one per aggregate-retrieve
 /// site. A malformed site still generates its (refutable) proof — the
-/// §52 deploy gate then rejects the bundle, fail-closed.
+/// v2.4.0 deploy gate then rejects the bundle, fail-closed.
 pub fn generate_aggregate_soundness_proofs(
     ir: &IRProgram,
     axon_version: &str,
@@ -1401,13 +1401,13 @@ pub fn generate_aggregate_soundness_proofs(
         .collect()
 }
 
-// ── §Fase 77.b — ChannelEgressSoundness ──────────────────────────────
+// ── v2.34.0 — ChannelEgressSoundness ──────────────────────────────
 
-/// §77.b — the first publish site (flows in declaration order, then daemon
+/// v2.34.0 — the first publish site (flows in declaration order, then daemon
 /// listeners) targeting `channel_name` whose shield declares `sign:`.
 /// Returns `(sign, shield_ref)`. The derivation NEVER trusts the IR's
 /// pre-resolved `IRPublish.sign` stamp — it re-resolves the named shield
-/// against the artifact's shield list (D51.2: a forged stamp is caught
+/// against the artifact's shield list (the design decision: a forged stamp is caught
 /// because the checker recomputes). Mirrors the walk order of the
 /// frontend's `mark_egress_channels` (first site wins) so producer and
 /// lowering agree.
@@ -1472,7 +1472,7 @@ fn derive_first_signing_publish(
     found
 }
 
-/// §77.b — derive a [`ChannelEgressSoundnessWitness`] for one channel.
+/// v2.34.0 — derive a [`ChannelEgressSoundnessWitness`] for one channel.
 /// Pure + total. `None` when the channel carries NO egress contract:
 /// neither a declared `egress_sign` on its handle nor a derivable signing
 /// publish site (mirrors "no effects → no effect-row proof").
@@ -1496,9 +1496,9 @@ pub fn derive_channel_egress_witness(
     })
 }
 
-/// §77.b — generate ChannelEgressSoundness proofs: one per channel with an
+/// v2.34.0 — generate ChannelEgressSoundness proofs: one per channel with an
 /// egress contract (declared or derivable). An unsound site still generates
-/// its (refutable) proof — the §52 deploy gate then rejects the bundle,
+/// its (refutable) proof — the v2.4.0 deploy gate then rejects the bundle,
 /// fail-closed.
 pub fn generate_channel_egress_soundness_proofs(
     ir: &IRProgram,
@@ -1520,11 +1520,11 @@ pub fn generate_channel_egress_soundness_proofs(
     proofs
 }
 
-// ── §Fase 79.c — InterruptibleSessionSoundness ───────────────────────────────
+// ── v2.36.0 — InterruptibleSessionSoundness ───────────────────────────────
 
-/// §79.c — does an IR handler step-sequence reach a two-exit terminal (`resume`
-/// or `end`) on every path (D79.11a)? The checker's own re-derivation of the
-/// §79.c type-checker's `handler_reaches_exit` (D51.2 — PCC states the spec
+/// v2.36.0 — does an IR handler step-sequence reach a two-exit terminal (`resume`
+/// or `end`) on every path? The checker's own re-derivation of the
+/// v2.36.0 type-checker's `handler_reaches_exit` (the design decision — PCC states the spec
 /// independently). A terminal choice is well-formed iff every arm reaches one.
 fn ir_handler_reaches_exit(steps: &[IRSessionStep]) -> bool {
     match steps.last() {
@@ -1536,7 +1536,7 @@ fn ir_handler_reaches_exit(steps: &[IRSessionStep]) -> bool {
     }
 }
 
-/// §79.c — the first `interrupt` step (by pre-order walk) in `steps` whose
+/// v2.36.0 — the first `interrupt` step (by pre-order walk) in `steps` whose
 /// `on <Signal>` matches `signal`. Descends into nested arms (v1 forbids nested
 /// interrupts, but the walk is total either way).
 fn find_interrupt_step<'a>(steps: &'a [IRSessionStep], signal: &str) -> Option<&'a IRSessionStep> {
@@ -1553,7 +1553,7 @@ fn find_interrupt_step<'a>(steps: &'a [IRSessionStep], signal: &str) -> Option<&
     None
 }
 
-/// §79.c — every distinct interrupt signal declared in `steps` (canonical:
+/// v2.36.0 — every distinct interrupt signal declared in `steps` (canonical:
 /// sorted + deduped), so one region ↦ one proof even if the same cause recurs.
 fn interrupt_signals(steps: &[IRSessionStep]) -> Vec<String> {
     let mut out = Vec::new();
@@ -1573,7 +1573,7 @@ fn interrupt_signals(steps: &[IRSessionStep]) -> Vec<String> {
     out
 }
 
-/// §79.c — re-derive the InterruptibleSessionSoundness witness for the interrupt
+/// v2.36.0 — re-derive the InterruptibleSessionSoundness witness for the interrupt
 /// region located by `(session, role, signal)`. `None` if no such region exists
 /// in the artifact (a forged / stale proof then refutes).
 pub fn derive_interruptible_session_witness(
@@ -1600,9 +1600,9 @@ pub fn derive_interruptible_session_witness(
     })
 }
 
-/// §79.c — generate InterruptibleSessionSoundness proofs: one per interrupt
+/// v2.36.0 — generate InterruptibleSessionSoundness proofs: one per interrupt
 /// region declared in any session role. An unsound region (bogus signal,
-/// missing arm, handler with no exit) still gets its refutable proof — the §52
+/// missing arm, handler with no exit) still gets its refutable proof — the v2.4.0
 /// deploy gate then rejects the bundle fail-closed.
 pub fn generate_interruptible_session_soundness_proofs(
     ir: &IRProgram,
@@ -1630,9 +1630,9 @@ pub fn generate_interruptible_session_soundness_proofs(
     proofs
 }
 
-// ── §Fase 79.f — ParkedResidualSoundness + CallSoundnessCertificate ──────────
+// ── v2.36.0 — ParkedResidualSoundness + CallSoundnessCertificate ──────────
 
-/// §79.f — re-derive the ParkedResidualSoundness witness for `socket_name`.
+/// v2.36.0 — re-derive the ParkedResidualSoundness witness for `socket_name`.
 /// `None` if the socket does not carry an interruptible session (no residual is
 /// ever parked at rest → no obligation → no proof).
 pub fn derive_parked_residual_witness(
@@ -1664,7 +1664,7 @@ pub fn derive_parked_residual_witness(
     })
 }
 
-/// §79.f — one ParkedResidualSoundness proof per socket carrying an
+/// v2.36.0 — one ParkedResidualSoundness proof per socket carrying an
 /// interruptible session. A socket that parks a residual without `reconnect:
 /// cognitive_state` or without a `legal_basis` still gets its refutable proof.
 pub fn generate_parked_residual_soundness_proofs(
@@ -1687,8 +1687,8 @@ pub fn generate_parked_residual_soundness_proofs(
     proofs
 }
 
-/// §80 — collect the distinct message types a compiled session role
-/// sends/receives, walking select/branch arms and §79 interrupt body+handler
+/// v2.37.0 — collect the distinct message types a compiled session role
+/// sends/receives, walking select/branch arms and v2.36.0 interrupt body+handler
 /// (a message only exchanged inside a handler still crosses the wire).
 /// Order-preserving first-occurrence dedup — the checker compares these
 /// vectors verbatim, so derivation order must be deterministic.
@@ -1719,7 +1719,7 @@ fn collect_ir_role_messages(
     }
 }
 
-/// §80 — the T850 charset law, re-derived: a config key is lowercase
+/// v2.37.0 — the T850 charset law, re-derived: a config key is lowercase
 /// `[a-z0-9][a-z0-9_.-]*` (the compile-time mirror of the enterprise
 /// `SecretKeyPolicy`). A URL (`:`/`/`) or a typical credential literal
 /// (uppercase) cannot satisfy it.
@@ -1729,9 +1729,9 @@ fn is_policy_shaped_config_key(key: &str) -> bool {
     head_ok && chars.all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || matches!(c, '_' | '.' | '-'))
 }
 
-/// §80 — derive the [`UpstreamProjectionSoundnessWitness`] for one upstream
+/// v2.37.0 — derive the [`UpstreamProjectionSoundnessWitness`] for one upstream
 /// from the IR alone (pure; shared by the generator and, by re-derivation,
-/// the checker — D51.2). `None` if the upstream does not exist.
+/// the checker — the design decision). `None` if the upstream does not exist.
 pub fn derive_upstream_projection_witness(
     upstream_name: &str,
     ir: &IRProgram,
@@ -1781,7 +1781,7 @@ pub fn derive_upstream_projection_witness(
             total = false;
         }
     }
-    // Discriminator keys mirror the §80.c checker exactly: no `when` ⇒
+    // Discriminator keys mirror the v2.37.0 checker exactly: no `when` ⇒
     // equality ("type", Some(<MessageName>)); `when "f" = "v"` ⇒ equality
     // (f, Some(v)); `when "f"` ⇒ PRESENCE (f, None). Equality dispatches
     // before presence at runtime, so only identical keys are ambiguous.
@@ -1817,7 +1817,7 @@ pub fn derive_upstream_projection_witness(
     })
 }
 
-/// §80 — one UpstreamProjectionSoundness proof per `upstream`. An upstream
+/// v2.37.0 — one UpstreamProjectionSoundness proof per `upstream`. An upstream
 /// with a partial projection or literal-shaped config still gets its
 /// refutable proof — the checker refutes it, the deploy gate blocks it.
 pub fn generate_upstream_projection_soundness_proofs(
@@ -1840,15 +1840,15 @@ pub fn generate_upstream_projection_soundness_proofs(
     proofs
 }
 
-/// §79.f — the unified **`CallSoundnessCertificate`**: for one socket bundle,
+/// v2.36.0 — the unified **`CallSoundnessCertificate`**: for one socket bundle,
 /// compose the interruptible-session soundness of its session, the parked-
 /// residual soundness of the socket, and the socket's resource (credit) bound
 /// into ONE deploy-time artifact — the "can this call ever misbehave" question
 /// asked once, before a single call happens. Composition is NOT a mere
-/// conjunction (D79.8): `ParkedResidualSoundness` is the genuinely-new member
-/// interruption introduces (the data-at-rest surface, paper §7).
+/// conjunction: `ParkedResidualSoundness` is the genuinely-new member
+/// interruption introduces (the data-at-rest surface, paper section 7).
 ///
-/// The enterprise serving layer (§79.f ENT) extends the bundle with the
+/// The enterprise serving layer (v2.36.0 ENT) extends the bundle with the
 /// flow-scoped shield + budget proofs it can resolve; this OSS core composes
 /// the socket-derivable members. `None` if the socket does not exist.
 pub fn generate_call_soundness_certificate(
@@ -1894,9 +1894,9 @@ pub fn generate_call_soundness_certificate(
     })
 }
 
-// ── §Fase 83.c — CorsPolicyConsistency ───────────────────────────────────────
+// ── v2.38.0 — CorsPolicyConsistency ───────────────────────────────────────
 
-/// §83.c — re-derive the whole-program CORS witness from `ir.cors_policies`
+/// v2.38.0 — re-derive the whole-program CORS witness from `ir.cors_policies`
 /// + `ir.endpoints`. "No contract → no proof" (the standing convention): a
 /// program with no `cors` declarations AND no `cors_ref` anywhere returns
 /// `None` — there is nothing to certify.
@@ -1921,7 +1921,7 @@ pub fn derive_cors_policy_consistency_witness(ir: &IRProgram) -> Option<CorsPoli
         .filter(|c| c.allow_credentials && c.allow_origins.iter().any(|o| o == "*"))
         .map(|c| c.name.clone())
         .collect();
-    // Cross-method path consistency: same shape as the §83.c type-checker
+    // Cross-method path consistency: same shape as the v2.38.0 type-checker
     // pass (axon-T857), re-derived from the compiled IR instead of the AST.
     let mut by_path: std::collections::HashMap<&str, (&str, &str)> = std::collections::HashMap::new();
     let mut cross_method_conflicts: Vec<(String, String)> = Vec::new();
@@ -1949,7 +1949,7 @@ pub fn derive_cors_policy_consistency_witness(ir: &IRProgram) -> Option<CorsPoli
     })
 }
 
-/// §83.c — generate the (at most one) CorsPolicyConsistency proof for `ir`.
+/// v2.38.0 — generate the (at most one) CorsPolicyConsistency proof for `ir`.
 /// Program-wide, so this is a Vec of length 0 or 1, unlike most generators.
 pub fn generate_cors_policy_consistency_proofs(ir: &IRProgram, axon_version: &str) -> Vec<ProofTerm> {
     match derive_cors_policy_consistency_witness(ir) {
@@ -1963,9 +1963,9 @@ pub fn generate_cors_policy_consistency_proofs(ir: &IRProgram, axon_version: &st
     }
 }
 
-// ── §Fase 91.c — TemporalContextSoundness ────────────────────────────────────
+// ── v2.46.0 — TemporalContextSoundness ────────────────────────────────────
 
-/// §91.c — recursively collect every step-level `now:` declaration from a
+/// v2.46.0 — recursively collect every step-level `now:` declaration from a
 /// flow-IR body, recursing through the container variants that carry nested
 /// bodies (Conditional / ForIn / Par / Listen / Warden / Quant).
 fn collect_step_now_declarations(
@@ -1998,15 +1998,15 @@ fn collect_step_now_declarations(
     }
 }
 
-/// §91.c — the IANA SHAPE law (`axon-T892`, the §91.a frontend check
-/// re-stated by the checker per D51.2): `"UTC"`, or `Area/Location` with no
+/// v2.46.0 — the IANA SHAPE law (`axon-T892`, the v2.46.0 frontend check
+/// re-stated by the checker per the design decision): `"UTC"`, or `Area/Location` with no
 /// leading/trailing slash.
 fn now_zone_shape_ok(zone: &str) -> bool {
     let t = zone.trim();
     t == "UTC" || (t.contains('/') && !t.starts_with('/') && !t.ends_with('/'))
 }
 
-/// §91.c — re-derive the whole-program temporal-context witness. `None` when
+/// v2.46.0 — re-derive the whole-program temporal-context witness. `None` when
 /// the program declares no `now:` anywhere — no temporal contract → no proof
 /// (the standing convention).
 pub fn derive_temporal_context_soundness_witness(
@@ -2033,7 +2033,7 @@ pub fn derive_temporal_context_soundness_witness(
             }
         } else if crate::window::parse_tz(zone).is_none() {
             // Shape-valid but not in this build's tz database — the failure
-            // the zero-dep frontend CANNOT catch (§71.a split); §91.b fails
+            // the zero-dep frontend CANNOT catch (v2.27.0 split); v2.46.0 fails
             // closed at runtime, this proof catches it at verify/deploy.
             if !unknown_zones.contains(zone) {
                 unknown_zones.push(zone.clone());
@@ -2047,7 +2047,7 @@ pub fn derive_temporal_context_soundness_witness(
     })
 }
 
-/// §91.c — generate the (at most one) TemporalContextSoundness proof for
+/// v2.46.0 — generate the (at most one) TemporalContextSoundness proof for
 /// `ir`. Program-wide, so this is a Vec of length 0 or 1.
 pub fn generate_temporal_context_soundness_proofs(
     ir: &IRProgram,
@@ -2064,10 +2064,10 @@ pub fn generate_temporal_context_soundness_proofs(
     }
 }
 
-// ── §Fase 92.d — CredentialAttenuation ───────────────────────────────────────
+// ── v2.46.0 — CredentialAttenuation ───────────────────────────────────────
 
-/// §92.d — recursively collect every `mint` site from a flow-IR body
-/// (recursing through the container variants, the §91.c walk shape).
+/// v2.46.0 — recursively collect every `mint` site from a flow-IR body
+/// (recursing through the container variants, the v2.46.0 walk shape).
 fn collect_mint_sites(
     flow_name: &str,
     nodes: &[axon_frontend::ir_nodes::IRFlowNode],
@@ -2099,8 +2099,8 @@ fn collect_mint_sites(
     }
 }
 
-/// §92.d — the compile-time contract laws, re-stated by the checker
-/// (D51.2): non-empty valid-slug grants (`axon-T893`) + TTL ∈ (0, 24h]
+/// v2.46.0 — the compile-time contract laws, re-stated by the checker
+///: non-empty valid-slug grants (`axon-T893`) + TTL ∈ (0, 24h]
 /// seconds (`axon-T894`). Mirror of the frontend's
 /// `is_valid_capability_slug` shape law.
 fn credential_contract_ok(c: &axon_frontend::ir_nodes::IRCredential) -> bool {
@@ -2118,7 +2118,7 @@ fn credential_contract_ok(c: &axon_frontend::ir_nodes::IRCredential) -> bool {
         && c.ttl_secs <= 86_400
 }
 
-/// §92.d — re-derive the whole-program credential-attenuation witness.
+/// v2.46.0 — re-derive the whole-program credential-attenuation witness.
 /// `None` when the program declares no `credential` and no `mint` — no
 /// contract → no proof (the standing convention).
 pub fn derive_credential_attenuation_witness(
@@ -2158,7 +2158,7 @@ pub fn derive_credential_attenuation_witness(
     })
 }
 
-/// §92.d — generate the (at most one) CredentialAttenuation proof for
+/// v2.46.0 — generate the (at most one) CredentialAttenuation proof for
 /// `ir`. Program-wide, so this is a Vec of length 0 or 1.
 pub fn generate_credential_attenuation_proofs(
     ir: &IRProgram,
@@ -2175,10 +2175,10 @@ pub fn generate_credential_attenuation_proofs(
     }
 }
 
-// ── §Fase 94.e — SecretCustodySoundness ──────────────────────────────────────
+// ── v2.48.0 — SecretCustodySoundness ──────────────────────────────────────
 
-/// §94.e — recursively collect every `rotate` site from a flow-IR body
-/// (the §92.d walk shape).
+/// v2.48.0 — recursively collect every `rotate` site from a flow-IR body
+/// (the v2.46.0 walk shape).
 fn collect_rotate_sites(
     flow_name: &str,
     nodes: &[axon_frontend::ir_nodes::IRFlowNode],
@@ -2211,7 +2211,7 @@ fn collect_rotate_sites(
     }
 }
 
-/// §94.e — recursively collect every WRITE verb against a store in
+/// v2.48.0 — recursively collect every WRITE verb against a store in
 /// `secrets_stores` (`axon-T897`, re-derived).
 fn collect_secrets_write_violations(
     flow_name: &str,
@@ -2256,8 +2256,8 @@ fn collect_secrets_write_violations(
     }
 }
 
-/// §94.e — the `class:` shape law, re-stated by the checker (D51.2):
-/// non-empty dotted lowercase slug (`axon-T900`'s charset, the §92.d
+/// v2.48.0 — the `class:` shape law, re-stated by the checker:
+/// non-empty dotted lowercase slug (`axon-T900`'s charset, the v2.46.0
 /// `slug_ok` mirror).
 fn secrets_class_ok(class: &str) -> bool {
     !class.is_empty()
@@ -2268,7 +2268,7 @@ fn secrets_class_ok(class: &str) -> bool {
         })
 }
 
-/// §94.e — re-derive the whole-program secret-custody witness. `None`
+/// v2.48.0 — re-derive the whole-program secret-custody witness. `None`
 /// when the program declares no `backend: secrets` store and no `rotate`
 /// — no contract → no proof (the standing convention).
 pub fn derive_secret_custody_witness(
@@ -2318,7 +2318,7 @@ pub fn derive_secret_custody_witness(
             &mut write_violations,
         );
     }
-    // §Fase 95.a — re-derive the `secret_partition:` laws (`axon-T903`)
+    // v2.49.0 — re-derive the `secret_partition:` laws (`axon-T903`)
     // from the IR's tool specs. The `selection_without_revelation`
     // containment guarantee holds ONLY if every partitioned tool's
     // discriminator is a required `String` parameter it declares — this
@@ -2351,7 +2351,7 @@ pub fn derive_secret_custody_witness(
     })
 }
 
-/// §94.e — generate the (at most one) SecretCustodySoundness proof for
+/// v2.48.0 — generate the (at most one) SecretCustodySoundness proof for
 /// `ir`. Program-wide, so this is a Vec of length 0 or 1.
 pub fn generate_secret_custody_proofs(
     ir: &IRProgram,
@@ -2368,9 +2368,9 @@ pub fn generate_secret_custody_proofs(
     }
 }
 
-// ── §Fase 84.c — TechnicianCommandSafety ─────────────────────────────────────
+// ── v2.39.0 — TechnicianCommandSafety ─────────────────────────────────────
 
-/// §84.c — does this IR session-step sequence contain a reachable
+/// v2.39.0 — does this IR session-step sequence contain a reachable
 /// `branch{ approved / denied }`? Mirror of the frontend
 /// `type_checker::session_has_confirm_branch`, re-derived on the compiled IR.
 fn ir_session_has_confirm_branch(steps: &[axon_frontend::ir_nodes::IRSessionStep]) -> bool {
@@ -2397,7 +2397,7 @@ fn ir_session_has_confirm_branch(steps: &[axon_frontend::ir_nodes::IRSessionStep
     false
 }
 
-/// §84.c — re-derive the technician-safety witness for one `target:`-bound
+/// v2.39.0 — re-derive the technician-safety witness for one `target:`-bound
 /// tool. `None` for a tool that is not a technician tool (no `target:`) — "no
 /// contract → no proof" (the standing convention).
 pub fn derive_technician_command_safety_witness(
@@ -2457,7 +2457,7 @@ pub fn derive_technician_command_safety_witness(
     })
 }
 
-/// §84.c — one TechnicianCommandSafety proof per `target:`-bound tool.
+/// v2.39.0 — one TechnicianCommandSafety proof per `target:`-bound tool.
 pub fn generate_technician_command_safety_proofs(
     ir: &IRProgram,
     axon_version: &str,
@@ -2478,9 +2478,9 @@ pub fn generate_technician_command_safety_proofs(
     proofs
 }
 
-// ── §Fase 85.c — CacheSoundness ──────────────────────────────────────────────
+// ── v2.40.0 — CacheSoundness ──────────────────────────────────────────────
 
-/// §85.c — re-derive the whole-program cache witness from `ir.caches` +
+/// v2.40.0 — re-derive the whole-program cache witness from `ir.caches` +
 /// `ir.tools` + `ir.channels`. "No contract → no proof": a program with no
 /// `cache` declaration and no `tool.cache:` reference returns `None`.
 pub fn derive_cache_soundness_witness(ir: &IRProgram) -> Option<CacheSoundnessWitness> {
@@ -2533,7 +2533,7 @@ pub fn derive_cache_soundness_witness(ir: &IRProgram) -> Option<CacheSoundnessWi
     })
 }
 
-/// §85.c — generate the (at most one) CacheSoundness proof for `ir`.
+/// v2.40.0 — generate the (at most one) CacheSoundness proof for `ir`.
 pub fn generate_cache_soundness_proofs(ir: &IRProgram, axon_version: &str) -> Vec<ProofTerm> {
     match derive_cache_soundness_witness(ir) {
         Some(witness) => vec![ProofTerm {
@@ -2546,11 +2546,11 @@ pub fn generate_cache_soundness_proofs(ir: &IRProgram, axon_version: &str) -> Ve
     }
 }
 
-// ── §Fase 98.d — ScrapeProvenanceSoundness ───────────────────────────────────
+// ── v2.52.0 — ScrapeProvenanceSoundness ───────────────────────────────────
 
-/// §98.d — the closed web-acquisition provider set (mirror of
+/// v2.52.0 — the closed web-acquisition provider set (mirror of
 /// `type_checker::VALID_SCRAPE_PROVIDERS`). The checker's own statement of
-/// "what a scrape tool is" (D51.2).
+/// "what a scrape tool is".
 const SCRAPE_PROVIDERS: &[&str] = &["scrape_http", "scrape_dom", "scrape_crawl", "scrape_enrich"];
 
 fn effect_base(e: &str) -> &str {
@@ -2624,7 +2624,7 @@ fn walk_ir_for_injection(
     }
 }
 
-/// §98.d — re-derive the whole-program scrape-provenance witness from
+/// v2.52.0 — re-derive the whole-program scrape-provenance witness from
 /// `ir.tools` + `ir.flows` + `ir.agents`. "No contract → no proof": a program
 /// declaring no web-acquisition tool returns `None`.
 pub fn derive_scrape_provenance_soundness_witness(
@@ -2696,7 +2696,7 @@ pub fn derive_scrape_provenance_soundness_witness(
     })
 }
 
-/// §98.d — generate the (at most one) ScrapeProvenanceSoundness proof for `ir`.
+/// v2.52.0 — generate the (at most one) ScrapeProvenanceSoundness proof for `ir`.
 pub fn generate_scrape_provenance_soundness_proofs(
     ir: &IRProgram,
     axon_version: &str,
@@ -2712,9 +2712,9 @@ pub fn generate_scrape_provenance_soundness_proofs(
     }
 }
 
-// ── §Fase 116.a (D116.9) — ScopeCoverageSoundness ────────────────────────────
+// ── v2.77.0 — ScopeCoverageSoundness ────────────────────────────
 
-/// §116.a — accumulate every tool-use name over an `IRFlow`'s step tree (mirror
+/// v2.77.0 — accumulate every tool-use name over an `IRFlow`'s step tree (mirror
 /// of the frontend flow walk; recurses `Conditional`/`ForIn` bodies).
 fn collect_tool_uses(steps: &[crate::ir_nodes::IRFlowNode], out: &mut Vec<String>) {
     use crate::ir_nodes::IRFlowNode;
@@ -2731,7 +2731,7 @@ fn collect_tool_uses(steps: &[crate::ir_nodes::IRFlowNode], out: &mut Vec<String
     }
 }
 
-/// §116.a — re-derive the whole-program scope-coverage witness from `ir.tools` +
+/// v2.77.0 — re-derive the whole-program scope-coverage witness from `ir.tools` +
 /// `ir.credentials` + `ir.endpoints` + `ir.daemons` + `ir.flows`. "No contract →
 /// no proof": a program with no tool declaring a `requires:` returns `None`.
 /// This is the deploy-time twin of the frontend `check_use_tool_scopes` law
@@ -2801,7 +2801,7 @@ pub fn derive_scope_coverage_soundness_witness(
     Some(ScopeCoverageSoundnessWitness { scoped_tools, granted, uncovered_uses })
 }
 
-/// §116.a — generate the (at most one) ScopeCoverageSoundness proof for `ir`.
+/// v2.77.0 — generate the (at most one) ScopeCoverageSoundness proof for `ir`.
 pub fn generate_scope_coverage_soundness_proofs(
     ir: &IRProgram,
     axon_version: &str,
@@ -2817,11 +2817,11 @@ pub fn generate_scope_coverage_soundness_proofs(
     }
 }
 
-// ── §Fase 99.d — DocumentProvenanceSoundness ─────────────────────────────────
+// ── v2.53.0 — DocumentProvenanceSoundness ─────────────────────────────────
 
 const DOC_TARGETS: &[&str] = &["docx", "pptx", "xlsx"];
 
-/// §99.d — the ASSERTIVE SLOT of a block kind (mirror of the frontend
+/// v2.53.0 — the ASSERTIVE SLOT of a block kind (mirror of the frontend
 /// `type_checker::doc_assertive_slot`). Must stay in lockstep — the barrier
 /// re-derivation depends on it.
 fn doc_assertive_slot(kind: &str) -> Option<&'static str> {
@@ -2864,7 +2864,7 @@ fn walk_doc_blocks_for_barrier(
     }
 }
 
-/// §99.d — re-derive the whole-program document-provenance witness from
+/// v2.53.0 — re-derive the whole-program document-provenance witness from
 /// `ir.documents`. "No contract → no proof": a document-less program → `None`.
 pub fn derive_document_provenance_soundness_witness(
     ir: &IRProgram,
@@ -2900,7 +2900,7 @@ pub fn derive_document_provenance_soundness_witness(
     })
 }
 
-/// §99.d — generate the (at most one) DocumentProvenanceSoundness proof for `ir`.
+/// v2.53.0 — generate the (at most one) DocumentProvenanceSoundness proof for `ir`.
 pub fn generate_document_provenance_soundness_proofs(
     ir: &IRProgram,
     axon_version: &str,
@@ -2916,11 +2916,11 @@ pub fn generate_document_provenance_soundness_proofs(
     }
 }
 
-// ── §Fase 105 — DeliveryProvenanceSoundness ──────────────────────────────────
+// ── v2.60.0 — DeliveryProvenanceSoundness ──────────────────────────────────
 
 const DELIVER_TARGETS: &[&str] = &["crm"];
 
-/// §105 — re-derive the whole-program delivery-provenance witness from
+/// v2.60.0 — re-derive the whole-program delivery-provenance witness from
 /// `ir.deliveries`. "No contract → no proof": a delivery-less program → `None`.
 /// Mirrors the frontend `check_deliver` laws (T921 target, T924 sensitive⇒legal,
 /// T920 the provenance-stripping barrier) — MUST stay in lockstep.
@@ -2967,7 +2967,7 @@ pub fn derive_delivery_provenance_soundness_witness(
     })
 }
 
-/// §105 — generate the (at most one) DeliveryProvenanceSoundness proof for `ir`.
+/// v2.60.0 — generate the (at most one) DeliveryProvenanceSoundness proof for `ir`.
 pub fn generate_delivery_provenance_soundness_proofs(
     ir: &IRProgram,
     axon_version: &str,
@@ -2983,10 +2983,10 @@ pub fn generate_delivery_provenance_soundness_proofs(
     }
 }
 
-// ── §Fase 107 — QuerySafetySoundness ─────────────────────────────────────────
+// ── v2.62.0 — QuerySafetySoundness ─────────────────────────────────────────
 
-/// §107 — the DECLARED WRITE reached by an IR flow body, at ANY nesting depth.
-/// Mirror of the frontend `type_checker::first_declared_write` (D107.1) — MUST stay
+/// v2.62.0 — the DECLARED WRITE reached by an IR flow body, at ANY nesting depth.
+/// Mirror of the frontend `type_checker::first_declared_write` — MUST stay
 /// in lockstep, since the PCC class re-derives the same law. Returns the verb name.
 fn first_declared_write_ir(steps: &[crate::ir_nodes::IRFlowNode]) -> Option<&'static str> {
     use crate::ir_nodes::IRFlowNode as N;
@@ -3000,7 +3000,7 @@ fn first_declared_write_ir(steps: &[crate::ir_nodes::IRFlowNode]) -> Option<&'st
             N::Rotate(_) => Some("rotate"),
             N::Mint(_) => Some("mint"),
             N::Transact(_) => Some("transact"),
-            // Fase 108.c (D108.4) - `ingest` appends to a server-resident
+            // v2.63.0 - `ingest` appends to a server-resident
             // dataspace: state change. Mirrors the frontend's T927 walk -
             // prover and verifier must agree on the write surface.
             N::Ingest(_) => Some("ingest"),
@@ -3019,7 +3019,7 @@ fn first_declared_write_ir(steps: &[crate::ir_nodes::IRFlowNode]) -> Option<&'st
     None
 }
 
-/// §107 — re-derive the whole-program QUERY-safety witness. "No contract → no
+/// v2.62.0 — re-derive the whole-program QUERY-safety witness. "No contract → no
 /// proof": a program with no `method: QUERY` endpoint → `None`.
 pub fn derive_query_safety_soundness_witness(
     ir: &IRProgram,
@@ -3047,7 +3047,7 @@ pub fn derive_query_safety_soundness_witness(
     }
 
     // A program-level egress declaration fires for EVERY flow the executor runs
-    // (D105.7-B), so no QUERY endpoint here could be safe.
+    // (the design decision-B), so no QUERY endpoint here could be safe.
     let mut egress_declarations: Vec<String> = ir
         .deliveries
         .iter()
@@ -3062,7 +3062,7 @@ pub fn derive_query_safety_soundness_witness(
     })
 }
 
-/// §107 — generate the (at most one) QuerySafetySoundness proof for `ir`.
+/// v2.62.0 — generate the (at most one) QuerySafetySoundness proof for `ir`.
 pub fn generate_query_safety_soundness_proofs(
     ir: &IRProgram,
     axon_version: &str,
@@ -3078,9 +3078,9 @@ pub fn generate_query_safety_soundness_proofs(
     }
 }
 
-// ── §Fase 110.b — NotificationProvenanceSoundness ────────────────────────────
+// ── v2.66.0 — NotificationProvenanceSoundness ────────────────────────────
 
-/// §110.b — re-derive the whole-program notification witness. "No
+/// v2.66.0 — re-derive the whole-program notification witness. "No
 /// contract → no proof": a program with no `notify` yields `None`.
 pub fn derive_notification_provenance_soundness_witness(
     ir: &IRProgram,
@@ -3135,7 +3135,7 @@ pub fn derive_notification_provenance_soundness_witness(
     })
 }
 
-/// §110.b — generate the (at most one) proof.
+/// v2.66.0 — generate the (at most one) proof.
 pub fn generate_notification_provenance_soundness_proofs(
     ir: &IRProgram,
     axon_version: &str,
@@ -3151,17 +3151,17 @@ pub fn generate_notification_provenance_soundness_proofs(
     }
 }
 
-// ── §Fase 109.b — GradientSoundness ──────────────────────────────────────────
+// ── v2.65.0 — GradientSoundness ──────────────────────────────────────────
 
-/// §109.b — canonical fingerprint of a derivative list: the serde JSON of
+/// v2.65.0 — canonical fingerprint of a derivative list: the serde JSON of
 /// the IRExpr vector (deterministic — field order is struct order).
 fn derivative_fingerprint(derivatives: &[crate::ir_nodes::IRExpr]) -> String {
     serde_json::to_string(derivatives).unwrap_or_default()
 }
 
-/// §109.b — the IR-level re-differentiation. The frontend differentiates
+/// v2.65.0 — the IR-level re-differentiation. The frontend differentiates
 /// `ast::Expr`; at deploy the artifact carries `IRExpr`, so the verifier
-/// re-differentiates the IR form directly (the same §5.2 rules + §5.3
+/// re-differentiates the IR form directly (the same section 5.2 rules + section 5.3
 /// simplifier, ported over `IRExpr` — one closed grammar, two carriers).
 fn ir_diff(e: &crate::ir_nodes::IRExpr, wrt: &str) -> Result<crate::ir_nodes::IRExpr, String> {
     use crate::ir_nodes::{IRExpr as E, IRExprLit as L};
@@ -3171,7 +3171,7 @@ fn ir_diff(e: &crate::ir_nodes::IRExpr, wrt: &str) -> Result<crate::ir_nodes::IR
         E::Lit { lit: L::Int { .. } } | E::Lit { lit: L::Float { .. } } => Ok(zero()),
         E::Lit { .. } => Err("non-numeric literal".to_string()),
         E::Ref { path } => Ok(if path == wrt { one() } else { zero() }),
-        // §Fase 119.o — refused, and it MUST match the frontend's
+        // v2.83.0 — refused, and it MUST match the frontend's
         // `expr_diff::diff_at`, which refuses the same term for the same reason:
         // the `Ref` arm above answers 1 or 0 by NAME, so a reference to a
         // let-bound name inside the body would differentiate to 0 as though it
@@ -3253,8 +3253,8 @@ fn ir_lit_f(v: f64) -> crate::ir_nodes::IRExpr {
     }
 }
 
-/// §109.b — the §5.3 simplifier over `IRExpr` (the SAME rules the
-/// frontend runs — D109.4: prover and verifier agree post-simplification).
+/// v2.65.0 — the section 5.3 simplifier over `IRExpr` (the SAME rules the
+/// frontend runs — the design decision: prover and verifier agree post-simplification).
 fn ir_simplify(e: crate::ir_nodes::IRExpr) -> crate::ir_nodes::IRExpr {
     use crate::ir_nodes::IRExpr as E;
     match e {
@@ -3361,7 +3361,7 @@ fn grad_violations_in(
     }
 }
 
-/// §109.b — re-derive the whole-program gradient witness. "No contract →
+/// v2.65.0 — re-derive the whole-program gradient witness. "No contract →
 /// no proof": a program with no grad step yields `None`.
 pub fn derive_gradient_soundness_witness(
     ir: &IRProgram,
@@ -3377,7 +3377,7 @@ pub fn derive_gradient_soundness_witness(
     Some(GradientSoundnessWitness { grads, violations })
 }
 
-/// §109.b — generate the (at most one) GradientSoundness proof.
+/// v2.65.0 — generate the (at most one) GradientSoundness proof.
 pub fn generate_gradient_soundness_proofs(
     ir: &IRProgram,
     axon_version: &str,
@@ -3393,9 +3393,9 @@ pub fn generate_gradient_soundness_proofs(
     }
 }
 
-// ── §Fase 108.d — DataspaceSchemaSoundness ───────────────────────────────────
+// ── v2.63.0 — DataspaceSchemaSoundness ───────────────────────────────────
 
-/// §108.d — walk a flow body (recursing into every nested block) and
+/// v2.63.0 — walk a flow body (recursing into every nested block) and
 /// re-derive the T930 laws over the IR: query verbs target declared
 /// dataspaces; referenced columns exist; aggregates stay in the closed
 /// catalog. Mirrors the frontend checker — prover and verifier agree.
@@ -3491,7 +3491,7 @@ fn dataspace_violations_in(
     }
 }
 
-/// §108.d — re-derive the whole-program dataspace-schema witness. "No
+/// v2.63.0 — re-derive the whole-program dataspace-schema witness. "No
 /// contract → no proof": a program with no dataspace AND no data-plane
 /// verb yields `None`.
 pub fn derive_dataspace_schema_soundness_witness(
@@ -3502,7 +3502,7 @@ pub fn derive_dataspace_schema_soundness_witness(
         std::collections::HashMap::new();
     for spec in &ir.dataspace_specs {
         for col in &spec.columns {
-            // The closed catalog (D108.1) — an unknown canonical type in
+            // The closed catalog — an unknown canonical type in
             // a stored artifact is a forged/stale IR.
             if !matches!(
                 col.column_type.as_str(),
@@ -3559,7 +3559,7 @@ pub fn derive_dataspace_schema_soundness_witness(
     })
 }
 
-/// §108.d — generate the (at most one) DataspaceSchemaSoundness proof.
+/// v2.63.0 — generate the (at most one) DataspaceSchemaSoundness proof.
 pub fn generate_dataspace_schema_soundness_proofs(
     ir: &IRProgram,
     axon_version: &str,
@@ -3575,9 +3575,9 @@ pub fn generate_dataspace_schema_soundness_proofs(
     }
 }
 
-// ── §Fase 100.e — DocumentIngestionSoundness ─────────────────────────────────
+// ── v2.54.0 — DocumentIngestionSoundness ─────────────────────────────────
 
-/// §100.e — re-derive the whole-program document-ingestion witness from
+/// v2.54.0 — re-derive the whole-program document-ingestion witness from
 /// `ir.tools` + `ir.flows`. "No contract → no proof": no ingesting tool → None.
 pub fn derive_document_ingestion_soundness_witness(
     ir: &IRProgram,
@@ -3645,7 +3645,7 @@ pub fn derive_document_ingestion_soundness_witness(
     })
 }
 
-/// §100.e — generate the (at most one) DocumentIngestionSoundness proof for `ir`.
+/// v2.54.0 — generate the (at most one) DocumentIngestionSoundness proof for `ir`.
 pub fn generate_document_ingestion_soundness_proofs(
     ir: &IRProgram,
     axon_version: &str,
@@ -3661,11 +3661,11 @@ pub fn generate_document_ingestion_soundness_proofs(
     }
 }
 
-// ── §Fase 101.b — InferredCeilingSoundness ───────────────────────────────────
+// ── v2.54.0 — InferredCeilingSoundness ───────────────────────────────────
 
-/// §101.b — re-derive the Inferred-ceiling witness over exactly the
+/// v2.54.0 — re-derive the Inferred-ceiling witness over exactly the
 /// `ingest:inferred` PRODUCERS. "No inferred producer → no proof" (the dual of
-/// §100's vacuum): the class is inhabited only from §101, so this proof appears
+/// v2.54.0's vacuum): the class is inhabited only from v2.54.0, so this proof appears
 /// only once a producer exists, and then asserts the vacuum's invariants still
 /// hold — every producer capped at `believe`, none unshielded into beliefs.
 pub fn derive_inferred_ceiling_soundness_witness(
@@ -3677,7 +3677,7 @@ pub fn derive_inferred_ceiling_soundness_witness(
     let inferred_producers: Vec<String> =
         ir.tools.iter().filter(|t| is_inferred(t)).map(|t| t.name.clone()).collect();
     if inferred_producers.is_empty() {
-        return None; // the §100 vacuum still holds — nothing to prove
+        return None; // the v2.54.0 vacuum still holds — nothing to prove
     }
 
     // (T1001) the ceiling: an inferred producer may not declare `epistemic:know`.
@@ -3723,7 +3723,7 @@ pub fn derive_inferred_ceiling_soundness_witness(
     })
 }
 
-/// §101.b — generate the (at most one) InferredCeilingSoundness proof for `ir`.
+/// v2.54.0 — generate the (at most one) InferredCeilingSoundness proof for `ir`.
 pub fn generate_inferred_ceiling_soundness_proofs(
     ir: &IRProgram,
     axon_version: &str,
@@ -3739,7 +3739,7 @@ pub fn generate_inferred_ceiling_soundness_proofs(
     }
 }
 
-// ── §Fase 86.c — ForgeSoundness ──────────────────────────────────────────────
+// ── v2.41.0 — ForgeSoundness ──────────────────────────────────────────────
 
 const FORGE_MODES: &[&str] = &["combinatorial", "exploratory", "transformational"];
 
@@ -3764,7 +3764,7 @@ fn collect_forge_blocks<'a>(
     }
 }
 
-/// §86.c — collect `&IRForgeBlock` from a step tree (checker helper; recurses
+/// v2.41.0 — collect `&IRForgeBlock` from a step tree (checker helper; recurses
 /// into `if`/`for` bodies).
 pub(crate) fn __collect_forge_for_check<'a>(
     steps: &'a [axon_frontend::ir_nodes::IRFlowNode],
@@ -3784,7 +3784,7 @@ pub(crate) fn __collect_forge_for_check<'a>(
     }
 }
 
-/// §86.c — re-derive one forge block's soundness witness against the IR anchors.
+/// v2.41.0 — re-derive one forge block's soundness witness against the IR anchors.
 pub fn derive_forge_soundness_witness(
     flow_name: &str,
     forge: &axon_frontend::ir_nodes::IRForgeBlock,
@@ -3816,7 +3816,7 @@ pub fn derive_forge_soundness_witness(
     }
 }
 
-/// §86.c — one ForgeSoundness proof per `forge` block in the program.
+/// v2.41.0 — one ForgeSoundness proof per `forge` block in the program.
 pub fn generate_forge_soundness_proofs(ir: &IRProgram, axon_version: &str) -> Vec<ProofTerm> {
     let digest = artifact_digest(ir);
     let mut forges = Vec::new();
@@ -3834,12 +3834,12 @@ pub fn generate_forge_soundness_proofs(ir: &IRProgram, axon_version: &str) -> Ve
         .collect()
 }
 
-/// §87.g — the checker's own statement of the `savant` cognition catalogs
+/// v2.42.0 — the checker's own statement of the `savant` cognition catalogs
 /// (mirror of the private `axon_frontend::type_checker::VALID_SAVANT_*`).
 const SAVANT_DEPTHS: &[&str] = &["standard", "deep", "hyper"];
 const SAVANT_DIVERGENCES: &[&str] = &["low", "med", "high"];
 
-/// §87.g — re-derive one savant's governance-soundness witness against the IR.
+/// v2.42.0 — re-derive one savant's governance-soundness witness against the IR.
 /// The single source of truth reused by both the prover and the verifier
 /// (`check_savant_soundness`), so a forged/stale proof is caught by
 /// re-derivation, exactly as ForgeSoundness/CacheSoundness.
@@ -3887,7 +3887,7 @@ pub fn derive_savant_soundness_witness(
     }
 }
 
-/// §87.g — one SavantSoundness proof per `savant` in the program. `savant` is a
+/// v2.42.0 — one SavantSoundness proof per `savant` in the program. `savant` is a
 /// top-level declaration, so this iterates `ir.savants` directly (no flow-step
 /// walk like forge).
 pub fn generate_savant_soundness_proofs(ir: &IRProgram, axon_version: &str) -> Vec<ProofTerm> {
@@ -3903,7 +3903,7 @@ pub fn generate_savant_soundness_proofs(ir: &IRProgram, axon_version: &str) -> V
         .collect()
 }
 
-// ── §Fase 88.e — WardenSoundness ─────────────────────────────────────────────
+// ── v2.43.0 — WardenSoundness ─────────────────────────────────────────────
 
 const SCOPE_DEPTHS: &[&str] = &["static_artifact", "memory_dump", "live_network"];
 
@@ -3932,7 +3932,7 @@ fn collect_warden_blocks<'a>(
     }
 }
 
-/// §88.e — collect `&IRWarden` from a step tree (checker helper; recurses into
+/// v2.43.0 — collect `&IRWarden` from a step tree (checker helper; recurses into
 /// `if`/`for`/`quant`/warden bodies).
 pub(crate) fn __collect_warden_for_check<'a>(
     steps: &'a [axon_frontend::ir_nodes::IRFlowNode],
@@ -3956,7 +3956,7 @@ pub(crate) fn __collect_warden_for_check<'a>(
     }
 }
 
-/// §88.e — re-derive one warden block's authorization-soundness witness against
+/// v2.43.0 — re-derive one warden block's authorization-soundness witness against
 /// the IR (`scopes`). The single source of truth reused by the prover + the
 /// verifier (`check_warden_soundness`), so a forged/stale proof is caught by
 /// re-derivation.
@@ -3978,7 +3978,7 @@ pub fn derive_warden_soundness_witness(
     }
 }
 
-/// §88.e — one WardenSoundness proof per `warden` block in the program.
+/// v2.43.0 — one WardenSoundness proof per `warden` block in the program.
 pub fn generate_warden_soundness_proofs(ir: &IRProgram, axon_version: &str) -> Vec<ProofTerm> {
     let digest = artifact_digest(ir);
     let mut wardens = Vec::new();
@@ -3998,7 +3998,7 @@ pub fn generate_warden_soundness_proofs(ir: &IRProgram, axon_version: &str) -> V
         .collect()
 }
 
-/// §51.f — generate proofs across ALL property classes for `ir`. The
+/// v2.4.0 — generate proofs across ALL property classes for `ir`. The
 /// `axon pcc prove` entry point. Concatenates every per-class
 /// generator (compliance / effects / capability-gate / resources /
 /// shields / capability-containment / tool-call-soundness /

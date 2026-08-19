@@ -1,4 +1,4 @@
-//! §Fase 119.e — the `fabric` substrate judgment: provider ↔ region ↔
+//! v2.83.0 — the `fabric` substrate judgment: provider ↔ region ↔
 //! jurisdiction, shared verbatim by the compiler and the runtime.
 //!
 //! # What `fabric` is, and what it is not
@@ -12,8 +12,8 @@
 //! > Provisioning happens upstream (Terraform, Pulumi, manual ops). The fabric
 //! > makes expectations **typed + auditable**.
 //!
-//! That sentence is the whole scope of this sub-fase, and it is why §119.e is
-//! not "make fabric provision things". §111's finding was that
+//! That sentence is the whole scope of this step, and it is why v2.83.0 is
+//! not "make fabric provision things". v2.67.0's finding was that
 //! `provider`/`region`/`zones` were *consumed by nothing*: the fabric was a
 //! label. Making it real means making those three fields **decide something**
 //! — which, for a primitive whose job is typed expectation, means
@@ -155,10 +155,10 @@ pub fn jurisdiction_of(provider: &str, region: &str) -> Jurisdiction {
 /// obligation is a matter of law, not of opinion. Tags outside this list carry
 /// no jurisdictional constraint and are not checked here — which is honest,
 /// because inventing a geography for `soc2` would be a fabricated rule.
-/// §Fase 124 — **every tag here must be a member of Κ**, or the rule is dead.
+/// v4.0.0 — **every tag here must be a member of Κ**, or the rule is dead.
 ///
 /// These names are matched case-insensitively against a `manifest`'s
-/// `compliance:` list. Since §123 that list is a closed catalogue
+/// `compliance:` list. Since v4.0.0 that list is a closed catalogue
 /// (`axon-T1214`), so a tag absent from Κ can never appear in any program that
 /// compiles — the jurisdiction constraint keyed on it is unreachable, and
 /// unreachable-but-present is indistinguishable from enforced when reading the
@@ -166,7 +166,7 @@ pub fn jurisdiction_of(provider: &str, region: &str) -> Jurisdiction {
 ///
 /// `eu_ai_act` was exactly that: listed here, absent from Κ, refused by the
 /// type checker on the only declaration that feeds this function. Removed in
-/// §124 rather than promoted, because D124.1 fixed Κ's growth at the four LATAM
+/// v4.0.0 rather than promoted, because the design decision fixed Κ's growth at the four LATAM
 /// jurisdictions and the EU AI Act's coverage in AXON is a RUNTIME one (`trail`,
 /// `mandate`, `reason`) rather than a data-classification one. Adding a κ class
 /// to make a dead rule live would have been the tail wagging the dog.
@@ -244,16 +244,16 @@ impl fmt::Display for ComplianceViolation {
 mod tests {
     use super::*;
 
-    /// §Fase 124 — a jurisdiction rule must be keyed on a class a program can
+    /// v4.0.0 — a jurisdiction rule must be keyed on a class a program can
     /// legally declare.
     ///
     /// `compliance_violation` is reached from `axon-E042` with the tags of a
-    /// `manifest`'s `compliance:` list, and since §123 that list is closed by
+    /// `manifest`'s `compliance:` list, and since v4.0.0 that list is closed by
     /// `axon-T1214`. A tag here that is not in Κ therefore describes a rule no
     /// program can ever trigger — present in the source, enforcing nothing, and
     /// reading exactly like a rule that works.
     ///
-    /// That is precisely the defect class §111 named *motor real, cable
+    /// That is precisely the defect class v2.67.0 named *motor real, cable
     /// muerto*, at the granularity of a single table row. `eu_ai_act` was the
     /// instance; this test is why there will not be another.
     #[test]

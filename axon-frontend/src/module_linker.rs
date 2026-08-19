@@ -1,4 +1,4 @@
-//! §Fase 115.e — Phase 4 of the Epistemic Module System: the LINKER.
+//! v2.76.0 — Phase 4 of the Epistemic Module System: the LINKER.
 //!
 //! The phase the retired Python EMS listed as *"(future)"* — and the one
 //! production actually needs, because the enterprise deploy path stores
@@ -32,9 +32,9 @@
 //!   `run`s are its own demos; only the ENTRY orchestrates execution.
 //!   Every other declaration links (v1 performs no tree-shaking: the
 //!   reachable module set *is* the program — selectivity is enforced at
-//!   the reference level by the §115.d import laws, not by pruning).
+//! the reference level by the v2.76.0 import laws, not by pruning).
 //! - **Global name uniqueness.** Two modules declaring the same top-level
-//!   name collide at the merged registration pass (the D115.5 law) — the
+//! name collide at the merged registration pass (the the design decision law) — the
 //!   diagnostic names both virtual locations, which map back to both
 //!   files.
 

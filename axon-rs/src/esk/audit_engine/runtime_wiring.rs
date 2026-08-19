@@ -1,4 +1,4 @@
-//! AXON Audit Evidence Engine — Runtime Wiring Truth Table (§Fase 111, F8)
+//! AXON Audit Evidence Engine — Runtime Wiring Truth Table (v2.67.0, F8)
 //!
 //! # Why this exists
 //!
@@ -8,7 +8,7 @@
 //! then marked such a control `ready` as soon as the program **declared** the
 //! corresponding primitive.
 //!
-//! §Fase 111 found that claim to be **unsound**. Three distinct lies were
+//! v2.67.0 found that claim to be **unsound**. Three distinct lies were
 //! being told, and the audit engine could not tell them apart:
 //!
 //! 1. **[`Wiring::Wired`]** — the kernel exists AND a production path calls
@@ -48,7 +48,7 @@
 //! stating, on the record, whether its kernel is actually wired. That test is
 //! the durable half of this fix — the code below is only the snapshot.
 //!
-//! When a §111.x sub-fase wires one of the orphaned kernels into the executor,
+//! When a v2.67.0 step wires one of the orphaned kernels into the executor,
 //! flip its row to `Wired` **in the same PR** and the controls it backs become
 //! `ready` automatically. That is the intended, and only, way to raise the
 //! score.
@@ -63,7 +63,7 @@ pub enum Wiring {
     /// symbol is carried so the evidence package can point at real code.
     Wired(&'static str),
     /// The kernel exists but has NO production caller (callers are its own
-    /// tests). Carries the module so a §111.x sub-fase knows what to wire.
+    /// tests). Carries the module so a v2.67.0 step knows what to wire.
     Orphaned(&'static str),
     /// The cited symbol does not exist anywhere in the tree — a dangling
     /// anchor inherited from the deleted Python runtime.
@@ -118,22 +118,22 @@ const WIRING_TABLE: &[(&str, Wiring)] = &[
     ("axon.runtime.esk.provenance", Wiring::Wired("esk::provenance (via store::audit_chain)")),
     // The locator is a stale Python path, but the kernel it names was really
     // ported and really runs — so the CONTROL is backed. The catalog's locator
-    // string still wants correcting (§111 F6 doc sweep); the wiring does not.
+    // string still wants correcting (v2.67.0 F6 doc sweep); the wiring does not.
     ("provenance.py", Wiring::Wired("esk::provenance (via store::audit_chain)")),
     ("HmacSigner", Wiring::Wired("esk::provenance::HmacSigner (via store::audit_chain)")),
     ("HmacSigner.random", Wiring::Wired("esk::provenance::HmacSigner::random (via store::audit_chain)")),
     ("HmacSigner.verify", Wiring::Wired("esk::provenance::HmacSigner::verify (via store::audit_chain)")),
 
-    // ── WIRED by §Fase 112 — the loop that was never built ────────────────
+    // ── WIRED by v2.67.0 — the loop that was never built ────────────────
     //
-    // §111 F9 called these "real engine, dead wire": genuinely implemented,
+    // v2.67.0 F9 called these "real engine, dead wire": genuinely implemented,
     // unit-tested, and reachable by nobody. I diagnosed that as a LANGUAGE
     // problem. It was not — the declarations already formed a dataflow graph
     // (`immune.watch: [<observe>]`, `reflex.trigger: <immune>`, …) and the
     // kernels took the compiled IR **directly**. What was missing was the
     // supervisor that hands them the graph and drives it.
     //
-    // §112 built it (`cognitive_io_supervisor`), and every row below now cites a
+    // v2.67.0 built it (`cognitive_io_supervisor`), and every row below now cites a
     // gate proving it runs through the REAL deploy path. Two of them were also
     // WRONG, and only running them could tell you: the KL sensor scored an unseen
     // symbol against the baseline's MINIMUM probability (so a perfectly stable
@@ -148,7 +148,7 @@ const WIRING_TABLE: &[(&str, Wiring)] = &[
     ("HealKernel", Wiring::Wired("runtime::immune::heal (via cognitive_io_supervisor)")),
     ("axon.runtime.immune.HealKernel", Wiring::Wired("runtime::immune::heal (via cognitive_io_supervisor)")),
     ("HealDefinition.mode", Wiring::Wired("runtime::immune::heal (via cognitive_io_supervisor)")),
-    // §113.d — the lease has a USE-SITE: `StoreRegistry::charge_lease` runs on every
+    // v2.67.0 — the lease has a USE-SITE: `StoreRegistry::charge_lease` runs on every
     // `resolve()` of a leased store, so a store operation IS a use of the resource and
     // the post-expiry one is the CT-2 Anchor Breach.
     ("LeaseKernel", Wiring::Wired("store::registry::charge_lease")),
@@ -212,31 +212,31 @@ pub fn wiring_or_absent(locator: &str) -> Wiring {
 ///
 /// This is the feature-level projection of the table above: every one of
 /// these maps to a Cognitive-I/O primitive with no `IRFlowNode` dispatch arm
-/// (§111 F14). Wiring any of them into the executor means deleting its row
+/// (v2.67.0 F14). Wiring any of them into the executor means deleting its row
 /// here in the same PR.
 const UNENFORCED_FEATURES: &[&str] = &[
-    // §112 removed SIX (`has_observe`, `has_reconcile`, `has_ensemble`, `has_immune`,
+    // v2.67.0 removed SIX (`has_observe`, `has_reconcile`, `has_ensemble`, `has_immune`,
     // `has_reflex`, `has_heal`) — driven by the `CognitiveIoSupervisor`, each with a
     // gate proving it runs through the REAL deploy path.
     //
-    // §113 removed the last TWO — `has_lease` and `has_resource`.
+    // v2.67.0 removed the last TWO — `has_lease` and `has_resource`.
     //
     //   `has_resource`: a `resource` now governs what runs. An `axonstore
     //   { resource: Db }` DERIVES its DSN and its POOL SIZE from it (`capacity: 20`
-    //   ⇒ twenty connections; before §113 that field was read by ZERO lines of code
+    // ⇒ twenty connections; before v2.67.0 that field was read by ZERO lines of code
     //   while every pool sat at a hardcoded 10), and `lifetime` decides how many
     //   holders may name it (axon-T945).
     //
     //   `has_lease`: the CT-2 Anchor Breach fires. The kernel was never broken — it
     //   had no SUBJECT. A flow could not USE a resource, so a guarantee about
-    //   post-expiry USE was vacuous: unviolatable, and therefore unkeepable. §113
+    // post-expiry USE was vacuous: unviolatable, and therefore unkeepable. v2.67.0
     //   made the store operation the use.
     //
     // THIS LIST IS NOW EMPTY, AND THAT IS THE POINT OF F8.
     //
-    // §111 found this engine UNSOUND in the worst possible direction: declaring a
-    // DEAD primitive RAISED your SOC2 score. §111 made it stop lying — every one of
-    // these features bought exactly nothing. §112 and §113 let it start saying YES,
+    // v2.67.0 found this engine UNSOUND in the worst possible direction: declaring a
+    // DEAD primitive RAISED your SOC2 score. v2.67.0 made it stop lying — every one of
+    // these features bought exactly nothing. v2.67.0 and v2.67.0 let it start saying YES,
     // and every yes now cites a kernel on a production path.
     //
     // An empty list is not a licence. A NEW feature whose kernel does not run belongs
@@ -264,7 +264,7 @@ mod tests {
     use super::*;
     use super::super::frameworks::{EvidenceKind, all_frameworks, controls_for};
 
-    /// **The durable half of the §111 F8 fix.**
+    /// **The durable half of the v2.67.0 F8 fix.**
     ///
     /// Every `RuntimeInvariant` control in the catalog must have an explicit
     /// row in [`WIRING_TABLE`]. Adding a control that claims a runtime
@@ -322,16 +322,16 @@ mod tests {
         assert!(!Wiring::Absent.is_enforced());
     }
 
-    /// The §111 headline, **paid**: declaring `lease` is now genuine evidence.
+    /// The v2.67.0 headline, **paid**: declaring `lease` is now genuine evidence.
     ///
-    /// §111 wrote this test to pin the LIE. SOC2 CC6.3 cited `LeaseKernel`, which
+    /// v2.67.0 wrote this test to pin the LIE. SOC2 CC6.3 cited `LeaseKernel`, which
     /// had zero production callers — so declaring a `lease` RAISED an adopter's
     /// compliance score while enforcing precisely nothing. That was F8: the engine
     /// was unsound in the worst possible direction.
     ///
-    /// The §111 assertion ended with an instruction to whoever eventually fixed it:
+    /// The v2.67.0 assertion ended with an instruction to whoever eventually fixed it:
     /// *"If this now passes, wire it AND flip its WIRING_TABLE row in the same
-    /// PR."* §113.d did exactly that, and this is the same test, inverted.
+    /// PR."* v2.67.0 did exactly that, and this is the same test, inverted.
     #[test]
     fn the_soc2_cc63_lease_claim_is_now_genuinely_enforced() {
         let w = wiring_or_absent("axon.runtime.lease_kernel.LeaseKernel");
@@ -354,11 +354,11 @@ mod tests {
 
     /// The Cognitive-I/O family must not satisfy control requirements while
     /// it has no dispatch arm.
-    /// §Fase 112 — six of these are now ENFORCED, and this test is the record of it.
+    /// v2.67.0 — six of these are now ENFORCED, and this test is the record of it.
     ///
     /// The `CognitiveIoSupervisor` drives them through the real deploy path, each
-    /// with a gate that proves it runs. This is the F8 loop closing: §111 made the
-    /// compliance engine stop lying; §112 is what lets it also say YES.
+    /// with a gate that proves it runs. This is the F8 loop closing: v2.67.0 made the
+    /// compliance engine stop lying; v2.67.0 is what lets it also say YES.
     #[test]
     fn the_cognitive_io_features_112_wired_are_now_enforced() {
         for f in [
@@ -376,9 +376,9 @@ mod tests {
         }
     }
 
-    /// …and since §113, so do `lease` and `resource`.
+    /// …and since v2.67.0, so do `lease` and `resource`.
     ///
-    /// The §111 version of this test was named `..._until_113` and asserted the
+    /// The v2.67.0 version of this test was named `..._until_113` and asserted the
     /// **negation** of every line below. It was a promise with a date on it.
     #[test]
     fn lease_and_resource_are_enforced_since_113() {
@@ -394,7 +394,7 @@ mod tests {
             );
         }
         // …and the genuinely-wired surfaces still count, as they always did.
-        // §124.c renamed `has_compliance_annotation` → `compliance_coverage_holds`
+        // v4.0.0 renamed `has_compliance_annotation` → `compliance_coverage_holds`
         // when its meaning changed from presence to the coverage rule holding —
         // enforced at check time (T957/T1215) and at the typed bus's `publish`.
         for f in ["has_shield", "has_endpoint", "compliance_coverage_holds"] {
@@ -404,9 +404,9 @@ mod tests {
 
     /// **The debt ledger is empty — and an empty ledger is not a licence.**
     ///
-    /// §111 opened this list with eight entries, and found the compliance engine
+    /// v2.67.0 opened this list with eight entries, and found the compliance engine
     /// scoring adopters on primitives that did nothing: **declaring a dead
-    /// primitive RAISED your SOC2 score.** §112 paid six of them; §113 paid the
+    /// primitive RAISED your SOC2 score.** v2.67.0 paid six of them; v2.67.0 paid the
     /// last two.
     ///
     /// This test exists so the emptiness stays *earned*. A new feature whose kernel

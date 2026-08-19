@@ -3,11 +3,11 @@ name: document
 summary: "Native Document Synthesis — a declarative, compile-time-validated DOCX/PPTX/XLSX structure. The egress boundary where a value LEAVES the epistemic lattice into a human artifact: the assertion-laundering barrier refuses a flow value below `believe` in an assertive slot without `attribute:` or a shield."
 category: operators
 top_level: true
-since: Fase 99 (v2.53.0)
+since: v2.53.0
 grammar: |
   document <Name> {
       target:     docx | pptx | xlsx        # required — selects the serializer
-      template:   <name.dotx>               # optional — enterprise template (§99.g)
+      template: <name.dotx> # optional — enterprise template (v2.53.0)
       provenance: none | embedded | signed  # optional — provenance part (default none)
       effects:    <io, storage, sensitive:<cat>, legal:<basis>>   # propagated egress row
 
@@ -31,7 +31,7 @@ grammar: |
 
 `document` declares **a DOCX, PPTX, or XLSX as a declarative,
 compile-time-validated structure**. It is the mirror image of `scrape`
-(§98): where a scraped value ENTERS the program born adversarial,
+(v2.52.0): where a scraped value ENTERS the program born adversarial,
 a document is the point where a value **LEAVES** the epistemic lattice
 and becomes a human artifact that outlives every guardrail
 (`a_document_is_an_egress_boundary_and_the_type_system_guards_it`).
@@ -42,13 +42,13 @@ format itself confers authority the value never earned. The
 below `believe` cannot occupy an *assertive slot* (a body paragraph,
 table cell, chart series, spreadsheet formula, slide bullet) without an
 explicit `attribute:` annotation or a shield that elevates it. It is
-the exact dual of §98's content-injection barrier.
+the exact dual of v2.52.0's content-injection barrier.
 
 ## Surface
 
 `document` is a **top-level declaration**. `target:` selects a
 serializer, not a capability — a docx, a pptx and an xlsx have
-identical effect rows (D99.6).
+identical effect rows.
 
 ```axon
 document quarterly_report {
@@ -87,16 +87,16 @@ body vocabulary: a `slide` inside a `docx`, or a `sheet` inside a
 `none` (default) | `embedded` (an unsigned custom XML part recording
 the flow id, model, per-field epistemic level, and source URIs) |
 `signed` (the embedded part, cryptographically signed — enterprise,
-§99.g). The point: an auditor holding only the `.docx`, months later,
+v2.53.0). The point: an auditor holding only the `.docx`, months later,
 off any axon system, can still answer *"which flow made this, from
-which model, and did the author believe it?"* (D99.2).
+which model, and did the author believe it?"*.
 
 ### `effects:` (optional)
 
 The propagated egress effect row. Authoring a document value is
 `pure`; rendering is `io` (+ `storage` on the enterprise blob sink);
 `sensitive:<category>` / `legal:<basis>` are **propagated** from the
-bound data (D99.4). A document binding `sensitive:*` data with no
+bound data. A document binding `sensitive:*` data with no
 `legal:<basis>` is `axon-T913`.
 
 ### body blocks
@@ -112,26 +112,26 @@ Closed per `target` (`axon-T912` on a block outside the vocabulary;
   `format`.
 
 A `chart.kind:` is the bounded v1 subset `bar | line | pie | scatter`
-(`axon-T917`; SmartArt / pivots / 3-D are deferred, D99.9). A `formula`
+(`axon-T917`; SmartArt / pivots / 3-D are deferred, the design decision). A `formula`
 carries an A1 `cell:` + `expr:`; a `range` an A1 `cells:` (`axon-T919`).
 
 ## What this primitive is NOT
 
 - **Not a document reader or editor.** `document` *creates* a
-  DOCX/PPTX/XLSX; it cannot *open* or *modify* one (D99.12 — read/edit
-  is §100, three engines not three methods). An ingested document is
-  epistemically the §98 problem — born `Untrusted`.
+  DOCX/PPTX/XLSX; it cannot *open* or *modify* one (the design decision — read/edit
+  is v2.54.0, three engines not three methods). An ingested document is
+  epistemically the v2.52.0 problem — born `Untrusted`.
 - **Not a formula engine.** A `formula`'s cached value is Excel's last
   recalculation; axon ships no recalc, so a headless reader sees the
-  cached number (D99.13).
+  cached number.
 - **Not a filesystem grant.** `render` returns bytes as a typed
-  artifact value; the HOST writes the file (D99.14). The agent gets
+  artifact value; the HOST writes the file. The agent gets
   zero filesystem surface.
 
 ## See also
 
 - `axon://primitives/scrape` — the mirror: web content entering born
-  adversarial (§98). `document` is the egress dual.
+  adversarial (v2.52.0). `document` is the egress dual.
 - `axon://primitives/shield` — elevates an assertive-slot value past
   the barrier (`hallucination`/`pii_leak` scan).
 - `axon://primitives/tool` — the render lands as a `DocumentRenderer`

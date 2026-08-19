@@ -1,7 +1,7 @@
 /*
- * §Fase 25.e — Algebraic effects FSM dispatcher (implementation).
+ * v1.19.0 — Algebraic effects FSM dispatcher (implementation).
  *
- * Direct port of axon-rs/src/effects/runtime.rs delivering paper §5.
+ * Direct port of axon-rs/src/effects/runtime.rs delivering paper section 5.
  * See dispatch.h for the architectural commentary.
  */
 
@@ -353,7 +353,7 @@ AxonCsysDispatchResult axon_csys_effects_run(
     /* Labels-as-values + computed goto are GNU C extensions; under
      * `-Werror=pedantic` gcc/clang would otherwise reject the
      * `&&label` and `goto *expr` syntax. We use them deliberately
-     * (paper §5 — atomic-jump dispatch) and gate behind
+     * (paper section 5 — atomic-jump dispatch) and gate behind
      * `AXON_CSYS_USE_COMPUTED_GOTOS` (which is 0 on MSVC where the
      * extension is unavailable). Suppress the pedantic noise for
      * just this block; the switch fallback below stays portable. */

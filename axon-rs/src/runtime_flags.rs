@@ -1,4 +1,4 @@
-//! §Fase 33.x.h — Process-wide runtime opt-in flags.
+//! v1.24.0 — Process-wide runtime opt-in flags.
 //!
 //! Adopter-tunable runtime behaviors that DEFAULT to OFF (to
 //! preserve v1.24.0 wire byte-compat) and can be flipped ON for
@@ -14,7 +14,7 @@
 //! `std::sync::Mutex<bool>` indirection serializes read+write so
 //! there's no torn-write under concurrent test access.
 //!
-//! # D9 contract (Fase 33.x cycle)
+//! # D9 contract (v1.24.0 cycle)
 //!
 //! [`tokenizer_fallback_enabled`] gates the BPE-tokenized chunking
 //! that replaces the legacy whitespace 3-word grouping on the SSE
@@ -46,8 +46,8 @@ static TOKENIZER_FALLBACK: Mutex<bool> = Mutex::new(false);
 
 /// Read the current flag value. Cheap — single Mutex acquisition.
 ///
-/// §Fase 119.h — NOT WIRED. This was read once per chunking decision in
-/// `run_streaming_legacy_path`, which sub-fase 33.z.e deleted. Nothing in the
+/// v2.83.0 — NOT WIRED. This was read once per chunking decision in
+/// `run_streaming_legacy_path`, which step 33.z.e deleted. Nothing in the
 /// crate calls this function today except its own tests, and nothing calls
 /// [`set_tokenizer_fallback`] either, so the flag is permanently `false`
 /// whatever an adopter does. See the module header.
@@ -98,7 +98,7 @@ impl Drop for TokenizerFallbackGuard {
 }
 
 // ────────────────────────────────────────────────────────────────────
-//  §Fase 33.z.e — Streaming-via-dispatcher flag RETIRED
+// v1.24.0 — Streaming-via-dispatcher flag RETIRED
 // ────────────────────────────────────────────────────────────────────
 //
 // Pre-33.z.e this module exposed `streaming_via_dispatcher_enabled()`
@@ -117,14 +117,14 @@ impl Drop for TokenizerFallbackGuard {
 //  Tokenizer-aware chunking helper
 // ────────────────────────────────────────────────────────────────────
 
-/// §Fase 33.x.h — Tokenize `text` into BPE chunks via
+/// v1.24.0 — Tokenize `text` into BPE chunks via
 /// `axon_csys::tokens::cl100k_base()` and return one `String` per
 /// token (or per safe UTF-8 boundary group when a single token
 /// produces non-UTF-8 bytes).
 ///
 /// # When this fires
 ///
-/// §Fase 119.h — NEVER, in the current build. It fired from
+/// v2.83.0 — NEVER, in the current build. It fired from
 /// `run_streaming_legacy_path` when [`tokenizer_fallback_enabled`] returned
 /// `true`; 33.z.e deleted that function, and no other caller took its place.
 /// The paragraph that used to stand here described the wiring as live.
@@ -132,7 +132,7 @@ impl Drop for TokenizerFallbackGuard {
 /// # Fallback semantics
 ///
 /// If tokenizer construction or encoding fails — which is now the DEFAULT,
-/// since §119.h made the C23 BPE kernel opt-in — this returns an empty Vec.
+/// since v2.83.0 made the C23 BPE kernel opt-in — this returns an empty Vec.
 /// The contract was that the caller then falls back to whitespace chunking;
 /// with no caller, the empty Vec goes nowhere. Stated plainly so nobody
 /// re-derives the guarantee from the old text: calling this directly in a

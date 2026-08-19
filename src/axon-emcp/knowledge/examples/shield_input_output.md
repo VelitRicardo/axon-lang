@@ -32,7 +32,7 @@ anchor SafeReply {
 shield InputOutputShield {
     scan:       [prompt_injection, pii_leak, data_exfil]
     on_breach:  sanitize_and_retry
-    // §114.w (axon-T952): `sanitize_and_retry` must name what it masks.
+    // v2.69.0 (axon-T952): `sanitize_and_retry` must name what it masks.
     redact:     [email, phone]
     severity:   high
     compliance: [SOC2]

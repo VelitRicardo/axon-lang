@@ -7,17 +7,17 @@ since: v0.1.0 (initial language)
 grammar: |
   tool <Name> {
       provider: <slug>                # optional — CLOSED catalog; omit = LLM-routed (T948)
-      parameters: { k: Type, ... }    # optional (§Fase 58) — typed INPUT schema (the call contract)
-      output_type: <Type>             # optional (§Fase 58) — declared OUTPUT type of the tool result
+      parameters: { k: Type, ... } # optional (v2.8.0) — typed INPUT schema (the call contract)
+      output_type: <Type> # optional (v2.8.0) — declared OUTPUT type of the tool result
       max_results: <integer>          # optional — cap on returned items
       filter: <expr>                  # optional — server-side filter expression
       timeout: <duration>             # optional — wall-clock budget (e.g. 10s, 500ms)
       runtime: <ident>                # optional — runtime hint / endpoint slug (native | sandboxed | <slug>)
       sandbox: <true|false>           # optional — force-execute inside a sandboxed worker
       effects: <effect-row>           # optional — declared effects (<network>, <io>, ...)
-      target: <SocketRef>             # optional (§Fase 84) — dispatch over this socket (Remote Hands)
-      risk: safe | destructive        # optional (§Fase 84) — technician-command risk class
-      argv: [<token>, ...]            # required with target:+bash (§Fase 84) — the argv template
+      target: <SocketRef> # optional (v2.39.0) — dispatch over this socket (Remote Hands)
+      risk: safe | destructive # optional (v2.39.0) — technician-command risk class
+      argv: [<token>, ...] # required with target:+bash (v2.39.0) — the argv template
   }
 ---
 
@@ -61,21 +61,21 @@ tool CodeInterpreter {
 
 ### `provider:` (optional — omit for an LLM-routed tool)
 
-A **single identifier** from a **closed catalog** (`axon-T948`, §114.b):
+A **single identifier** from a **closed catalog** (`axon-T948`, v2.69.0):
 
 `native` · `stub` · `stub_stream` · `http` · `mcp` · `scrape_http` ·
 `scrape_dom` · `scrape_crawl` · `scrape_enrich` · `bash`.
 
 `http` (REST dispatch) and `mcp` (ℰMCP JSON-RPC transducer) make a **real**
 call to the tool-server (see *Calling a tool* below). `native` runs an
-in-process built-in; `scrape_*` are the §98 web-acquisition engines; `bash`
-is the §84 technician execve path; `stub` / `stub_stream` return synthetic
+in-process built-in; `scrape_*` are the v2.52.0 web-acquisition engines; `bash`
+is the v2.39.0 technician execve path; `stub` / `stub_stream` return synthetic
 output for tests.
 
 **Omit `provider:` for an LLM-routed tool** — a tool that *is* the model (a
 `Summarize`, a `Classify`). That is validated by the *absence* of a provider.
 
-> #### ⚠️ §Fase 114.b — this page used to say the opposite
+> #### ⚠️ v2.69.0 — this page used to say the opposite
 >
 > It read: *"compile time validates that the slug parses as an identifier but
 > does NOT validate it against the catalog"*, and listed a dozen slugs —
@@ -90,10 +90,10 @@ output for tests.
 > call to the model, which invented the output. On the streaming path an
 > **empty** provider did the same, returning a canned `[stub]`. On the one
 > primitive built so an action's result is born with an honest epistemic
-> status, an unrecognised provider produced an invented one. §114.b closes it:
+> status, an unrecognised provider produced an invented one. v2.69.0 closes it:
 > a non-empty provider outside the catalog is refused at compile.
 
-### `parameters:` (optional, §Fase 58)
+### `parameters:` (optional, v2.8.0)
 
 The tool's **typed input schema** — the call contract. A
 brace-delimited list of `name: Type` pairs:
@@ -106,14 +106,14 @@ The schema reuses the full type-expression grammar (generics like
 `List<T>`, `?`-optionals); a parameter whose type ends in `?` is
 **optional**, every other parameter is **required**. The schema is
 the signature the type-checker validates a `use <Tool>(k = v, …)`
-call against (§58.d) — an unknown argument name, a duplicate, a
+call against (v2.8.0) — an unknown argument name, a duplicate, a
 missing required parameter, or a literal type mismatch is a
 **compile-time CALLER error** (CT-2 blame), surfaced *before* any
 dispatch. A tool with **no** `parameters:` is schema-less: it
 accepts the legacy single-argument `use <Tool> on <arg>` form and
-its calls are not arg-validated (§58 D5 back-compat).
+its calls are not arg-validated (v2.8.0 D5 back-compat).
 
-### `output_type:` (optional, §Fase 58)
+### `output_type:` (optional, v2.8.0)
 
 The tool's **declared output type**. After a real dispatch, the
 result is bound for downstream reference (the tool-step's typed
@@ -170,7 +170,7 @@ A **boolean literal**. When `true`, the runtime is required to
 execute the tool inside a sandboxed worker (network egress
 restricted, filesystem mounted read-only by default, no parent
 process inheritance). Independent of `runtime:` — a `native`
-runtime can still be sandboxed by the supervisor (§Fase 16).
+runtime can still be sandboxed by the supervisor (v1.11.0).
 
 ### `effects:` (optional)
 
@@ -186,14 +186,14 @@ from the **closed catalog**
 | `storage` | Backed by an `axonstore` / data plane. |
 | `pure` | Strictly deterministic, no observable side effects. |
 | `random` | Consumes randomness (must be reproducible per-trace via the runtime seed). |
-| `stream` | Emits a stream (paired with `Stream<T>` outputs, §Fase 33). |
-| `trust` | Carries a §11.c trust proof obligation. |
+| `stream` | Emits a stream (paired with `Stream<T>` outputs, v1.24.0). |
+| `trust` | Carries a v1.4.0 trust proof obligation. |
 | `sensitive` | Touches a sensitive data category (PII / PHI / financial). |
-| `legal` | Carries a §40 legal-basis tag (mandatory qualifier from the closed legal-basis catalog). |
+| `legal` | Carries a v2.0.0 legal-basis tag (mandatory qualifier from the closed legal-basis catalog). |
 | `ots` | One-shot transform (mandatory `transform:<from>:<to>` or `backend:<native\|ffmpeg>` qualifier). |
 
 Each effect may carry a **qualifier** after `:` (dotted-slug
-grammar, §Fase 11.c / 11.e):
+grammar, v1.4.0):
 
 ```axon
 effects: <network, io>
@@ -208,10 +208,10 @@ field on the effect row and accepts the closed level catalog
 `axon://compliance/epistemic_levels`.
 
 The type checker propagates the row through the flow's
-algebraic-effect signature (`§Fase 23`). At runtime, every
+algebraic-effect signature (`v1.17.0`). At runtime, every
 invocation lands in the audit hash-chain with the row attached.
 
-### `target:` / `risk:` / `argv:` (optional, §Fase 84 — Remote Hands)
+### `target:` / `risk:` / `argv:` (optional, v2.39.0 — Remote Hands)
 
 These three fields turn a `tool` into a **technician command**: a
 typed, template-locked operation an agent can run on a **real
@@ -240,7 +240,7 @@ tool DeleteFile {
 ```
 
 - **`target:`** names the `socket` this call dispatches over. Omit
-  it and the tool behaves exactly as before (§84 is inert). With
+  it and the tool behaves exactly as before (v2.39.0 is inert). With
   it, the tool is duality-checked against that socket's session
   (`axon-T861`).
 - **`risk:`** is the closed catalog `safe | destructive`
@@ -253,7 +253,7 @@ tool DeleteFile {
   (`"${path}"`). This is the injection-safety keystone: a `${param}`
   is substituted as **exactly one argument**, opaquely, and is
   **never re-parsed by a shell** — the same discipline
-  `retrieve.where:` uses for SQL parameters (§76.b). A placeholder
+  `retrieve.where:` uses for SQL parameters (v2.33.0). A placeholder
   fused with other text (`"${path}.bak"`) or unbound to a
   `parameters:` entry is a compile error (`axon-T859`); a
   `target:`-bound `provider: bash` tool with no `argv:` is
@@ -262,7 +262,7 @@ tool DeleteFile {
   syntax; the argv model makes that structurally impossible.
 
 Unknown fields inside a `target:`-bound tool are a **hard error**
-(§84 D84.13) — a typo'd safety field can never silently disable a
+(v2.39.0 the design decision) — a typo'd safety field can never silently disable a
 guard. (A legacy schema-less tool keeps its lenient skip.)
 
 The enterprise data plane adds separation of duties (proposing and
@@ -277,7 +277,7 @@ shell, least-privilege.
 
 There are two ways a declared tool is invoked.
 
-### 1. Explicit dispatch (§Fase 58) — the typed, real-dispatch path
+### 1. Explicit dispatch (v2.8.0) — the typed, real-dispatch path
 
 A **flow-level** `use <Tool>(…)` statement dispatches a real call
 to the tool-server and binds the typed result. Two surface forms:
@@ -289,14 +289,14 @@ to the tool-server and binds the typed result. Two surface forms:
 # ({"company":"Acme","max_results":5,"active":true}) and POSTs it.
 use CrmRadar(company = "Acme", max_results = 5, active = true)
 
-# Legacy single-argument (§Fase 54.b, D5 back-compat). `on
+# Legacy single-argument (v2.7.0, D5 back-compat). `on
 # "${param}"` interpolates a bound request/flow parameter; the
 # body is wrapped as {"input": <arg>}.
 use WebSearch on "${query}"
 ```
 
 Both are **flow-level**: a `use` written inside a `step { }` body
-is a parse error (§54.a) — it would silently degrade to an
+is a parse error (v2.7.0) — it would silently degrade to an
 unconstrained LLM step. The in-step equivalent is `apply: <Tool>`
 on a step (run the tool as that step's backend).
 
@@ -319,7 +319,7 @@ runtime restricts the model to ONLY the tools declared at module
 level; non-declared tool calls are rejected as protocol
 violations.
 
-## Wiring the endpoint (§Fase 58.g)
+## Wiring the endpoint (v2.8.0)
 
 For the URL-dispatched providers (`http` / `mcp`), the call
 endpoint is **config-driven**, so the same source runs against any
@@ -345,7 +345,7 @@ tool-server without edits:
   compiler will reject a bash binding without an explicit
   `effects:` row in strict-policy modules.
 - **Not a function in the host language.** Calling a tool
-  produces an audited side effect. As of §Fase 58, an
+  produces an audited side effect. As of v2.8.0, an
   explicitly-dispatched tool (`use <Tool>(…)`) DOES bind a typed
   result — declare `output_type:` to give it a type, and the
   runtime binds the response under `<ToolName>_result` for a

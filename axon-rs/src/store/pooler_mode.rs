@@ -1,4 +1,4 @@
-//! §Fase 118.b.3 — the §Fase 96 pooler-topology decision, driver-free.
+//! v2.81.0 — the v2.51.0 pooler-topology decision, driver-free.
 //!
 //! `connections_release_across_cognition` is a DEPLOYMENT question — what kind
 //! of pooler sits in front of Postgres — answered by reading one environment
@@ -13,7 +13,7 @@
 //!
 //! **This module must never acquire a dependency.**
 
-/// §Fase 96.a — is eager §37.x.j connection pinning enabled for this
+/// v2.51.0 — is eager v1.32.0 connection pinning enabled for this
 /// deployment? Read ONCE from `AXON_DB_POOLER_MODE` and cached (the pooler
 /// topology is fixed for a process's life):
 ///   - `transaction` (default, or unset) → pinning ON (unchanged behavior;
@@ -44,7 +44,7 @@ fn pinning_enabled_for_mode(mode: &str) -> bool {
 mod tests {
     use super::*;
 
-/// §Fase 96.a — the pooler-mode pin decision (`connections_release_across_cognition`).
+/// v2.51.0 — the pooler-mode pin decision (`connections_release_across_cognition`).
 #[test]
 fn pinning_mode_gate() {
     // Default / transaction / unrecognised → pin ON (zero regression).

@@ -8,13 +8,13 @@
 //! The cache uses `std::sync::RwLock` (not tokio's) so it can be read from
 //! synchronous call sites inside `resolve_backend_key` without any async overhead.
 //!
-//! # §Fase 33.x.i — `crate::backend` deprecation
+//! # v1.24.0 — `crate::backend` deprecation
 //!
 //! This file's env-var-fallback step uses the deprecated
 //! `crate::backend::get_api_key` (now a thin shim around the
 //! consolidated `crate::backends::get_api_key`). The
 //! `#![allow(deprecated)]` silences the warning while the deeper
-//! migration progresses under Fase 33.x.i.2.
+//! migration progresses under v1.24.0.
 
 #![allow(deprecated)]
 
@@ -32,7 +32,7 @@ type CacheEntry = (String, Instant); // (api_key, fetched_at)
 pub struct TenantSecretsClient {
     cache: RwLock<HashMap<CacheKey, CacheEntry>>,
     /// None when AWS credentials are unavailable (open-source / local dev).
-    /// §116.c.5 — the field (and the whole AWS SDK dependency tree) only exists
+    /// v2.77.0 — the field (and the whole AWS SDK dependency tree) only exists
     /// under the default-on `aws-secrets` feature; without it the resolution
     /// chain is cache → env-var, identical to a creds-less box.
     #[cfg(feature = "aws-secrets")]
@@ -53,7 +53,7 @@ impl TenantSecretsClient {
         Self { cache: RwLock::new(HashMap::new()), sm_client }
     }
 
-    /// §116.c.5 — compiled without the `aws-secrets` feature: same constructor
+    /// v2.77.0 — compiled without the `aws-secrets` feature: same constructor
     /// signature, env-var fallback only (the SM leg does not exist).
     #[cfg(not(feature = "aws-secrets"))]
     pub async fn new() -> Self {
@@ -109,7 +109,7 @@ impl TenantSecretsClient {
             return Ok(key);
         }
 
-        // 2. AWS Secrets Manager (only exists under `aws-secrets`, §116.c.5)
+        // 2. AWS Secrets Manager (only exists under `aws-secrets`, v2.77.0)
         if let Some(api_key) = self.get_from_sm(tenant_id, provider).await {
             return Ok(api_key);
         }
@@ -150,7 +150,7 @@ impl TenantSecretsClient {
         }
     }
 
-    /// §116.c.5 — without the feature the SM leg is a no-op: the chain is
+    /// v2.77.0 — without the feature the SM leg is a no-op: the chain is
     /// cache → env-var, byte-identical to a creds-less deployment.
     #[cfg(not(feature = "aws-secrets"))]
     async fn get_from_sm(&self, _tenant_id: &str, _provider: &str) -> Option<String> {
@@ -226,12 +226,12 @@ mod tests {
         assert_eq!(client.get_cached("acme", "anthropic"), None);
     }
 
-    // §Fase 117.a — `secret_path` is `#[cfg(feature = "aws-secrets")]` (it names
+    // v2.81.0 — `secret_path` is `#[cfg(feature = "aws-secrets")]` (it names
     // an AWS Secrets Manager path and has no meaning without the SM leg), so
     // this test must carry the same gate. Without it `cargo test
-    // --no-default-features` fails to COMPILE — which is how §116.c.5 shipped:
+    // --no-default-features` fails to COMPILE — which is how v2.77.0 shipped:
     // its opt-out was verified with `--lib --bins`, and the TEST target was
-    // never built without the feature. §117.c makes this configuration the
+    // never built without the feature. v2.81.0 makes this configuration the
     // DEFAULT, so the gap had to close first.
     #[cfg(feature = "aws-secrets")]
     #[test]

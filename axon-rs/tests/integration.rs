@@ -1,4 +1,4 @@
-//! §Fase 118.b.2 — this suite exercises the HTTP server surface (the `axum`
+//! v2.81.0 — this suite exercises the HTTP server surface (the `axum`
 //! router, the tenant extractor, the session carriers, the SSE dialect
 //! adapters), which lives behind the `server` feature. Gated at the file level:
 //! the core suites keep running in a `cli`-only build.
@@ -24,7 +24,7 @@ use axon::runner;
 /// Lex source and return all tokens (including trailing EOF).
 /// Note: `axon check` reports token_count = tokens.len() which includes EOF.
 ///
-/// Strips comments to preserve pre-Fase-14.a token-count semantics in
+/// Strips comments to preserve pre-cycle-14.a token-count semantics in
 /// the integration suite. Tests that explicitly verify trivia /
 /// comment-emission belong in `axon-frontend`'s own lexer tests.
 fn lex(src: &str) -> Vec<axon::tokens::Token> {
@@ -517,7 +517,7 @@ fn tc_mandate_missing_constraint() {
 
 #[test]
 fn tc_mandate_bad_pid() {
-    // §Fase 119.b.3 — the messages come from the shared stability judgment
+    // v2.83.0 — the messages come from the shared stability judgment
     // (axon_frontend::stability) now, and say WHY the sign matters instead of
     // restating the inequality.
     let errors = type_check(r#"mandate Bad { constraint: "x" kp: -1.0 ki: -0.5 }"#);
@@ -535,7 +535,7 @@ fn tc_axonstore_bad_backend() {
 
 #[test]
 fn tc_axonendpoint_bad_method() {
-    // §Fase 28 — the parser now rejects unknown HTTP methods up front
+    // v1.20.0 — the parser now rejects unknown HTTP methods up front
     // with a "Did you mean ..." hint, before the type checker runs.
     // The adopter-facing diagnostic is what we assert on here.
     let tokens = lex(r#"axonendpoint Bad { method: YEET path: "/api" }"#);
@@ -550,7 +550,7 @@ fn tc_axonendpoint_bad_method() {
     );
     assert!(
         err.message.contains("Did you mean"),
-        "Fase 28 hint missing from diagnostic: {}",
+        "v1.20.0 hint missing from diagnostic: {}",
         err.message
     );
 }
@@ -721,7 +721,7 @@ axonstore Store { backend: "postgresql" isolation: "serializable" }
 
 #[test]
 fn ir_flow_step_types() {
-    // §Fase 108.d — `focus` is a data-plane verb: its target must be a
+    // v2.63.0 — `focus` is a data-plane verb: its target must be a
     // DECLARED dataspace (axon-T930), so the fixture declares one.
     let ir = compile_json(r#"
 dataspace Attention {
@@ -2808,7 +2808,7 @@ fn tool_registry_from_ir_specs() {
     assert_eq!(entry.provider, "some_unregistered_vendor");
     assert_eq!(entry.max_results, Some(5));
 
-    // §114.b — a genuinely unknown provider (registered programmatically, past the
+    // v2.69.0 — a genuinely unknown provider (registered programmatically, past the
     // type-checker) falls through to None → the LLM. `axon-T948` refuses an
     // unknown provider at COMPILE; this asserts the runtime's defensive fallthrough.
     assert!(reg.dispatch("WebSearch", "query").is_none());
@@ -19062,28 +19062,28 @@ fn execute_server_flow_accepts_api_key_override() {
     let ir = IRProgram::new();
 
     // Calling with None (env fallback) — stub doesn't need a key.
-    // §Fase 37.y (D3) — request_path + request_query (empty maps).
+    // v1.32.0 (D3) — request_path + request_query (empty maps).
     let result = execute_server_flow(
         &ir,
         "nonexistent",
         "stub",
-        "", // §Fase 95.f — tenant scope (empty = pre-fix behavior)
+        "", // v2.49.0 — tenant scope (empty = pre-fix behavior)
         "test.axon",
         None,
         None,
         &std::collections::HashMap::new(),
         &std::collections::HashMap::new(),
-        None, // §Fase 58.g — tool_base_url
-        None, // §Fase 24.g.2 — llm_base_url
-        None, // §Fase 24.g.2 — llm_chat_path
-            None, // §Fase 72.c — budget (test: unbudgeted)
-            None, // §Fase 114.e — channel semaphores (test: none)
-            None, // §Fase 114.f — tool leases (test: none)
-        None, // §Fase 74.f — event_outbox (test: in-process emit)
-        None, // §Fase 92.c — credential minter (test: none)
-        None, // §Fase 94.d — secret custody (test: none)
-        None, // §Fase 108.b dataspace_engine (tests: fail closed)
-        None, // §Fase 102 scrape_overrides
+        None, // v2.8.0 — tool_base_url
+        None, // v1.18.0 — llm_base_url
+        None, // v1.18.0 — llm_chat_path
+            None, // v2.28.0 — budget (test: unbudgeted)
+            None, // v2.69.0 — channel semaphores (test: none)
+            None, // v2.69.0 — tool leases (test: none)
+        None, // v2.31.0 — event_outbox (test: in-process emit)
+        None, // v2.46.0 — credential minter (test: none)
+        None, // v2.48.0 — secret custody (test: none)
+        None, // v2.63.0 dataspace_engine (tests: fail closed)
+        None, // v2.56.0 scrape_overrides
 );
     assert!(result.is_err()); // flow not found, but the function accepted the args
 
@@ -19092,23 +19092,23 @@ fn execute_server_flow_accepts_api_key_override() {
         &ir,
         "nonexistent",
         "stub",
-        "", // §Fase 95.f — tenant scope (empty = pre-fix behavior)
+        "", // v2.49.0 — tenant scope (empty = pre-fix behavior)
         "test.axon",
         Some("sk-test-123"),
         None,
         &std::collections::HashMap::new(),
         &std::collections::HashMap::new(),
-        None, // §Fase 58.g — tool_base_url
-        None, // §Fase 24.g.2 — llm_base_url
-        None, // §Fase 24.g.2 — llm_chat_path
-            None, // §Fase 72.c — budget (test: unbudgeted)
-            None, // §Fase 114.e — channel semaphores (test: none)
-            None, // §Fase 114.f — tool leases (test: none)
-        None, // §Fase 74.f — event_outbox (test: in-process emit)
-        None, // §Fase 92.c — credential minter (test: none)
-        None, // §Fase 94.d — secret custody (test: none)
-        None, // §Fase 108.b dataspace_engine (tests: fail closed)
-        None, // §Fase 102 scrape_overrides
+        None, // v2.8.0 — tool_base_url
+        None, // v1.18.0 — llm_base_url
+        None, // v1.18.0 — llm_chat_path
+            None, // v2.28.0 — budget (test: unbudgeted)
+            None, // v2.69.0 — channel semaphores (test: none)
+            None, // v2.69.0 — tool leases (test: none)
+        None, // v2.31.0 — event_outbox (test: in-process emit)
+        None, // v2.46.0 — credential minter (test: none)
+        None, // v2.48.0 — secret custody (test: none)
+        None, // v2.63.0 dataspace_engine (tests: fail closed)
+        None, // v2.56.0 scrape_overrides
 );
     assert!(result2.is_err()); // flow not found, but key override was accepted
 }
@@ -19122,7 +19122,7 @@ fn resolve_backend_key_function_exported() {
     // signature is accessible from test code.
     // This is a compilation test — if it compiles, the wiring is correct.
     //
-    // §Fase 122.e — the third parameter is the TENANT, and pinning it in the
+    // v2.89.0 — the third parameter is the TENANT, and pinning it in the
     // signature here is deliberate: it took an ambient `current_tenant_id()`
     // read, which two spawned callers reached across a task boundary where it
     // resolves to `"default"`. If a future edit removes the parameter and goes
@@ -19676,7 +19676,7 @@ fn emcp_blame_calculus_findler_felleisen() {
 
 #[test]
 fn emcp_csp_effect_row_and_lattice() {
-    // §5.3: Tool as CSP — effect rows computed from execution context
+    // section 5.3: Tool as CSP — effect rows computed from execution context
     // Effect row format: <io, network?, epistemic:X>
 
     // Stub backend → no network effect
@@ -21316,7 +21316,7 @@ fn test_emcp_dataspace_tool_name_parsing() {
 
 #[test]
 fn test_emcp_dataspace_tool_csp_schemas() {
-    // Verify CSP §5.3 schema structure for each dataspace tool type.
+    // Verify CSP section 5.3 schema structure for each dataspace tool type.
     // Each tool must have: inputSchema with _axon_csp (constraints, effect_row, output_taint)
 
     // Ingest schema
@@ -21749,7 +21749,7 @@ fn test_emcp_axonstore_tool_name_parsing() {
 
 #[test]
 fn test_emcp_axonstore_tool_csp_schemas() {
-    // Verify CSP §5.3 schema structure for each AxonStore tool type.
+    // Verify CSP section 5.3 schema structure for each AxonStore tool type.
     // Each tool must have: inputSchema with _axon_csp (constraints, effect_row, output_taint)
 
     // Persist schema — raw write, c=1.0
@@ -28258,11 +28258,11 @@ fn test_k5_storage_error_types() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// §λ-L-E Fase 1 — Resource primitive (end-to-end: lex → parse → type-check → IR)
+// v1.1.0 — Resource primitive (end-to-end: lex → parse → type-check → IR)
 // ═══════════════════════════════════════════════════════════════════════════
 
 #[test]
-fn fase1_resource_minimal_end_to_end() {
+fn resource_minimal_end_to_end() {
     let ir = compile_json(r#"
         resource Db {
             kind: postgres  endpoint: db.main
@@ -28274,7 +28274,7 @@ fn fase1_resource_minimal_end_to_end() {
     assert_eq!(res["name"], "Db");
     assert_eq!(res["kind"], "postgres");
     assert_eq!(res["lifetime"], "affine");
-    // §Fase 113 — `endpoint:` is a CONFIG KEY, and it is REQUIRED: a resource
+    // v2.67.0 — `endpoint:` is a CONFIG KEY, and it is REQUIRED: a resource
     // with no address names no infrastructure (`axon-T944`). It used to be
     // optional, and an empty endpoint was allowed to mean nothing at all.
     assert_eq!(res["endpoint"], "db.main");
@@ -28282,13 +28282,13 @@ fn fase1_resource_minimal_end_to_end() {
     assert_eq!(res["capacity"], serde_json::Value::Null);
     assert_eq!(res["certainty_floor"], serde_json::Value::Null);
     assert_eq!(res["shield_ref"], "");
-    // §113 — skip-if-empty: a resource with no `within:` emits NO key, so every
-    // pre-§113 program serializes byte-identically (IR-SHA stability).
+    // v2.67.0 — skip-if-empty: a resource with no `within:` emits NO key, so every
+    // pre-v2.67.0 program serializes byte-identically (IR-SHA stability).
     assert!(res.get("within").is_none());
 }
 
 #[test]
-fn fase1_resource_full_fields() {
+fn resource_full_fields() {
     let ir = compile_json(r#"
         shield DBShield {
             scan: [prompt_injection]
@@ -28305,12 +28305,12 @@ fn fase1_resource_full_fields() {
         }
     "#);
     let res = &ir["resources"][0];
-    // §Fase 113 — the endpoint is the config KEY the adopter wrote, verbatim.
+    // v2.67.0 — the endpoint is the config KEY the adopter wrote, verbatim.
     // The address it names lives in configuration and is resolved at runtime
     // (`resource_resolver`) — it never appears in the program, and therefore
     // never in the IR either.
     assert_eq!(res["endpoint"], "db.main");
-    // §113 — `capacity` is THE POOL SIZE now. Before this fase it was lowered
+    // v2.67.0 — `capacity` is THE POOL SIZE now. Before this cycle it was lowered
     // into the IR exactly like this and then read by zero lines of code, while
     // every pool in the product sat at a hardcoded 10.
     assert_eq!(res["capacity"], 100);
@@ -28320,13 +28320,13 @@ fn fase1_resource_full_fields() {
 }
 
 #[test]
-fn fase1_resource_default_lifetime_is_affine() {
+fn resource_default_lifetime_is_affine() {
     let ir = compile_json("resource Pool { kind: redis  endpoint: pool.main }");
     assert_eq!(ir["resources"][0]["lifetime"], "affine");
 }
 
 #[test]
-fn fase1_resource_invalid_lifetime_rejected_by_parser() {
+fn resource_invalid_lifetime_rejected_by_parser() {
     let tokens = lex("resource X {
         kind: postgres  endpoint: x.main lifetime: eternal }");
     let mut parser = Parser::new(tokens);
@@ -28338,7 +28338,7 @@ fn fase1_resource_invalid_lifetime_rejected_by_parser() {
 }
 
 #[test]
-fn fase1_resource_out_of_range_certainty_floor_type_error() {
+fn resource_out_of_range_certainty_floor_type_error() {
     let src = r#"resource X { kind: https  endpoint: x.main certainty_floor: 1.5 }"#;
     let errors = type_check(src);
     assert!(
@@ -28349,7 +28349,7 @@ fn fase1_resource_out_of_range_certainty_floor_type_error() {
 }
 
 #[test]
-fn fase1_resource_unknown_shield_is_type_error() {
+fn resource_unknown_shield_is_type_error() {
     let src = r#"resource X { kind: https  endpoint: x.main shield: NonExistent }"#;
     let errors = type_check(src);
     assert!(
@@ -28360,7 +28360,7 @@ fn fase1_resource_unknown_shield_is_type_error() {
 }
 
 #[test]
-fn fase1_resource_duplicate_name_rejected() {
+fn resource_duplicate_name_rejected() {
     let src = r#"
         resource Db { kind: postgres  endpoint: db.main }
         resource Db { kind: redis  endpoint: db.main }
@@ -28373,7 +28373,7 @@ fn fase1_resource_duplicate_name_rejected() {
 }
 
 #[test]
-fn fase1_resource_irprogram_has_nonempty_resources_vector() {
+fn resource_irprogram_has_nonempty_resources_vector() {
     let ir = compile_ir("resource R { kind: https  endpoint: r.main lifetime: persistent }");
     assert_eq!(ir.resources.len(), 1);
     assert_eq!(ir.resources[0].name, "R");
@@ -28381,11 +28381,11 @@ fn fase1_resource_irprogram_has_nonempty_resources_vector() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// §λ-L-E Fase 1 — Fabric primitive (end-to-end)
+// v1.1.0 — Fabric primitive (end-to-end)
 // ═══════════════════════════════════════════════════════════════════════════
 
 #[test]
-fn fase1_fabric_minimal_end_to_end() {
+fn fabric_minimal_end_to_end() {
     let ir = compile_json(r#"
         fabric Vpc { provider: aws region: "us-east-1" zones: 3 }
     "#);
@@ -28398,7 +28398,7 @@ fn fase1_fabric_minimal_end_to_end() {
 }
 
 #[test]
-fn fase1_fabric_with_ephemeral_and_shield() {
+fn fabric_with_ephemeral_and_shield() {
     let ir = compile_json(r#"
         shield NetShield {
             scan: [prompt_injection]
@@ -28419,7 +28419,7 @@ fn fase1_fabric_with_ephemeral_and_shield() {
 }
 
 #[test]
-fn fase1_fabric_zero_zones_is_type_error() {
+fn fabric_zero_zones_is_type_error() {
     let errors = type_check(r#"fabric F { provider: aws zones: 0 }"#);
     assert!(
         errors.iter().any(|e| e.message.contains("Fabric 'F'") && e.message.contains("zones 0")),
@@ -28428,7 +28428,7 @@ fn fase1_fabric_zero_zones_is_type_error() {
 }
 
 #[test]
-fn fase1_fabric_unknown_shield_is_type_error() {
+fn fabric_unknown_shield_is_type_error() {
     let errors = type_check(r#"fabric F { provider: gcp shield: NonExistent }"#);
     assert!(
         errors.iter().any(|e| e.message.contains("Undefined shield 'NonExistent'")
@@ -28438,7 +28438,7 @@ fn fase1_fabric_unknown_shield_is_type_error() {
 }
 
 #[test]
-fn fase1_fabric_duplicate_name_rejected() {
+fn fabric_duplicate_name_rejected() {
     let errors = type_check(r#"
         fabric F { provider: aws }
         fabric F { provider: gcp }
@@ -28447,11 +28447,11 @@ fn fase1_fabric_duplicate_name_rejected() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// §λ-L-E Fase 1 — Manifest primitive (end-to-end)
+// v1.1.0 — Manifest primitive (end-to-end)
 // ═══════════════════════════════════════════════════════════════════════════
 
 #[test]
-fn fase1_manifest_minimal_end_to_end() {
+fn manifest_minimal_end_to_end() {
     let ir = compile_json(r#"
         resource Db { kind: postgres  endpoint: db.main lifetime: affine }
         fabric Vpc { provider: aws region: "us-east-1" zones: 2 }
@@ -28468,7 +28468,7 @@ fn fase1_manifest_minimal_end_to_end() {
 }
 
 #[test]
-fn fase1_manifest_with_compliance_annotation() {
+fn manifest_with_compliance_annotation() {
     let ir = compile_json(r#"
         resource Db { kind: postgres  endpoint: db.main lifetime: affine }
         fabric Vpc { provider: aws region: "us-east-1" zones: 2 }
@@ -28488,7 +28488,7 @@ fn fase1_manifest_with_compliance_annotation() {
 }
 
 #[test]
-fn fase1_manifest_undefined_resource_is_type_error() {
+fn manifest_undefined_resource_is_type_error() {
     let errors = type_check(r#"
         fabric Vpc { provider: aws }
         manifest M { resources: [Ghost] fabric: Vpc }
@@ -28500,7 +28500,7 @@ fn fase1_manifest_undefined_resource_is_type_error() {
 }
 
 #[test]
-fn fase1_manifest_undefined_fabric_is_type_error() {
+fn manifest_undefined_fabric_is_type_error() {
     let errors = type_check(r#"
         resource Db { kind: postgres  endpoint: db.main }
         manifest M { resources: [Db] fabric: NoSuchFabric }
@@ -28512,7 +28512,7 @@ fn fase1_manifest_undefined_fabric_is_type_error() {
 }
 
 #[test]
-fn fase1_manifest_duplicate_resource_rejected_by_separation_logic() {
+fn manifest_duplicate_resource_rejected_by_separation_logic() {
     // Within-manifest aliasing of a linear resource violates Separation Logic `*`.
     let errors = type_check(r#"
         resource Db { kind: postgres  endpoint: db.main lifetime: affine }
@@ -28527,7 +28527,7 @@ fn fase1_manifest_duplicate_resource_rejected_by_separation_logic() {
 }
 
 #[test]
-fn fase1_manifest_wrong_kind_reference_is_type_error() {
+fn manifest_wrong_kind_reference_is_type_error() {
     // `fabric: MyResource` where MyResource is a resource, not a fabric.
     let errors = type_check(r#"
         resource R { kind: postgres  endpoint: r.main }
@@ -28540,11 +28540,11 @@ fn fase1_manifest_wrong_kind_reference_is_type_error() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// §λ-L-E Fase 1 — Observe primitive (end-to-end)
+// v1.1.0 — Observe primitive (end-to-end)
 // ═══════════════════════════════════════════════════════════════════════════
 
 #[test]
-fn fase1_observe_minimal_end_to_end() {
+fn observe_minimal_end_to_end() {
     let ir = compile_json(r#"
         resource Db { kind: postgres  endpoint: db.main }
         fabric Vpc { provider: aws }
@@ -28565,7 +28565,7 @@ fn fase1_observe_minimal_end_to_end() {
 }
 
 #[test]
-fn fase1_observe_full_fields() {
+fn observe_full_fields() {
     let ir = compile_json(r#"
         resource Db { kind: postgres  endpoint: db.main }
         fabric Vpc { provider: aws }
@@ -28585,7 +28585,7 @@ fn fase1_observe_full_fields() {
 }
 
 #[test]
-fn fase1_observe_invalid_on_partition_rejected_by_parser() {
+fn observe_invalid_on_partition_rejected_by_parser() {
     let tokens = lex(r#"
         resource Db { kind: postgres  endpoint: db.main }
         fabric Vpc { provider: aws }
@@ -28601,7 +28601,7 @@ fn fase1_observe_invalid_on_partition_rejected_by_parser() {
 }
 
 #[test]
-fn fase1_observe_undefined_target_is_type_error() {
+fn observe_undefined_target_is_type_error() {
     let errors = type_check(r#"
         observe O from NoSuchManifest { sources: [x] quorum: 1 }
     "#);
@@ -28612,7 +28612,7 @@ fn fase1_observe_undefined_target_is_type_error() {
 }
 
 #[test]
-fn fase1_observe_target_must_be_manifest() {
+fn observe_target_must_be_manifest() {
     let errors = type_check(r#"
         resource Db { kind: postgres  endpoint: db.main }
         observe O from Db { sources: [x] quorum: 1 }
@@ -28624,7 +28624,7 @@ fn fase1_observe_target_must_be_manifest() {
 }
 
 #[test]
-fn fase1_observe_missing_sources_is_type_error() {
+fn observe_missing_sources_is_type_error() {
     // Omitting `sources:` entirely parses fine but fails type-check —
     // an observation without sources has no ground truth.
     let errors = type_check(r#"
@@ -28640,7 +28640,7 @@ fn fase1_observe_missing_sources_is_type_error() {
 }
 
 #[test]
-fn fase1_observe_certainty_floor_out_of_range_type_error() {
+fn observe_certainty_floor_out_of_range_type_error() {
     let errors = type_check(r#"
         resource Db { kind: postgres  endpoint: db.main }
         fabric Vpc { provider: aws }
@@ -28655,11 +28655,11 @@ fn fase1_observe_certainty_floor_out_of_range_type_error() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// §λ-L-E Fase 3 — Reconcile primitive (end-to-end)
+// v1.1.0 — Reconcile primitive (end-to-end)
 // ═══════════════════════════════════════════════════════════════════════════
 
-/// Boilerplate that produces a valid `observe` symbol the Fase-3 tests can reference.
-fn fase3_observe_prelude() -> &'static str {
+/// Boilerplate that produces a valid `observe` symbol the cycle-3 tests can reference.
+fn observe_prelude() -> &'static str {
     r#"
         resource Db { kind: postgres  endpoint: db.main lifetime: affine }
         fabric Vpc { provider: aws }
@@ -28669,10 +28669,10 @@ fn fase3_observe_prelude() -> &'static str {
 }
 
 #[test]
-fn fase3_reconcile_minimal_end_to_end() {
+fn reconcile_minimal_end_to_end() {
     let src = format!(
         "{}\nreconcile R {{ observe: Health }}",
-        fase3_observe_prelude()
+        observe_prelude()
     );
     let ir = compile_json(&src);
     let r = &ir["reconciles"][0];
@@ -28684,7 +28684,7 @@ fn fase3_reconcile_minimal_end_to_end() {
 }
 
 #[test]
-fn fase3_reconcile_full_fields() {
+fn reconcile_full_fields() {
     let src = format!(
         r#"{}
         shield Guard {{
@@ -28700,7 +28700,7 @@ fn fase3_reconcile_full_fields() {
             shield: Guard
             max_retries: 5
         }}"#,
-        fase3_observe_prelude()
+        observe_prelude()
     );
     let ir = compile_json(&src);
     let r = &ir["reconciles"][0];
@@ -28712,10 +28712,10 @@ fn fase3_reconcile_full_fields() {
 }
 
 #[test]
-fn fase3_reconcile_invalid_on_drift_rejected_by_parser() {
+fn reconcile_invalid_on_drift_rejected_by_parser() {
     let src = format!(
         "{}\nreconcile R {{ observe: Health on_drift: celebrate }}",
-        fase3_observe_prelude()
+        observe_prelude()
     );
     let tokens = lex(&src);
     let mut parser = Parser::new(tokens);
@@ -28723,7 +28723,7 @@ fn fase3_reconcile_invalid_on_drift_rejected_by_parser() {
 }
 
 #[test]
-fn fase3_reconcile_undefined_observe_is_type_error() {
+fn reconcile_undefined_observe_is_type_error() {
     let errors = type_check("reconcile R { observe: Ghost }");
     assert!(
         errors.iter().any(|e| e.message.contains("undefined observe 'Ghost'")),
@@ -28732,10 +28732,10 @@ fn fase3_reconcile_undefined_observe_is_type_error() {
 }
 
 #[test]
-fn fase3_reconcile_threshold_out_of_range_type_error() {
+fn reconcile_threshold_out_of_range_type_error() {
     let src = format!(
         "{}\nreconcile R {{ observe: Health threshold: 1.2 }}",
-        fase3_observe_prelude()
+        observe_prelude()
     );
     let errors = type_check(&src);
     assert!(
@@ -28746,7 +28746,7 @@ fn fase3_reconcile_threshold_out_of_range_type_error() {
 }
 
 #[test]
-fn fase3_reconcile_wrong_observe_kind_is_type_error() {
+fn reconcile_wrong_observe_kind_is_type_error() {
     // Pointing `observe:` at a manifest is a kind mismatch.
     let errors = type_check(r#"
         resource Db { kind: postgres  endpoint: db.main }
@@ -28761,11 +28761,11 @@ fn fase3_reconcile_wrong_observe_kind_is_type_error() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// §λ-L-E Fase 3 — Lease primitive (end-to-end)
+// v1.1.0 — Lease primitive (end-to-end)
 // ═══════════════════════════════════════════════════════════════════════════
 
 #[test]
-fn fase3_lease_minimal_end_to_end() {
+fn lease_minimal_end_to_end() {
     let ir = compile_json(r#"
         resource Db { kind: postgres  endpoint: db.main lifetime: affine }
         lease DbWrite { resource: Db duration: 30s }
@@ -28780,7 +28780,7 @@ fn fase3_lease_minimal_end_to_end() {
 }
 
 #[test]
-fn fase3_lease_full_fields() {
+fn lease_full_fields() {
     let ir = compile_json(r#"
         resource Db { kind: postgres  endpoint: db.main }
         lease DbWrite {
@@ -28797,7 +28797,7 @@ fn fase3_lease_full_fields() {
 }
 
 #[test]
-fn fase3_lease_invalid_acquire_rejected_by_parser() {
+fn lease_invalid_acquire_rejected_by_parser() {
     let tokens = lex(r#"
         resource Db { kind: postgres  endpoint: db.main }
         lease L { resource: Db duration: 30s acquire: eventually }
@@ -28807,7 +28807,7 @@ fn fase3_lease_invalid_acquire_rejected_by_parser() {
 }
 
 #[test]
-fn fase3_lease_invalid_on_expire_rejected_by_parser() {
+fn lease_invalid_on_expire_rejected_by_parser() {
     let tokens = lex(r#"
         resource Db { kind: postgres  endpoint: db.main }
         lease L { resource: Db duration: 30s on_expire: forget }
@@ -28817,7 +28817,7 @@ fn fase3_lease_invalid_on_expire_rejected_by_parser() {
 }
 
 #[test]
-fn fase3_lease_undefined_resource_is_type_error() {
+fn lease_undefined_resource_is_type_error() {
     let errors = type_check("lease L { resource: Ghost duration: 30s }");
     assert!(
         errors.iter().any(|e| e.message.contains("undefined resource 'Ghost'")),
@@ -28826,7 +28826,7 @@ fn fase3_lease_undefined_resource_is_type_error() {
 }
 
 #[test]
-fn fase3_lease_wrong_kind_reference_is_type_error() {
+fn lease_wrong_kind_reference_is_type_error() {
     // Pointing `resource:` at a fabric is a kind mismatch.
     let errors = type_check(r#"
         fabric Vpc { provider: aws }
@@ -28839,11 +28839,11 @@ fn fase3_lease_wrong_kind_reference_is_type_error() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// §λ-L-E Fase 3 — Ensemble primitive (end-to-end)
+// v1.1.0 — Ensemble primitive (end-to-end)
 // ═══════════════════════════════════════════════════════════════════════════
 
-/// Two distinct `observe` symbols the Fase-3 ensemble tests can reference.
-fn fase3_two_observations_prelude() -> &'static str {
+/// Two distinct `observe` symbols the cycle-3 ensemble tests can reference.
+fn two_observations_prelude() -> &'static str {
     r#"
         resource Db { kind: postgres  endpoint: db.main }
         fabric Vpc { provider: aws }
@@ -28854,10 +28854,10 @@ fn fase3_two_observations_prelude() -> &'static str {
 }
 
 #[test]
-fn fase3_ensemble_minimal_end_to_end() {
+fn ensemble_minimal_end_to_end() {
     let src = format!(
         "{}\nensemble E {{ observations: [O1, O2] quorum: 2 }}",
-        fase3_two_observations_prelude()
+        two_observations_prelude()
     );
     let ir = compile_json(&src);
     let e = &ir["ensembles"][0];
@@ -28871,7 +28871,7 @@ fn fase3_ensemble_minimal_end_to_end() {
 }
 
 #[test]
-fn fase3_ensemble_full_fields() {
+fn ensemble_full_fields() {
     let src = format!(
         r#"{}
         ensemble E {{
@@ -28880,7 +28880,7 @@ fn fase3_ensemble_full_fields() {
             aggregation: byzantine
             certainty_mode: harmonic
         }}"#,
-        fase3_two_observations_prelude()
+        two_observations_prelude()
     );
     let ir = compile_json(&src);
     let e = &ir["ensembles"][0];
@@ -28889,10 +28889,10 @@ fn fase3_ensemble_full_fields() {
 }
 
 #[test]
-fn fase3_ensemble_invalid_aggregation_rejected_by_parser() {
+fn ensemble_invalid_aggregation_rejected_by_parser() {
     let src = format!(
         "{}\nensemble E {{ observations: [O1, O2] aggregation: democracy }}",
-        fase3_two_observations_prelude()
+        two_observations_prelude()
     );
     let tokens = lex(&src);
     let mut parser = Parser::new(tokens);
@@ -28900,10 +28900,10 @@ fn fase3_ensemble_invalid_aggregation_rejected_by_parser() {
 }
 
 #[test]
-fn fase3_ensemble_single_observation_is_type_error() {
+fn ensemble_single_observation_is_type_error() {
     let errors = type_check(&format!(
         "{}\nensemble E {{ observations: [O1] }}",
-        fase3_two_observations_prelude()
+        two_observations_prelude()
     ));
     assert!(
         errors.iter().any(|e| e.message.contains("Byzantine quorum requires >= 2")),
@@ -28912,10 +28912,10 @@ fn fase3_ensemble_single_observation_is_type_error() {
 }
 
 #[test]
-fn fase3_ensemble_quorum_exceeds_observations_is_type_error() {
+fn ensemble_quorum_exceeds_observations_is_type_error() {
     let src = format!(
         "{}\nensemble E {{ observations: [O1, O2] quorum: 5 }}",
-        fase3_two_observations_prelude()
+        two_observations_prelude()
     );
     let errors = type_check(&src);
     assert!(
@@ -28925,10 +28925,10 @@ fn fase3_ensemble_quorum_exceeds_observations_is_type_error() {
 }
 
 #[test]
-fn fase3_ensemble_undefined_observation_is_type_error() {
+fn ensemble_undefined_observation_is_type_error() {
     let errors = type_check(&format!(
         "{}\nensemble E {{ observations: [O1, Ghost] quorum: 2 }}",
-        fase3_two_observations_prelude()
+        two_observations_prelude()
     ));
     assert!(
         errors.iter().any(|e| e.message.contains("undefined observation 'Ghost'")),
@@ -28937,10 +28937,10 @@ fn fase3_ensemble_undefined_observation_is_type_error() {
 }
 
 #[test]
-fn fase3_ensemble_duplicate_observation_is_type_error() {
+fn ensemble_duplicate_observation_is_type_error() {
     let errors = type_check(&format!(
         "{}\nensemble E {{ observations: [O1, O1] quorum: 2 }}",
-        fase3_two_observations_prelude()
+        two_observations_prelude()
     ));
     assert!(
         errors.iter().any(|e| e.message.contains("more than once")),
@@ -28949,11 +28949,11 @@ fn fase3_ensemble_duplicate_observation_is_type_error() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// §λ-L-E Fase 4 — Session + Topology (π-calculus + Honda-Vasconcelos duality)
+// v1.1.0 — Session + Topology (π-calculus + Honda-Vasconcelos duality)
 // ═══════════════════════════════════════════════════════════════════════════
 
-/// Two valid Fase-4 topology node kinds from the declared-symbols allow-list.
-fn fase4_nodes_prelude() -> &'static str {
+/// Two valid cycle-4 topology node kinds from the declared-symbols allow-list.
+fn nodes_prelude() -> &'static str {
     // resource + axonendpoint are both on the NODE_KINDS allow-list
     r#"
         type Data { payload: String }
@@ -28969,7 +28969,7 @@ fn fase4_nodes_prelude() -> &'static str {
 }
 
 #[test]
-fn fase4_session_minimal_dual_compiles_clean() {
+fn session_minimal_dual_compiles_clean() {
     let ir = compile_json(r#"
         session S {
             client: [send Req, receive Rep, end]
@@ -28986,7 +28986,7 @@ fn fase4_session_minimal_dual_compiles_clean() {
 }
 
 #[test]
-fn fase4_session_not_binary_is_type_error() {
+fn session_not_binary_is_type_error() {
     let errors = type_check(r#"
         session S {
             only_role: [send M, end]
@@ -28999,7 +28999,7 @@ fn fase4_session_not_binary_is_type_error() {
 }
 
 #[test]
-fn fase4_session_duality_send_receive_mismatch_is_type_error() {
+fn session_duality_send_receive_mismatch_is_type_error() {
     // Both sides `send` — no duality.
     let errors = type_check(r#"
         session S {
@@ -29014,7 +29014,7 @@ fn fase4_session_duality_send_receive_mismatch_is_type_error() {
 }
 
 #[test]
-fn fase4_session_duality_message_type_mismatch_is_type_error() {
+fn session_duality_message_type_mismatch_is_type_error() {
     let errors = type_check(r#"
         session S {
             a: [send Foo, end]
@@ -29028,7 +29028,7 @@ fn fase4_session_duality_message_type_mismatch_is_type_error() {
 }
 
 #[test]
-fn fase4_session_different_length_is_type_error() {
+fn session_different_length_is_type_error() {
     let errors = type_check(r#"
         session S {
             a: [send M, end]
@@ -29043,14 +29043,14 @@ fn fase4_session_different_length_is_type_error() {
 }
 
 #[test]
-fn fase4_session_invalid_step_op_rejected_by_parser() {
+fn session_invalid_step_op_rejected_by_parser() {
     let tokens = lex("session S { a: [foo Bar] }");
     let mut parser = Parser::new(tokens);
     assert!(parser.parse().is_err());
 }
 
 #[test]
-fn fase4_session_loop_and_end_are_dual() {
+fn session_loop_and_end_are_dual() {
     // loop<->loop, end<->end, and send/receive with matching types.
     let ir = compile_ir(r#"
         session Pingpong {
@@ -29063,7 +29063,7 @@ fn fase4_session_loop_and_end_are_dual() {
 }
 
 #[test]
-fn fase4_topology_minimal_compiles_clean() {
+fn topology_minimal_compiles_clean() {
     let ir = compile_json(&format!(r#"{}
         session S {{
             a: [send M, end]
@@ -29073,7 +29073,7 @@ fn fase4_topology_minimal_compiles_clean() {
             nodes: [Db, Api]
             edges: [Api -> Db : S]
         }}
-    "#, fase4_nodes_prelude()));
+    "#, nodes_prelude()));
     let t = &ir["topologies"][0];
     assert_eq!(t["node_type"], "topology");
     assert_eq!(t["name"], "T");
@@ -29084,7 +29084,7 @@ fn fase4_topology_minimal_compiles_clean() {
 }
 
 #[test]
-fn fase4_topology_undefined_node_is_type_error() {
+fn topology_undefined_node_is_type_error() {
     let errors = type_check(r#"
         session S { a: [send M, end] b: [receive M, end] }
         topology T {
@@ -29099,7 +29099,7 @@ fn fase4_topology_undefined_node_is_type_error() {
 }
 
 #[test]
-fn fase4_topology_invalid_node_kind_is_type_error() {
+fn topology_invalid_node_kind_is_type_error() {
     // `session` is NOT in the NODE_KINDS allow-list; listing one in `nodes:` is illegal.
     let errors = type_check(r#"
         session Inner { a: [send M, end] b: [receive M, end] }
@@ -29116,14 +29116,14 @@ fn fase4_topology_invalid_node_kind_is_type_error() {
 }
 
 #[test]
-fn fase4_topology_self_loop_is_type_error() {
+fn topology_self_loop_is_type_error() {
     let errors = type_check(&format!(r#"{}
         session S {{ a: [send M, end] b: [receive M, end] }}
         topology T {{
             nodes: [Db]
             edges: [Db -> Db : S]
         }}
-    "#, fase4_nodes_prelude()));
+    "#, nodes_prelude()));
     assert!(
         errors.iter().any(|e| e.message.contains("self-loop edge on 'Db'")),
         "got {errors:?}"
@@ -29131,13 +29131,13 @@ fn fase4_topology_self_loop_is_type_error() {
 }
 
 #[test]
-fn fase4_topology_undefined_session_is_type_error() {
+fn topology_undefined_session_is_type_error() {
     let errors = type_check(&format!(r#"{}
         topology T {{
             nodes: [Db, Api]
             edges: [Api -> Db : Nonexistent]
         }}
-    "#, fase4_nodes_prelude()));
+    "#, nodes_prelude()));
     assert!(
         errors.iter().any(|e| e.message.contains("undefined session 'Nonexistent'")),
         "got {errors:?}"
@@ -29145,14 +29145,14 @@ fn fase4_topology_undefined_session_is_type_error() {
 }
 
 #[test]
-fn fase4_topology_edge_source_not_in_nodes_is_type_error() {
+fn topology_edge_source_not_in_nodes_is_type_error() {
     let errors = type_check(&format!(r#"{}
         session S {{ a: [send M, end] b: [receive M, end] }}
         topology T {{
             nodes: [Db]
             edges: [Api -> Db : S]
         }}
-    "#, fase4_nodes_prelude()));
+    "#, nodes_prelude()));
     assert!(
         errors.iter().any(|e| e.message.contains("edge source 'Api' is not in the nodes list")),
         "got {errors:?}"
@@ -29160,7 +29160,7 @@ fn fase4_topology_edge_source_not_in_nodes_is_type_error() {
 }
 
 #[test]
-fn fase4_topology_liveness_deadlock_cycle_rejected() {
+fn topology_liveness_deadlock_cycle_rejected() {
     // Cycle A->B->A where EVERY edge is receive-first on the source side
     // triggers Honda-liveness violation.
     //
@@ -29195,7 +29195,7 @@ fn fase4_topology_liveness_deadlock_cycle_rejected() {
 }
 
 #[test]
-fn fase4_topology_liveness_send_first_cycle_is_accepted() {
+fn topology_liveness_send_first_cycle_is_accepted() {
     // Same cycle topology but the source side is `send` first → progress
     // exists, no deadlock should be reported.
     let errors = type_check(r#"
@@ -29224,7 +29224,7 @@ fn fase4_topology_liveness_send_first_cycle_is_accepted() {
 }
 
 #[test]
-fn fase4_topology_with_full_fase1_infrastructure_compiles_clean() {
+fn topology_with_full_fase1_infrastructure_compiles_clean() {
     let ir = compile_ir(r#"
         resource Db { kind: postgres  endpoint: db.main lifetime: affine }
         fabric Vpc { provider: aws region: "us-east-1" zones: 2 }
@@ -29246,8 +29246,8 @@ fn fase4_topology_with_full_fase1_infrastructure_compiles_clean() {
 }
 
 #[test]
-fn fase3_control_cognitivo_full_stack_compiles_clean() {
-    // Integration test: Fase 1 + Fase 3 primitives composed in one program.
+fn control_cognitivo_full_stack_compiles_clean() {
+    // Integration test: v1.1.0 + v1.1.0 primitives composed in one program.
     let ir = compile_ir(r#"
         resource Db { kind: postgres  endpoint: db.main lifetime: affine }
         fabric Vpc { provider: aws region: "us-east-1" zones: 3 }
@@ -29263,11 +29263,11 @@ fn fase3_control_cognitivo_full_stack_compiles_clean() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// §λ-L-E Fase 5 — Cognitive immune system (paper_immune_v2.md)
+// v1.1.0 — Cognitive immune system (paper_immune_v2.md)
 // ═══════════════════════════════════════════════════════════════════════════
 
 #[test]
-fn fase5_immune_minimal_end_to_end() {
+fn immune_minimal_end_to_end() {
     let ir = compile_json(r#"
         resource Db { kind: postgres  endpoint: db.main }
         fabric Vpc { provider: aws }
@@ -29289,7 +29289,7 @@ fn fase5_immune_minimal_end_to_end() {
 }
 
 #[test]
-fn fase5_immune_full_fields() {
+fn immune_full_fields() {
     let ir = compile_json(r#"
         resource Db { kind: postgres  endpoint: db.main }
         fabric Vpc { provider: aws }
@@ -29314,8 +29314,8 @@ fn fase5_immune_full_fields() {
 }
 
 #[test]
-fn fase5_immune_missing_scope_is_type_error() {
-    // Paper §8.2: scope is MANDATORY — no implicit blast radius.
+fn immune_missing_scope_is_type_error() {
+    // Paper section 8.2: scope is MANDATORY — no implicit blast radius.
     let errors = type_check(r#"
         immune I {
             watch: [x]
@@ -29329,14 +29329,14 @@ fn fase5_immune_missing_scope_is_type_error() {
 }
 
 #[test]
-fn fase5_immune_invalid_scope_rejected_by_parser() {
+fn immune_invalid_scope_rejected_by_parser() {
     let tokens = lex("immune I { watch: [x] scope: planet }");
     let mut parser = Parser::new(tokens);
     assert!(parser.parse().is_err());
 }
 
 #[test]
-fn fase5_immune_empty_watch_is_type_error() {
+fn immune_empty_watch_is_type_error() {
     let errors = type_check(r#"immune I { scope: tenant }"#);
     assert!(
         errors.iter().any(|e| e.message.contains("non-empty 'watch'")),
@@ -29345,7 +29345,7 @@ fn fase5_immune_empty_watch_is_type_error() {
 }
 
 #[test]
-fn fase5_immune_sensitivity_out_of_range_type_error() {
+fn immune_sensitivity_out_of_range_type_error() {
     let errors = type_check(r#"
         immune I {
             watch: [x]
@@ -29360,7 +29360,7 @@ fn fase5_immune_sensitivity_out_of_range_type_error() {
 }
 
 #[test]
-fn fase5_reflex_minimal_end_to_end() {
+fn reflex_minimal_end_to_end() {
     let ir = compile_json(r#"
         immune Sensor { watch: [x] scope: tenant }
         reflex R {
@@ -29378,7 +29378,7 @@ fn fase5_reflex_minimal_end_to_end() {
 }
 
 #[test]
-fn fase5_reflex_trigger_must_be_immune_type_error() {
+fn reflex_trigger_must_be_immune_type_error() {
     let errors = type_check(r#"
         resource Db { kind: postgres  endpoint: db.main }
         reflex R {
@@ -29394,7 +29394,7 @@ fn fase5_reflex_trigger_must_be_immune_type_error() {
 }
 
 #[test]
-fn fase5_reflex_undefined_trigger_is_type_error() {
+fn reflex_undefined_trigger_is_type_error() {
     let errors = type_check(r#"
         reflex R {
             trigger: Ghost
@@ -29409,7 +29409,7 @@ fn fase5_reflex_undefined_trigger_is_type_error() {
 }
 
 #[test]
-fn fase5_reflex_invalid_action_rejected_by_parser() {
+fn reflex_invalid_action_rejected_by_parser() {
     let tokens = lex(r#"
         immune I { watch: [x] scope: tenant }
         reflex R { trigger: I action: dance scope: tenant }
@@ -29419,7 +29419,7 @@ fn fase5_reflex_invalid_action_rejected_by_parser() {
 }
 
 #[test]
-fn fase5_heal_defaults_to_human_in_loop() {
+fn heal_defaults_to_human_in_loop() {
     let ir = compile_json(r#"
         immune Sensor { watch: [x] scope: tenant }
         heal H {
@@ -29430,14 +29430,14 @@ fn fase5_heal_defaults_to_human_in_loop() {
     let h = &ir["heals"][0];
     assert_eq!(h["node_type"], "heal");
     assert_eq!(h["source"], "Sensor");
-    assert_eq!(h["mode"], "human_in_loop"); // paper §7.2 compliance default
+    assert_eq!(h["mode"], "human_in_loop"); // paper section 7.2 compliance default
     assert_eq!(h["on_level"], "doubt");     // default
     assert_eq!(h["max_patches"], 3);        // default
 }
 
 #[test]
-fn fase5_heal_adversarial_requires_shield_per_paper_7_3() {
-    // Paper §7.3: adversarial mode needs an explicit shield gate.
+fn heal_adversarial_requires_shield_per_paper_7_3() {
+    // Paper section 7.3: adversarial mode needs an explicit shield gate.
     let errors = type_check(r#"
         immune Sensor { watch: [x] scope: tenant }
         heal H {
@@ -29454,7 +29454,7 @@ fn fase5_heal_adversarial_requires_shield_per_paper_7_3() {
 }
 
 #[test]
-fn fase5_heal_adversarial_with_shield_compiles_clean() {
+fn heal_adversarial_with_shield_compiles_clean() {
     let ir = compile_ir(r#"
         shield Guard {
             scan: [prompt_injection]
@@ -29474,7 +29474,7 @@ fn fase5_heal_adversarial_with_shield_compiles_clean() {
 }
 
 #[test]
-fn fase5_heal_source_must_be_immune() {
+fn heal_source_must_be_immune() {
     let errors = type_check(r#"
         resource Db { kind: postgres  endpoint: db.main }
         heal H { source: Db scope: tenant }
@@ -29486,7 +29486,7 @@ fn fase5_heal_source_must_be_immune() {
 }
 
 #[test]
-fn fase5_heal_max_patches_zero_is_type_error() {
+fn heal_max_patches_zero_is_type_error() {
     let errors = type_check(r#"
         immune Sensor { watch: [x] scope: tenant }
         heal H {
@@ -29502,21 +29502,21 @@ fn fase5_heal_max_patches_zero_is_type_error() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// §ESK Fase 6.1 — Compile-time compliance annotations (κ on type/shield/
+// ESK — Compile-time compliance annotations (κ on type/shield/
 // manifest/axonendpoint), per docs/paper_esk.md
 // ═══════════════════════════════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════════════════════════════
-// §Fase 8.2.h was the Rust↔Python IR cross-stack parity gate. RETIRED
+// v1.3.0 was the Rust↔Python IR cross-stack parity gate. RETIRED
 // 2026-06-03: the Python axon implementation has been purged (the `axon`
 // package is now a thin native-binary launcher), so there is no second
 // stack to be parity WITH — the frozen `python.ir.json` golden encoded the
 // dead pre-v2.0.0 contract. Replaced by the Rust-native IR regression
 // snapshot below: same coverage (the full IR shape over the comprehensive
-// fase1–5 + compliance program), honest premise, one-command regeneration.
+// v1.1.0–5 + compliance program), honest premise, one-command regeneration.
 // ═══════════════════════════════════════════════════════════════════════════
 
-/// §IR regression snapshot — the canonical fase1–5+compliance fixture must
+/// IR regression snapshot — the canonical v1.1.0–5+compliance fixture must
 /// lower to a byte-stable IR. Catches ANY unintended drift in declaration
 /// counts, field ordering, emitted values, or compliance arrays (strictly
 /// stronger than the old structural gate). The IR serialization is
@@ -29524,19 +29524,19 @@ fn fase5_heal_max_patches_zero_is_type_error() {
 /// buckets), so a byte snapshot is stable.
 ///
 /// To intentionally update the golden after an IR change:
-///   `AXON_REGEN_IR_GOLDEN=1 cargo test --test integration fase1_5_rust_ir_regression_snapshot`
+///   `AXON_REGEN_IR_GOLDEN=1 cargo test --test integration gate_1_5_rust_ir_regression_snapshot`
 /// then review the diff and commit `tests/parity/*.ir.golden.json`.
 #[test]
-fn fase1_5_rust_ir_regression_snapshot() {
+fn gate_1_5_rust_ir_regression_snapshot() {
     use std::fs;
     use std::path::PathBuf;
 
     let base: PathBuf = [env!("CARGO_MANIFEST_DIR"), "tests", "parity"].iter().collect();
-    let source = fs::read_to_string(base.join("fase1_through_5_plus_compliance.axon"))
+    let source = fs::read_to_string(base.join("early_primitives_plus_compliance.axon"))
         .expect("fixture .axon missing");
     let ir = compile_ir(&source);
     let actual = serde_json::to_string_pretty(&ir).expect("serialize rust ir");
-    let golden_path = base.join("fase1_through_5_plus_compliance.ir.golden.json");
+    let golden_path = base.join("early_primitives_plus_compliance.ir.golden.json");
 
     // Regeneration path — opt-in, explicit. Writes the golden and returns.
     if std::env::var("AXON_REGEN_IR_GOLDEN").is_ok() {
@@ -29547,7 +29547,7 @@ fn fase1_5_rust_ir_regression_snapshot() {
 
     let golden = fs::read_to_string(&golden_path).expect(
         "IR golden missing — regenerate with \
-         `AXON_REGEN_IR_GOLDEN=1 cargo test --test integration fase1_5_rust_ir_regression_snapshot`",
+         `AXON_REGEN_IR_GOLDEN=1 cargo test --test integration gate_1_5_rust_ir_regression_snapshot`",
     );
     // Normalise line endings (the golden may be checked out CRLF on Windows).
     let g = golden.replace("\r\n", "\n");
@@ -29559,7 +29559,7 @@ fn fase1_5_rust_ir_regression_snapshot() {
                     "IR regression at line {i}:\n- golden: {gl}\n+ actual: {al}\n\n\
                      If this IR change is intentional, regenerate the golden:\n  \
                      AXON_REGEN_IR_GOLDEN=1 cargo test --test integration \
-                     fase1_5_rust_ir_regression_snapshot"
+                     gate_1_5_rust_ir_regression_snapshot"
                 );
             }
         }
@@ -29573,7 +29573,7 @@ fn fase1_5_rust_ir_regression_snapshot() {
 }
 
 #[test]
-fn fase6_1_type_carries_compliance_prefix_into_ir() {
+fn gate_6_1_type_carries_compliance_prefix_into_ir() {
     let ir = compile_json(r#"
         type PatientRecord compliance [HIPAA, GDPR] {
             id:   String
@@ -29587,14 +29587,14 @@ fn fase6_1_type_carries_compliance_prefix_into_ir() {
 }
 
 #[test]
-fn fase6_1_type_without_compliance_has_empty_list() {
+fn gate_6_1_type_without_compliance_has_empty_list() {
     let ir = compile_json("type Plain { note: String }");
     let t = &ir["types"][0];
     assert_eq!(t["compliance"].as_array().unwrap().len(), 0);
 }
 
 #[test]
-fn fase6_1_shield_carries_compliance_into_ir() {
+fn gate_6_1_shield_carries_compliance_into_ir() {
     let ir = compile_json(r#"
         shield PHIShield {
             scan: [prompt_injection, pii_leak]
@@ -29609,7 +29609,7 @@ fn fase6_1_shield_carries_compliance_into_ir() {
 }
 
 #[test]
-fn fase6_1_manifest_compliance_already_supported() {
+fn gate_6_1_manifest_compliance_already_supported() {
     // Manifest got compliance in 8.2.c; this asserts it still works post-8.2.g.
     let ir = compile_json(r#"
         resource Db { kind: postgres  endpoint: db.main }
@@ -29626,7 +29626,7 @@ fn fase6_1_manifest_compliance_already_supported() {
 }
 
 #[test]
-fn fase6_1_axonendpoint_carries_compliance_into_ir() {
+fn gate_6_1_axonendpoint_carries_compliance_into_ir() {
     let ir = compile_json(r#"
         type Req { q: String }
         type Rep { a: String }
@@ -29651,7 +29651,7 @@ fn fase6_1_axonendpoint_carries_compliance_into_ir() {
 }
 
 #[test]
-fn fase6_1_compliance_preserves_field_order_in_ir() {
+fn gate_6_1_compliance_preserves_field_order_in_ir() {
     // The Python ESK treats compliance as an ordered tuple; byte-identical
     // parity requires Rust to preserve the source order too.
     let ir = compile_json(r#"
@@ -29663,7 +29663,7 @@ fn fase6_1_compliance_preserves_field_order_in_ir() {
 }
 
 #[test]
-fn fase6_1_full_regulated_program_compiles_clean() {
+fn gate_6_1_full_regulated_program_compiles_clean() {
     // Integration: type + shield + manifest + axonendpoint all carrying
     // overlapping κ — mirrors the healthcare_reference.axon shape.
     let ir = compile_ir(r#"
@@ -29684,11 +29684,11 @@ fn fase6_1_full_regulated_program_compiles_clean() {
             compliance: [HIPAA, GDPR, SOC2]
         }
         resource Ehr { kind: postgres  endpoint: ehr.main lifetime: affine }
-        // §Fase 120.f — the region moved to the EU. §119.e added `axon-E042`:
+        // v2.87.0 — the region moved to the EU. v2.83.0 added `axon-E042`:
         // a manifest tagged GDPR while its fabric deploys to `aws/us-east-1`
         // would move regulated data out of the jurisdiction the tag promises to
-        // keep it in. §119.e fixed the PUBLISHED example and never saw this
-        // fixture, because §118.b.2 had put the whole `integration` target
+        // keep it in. v2.83.0 fixed the PUBLISHED example and never saw this
+        // fixture, because v2.81.0 had put the whole `integration` target
         // behind an off-by-default feature — it has reported `ok. 0 passed`
         // ever since.
         //
@@ -29719,8 +29719,8 @@ fn fase6_1_full_regulated_program_compiles_clean() {
 }
 
 #[test]
-fn fase5_immune_reflex_heal_full_loop_compiles_clean() {
-    // Integration test: the full Fase 5 stack composed together.
+fn immune_reflex_heal_full_loop_compiles_clean() {
+    // Integration test: the full v1.1.0 stack composed together.
     let ir = compile_ir(r#"
         resource Db { kind: postgres  endpoint: db.main }
         fabric Vpc { provider: aws }
@@ -29756,10 +29756,10 @@ fn fase5_immune_reflex_heal_full_loop_compiles_clean() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// §λ-L-E Fase 9 — UI cognitiva declarativa (component / view)
+// v1.3.1 — UI cognitiva declarativa (component / view)
 // ═══════════════════════════════════════════════════════════════════════════
 
-fn fase9_regulated_preamble() -> &'static str {
+fn regulated_preamble() -> &'static str {
     r#"
         type PatientRecord compliance [HIPAA] { id: String }
         flow SummarizeRecord(rec: PatientRecord) -> PatientRecord {
@@ -29775,7 +29775,7 @@ fn fase9_regulated_preamble() -> &'static str {
 }
 
 #[test]
-fn fase9_component_minimal_parses_and_lowers() {
+fn component_minimal_parses_and_lowers() {
     let ir = compile_ir(r#"
         type T { f: String }
         component C { renders: T render_hint: card }
@@ -29787,7 +29787,7 @@ fn fase9_component_minimal_parses_and_lowers() {
 }
 
 #[test]
-fn fase9_component_full_fields_round_trip() {
+fn component_full_fields_round_trip() {
     let src = format!(r#"{}
         component PatientCard {{
             renders: PatientRecord
@@ -29795,7 +29795,7 @@ fn fase9_component_full_fields_round_trip() {
             on_interact: SummarizeRecord
             render_hint: card
         }}
-    "#, fase9_regulated_preamble());
+    "#, regulated_preamble());
     let ir = compile_ir(&src);
     let c = &ir.components[0];
     assert_eq!(c.renders, "PatientRecord");
@@ -29805,14 +29805,14 @@ fn fase9_component_full_fields_round_trip() {
 }
 
 #[test]
-fn fase9_component_invalid_render_hint_rejected_by_parser() {
+fn component_invalid_render_hint_rejected_by_parser() {
     let tokens = lex("type T { f: String } component C { renders: T render_hint: sculpture }");
     let mut parser = Parser::new(tokens);
     assert!(parser.parse().is_err());
 }
 
 #[test]
-fn fase9_view_parses_and_lowers_with_route() {
+fn view_parses_and_lowers_with_route() {
     let ir = compile_ir(r#"
         type T { f: String }
         component C { renders: T }
@@ -29829,7 +29829,7 @@ fn fase9_view_parses_and_lowers_with_route() {
 }
 
 #[test]
-fn fase9_view_composes_multiple_components() {
+fn view_composes_multiple_components() {
     let ir = compile_ir(r#"
         type T { f: String }
         component A { renders: T }
@@ -29840,7 +29840,7 @@ fn fase9_view_composes_multiple_components() {
 }
 
 #[test]
-fn fase9_component_missing_renders_is_type_error() {
+fn component_missing_renders_is_type_error() {
     let errors = type_check("component C { render_hint: card }");
     assert!(
         errors.iter().any(|e| e.message.contains("requires 'renders")),
@@ -29849,7 +29849,7 @@ fn fase9_component_missing_renders_is_type_error() {
 }
 
 #[test]
-fn fase9_component_undefined_render_type_is_error() {
+fn component_undefined_render_type_is_error() {
     let errors = type_check("component C { renders: Ghost }");
     assert!(
         errors.iter().any(|e| e.message.contains("undefined type 'Ghost'")),
@@ -29858,7 +29858,7 @@ fn fase9_component_undefined_render_type_is_error() {
 }
 
 #[test]
-fn fase9_component_wrong_render_kind_is_error() {
+fn component_wrong_render_kind_is_error() {
     // Pointing `renders:` at a flow is a kind mismatch.
     let errors = type_check(r#"
         flow F() -> String { step S { ask: "x" output: String } }
@@ -29871,7 +29871,7 @@ fn fase9_component_wrong_render_kind_is_error() {
 }
 
 #[test]
-fn fase9_component_unknown_shield_is_error() {
+fn component_unknown_shield_is_error() {
     let errors = type_check(r#"
         type T { f: String }
         component C { renders: T via_shield: Ghost }
@@ -29883,7 +29883,7 @@ fn fase9_component_unknown_shield_is_error() {
 }
 
 #[test]
-fn fase9_component_on_interact_must_be_a_flow() {
+fn component_on_interact_must_be_a_flow() {
     let errors = type_check(r#"
         type T { f: String }
         component C { renders: T on_interact: T }
@@ -29895,7 +29895,7 @@ fn fase9_component_on_interact_must_be_a_flow() {
 }
 
 #[test]
-fn fase9_component_signature_mismatch_is_error() {
+fn component_signature_mismatch_is_error() {
     let errors = type_check(r#"
         type T { f: String }
         type U { f: String }
@@ -29910,10 +29910,10 @@ fn fase9_component_signature_mismatch_is_error() {
 }
 
 #[test]
-fn fase9_regulated_render_requires_via_shield() {
+fn regulated_render_requires_via_shield() {
     let errors = type_check(&format!(r#"{}
         component BadCard {{ renders: PatientRecord }}
-    "#, fase9_regulated_preamble()));
+    "#, regulated_preamble()));
     assert!(
         errors.iter().any(|e| e.message.contains("renders regulated type")
             && e.message.contains("no 'via_shield'")),
@@ -29922,7 +29922,7 @@ fn fase9_regulated_render_requires_via_shield() {
 }
 
 #[test]
-fn fase9_shield_must_cover_full_kappa() {
+fn shield_must_cover_full_kappa() {
     let errors = type_check(r#"
         type PatientRecord compliance [HIPAA, GDPR] { id: String }
         shield PartialShield {
@@ -29941,7 +29941,7 @@ fn fase9_shield_must_cover_full_kappa() {
 }
 
 #[test]
-fn fase9_shield_superset_kappa_accepted() {
+fn shield_superset_kappa_accepted() {
     let ir = compile_ir(r#"
         type PatientRecord compliance [HIPAA] { id: String }
         shield SuperShield {
@@ -29960,7 +29960,7 @@ fn fase9_shield_superset_kappa_accepted() {
 }
 
 #[test]
-fn fase9_unregulated_component_needs_no_shield() {
+fn unregulated_component_needs_no_shield() {
     let ir = compile_ir(r#"
         type Note { text: String }
         component NoteCard { renders: Note render_hint: card }
@@ -29969,7 +29969,7 @@ fn fase9_unregulated_component_needs_no_shield() {
 }
 
 #[test]
-fn fase9_view_empty_components_is_error() {
+fn view_empty_components_is_error() {
     let errors = type_check(r#"
         view V { title: "Empty" }
     "#);
@@ -29980,7 +29980,7 @@ fn fase9_view_empty_components_is_error() {
 }
 
 #[test]
-fn fase9_view_unknown_component_ref_is_error() {
+fn view_unknown_component_ref_is_error() {
     let errors = type_check(r#"view V { components: [Ghost] }"#);
     assert!(
         errors.iter().any(|e| e.message.contains("undefined component 'Ghost'")),
@@ -29989,7 +29989,7 @@ fn fase9_view_unknown_component_ref_is_error() {
 }
 
 #[test]
-fn fase9_view_wrong_kind_component_ref_is_error() {
+fn view_wrong_kind_component_ref_is_error() {
     let errors = type_check(r#"
         type T { f: String }
         view V { components: [T] }
@@ -30001,7 +30001,7 @@ fn fase9_view_wrong_kind_component_ref_is_error() {
 }
 
 #[test]
-fn fase9_view_duplicate_component_is_error() {
+fn view_duplicate_component_is_error() {
     let errors = type_check(r#"
         type T { f: String }
         component A { renders: T }
@@ -30014,7 +30014,7 @@ fn fase9_view_duplicate_component_is_error() {
 }
 
 #[test]
-fn fase9_healthcare_console_reference_compiles_clean() {
+fn healthcare_console_reference_compiles_clean() {
     let source = std::fs::read_to_string("../examples/ui/healthcare_console.axon")
         .expect("healthcare_console.axon fixture missing");
     let ir = compile_ir(&source);
@@ -30032,8 +30032,8 @@ fn fase9_healthcare_console_reference_compiles_clean() {
 }
 
 #[test]
-fn fase1_io_cognitivo_full_stack_compiles_clean() {
-    // Integration test: the four Fase 1 primitives wired together.
+fn io_cognitivo_full_stack_compiles_clean() {
+    // Integration test: the four v1.1.0 primitives wired together.
     let ir = compile_ir(r#"
         resource Db { kind: postgres  endpoint: db.main lifetime: affine }
         resource Cache { kind: redis  endpoint: cache.main lifetime: affine }

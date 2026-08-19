@@ -1,4 +1,4 @@
-//! §Fase 33.e — Stream-effect dispatcher (Layer 4).
+//! v1.24.0 — Stream-effect dispatcher (Layer 4).
 //!
 //! D4 in motion: bridges the `effects: <stream:<policy>>` declarations
 //! on tool definitions to actual runtime behavior. Closes the last
@@ -10,15 +10,15 @@
 //! ```text
 //!   adopter source:    tool chat_stream { effects: <stream:drop_oldest> }
 //!                                                  └────────┬───────────┘
-//!                            §Fase 11.a closed catalog  ────┘
+//! v1.4.0 closed catalog ────┘
 //!
 //!   type checker:      effect row {"stream:drop_oldest"} on ToolDefinition
 //!                                                  └─── verified at compile-time
 //!
-//!   wire negotiation:  Fase 30.c disjunct (b) → implicit_transport = "sse"
+//! wire negotiation: v1.21.0 disjunct (b) → implicit_transport = "sse"
 //!                                                  └─── classify_negotiation_via_source_text
 //!
-//!   wire body:         Fase 33.c live FlowExecutionEvent → axon.token SSE events
+//! wire body: v1.24.0 live FlowExecutionEvent → axon.token SSE events
 //!
 //!   THIS MODULE:       per-step lookup → BackpressurePolicy → enforcer
 //!                                                  └─── policy semantics activated
@@ -70,7 +70,7 @@ use crate::stream_effect::BackpressurePolicy;
 use crate::stream_runtime::{Stream as PolicyStream, StreamError, StreamMetricsSnapshot};
 
 // ────────────────────────────────────────────────────────────────────
-//  §1 — Resolver
+// section 1 — Resolver
 // ────────────────────────────────────────────────────────────────────
 
 /// The default per-step backpressure buffer capacity, in chunks.
@@ -80,7 +80,7 @@ use crate::stream_runtime::{Stream as PolicyStream, StreamError, StreamMetricsSn
 /// while staying tight enough that a saturating producer triggers the
 /// declared policy in adopter-observable time. Per D6 the capacity is
 /// configurable per-tool via `effects: <stream:drop_oldest,
-/// buffer=N>` (Fase 11.a annotation syntax already accepts options);
+/// buffer=N>` (v1.4.0 annotation syntax already accepts options);
 /// this constant is the fallback when no `buffer=` option is given.
 pub const DEFAULT_STREAM_BUFFER_CAPACITY: usize = 16;
 
@@ -150,7 +150,7 @@ pub fn resolve_stream_effect_for_step(
 }
 
 // ────────────────────────────────────────────────────────────────────
-//  §2 — Stream-policy enforcer
+// section 2 — Stream-policy enforcer
 // ────────────────────────────────────────────────────────────────────
 
 /// Snapshot of a single enforcement run's policy-fire counters.
@@ -341,7 +341,7 @@ impl StreamPolicyEnforcer {
 }
 
 // ────────────────────────────────────────────────────────────────────
-//  §3 — Tests
+// section 3 — Tests
 // ────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -432,7 +432,7 @@ mod tests {
         }
     }
 
-    // ── §3.1 Resolver — pure-unit ──────────────────────────────────
+    // ── section 3.1 Resolver — pure-unit ──────────────────────────────────
 
     #[test]
     fn resolve_step_with_drop_oldest_effect() {
@@ -584,7 +584,7 @@ mod tests {
         );
     }
 
-    // ── §3.2 Enforcer — policy semantics under saturation ─────────
+    // ── section 3.2 Enforcer — policy semantics under saturation ─────────
 
     fn chunk(text: &str) -> ChatChunk {
         ChatChunk {
@@ -722,7 +722,7 @@ mod tests {
         assert_eq!(metrics.degrade_quality_hits, 1);
     }
 
-    // ── §3.3 Drain method (producer + consumer end-to-end) ─────────
+    // ── section 3.3 Drain method (producer + consumer end-to-end) ─────────
 
     #[tokio::test]
     async fn enforcer_drain_drives_source_through_drop_oldest() {
@@ -802,7 +802,7 @@ mod tests {
         assert_eq!(summary.chunks_pushed, 1);
     }
 
-    // ── §3.4 EnforcementSummary ─────────────────────────────────────
+    // ── section 3.4 EnforcementSummary ─────────────────────────────────────
 
     #[test]
     fn enforcement_summary_default_is_empty() {

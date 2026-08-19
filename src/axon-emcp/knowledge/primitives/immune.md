@@ -3,7 +3,7 @@ name: immune
 summary: Continuous-monitoring agent that learns a baseline + emits epistemic-level signals on anomalies.
 category: cognitive_io
 top_level: true
-since: Fase 19
+since: v1.14.0
 grammar: |
   immune <Name> {
       watch: [<Observable1>, <Observable2>, ...]    # required — observation sources
@@ -22,7 +22,7 @@ grammar: |
 learns a baseline of normal behaviour and emits
 epistemic-level signals when observations deviate from it.
 Together with `reflex` (typed automatic responses) and `heal`
-(supervised recovery routines), it forms the §Fase 19 §λ-L-E
+(supervised recovery routines), it forms the v1.14.0 λ-L-E
 **cognitive immune system** — the production-hardening layer
 that detects + responds to abnormal patterns at runtime.
 
@@ -120,7 +120,7 @@ A **single identifier** from the closed decay catalogue:
 
 ## Runtime behaviour
 
-`immune` lowers to an `ImmuneDefinition` IR node. The Fase 19
+`immune` lowers to an `ImmuneDefinition` IR node. The v1.14.0
 supervisor mounts the immune as a long-running process:
 
 1. Subscribe to every `watch:` source.

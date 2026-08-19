@@ -1,5 +1,5 @@
 /*
- * §Fase 25.h — Crypto utilities: constant-time compare + hex codec
+ * v1.19.0 — Crypto utilities: constant-time compare + hex codec
  * + base64url-no-pad codec.
  *
  * These primitives complement the SHA-256 / HMAC kernels in this
@@ -16,11 +16,11 @@
  *
  * Mathematical pillar (preserved from the relevant standards):
  *   - Constant-time compare: XOR-OR reduction with branch-free
- *     final-bit extraction. See §6 of RFC 4634-bis (informational
+ * final-bit extraction. See section 6 of RFC 4634-bis (informational
  *     description of standard practice).
  *   - Hex: lowercase encoding per common Unix convention; decode
  *     accepts both upper and lower case.
- *   - Base64url: RFC 4648 §5 — alphabet substitution from §4 with
+ * - Base64url: RFC 4648 section 5 — alphabet substitution from section 4 with
  *     `+` → `-` and `/` → `_`; this module's variant strips
  *     trailing padding (`=`) per common URL-safe usage.
  */
@@ -73,7 +73,7 @@ bool axon_csys_hex_decode(
     uint8_t* out);
 
 /* ──────────────────────────────────────────────────────────────────────
- * Base64url-no-pad codec (RFC 4648 §5, padding stripped)
+ * Base64url-no-pad codec (RFC 4648 section 5, padding stripped)
  * ────────────────────────────────────────────────────────────────── */
 
 /* Compute the encoded length for a given input byte count. Equal to

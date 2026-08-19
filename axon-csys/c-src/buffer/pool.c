@@ -1,5 +1,5 @@
 /*
- * §Fase 25.d — Cache-line-aligned slab allocator with bitmap free-list.
+ * v1.19.0 — Cache-line-aligned slab allocator with bitmap free-list.
  *
  * Direct port of `axon-rs/src/buffer/pool.rs`. Three metal-side upgrades
  * documented in pool.h: _Alignas(64) cache-line alignment, bitmap free-

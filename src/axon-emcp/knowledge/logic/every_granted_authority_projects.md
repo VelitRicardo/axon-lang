@@ -1,7 +1,7 @@
 ---
 name: every_granted_authority_projects
 title: "Every granted authority is live — the dead-authority closure of the grantability law"
-summary: "The second half of every_requirement_is_grantable. §90 proved every declared guard is satisfiable by SOME authority in the catalog; this law proves the converse direction at the principal: every authority actually granted to a principal — a built-in role, a custom role row, a machine grant — projects through π into the enforcement namespace and is LIVE at every gate, within a bounded staleness window. Its target is the dead authority: a role an operator can create, populate with catalog permissions, and assign, that confers nothing at any enforcement point — declarable-but-inert authority, the exact dual of the axon-T891 dead requirement. The law binds three seams: authority is derived from live state at verify time (never minted into a claim), projection over a held set is total with explicit drops (a tampered row degrades with a witness, never silently), and an unprojectable permission is refused at the write. Together the triangle closes: every boundary is guarded (§89), every guard is satisfiable (§90), and every key that is cut actually turns the lock (§93)."
+summary: "The second half of every_requirement_is_grantable. v2.45.0 proved every declared guard is satisfiable by SOME authority in the catalog; this law proves the converse direction at the principal: every authority actually granted to a principal — a built-in role, a custom role row, a machine grant — projects through π into the enforcement namespace and is LIVE at every gate, within a bounded staleness window. Its target is the dead authority: a role an operator can create, populate with catalog permissions, and assign, that confers nothing at any enforcement point — declarable-but-inert authority, the exact dual of the axon-T891 dead requirement. The law binds three seams: authority is derived from live state at verify time (never minted into a claim), projection over a held set is total with explicit drops (a tampered row degrades with a witness, never silently), and an unprojectable permission is refused at the write. Together the triangle closes: every boundary is guarded (v2.44.0), every guard is satisfiable (v2.45.0), and every key that is cut actually turns the lock (v2.47.0)."
 ---
 
 # Every granted authority is live
@@ -99,7 +99,7 @@ actually do right now" is one request, not a forensic session.
 | | Every granted authority is live |
 |---|---|
 | **Mathematics** | effective authority is a closure (role union ∘ inheritance ∘ π); π lifted to sets is total; liveness is `E(p) ∪ π(E(p)) ⊆ capabilities(p)` |
-| **Logic** | the two quantifiers close the square: ∀ requirement ∃ authority (§90) ∧ ∀ granted authority ∀ gate, the gate sees it (§93) |
+| **Logic** | the two quantifiers close the square: ∀ requirement ∃ authority (v2.45.0) ∧ ∀ granted authority ∀ gate, the gate sees it (v2.47.0) |
 | **Philosophy** | an authority store that writes what the gates don't read is documentation cosplaying as security; the store must be the single live source of truth |
 | **Computation** | write-refusal (422) + verify-time derivation under a bounded cache + drop-witnesses; resolver failure degrades toward LESS authority, never more |
 

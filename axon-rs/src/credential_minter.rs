@@ -1,5 +1,5 @@
-//! §Fase 92.c — the `CredentialMinter` port: the runtime seam behind the
-//! `mint <Credential> as <binding>` flow verb (§92.b).
+//! v2.46.0 — the `CredentialMinter` port: the runtime seam behind the
+//! `mint <Credential> as <binding>` flow verb (v2.46.0).
 //!
 //! The doctrine (`axon://logic/authority_only_attenuates`): delegation is
 //! attenuation. A mint is admitted only when the minted `grants` are a
@@ -8,7 +8,7 @@
 //!
 //! 1. **At the dispatch handler** (`flow_dispatcher::run_mint`) when the
 //!    request carries a capability context (`ctx.held_capabilities`, the
-//!    §35.j JWT claim surface) — a request-bound mint can never exceed its
+//! v1.30.0 JWT claim surface) — a request-bound mint can never exceed its
 //!    bearer.
 //! 2. **Inside the minter implementation** against
 //!    [`MintRequest::minter_capabilities`] — so a port implementation is
@@ -18,8 +18,8 @@
 //!
 //! There is deliberately **no default production minter in OSS**: a `mint`
 //! reached with no port configured is a loud
-//! `DispatchError::MissingDependency` (the §86 no-silent-stub lesson). The
-//! enterprise executor injects its PASETO-backed minter (§92.g); tests and
+//! `DispatchError::MissingDependency` (the v2.41.0 no-silent-stub lesson). The
+//! enterprise executor injects its PASETO-backed minter (v2.46.0); tests and
 //! single-process adopters can use [`InMemoryMinter`], which enforces the
 //! full attenuation law and keeps an in-process verify set.
 
@@ -36,19 +36,19 @@ pub struct MintRequest {
     /// The capability slugs the minted bearer will carry (the contract's
     /// `grants:` — already validated dotted slugs).
     pub grants: Vec<String>,
-    /// Bearer lifetime in seconds (the contract's `ttl:`, § ceiling-checked
+    /// Bearer lifetime in seconds (the contract's `ttl:`, ceiling-checked
     /// at compile time by `axon-T894`).
     pub ttl_secs: u64,
     /// Tenant the bearer is scoped to (empty for single-tenant OSS).
     pub tenant: String,
     /// The MINTING principal's capability set, when the dispatch carries
-    /// one (the §35.j bearer claims). `None` = no capability context — an
+    /// one (the v1.30.0 bearer claims). `None` = no capability context — an
     /// implementation MUST refuse (fail-closed: you cannot attenuate from
     /// authority you cannot prove).
     pub minter_capabilities: Option<Vec<String>>,
 }
 
-/// A successfully minted bearer. The raw token is shown ONCE — the §92.b
+/// A successfully minted bearer. The raw token is shown ONCE — the v2.46.0
 /// type-checker forbids it from entering a store (`axon-T896`), and the
 /// dispatch handler binds it without echoing it onto the wire audit.
 #[derive(Debug, Clone)]
@@ -132,7 +132,7 @@ pub struct InMemoryMintRecord {
 /// The reference in-process minter: CSPRNG-quality opaque tokens
 /// (`axep_…`), full attenuation-law enforcement, and an in-memory verify
 /// set so a single-process adopter (or a test) can round-trip
-/// mint → verify. NOT a distributed credential system — the §92.g
+/// mint → verify. NOT a distributed credential system — the v2.46.0
 /// enterprise minter (stateless PASETO `v4.local` + tenant epoch) is the
 /// production surface.
 #[derive(Default)]
@@ -156,7 +156,7 @@ impl CredentialMinter for InMemoryMinter {
     fn mint(&self, req: MintRequest) -> Result<MintedCredential, MintError> {
         check_attenuation(&req)?;
         // Two v4 UUIDs ≈ 244 bits of CSPRNG entropy — ample for an
-        // in-process reference token (the production format is §92.g).
+        // in-process reference token (the production format is v2.46.0).
         let token = format!(
             "axep_{}{}",
             uuid::Uuid::new_v4().simple(),

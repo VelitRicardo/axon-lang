@@ -1,4 +1,4 @@
-//! §Fase 62.D — Memory-Augmented MDN (paper `paper_memory_augmented_mdn.md`).
+//! v2.12.0 — Memory-Augmented MDN (paper `paper_memory_augmented_mdn.md`).
 //!
 //! "Memory is not storage. It is a continuous deformation of the epistemic
 //! landscape." This module implements memory as a transformation of the corpus

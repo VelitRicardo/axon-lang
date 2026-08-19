@@ -11,13 +11,13 @@
 //!   1 — compilation or execution error
 //!   2 — I/O or configuration error
 //!
-//! # §Fase 33.x.i — `crate::backend` deprecation
+//! # v1.24.0 — `crate::backend` deprecation
 //!
 //! This file is one of four callers of the deprecated synchronous
 //! `crate::backend` mono-file (see `backend.rs` module docs).
 //! The `#![allow(deprecated)]` below silences the deprecation
 //! warnings on this file's call sites while the deeper async
-//! migration progresses under followup sub-fase Fase 33.x.i.2
+//! migration progresses under followup step v1.24.0
 //! (sync→async migration of the 4 callers, separate cycle).
 
 #![allow(deprecated)]
@@ -53,7 +53,7 @@ use crate::type_checker::TypeChecker;
 
 /// Single source of truth for the AXON version string.
 ///
-/// §Fase 118.a — **the definition moved to [`crate::version`]**, a leaf module
+/// v2.81.0 — **the definition moved to [`crate::version`]**, a leaf module
 /// with no dependencies. It lived here because centralising it killed a real
 /// drift bug (five files each declaring their own stale literal), but `runner`
 /// is the flow executor: importing a constant from it dragged `sqlx`,
@@ -98,7 +98,7 @@ struct ExecutionUnit {
     effort: String,
     #[serde(skip)]
     resolved_anchors: Vec<IRAnchor>,
-    /// §Fase 37.b (D1) — the Request Binding Contract bindings:
+    /// v1.32.0 (D1) — the Request Binding Contract bindings:
     /// `(flow parameter name, value)` pairs resolved from the HTTP
     /// request body. Seeded into the unit's `ExecContext` before the
     /// step walk so `${param}` interpolates. Empty for a caller with
@@ -120,24 +120,24 @@ struct CompiledStep {
     /// For memory steps: the expression/query/target.
     #[serde(skip_serializing_if = "Option::is_none")]
     memory_expression: Option<String>,
-    /// Fase 15.c — for `lambda_data_apply` steps: the full payload
+    /// v1.10.0 — for `lambda_data_apply` steps: the full payload
     /// (spec snapshot + target + output_type) so the runner can build
     /// ψ = ⟨T, V, E⟩ without reaching back into the IR.
     #[serde(skip_serializing_if = "Option::is_none")]
     lambda_apply_payload: Option<crate::lambda_runtime::LambdaApplyPayload>,
-    /// Fase 17.c — for `let_binding` steps: the payload (target,
+    /// v1.12.0 — for `let_binding` steps: the payload (target,
     /// value, value_kind) so the stub executor can perform the
     /// SSA binding without re-traversing the IR.
     #[serde(skip_serializing_if = "Option::is_none")]
     let_payload: Option<LetPayload>,
-    /// §Fase 35.o / 35.p — for `persist` (INSERT columns) and `mutate`
+    /// v1.30.0 — for `persist` (INSERT columns) and `mutate`
     /// (UPDATE SET assignments) steps: the declared `{ col: value }`
     /// block. `Some` ⇒ the SQL row is built from exactly these columns
     /// (interpolated); `None` ⇒ no block was written and the runtime
     /// falls back to the flow's user bindings (v1.31.0).
     #[serde(skip_serializing_if = "Option::is_none")]
     store_fields: Option<Vec<(String, String)>>,
-    /// §Fase 67.b — for a `retrieve` step: the raw `order_by:` /
+    /// v2.21.0 — for a `retrieve` step: the raw `order_by:` /
     /// `limit:` clauses. `None` = the clause was absent (the pre-67.b
     /// unordered / unbounded form). Carried so the executor builds the
     /// `ORDER BY … LIMIT …` suffix without reaching back into the IR.
@@ -145,7 +145,7 @@ struct CompiledStep {
     retrieve_order_by: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     retrieve_limit: Option<String>,
-    /// §Fase 76.d — for a `retrieve` step: the raw `aggregate:` /
+    /// v2.33.0 — for a `retrieve` step: the raw `aggregate:` /
     /// `group_by:` clauses (closed catalog: `count` / `sum(col)` /
     /// `avg(col)` / `min(col)` / `max(col)`; comma-separated group
     /// columns). `None` = absent (the plain `SELECT *` retrieve).
@@ -153,22 +153,22 @@ struct CompiledStep {
     retrieve_aggregate: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     retrieve_group_by: Option<String>,
-    /// §Fase 58.e — for a `use Tool(k = v, …)` dispatch: the bound keyword
+    /// v2.8.0 — for a `use Tool(k = v, …)` dispatch: the bound keyword
     /// args `(name, raw value)`. Non-empty ⇒ the runtime assembles a STRUCTURED
     /// JSON request body (`{"query":"…","max_results":5}`) instead of the flat
     /// `{"input": …}`. Empty for the legacy single-`on <arg>` form (D5).
-    /// §Fase 60 — each entry is `(name, raw value, value_kind)`; `value_kind`
+    /// v2.10.0 — each entry is `(name, raw value, value_kind)`; `value_kind`
     /// (`"literal"` / `"reference"`) drives runtime resolution: a reference is a
     /// binding lookup, a literal keeps `${…}` interpolation.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     tool_named_args: Vec<(String, String, String)>,
-    /// §Fase 58.e — the called tool's declared `(param, type)` schema, resolved
+    /// v2.8.0 — the called tool's declared `(param, type)` schema, resolved
     /// from `ir.tools` at build time so the runtime coerces each arg value to
     /// its DECLARED JSON type (a `String` param stays a string even when its
     /// value is all-digits) without reaching back into the IR.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     tool_param_types: Vec<(String, String)>,
-    /// §Fase 65.A/B — for a structural verb (navigate / drill / trail): the IR
+    /// v2.15.0/B — for a structural verb (navigate / drill / trail): the IR
     /// node, carried so the non-streaming server executor dispatches its REAL
     /// handler via `flow_dispatcher::dispatch_node` instead of falling through to
     /// the LLM — which fabricates output (the Kivi gap report). `Some` only for
@@ -186,7 +186,7 @@ struct CompiledStep {
     /// order, before the step's own generation. Runtime-only: `#[serde(skip)]`.
     #[serde(skip)]
     body_statements: Vec<crate::ir_nodes::IRFlowNode>,
-    /// §Fase 65.D — for a `return <expr>` step: the value expression, so the
+    /// v2.15.0 — for a `return <expr>` step: the value expression, so the
     /// non-streaming executor RESOLVES it (binding lookup → literal fallback,
     /// mirroring the dispatcher's `run_return`) instead of dispatching it to the
     /// LLM. Before this, `return hits` in a non-streaming flow fell through to
@@ -195,17 +195,17 @@ struct CompiledStep {
     /// "return"]`, BOTH LLM-fabricated). `#[serde(skip)]` — runtime-only.
     #[serde(skip)]
     return_value_expr: Option<String>,
-    /// §Fase 91.b — the step's EFFECTIVE declared cognitive timezone
+    /// v2.46.0 — the step's EFFECTIVE declared cognitive timezone
     /// (step-level `now:` ∨ the bound `context`'s `now:` — resolved at plan
     /// build). When present, the executor appends the unit's captured
     /// instant — rendered in this zone — to the step's system prompt
     /// (`time_is_an_explicit_input`). Elided from the compiled-plan JSON
-    /// when absent (pre-§91 plans byte-identical).
+    /// when absent (pre-v2.46.0 plans byte-identical).
     #[serde(skip_serializing_if = "Option::is_none")]
     now_tz: Option<String>,
 }
 
-/// Fase 17.c — payload carried inside a CompiledStep for `let X = value`
+/// v1.12.0 — payload carried inside a CompiledStep for `let X = value`
 /// SSA bindings. `value_kind` ∈ {"literal", "reference", "expression"}
 /// disambiguates a quoted literal from a dotted-identifier reference
 /// resolved at runtime.
@@ -244,7 +244,7 @@ fn build_execution_plan(ir: &IRProgram, backend: &str) -> Vec<ExecutionUnit> {
             anchor_instructions,
             effort: run.effort.clone(),
             resolved_anchors: run.resolved_anchors.clone(),
-            // §Fase 37.b — the CLI / `run`-statement plan builder has
+            // v1.32.0 — the CLI / `run`-statement plan builder has
             // no HTTP request body; the binding is empty (D5).
             param_bindings: Vec::new(),
         });
@@ -355,7 +355,7 @@ fn build_compiled_steps(run: &IRRun, ir: &IRProgram) -> Vec<CompiledStep> {
             _ => None,
         };
 
-        // §Fase 58.e — the structured keyword args of a `use Tool(k = v, …)`
+        // v2.8.0 — the structured keyword args of a `use Tool(k = v, …)`
         // dispatch, plus the called tool's declared `(param, type)` schema
         // (resolved once from `ir.tools`) so the runtime coerces each value to
         // its declared JSON type. Both empty for the legacy single-arg form.
@@ -393,7 +393,7 @@ fn build_compiled_steps(run: &IRRun, ir: &IRProgram) -> Vec<CompiledStep> {
             _ => None,
         };
 
-        // Fase 15.c — materialise the lambda apply payload by looking
+        // v1.10.0 — materialise the lambda apply payload by looking
         // up the spec snapshot from ir.lambda_data_specs. The runner
         // needs the full snapshot at execute-time to construct ψ;
         // carrying it in the CompiledStep keeps the executor free of
@@ -424,7 +424,7 @@ fn build_compiled_steps(run: &IRRun, ir: &IRProgram) -> Vec<CompiledStep> {
             _ => None,
         };
 
-        // Fase 17.c — materialise the let payload from the IR Let
+        // v1.12.0 — materialise the let payload from the IR Let
         // node so the stub executor can bind without re-traversing
         // the IR. Same pattern as the lambda apply payload above.
         let let_payload = match node {
@@ -436,7 +436,7 @@ fn build_compiled_steps(run: &IRRun, ir: &IRProgram) -> Vec<CompiledStep> {
             _ => None,
         };
 
-        // §Fase 35.o / 35.p — materialise the declared `{ col: value }`
+        // v1.30.0 — materialise the declared `{ col: value }`
         // block of a `persist` (INSERT columns) or `mutate` (UPDATE SET
         // assignments) so `execute_sql_store_step` scopes the SQL row
         // to exactly those columns. No block ⇒ `None` → the v1.31.0
@@ -451,10 +451,10 @@ fn build_compiled_steps(run: &IRRun, ir: &IRProgram) -> Vec<CompiledStep> {
             _ => None,
         };
 
-        // §Fase 67.b — carry a `retrieve` step's `order_by:` / `limit:`
+        // v2.21.0 — carry a `retrieve` step's `order_by:` / `limit:`
         // clauses so the executor renders the `ORDER BY … LIMIT …` suffix.
         // Empty source strings stay `None` (no clause written).
-        // §Fase 76.d — same carriage for `aggregate:` / `group_by:`.
+        // v2.33.0 — same carriage for `aggregate:` / `group_by:`.
         let (retrieve_order_by, retrieve_limit, retrieve_aggregate, retrieve_group_by) =
             match node {
                 IRFlowNode::Retrieve(s) => (
@@ -466,7 +466,7 @@ fn build_compiled_steps(run: &IRRun, ir: &IRProgram) -> Vec<CompiledStep> {
                 _ => (None, None, None, None),
             };
 
-        // §Fase 65.A/B — carry the IR node for the structural verbs the executor
+        // v2.15.0/B — carry the IR node for the structural verbs the executor
         // routes through the dispatcher (real handler, not the LLM fallthrough).
         let structural_node = if routes_through_dispatcher(node) {
             Some(node.clone())
@@ -478,14 +478,14 @@ fn build_compiled_steps(run: &IRRun, ir: &IRProgram) -> Vec<CompiledStep> {
             _ => Vec::new(),
         };
 
-        // §Fase 65.D — carry the return value expression so the executor
+        // v2.15.0 — carry the return value expression so the executor
         // resolves it instead of LLM-dispatching the `return` step.
         let return_value_expr = match node {
             IRFlowNode::Return(s) => Some(s.value_expr.clone()),
             _ => None,
         };
 
-        // §Fase 91.b — the step's EFFECTIVE declared cognitive timezone:
+        // v2.46.0 — the step's EFFECTIVE declared cognitive timezone:
         // its own `now:` overrides the bound `context` frame's (`run …
         // within <Context>`). Only real cognitive steps carry it.
         let now_tz = match node {
@@ -523,7 +523,7 @@ fn build_compiled_steps(run: &IRRun, ir: &IRProgram) -> Vec<CompiledStep> {
     steps
 }
 
-/// §Fase 58.e — assemble the STRUCTURED JSON request body for a `use Tool(k =
+/// v2.8.0 — assemble the STRUCTURED JSON request body for a `use Tool(k =
 /// v, …)` dispatch from its ALREADY-INTERPOLATED `(name, value)` args. Each
 /// value is coerced to its DECLARED parameter type so the tool backend receives
 /// `{"query":"Acme","max_results":5,"safe":true}` — not a flat
@@ -543,10 +543,10 @@ pub(crate) fn build_structured_tool_body(
     serde_json::Value::Object(map).to_string()
 }
 
-/// §Fase 58.e / §116.c.4 — coerce an interpolated arg value to JSON per its
+/// v2.8.0 / v2.77.0 — coerce an interpolated arg value to JSON per its
 /// DECLARED type. `Int`/`Float`/`Bool` parse into the matching JSON scalar;
 /// `List<T>` materializes into a JSON ARRAY (see [`coerce_list_value`]); a value
-/// that does not parse falls back to a JSON string (the §58.d type-checker
+/// that does not parse falls back to a JSON string (the v2.8.0 type-checker
 /// already flags a literal mismatch at compile time — interpolated/runtime values
 /// are coerced leniently rather than dropped). `String`, custom domain types, and
 /// unknown / schema-less (`None`) stay JSON strings — so a `String` parameter
@@ -592,7 +592,7 @@ fn coerce_scalar_value(value: &str, base: &str) -> serde_json::Value {
     }
 }
 
-/// §Fase 116.c.4 — materialize a `List<T>` argument into a JSON array so a
+/// v2.77.0 — materialize a `List<T>` argument into a JSON array so a
 /// `use Tool(media_urls = ["a", "b"])` reaches the connector as a real array
 /// (pre-116.c.4 it stayed the opaque JSON STRING `"[a, b]"`, so EVERY list-typed
 /// tool param — FB multi-photo, IG carousel — was unreachable from a flow).
@@ -608,7 +608,7 @@ fn coerce_scalar_value(value: &str, base: &str) -> serde_json::Value {
 /// Residual limitation (named, not silent): because the surface rendering drops
 /// the source quotes, an item that itself contains a top-level comma cannot be
 /// recovered from form (2) — realistic string/URL/number lists do not hit this;
-/// the deeper fix is structured list values carried through the IR (like §70.f's
+/// the deeper fix is structured list values carried through the IR (like v2.26.0's
 /// `value_ast` for expressions).
 fn coerce_list_value(value: &str, inner: &str) -> serde_json::Value {
     let trimmed = value.trim();
@@ -687,13 +687,13 @@ fn extract_step_info(node: &IRFlowNode) -> (String, String, String) {
         IRFlowNode::Refine(s) => (s.target.clone(), "refine".to_string(), format!("Refine: {}", s.target)),
         IRFlowNode::Weave(s) => ("weave".to_string(), "weave".to_string(), format!("Weave {} sources into {}", s.sources.len(), s.target)),
         IRFlowNode::UseTool(s) => (s.tool_name.clone(), "use_tool".to_string(), format!("Use tool: {}", s.tool_name)),
-        // §Fase 119.m.3 — the audit row names the AGENT, because that is the
+        // v2.83.0 — the audit row names the AGENT, because that is the
         // unit an adopter reasons about; the loop's own iterations already
         // appear as their own `agent`-slug rows beneath it.
         IRFlowNode::AgentCall(s) => (s.agent_name.clone(), "agent_call".to_string(), format!("Run agent: {}({})", s.agent_name, s.arguments.join(", "))),
-        // §Fase 92.b — ephemeral-credential minting (dispatcher-routed).
+        // v2.46.0 — ephemeral-credential minting (dispatcher-routed).
         IRFlowNode::Mint(s) => (s.credential_ref.clone(), "mint".to_string(), format!("Mint credential: {} as {}", s.credential_ref, s.binding)),
-        // §Fase 94.b — mediated secret renewal (dispatcher-routed; the
+        // v2.48.0 — mediated secret renewal (dispatcher-routed; the
         // summary names store + tool, NEVER a secret value).
         IRFlowNode::Rotate(s) => (s.store_ref.clone(), "rotate".to_string(), format!("Rotate secrets: {} with {}", s.store_ref, s.tool_ref)),
         IRFlowNode::Remember(s) => (s.memory_target.clone(), "remember".to_string(), format!("Remember: {}", s.expression)),
@@ -714,7 +714,7 @@ fn extract_step_info(node: &IRFlowNode) -> (String, String, String) {
         IRFlowNode::Ingest(s) => (s.source.clone(), "ingest".to_string(), format!("Ingest: {}", s.source)),
         IRFlowNode::ShieldApply(s) => (s.shield_name.clone(), "shield_apply".to_string(), format!("Apply shield: {}", s.shield_name)),
         IRFlowNode::Stream(_) => ("stream".to_string(), "stream".to_string(), "Stream block".to_string()),
-        // §Fase 120 — the algebraic-effect constructs. The slugs match
+        // v2.87.0 — the algebraic-effect constructs. The slugs match
         // `flow_plan::ir_flow_node_kind` (drift-gated) and the wire `step_type`
         // the dispatcher emits, so one construct has one name everywhere.
         IRFlowNode::Handle(s) => (
@@ -748,23 +748,23 @@ fn extract_step_info(node: &IRFlowNode) -> (String, String, String) {
         IRFlowNode::Mutate(s) => (s.store_name.clone(), "mutate".to_string(), format!("Mutate: {}", s.store_name)),
         IRFlowNode::Purge(s) => (s.store_name.clone(), "purge".to_string(), format!("Purge: {}", s.store_name)),
         IRFlowNode::Transact(_) => ("transact".to_string(), "transact".to_string(), "Transact block".to_string()),
-        // §Fase 88.a — `warden` adversarial-analysis block. step_type "warden"
+        // v2.43.0 — `warden` adversarial-analysis block. step_type "warden"
         // matches `flow_plan::ir_flow_node_kind` (drift-gated).
         IRFlowNode::Warden(s) => (s.target.clone(), "warden".to_string(), format!("Warden: {}", s.target)),
-        // §Fase 51.a — `quant` cognitive block. step_type "quant" matches
+        // v2.4.0 — `quant` cognitive block. step_type "quant" matches
         // `flow_plan::ir_flow_node_kind` (drift-gated).
         IRFlowNode::Quant(_) => ("quant".to_string(), "quant".to_string(), "Quant block".to_string()),
-        // §Fase 51.d.2 — `yield` measurement point. step_type "yield" matches
+        // v2.4.0 — `yield` measurement point. step_type "yield" matches
         // `flow_plan::ir_flow_node_kind` (drift-gated).
         IRFlowNode::Yield(s) => (s.value_expr.clone(), "yield".to_string(), format!("Yield: {}", s.value_expr)),
-        // §Fase 52.c — `run <Flow>(args)` flow-step (invoke a flow from a body).
+        // v2.4.0 — `run <Flow>(args)` flow-step (invoke a flow from a body).
         IRFlowNode::Run(s) => (s.flow_name.clone(), "run".to_string(), format!("Run flow: {}", s.flow_name)),
         IRFlowNode::LambdaDataApply(s) => (s.lambda_data_name.clone(), "lambda_data_apply".to_string(), format!("Apply ΛD: {}", s.lambda_data_name)),
-        // §λ-L-E Fase 13 — Mobile typed channel reductions.
+        // v1.6.0 — Mobile typed channel reductions.
         IRFlowNode::Emit(s) => (s.channel_ref.clone(), "emit".to_string(), format!("Emit on {}: {}", s.channel_ref, s.value_ref)),
         IRFlowNode::Publish(s) => (s.channel_ref.clone(), "publish".to_string(), format!("Publish {} within {}", s.channel_ref, s.shield_ref)),
         IRFlowNode::Discover(s) => (s.capability_ref.clone(), "discover".to_string(), format!("Discover {} as {}", s.capability_ref, s.alias)),
-        // Fase 19.e — break / continue. Payload-free; the executor
+        // v1.14.0 — break / continue. Payload-free; the executor
         // raises sentinel exceptions caught by the enclosing for-in.
         IRFlowNode::Break(_) => ("break".to_string(), "break".to_string(), "Break out of for-in loop".to_string()),
         IRFlowNode::Continue(_) => ("continue".to_string(), "continue".to_string(), "Continue to next for-in iteration".to_string()),
@@ -829,7 +829,7 @@ fn execute_stub(
             &unit.persona_name,
             i,
         );
-        // §Fase 37.b (D1) — seed the flow's parameters from the
+        // v1.32.0 (D1) — seed the flow's parameters from the
         // request body BEFORE the step walk so `${param}` resolves.
         for (name, value) in &unit.param_bindings {
             stub_ctx.set(name, value);
@@ -921,7 +921,7 @@ fn execute_stub(
                 }
             }
 
-            // Fase 15.c — `lambda_data_apply` is the only primitive the
+            // v1.10.0 — `lambda_data_apply` is the only primitive the
             // stub executor implements semantically: it's a pure binding
             // (no LLM, no I/O), so the stub can produce a correct ψ
             // without diverging from the real executor. Adopters running
@@ -982,7 +982,7 @@ fn execute_stub(
                 }
             }
 
-            // Fase 17.c — `let_binding` is also a pure SSA binding
+            // v1.12.0 — `let_binding` is also a pure SSA binding
             // (no LLM, no I/O). The stub binds the resolved value
             // into ExecContext under `target` so downstream ${X} /
             // $X interpolation finds it. Resolution rule:
@@ -993,7 +993,7 @@ fn execute_stub(
             //   * expression — bind the joined string; runtime
             //     evaluation via NativeComputeDispatcher is a future
             //     sub-phase
-            // §Fase 105.h — the runtime step_type is `"let"` (extract_step_info),
+            // v2.60.0 — the runtime step_type is `"let"` (extract_step_info),
             // NOT `"let_binding"` — the pre-105.h check never matched, so even the
             // stub silently dropped a flow-body `let` to the LLM fallthrough. Fixed
             // here for parity with the deployed executor's materialisation.
@@ -1026,7 +1026,7 @@ fn execute_stub(
                 }
             }
 
-            // ── Fase 19.f/g — stub-correct dispatch for the 11 new
+            // ── v1.14.0 — stub-correct dispatch for the 11 new
             // primitives (Conditional / ForIn / Par / Return / Remember /
             // Recall / Hibernate / Drill / Trail / Break / Continue).
             //
@@ -1038,7 +1038,7 @@ fn execute_stub(
             // PIX traversal, HMAC token signing, MemoryBackend writes)
             // — that is the Python runner's responsibility. The Rust
             // stub mirrors the Python contract at the trace boundary
-            // so cross-stack parity goldens (Fase 19.h) compare on the
+            // so cross-stack parity goldens (v1.14.0) compare on the
             // same structured shapes.
             match step.step_type.as_str() {
                 "remember" => {
@@ -1097,10 +1097,10 @@ fn execute_stub(
                     continue;
                 }
                 "hibernate" => {
-                    // §Fase 119.d — the sync walk HALTS at hibernate, matching
+                    // v2.83.0 — the sync walk HALTS at hibernate, matching
                     // the dispatcher path (D10 parity): a hibernation that
                     // keeps walking keeps spending, which inverts the
-                    // primitive's one guarantee (§111 F20). The dispatcher
+                    // primitive's one guarantee (v2.67.0 F20). The dispatcher
                     // path additionally parks the continuation for resume;
                     // the sync stub runner records the halt and stops.
                     stub_ctx.set("__hibernation_token__", "<stub-token>");
@@ -1205,7 +1205,7 @@ fn execute_stub(
 
 const MAX_ANCHOR_RETRIES: u32 = 2;
 
-// ── §Fase 35.e — axonstore SQL routing for the sync runner ──────────
+// ── v1.30.0 — axonstore SQL routing for the sync runner ──────────
 //
 // The sync runner is synchronous; `PostgresStoreBackend`'s operations
 // are async. `block_on_store` bridges the two by running the future on
@@ -1217,7 +1217,7 @@ const MAX_ANCHOR_RETRIES: u32 = 2;
 // thread before returning. One pool is created + used + dropped per
 // store op; cross-request pooling is the streaming dispatcher's path
 // (35.f, the production hot path).
-// §Fase 122.e — and a fresh thread never carries the ambient TENANT either.
+// v2.89.0 — and a fresh thread never carries the ambient TENANT either.
 //
 // The paragraph above is right that a fresh thread has no ambient runtime, which
 // is what makes this bridge safe against "runtime within a runtime". It is also
@@ -1243,7 +1243,7 @@ const MAX_ANCHOR_RETRIES: u32 = 2;
 //
 // The fix is the boundary, not the readers. Capturing the tenant on the calling
 // thread and re-binding it inside repairs every downstream ambient read at once
-// — the §120 discipline of fixing a class rather than adding the missing pass to
+// the v2.87.0 discipline of fixing a class rather than adding the missing pass to
 // each copy. Threading a tenant parameter through 29 storage methods would have
 // produced 29 chances to forget.
 fn block_on_store<F>(fut: F) -> F::Output
@@ -1272,7 +1272,7 @@ where
 ///
 /// The store name doubles as the SQL table name (D12 — `IRAxonStore`
 /// carries no schema, so v1.31.0 operates against existing tables).
-/// §Fase 35.o / 35.p — `persist` (INSERT columns) and `mutate`
+/// v1.30.0 — `persist` (INSERT columns) and `mutate`
 /// (UPDATE SET assignments) write the columns of their declared
 /// `{ col: value }` block (`store_fields`, value expressions
 /// interpolated); with no block they fall back to writing the flow's
@@ -1281,13 +1281,13 @@ where
 /// SAME `PostgresStoreBackend` the streaming dispatcher uses, so the
 /// two execution paths never diverge.
 ///
-/// §Fase 37.d (D3) — `memory_expr` is the RAW `store:where` expression
+/// v1.32.0 (D3) — `memory_expr` is the RAW `store:where` expression
 /// (NOT pre-interpolated). A `${name}` in the `where` clause is
 /// resolved by the filter compiler against `ctx.vars()` into a `$N`
 /// bind parameter — never string-spliced into the `where` source. The
 /// pre-37.d path interpolated the whole expression first, which let a
 /// request value carrying a `'` break a string-literal boundary.
-/// §Fase 37.x.j.10 (POST-CLOSE HOTFIX 2026-05-21) — Async variant of
+/// v1.32.0 (POST-CLOSE HOTFIX 2026-05-21) — Async variant of
 /// `execute_sql_store_step`. The pre-hotfix sync variant wrapped the
 /// SQL dispatch in its OWN `block_on_store` (own temporary tokio
 /// runtime per call). Combined with the eager pin acquisition (also
@@ -1310,7 +1310,7 @@ where
 #[cfg_attr(not(feature = "postgres"), allow(unused_variables))]
 async fn execute_sql_store_step_async(
     store_registry: &StoreRegistry,
-    // §Fase 37.x.j (D1) — pinned-connection map shared across the flow
+    // v1.32.0 (D1) — pinned-connection map shared across the flow
     // execution. Keyed by axonstore name; when the entry exists the
     // store op routes its SQL through that exact physical Postgres
     // connection (held since `execute_server_flow` start). When the
@@ -1318,7 +1318,7 @@ async fn execute_sql_store_step_async(
     // pre-37.x.j behavior) — keeping CLI tests + non-server callers
     // working unchanged.
     //
-    // §37.x.j.10 — the `&mut` reference is held across `.await`
+    // v1.32.0 — the `&mut` reference is held across `.await`
     // boundaries inside this fn. Safe because the function is the
     // unique &mut borrower of the map for its execution and the map
     // itself is owned by the outer scope (`execute_server_flow`'s
@@ -1328,22 +1328,22 @@ async fn execute_sql_store_step_async(
     store_name: &str,
     memory_expr: &str,
     store_fields: Option<&[(String, String)]>,
-    // §Fase 67.b — a `retrieve` step's `order_by:` / `limit:` clauses
+    // v2.21.0 — a `retrieve` step's `order_by:` / `limit:` clauses
     // (empty when absent). Rendered to the structural `ORDER BY … LIMIT
     // …` suffix by `stream_retrieve`. Ignored by persist/mutate/purge.
     order_by: &str,
     limit_expr: &str,
-    // §Fase 76.d — a `retrieve` step's `aggregate:` / `group_by:` clauses
+    // v2.33.0 — a `retrieve` step's `aggregate:` / `group_by:` clauses
     // (empty when absent). Closed catalog; rendered structurally by
     // `stream_retrieve`. Ignored by persist/mutate/purge.
     aggregate: &str,
     group_by: &str,
     ctx: &ExecContext,
 ) -> Result<String, StoreError> {
-    // §Fase 118.b.3 — the REFUSAL. Without the `postgres` feature no driver is
+    // v2.81.0 — the REFUSAL. Without the `postgres` feature no driver is
     // linked, so a `backend: postgresql` axonstore cannot be read or written.
     // The signature is UNCHANGED across both profiles — the gate is one block,
-    // not a second shape of this fifteen-parameter function (D118.2's rejected
+    // not a second shape of this fifteen-parameter function (the design decision's rejected
     // option (ii)). Everything upstream — the flow, the dispatcher, the step
     // walk — compiles and runs identically; only the SQL itself is absent, and
     // it says so in writing.
@@ -1365,7 +1365,7 @@ async fn execute_sql_store_step_async(
         let _connection = spec.map(|s| s.connection.clone()).unwrap_or_default();
         let confidence_floor = spec.and_then(|s| s.confidence_floor);
 
-        // §Fase 37.x.j (D1) — the SHARED backend is resolved from the
+        // v1.32.0 (D1) — the SHARED backend is resolved from the
         // registry cache INSIDE the `block_on_store` async block below
         // (the registry's `resolve` may need a tokio context when it
         // lazily builds the PgPool on first reference). Pre-37.x.j the
@@ -1381,13 +1381,13 @@ async fn execute_sql_store_step_async(
             .nth(1)
             .unwrap_or("")
             .to_string();
-        // §Fase 37.d (D3) — an OWNED copy of the flow's variable map, moved
+        // v1.32.0 (D3) — an OWNED copy of the flow's variable map, moved
         // into the store-op task; the filter compiler resolves `${name}`
         // in `where_expr` against it into `$N` bind parameters.
         let where_bindings: std::collections::HashMap<String, String> =
             ctx.vars().clone();
 
-        // §Fase 35.o / 35.p — when the `persist` / `mutate` step declared a
+        // v1.30.0 — when the `persist` / `mutate` step declared a
         // `{ col: value }` block, the SQL row is exactly those columns with
         // their value expressions interpolated against the flow context.
         // With no block (`store_fields` is `None`) fall back to the v1.31.0
@@ -1413,18 +1413,18 @@ async fn execute_sql_store_step_async(
         let step_type = step_type.to_string();
         let store_name_for_reinsert = store_name.clone();
 
-        // §Fase 37.x.j (D1) — take the pin OUT of the shared map for the
+        // v1.32.0 (D1) — take the pin OUT of the shared map for the
         // duration of this dispatch. After the dispatch returns (success
         // OR error), the pin is re-inserted UNCONDITIONALLY so the next
         // store op against this same store reuses it.
         //
-        // §Fase 37.x.j.10 — no longer wrapped in block_on_store. The
+        // v1.32.0 — no longer wrapped in block_on_store. The
         // async fn runs on the caller's runtime, so the pin's reactor
         // handles stay valid for every `.await` below.
         let mut pin: Option<crate::pinned_conn::PinnedConn> =
             pinned_conns.remove(&store_name);
 
-        // §Fase 37.x.j (D1) — resolve the SHARED backend from the registry
+        // v1.32.0 (D1) — resolve the SHARED backend from the registry
         // cache. The registry caches `PostgresStoreBackend` by resolved
         // DSN; the backend's inner `PgPool` is `Arc<...>` so the clone
         // shares pool state with every other call AND with the eagerly-
@@ -1453,20 +1453,20 @@ async fn execute_sql_store_step_async(
             }
         };
 
-        // §Fase 37.x.j.10 — dispatch body inlined here. `pin` is `&mut`-
+        // v1.32.0 — dispatch body inlined here. `pin` is `&mut`-
         // borrowed inside each match arm for the StoreConn::Pinned variant;
         // the borrow ends at the end of each arm so we can re-insert `pin`
         // unconditionally below regardless of result.
         let result: Result<String, StoreError> = async {
             match step_type.as_str() {
                 "retrieve" => {
-                    // §35.i Pillar III — retrieve drains off a lazy cursor,
+                    // v1.30.0 Pillar III — retrieve drains off a lazy cursor,
                     // bounded (never materializes a huge result set).
-                    // §35.g Pillar I — every tuple born Untrusted,
+                    // v1.30.0 Pillar I — every tuple born Untrusted,
                     // confidence_floor filters sub-floor rows. The result
                     // is an epistemic envelope carrying both dispositions.
                     let cancel = crate::cancel_token::CancellationFlag::new();
-                    // §Fase 37.x.j (D1) — build `StoreConn::Pinned` when a
+                    // v1.32.0 (D1) — build `StoreConn::Pinned` when a
                     // pin is held for this store (the post-37.x.j default
                     // for server-driven flows), else `StoreConn::Pool`
                     // (legacy path for CLI / pre-server callers). The
@@ -1482,10 +1482,10 @@ async fn execute_sql_store_step_async(
                         &mut store_conn,
                         &store_name,
                         &where_expr,
-                        // §Fase 67.b — the ORDER BY / LIMIT clauses.
+                        // v2.21.0 — the ORDER BY / LIMIT clauses.
                         order_by,
                         limit_expr,
-                        // §Fase 76.d — the aggregate / GROUP BY clauses.
+                        // v2.33.0 — the aggregate / GROUP BY clauses.
                         aggregate,
                         group_by,
                         row_stream::DEFAULT_RETRIEVE_POLICY,
@@ -1509,7 +1509,7 @@ async fn execute_sql_store_step_async(
                         .unwrap_or_else(|_| "{}".to_string()))
                 }
                 "purge" => {
-                    // §Fase 37.x.j (D1) — pinned/pool dispatch (see retrieve).
+                    // v1.32.0 (D1) — pinned/pool dispatch (see retrieve).
                     let mut store_conn = match &mut pin {
                         Some(p) => p.as_store_conn(),
                         None => crate::store::store_conn::StoreConn::Pool(backend.pool()),
@@ -1520,14 +1520,14 @@ async fn execute_sql_store_step_async(
                     Ok(format!("{n} row(s) purged"))
                 }
                 "persist" => {
-                    // §35.g Pillar I — a sub-floor or un-elevated write
+                    // v1.30.0 Pillar I — a sub-floor or un-elevated write
                     // into a confidence-floored store is a typed error.
                     epistemic::enforce_persist_floor(
                         &data,
                         confidence_floor,
                         &store_name,
                     )?;
-                    // §Fase 37.x.j (D1) — pinned/pool dispatch.
+                    // v1.32.0 (D1) — pinned/pool dispatch.
                     let mut store_conn = match &mut pin {
                         Some(p) => p.as_store_conn(),
                         None => crate::store::store_conn::StoreConn::Pool(backend.pool()),
@@ -1536,7 +1536,7 @@ async fn execute_sql_store_step_async(
                     Ok(format!("{n} row(s) persisted"))
                 }
                 "mutate" => {
-                    // §Fase 37.x.j (D1) — pinned/pool dispatch.
+                    // v1.32.0 (D1) — pinned/pool dispatch.
                     let mut store_conn = match &mut pin {
                         Some(p) => p.as_store_conn(),
                         None => crate::store::store_conn::StoreConn::Pool(backend.pool()),
@@ -1554,7 +1554,7 @@ async fn execute_sql_store_step_async(
             }
         }.await;
 
-        // §Fase 37.x.j (D1) — re-insert the pin (UNCONDITIONALLY — success
+        // v1.32.0 (D1) — re-insert the pin (UNCONDITIONALLY — success
         // OR error path) so the next store op against this store reuses
         // the same physical Postgres backend connection. `pin` was taken
         // out at the top of this fn and the dispatch above only borrows
@@ -1568,9 +1568,9 @@ async fn execute_sql_store_step_async(
     }
 }
 
-/// §Fase 35.e — Sync wrapper retained for CLI tests + pre-async callers.
+/// v1.30.0 — Sync wrapper retained for CLI tests + pre-async callers.
 ///
-/// §Fase 37.x.j.10 (POST-CLOSE HOTFIX) — wraps the new async fn
+/// v1.32.0 (POST-CLOSE HOTFIX) — wraps the new async fn
 /// `execute_sql_store_step_async` in a SINGLE block_on_store so the
 /// pin acquire (if any was pre-populated) + the SQL dispatch happen
 /// on the SAME temporary tokio runtime. Pre-hotfix the sync variant
@@ -1580,7 +1580,7 @@ async fn execute_sql_store_step_async(
 /// safe ONLY when the caller's pin map is empty (legacy Pool path)
 /// — production callers MUST use the async variant directly inside
 /// the OUTER block_on_store at `execute_server_flow`.
-// The §37.x.j source-gate (fase37xj_connection_pinning) pins this wrapper's
+// The v1.32.0 source-gate (connection_pinning) pins this wrapper's
 // pinned_conns threading; the legacy Pool path that called it is retired, so
 // the fn is unreferenced in the lib build.
 #[allow(dead_code)]
@@ -1600,18 +1600,18 @@ fn execute_sql_store_step(
         store_name,
         memory_expr,
         store_fields,
-        // §Fase 67.b — the sync wrapper (CLI tests / pre-async callers)
+        // v2.21.0 — the sync wrapper (CLI tests / pre-async callers)
         // does not carry retrieve bounds; default to none.
         "",
         "",
-        // §Fase 76.d — nor an aggregate.
+        // v2.33.0 — nor an aggregate.
         "",
         "",
         ctx,
     ))
 }
 
-/// §Fase 37.x.j.10 (POST-CLOSE HOTFIX 2026-05-21) — Async variant of
+/// v1.32.0 (POST-CLOSE HOTFIX 2026-05-21) — Async variant of
 /// `execute_real`. Production callers MUST invoke this from inside
 /// the OUTER `block_on_store` at `execute_server_flow` so the entire
 /// flow execution (eager pin acquire + every store dispatch + implicit
@@ -1627,56 +1627,56 @@ fn execute_sql_store_step(
 ///
 /// The sync variant `execute_real` retained as a thin wrapper for the
 /// CLI path + pre-async callers that don't have a tokio context.
-/// §Fase 65.A — the dispatcher-shared state a STRUCTURAL `navigate` needs: the
+/// v2.15.0 — the dispatcher-shared state a STRUCTURAL `navigate` needs: the
 /// axonstore registry (to read the corpus rows tenant-scoped) + the static MDN
-/// corpus graphs (§63 `corpus { relations: }`) + the dynamic store-sourced
-/// corpus specs (§64 `corpus … from axonstore`) + the adaptive set. Built once
+/// corpus graphs (v2.13.0 `corpus { relations: }`) + the dynamic store-sourced
+/// corpus specs (v2.14.0 `corpus … from axonstore`) + the adaptive set. Built once
 /// per server flow from the IR — mirroring `run_streaming_via_dispatcher` — so a
 /// NON-streaming `navigate` executes the SAME real MDN traversal as the SSE path
 /// instead of the LLM fallthrough. `None` on the CLI path (its executor unifies
-/// in a later sub-fase; navigate there keeps the legacy behavior for now).
+/// in a later step; navigate there keeps the legacy behavior for now).
 struct NavDispatch {
     store_registry: std::sync::Arc<StoreRegistry>,
     corpora: std::sync::Arc<std::collections::HashMap<String, crate::mdn::Corpus>>,
     store_sources:
         std::sync::Arc<std::collections::HashMap<String, crate::ir_nodes::IRCorpusStoreSource>>,
     adaptive: std::sync::Arc<std::collections::HashSet<String>>,
-    /// §Fase 108.b — the columnar engine port, threaded from the caller's
+    /// v2.63.0 — the columnar engine port, threaded from the caller's
     /// deployment (`None` ⇒ the data-plane verbs fail CLOSED in dispatch).
     dataspace_engine: Option<crate::dataspace_engine::SharedDataspaceEngine>,
-    /// §Fase 111.c — the compiled `scope` declarations, so a `warden(<t>) within
+    /// v2.67.0 — the compiled `scope` declarations, so a `warden(<t>) within
     /// <Scope>` can resolve its authorization envelope at dispatch. Empty ⇒
     /// every warden fails CLOSED (a scope that cannot be resolved authorises
-    /// nothing — the §88 posture, now enforced in fact and not only in grammar).
+    /// nothing — the v2.43.0 posture, now enforced in fact and not only in grammar).
     scopes: std::sync::Arc<Vec<crate::ir_nodes::IRScope>>,
-    /// §Fase 111.d — the compiled `observable` declarations (Pauli sums), so a
+    /// v2.67.0 — the compiled `observable` declarations (Pauli sums), so a
     /// `quant` block can resolve the `M` it measures. Empty ⇒ `quant` fails
     /// CLOSED: E = ⟨ψ|M|ψ⟩ with no M is not a weak result, it is a category
     /// error.
     observables: std::sync::Arc<Vec<crate::ir_nodes::IRObservable>>,
-    /// §Fase 111.f — the compiled `compute` declarations (pure §70 functions).
+    /// v2.67.0 — the compiled `compute` declarations (pure v2.26.0 functions).
     compute_specs: std::sync::Arc<Vec<crate::ir_nodes::IRCompute>>,
-    /// §Fase 119.b — the compiled `mandate` declarations, so the enforcement
+    /// v2.83.0 — the compiled `mandate` declarations, so the enforcement
     /// loop can resolve the cage it is asked to close.
     mandate_specs: std::sync::Arc<Vec<crate::ir_nodes::IRMandate>>,
-    /// §Fase 119.c — the compiled ΛD + ots declarations (same doctrine).
+    /// v2.83.0 — the compiled ΛD + ots declarations (same doctrine).
     lambda_data_specs: std::sync::Arc<Vec<crate::ir_nodes::IRLambdaData>>,
     ots_specs: std::sync::Arc<Vec<crate::ir_nodes::IROts>>,
-    /// §Fase 119.m.3 — the compiled `agent` declarations. Empty ⇒ an
+    /// v2.83.0 — the compiled `agent` declarations. Empty ⇒ an
     /// `<Agent>(args)` call fails CLOSED, because the declaration is where
     /// `max_iterations` lives and an unresolved agent is an unbounded one.
     agent_specs: std::sync::Arc<Vec<crate::ir_nodes::IRAgent>>,
-    /// §Fase 122.d — what this program memoises, resolved once from the IR.
+    /// v2.89.0 — what this program memoises, resolved once from the IR.
     /// Empty (no `cache` declaration) ⇒ no runtime is attached and every call
-    /// computes, byte-identical to pre-§122.d.
+    /// computes, byte-identical to pre-v2.89.0.
     cache_plan: std::sync::Arc<crate::cache_runtime::CachePlan>,
 }
 
-/// §Fase 65.A — kill-switch for the structural-dispatch bridge. ON by default:
+/// v2.15.0 — kill-switch for the structural-dispatch bridge. ON by default:
 /// the legacy path (LLM fallthrough) is a CORRECTNESS BUG for a pure-effect verb
 /// — it fabricates output that does not exist. Set `AXON_UNIFIED_EXECUTOR` to
 /// `0`/`off`/`false`/`no` to revert to the legacy behavior (escape hatch only,
-/// until the §65.E cutover removes it).
+/// until the v2.15.0 cutover removes it).
 /// Build the dispatcher bridge's catalogues from a compiled program: the MDN
 /// corpora (declared + store-sourced + adaptive), the scopes / observables /
 /// compute / agent / mandate / lambda / ots catalogues and the cache plan.
@@ -1741,34 +1741,34 @@ fn structural_dispatch_enabled() -> bool {
     }
 }
 
-/// §Fase 65.B — the structural verbs the non-streaming server executor routes
+/// v2.15.0 — the structural verbs the non-streaming server executor routes
 /// through the flow dispatcher instead of the LLM fallthrough. These are the
 /// PURE-EFFECT verbs whose dispatcher handler runs a real, embeddings-free
 /// computation over the live corpus / PIX state with NO LLM call (so they need
 /// no per-tenant API key plumbing — that arrives with the cognitive verbs in
-/// §65.C). Today: the MDN/PIX navigation family. `navigate` (§65.A) over the
+/// v2.15.0). Today: the MDN/PIX navigation family. `navigate` (v2.15.0) over the
 /// live store-sourced graph; `drill` into a PIX subtree; `trail` the breadcrumb
 /// of a prior navigate. Cognitive-framing verbs (forge/corroborate) and the
 /// multi-agent verbs (deliberate/consensus) reuse `pure_shape` → they DO call
-/// the LLM, so they stay on the legacy path until §65.C threads the per-tenant
+/// the LLM, so they stay on the legacy path until v2.15.0 threads the per-tenant
 /// key through `DispatchCtx`.
 fn routes_through_dispatcher(node: &crate::ir_nodes::IRFlowNode) -> bool {
     use crate::ir_nodes::IRFlowNode as N;
-    // §Fase 92.c — `mint` MUST route to its real dispatcher handler: an LLM
+    // v2.46.0 — `mint` MUST route to its real dispatcher handler: an LLM
     // fallthrough would HALLUCINATE a bearer token. On a path with no minter
     // port the handler fails CLOSED (MissingDependency) — the honest outcome.
     //
-    // §Fase 94.b — `rotate` likewise: an LLM fallthrough would HALLUCINATE a
+    // v2.48.0 — `rotate` likewise: an LLM fallthrough would HALLUCINATE a
     // rotation (fabricated summary over untouched custody). No custody port ⇒
     // the handler fails CLOSED.
     //
-    // §Fase 108.a — the five data-plane verbs likewise: they are relational
+    // v2.63.0 — the five data-plane verbs likewise: they are relational
     // operations over a declared `dataspace` (ingest loads, focus selects,
     // associate joins, aggregate computes, explore profiles). An LLM
     // fallthrough NARRATES data that was never loaded and numbers that were
     // never computed — assertion-laundering. Their dispatcher handlers fail
     // CLOSED (`MissingDependency: dataspace_engine`) until the columnar
-    // engine lands (§108.b–d).
+    // engine lands (v2.63.0–d).
     matches!(
         node,
         N::Navigate(_)
@@ -1781,7 +1781,7 @@ fn routes_through_dispatcher(node: &crate::ir_nodes::IRFlowNode) -> bool {
             | N::Associate(_)
             | N::Aggregate(_)
             | N::Explore(_)
-            // §Fase 109.b — `grad` is pure control-plane computation: the
+            // v2.65.0 — `grad` is pure control-plane computation: the
             // derivative was DERIVED at compile time; the handler only
             // evaluates it. An LLM fallthrough would narrate a number that
             // was never computed — same law as everything above.
@@ -1796,10 +1796,10 @@ fn routes_through_dispatcher(node: &crate::ir_nodes::IRFlowNode) -> bool {
     )
 }
 
-/// §Fase 65.A/B — run a pure-effect structural verb (navigate / drill / trail)
+/// v2.15.0/B — run a pure-effect structural verb (navigate / drill / trail)
 /// as its REAL computation by bridging into the flow dispatcher's
 /// [`crate::flow_dispatcher::dispatch_node`], sharing the flow's EXACT pinned,
-/// tenant-scoped Postgres connections (the §64.B isolation guarantee — NEVER a
+/// tenant-scoped Postgres connections (the v2.14.0 isolation guarantee — NEVER a
 /// fresh pool acquire). The pins are LENT to a throwaway `DispatchCtx` for the
 /// duration of this single node, then reclaimed into the runner's map. The
 /// dispatcher events go to a dropped channel (the runner builds its own report).
@@ -1820,7 +1820,7 @@ fn routes_through_dispatcher(node: &crate::ir_nodes::IRFlowNode) -> bool {
 /// `SET LOCAL axon.current_tenant` apply identically) and over the SAME physical
 /// pinned connection (lent here) — inheriting the exact isolation of a
 /// non-streaming `retrieve`. The concurrent two-tenant property test is the
-/// load-bearing safeguard (§65.A/B risk matrix).
+/// load-bearing safeguard (v2.15.0/B risk matrix).
 async fn dispatch_structural(
     node: &crate::ir_nodes::IRFlowNode,
     exec_ctx: &mut ExecContext,
@@ -1839,7 +1839,7 @@ async fn dispatch_structural(
 ) -> Result<String, String> {
     use std::sync::{Arc, Mutex};
     // Lend the flow's pins to a shared Arc<Mutex> so the DispatchCtx operates on
-    // the SAME physical, tenant-scoped connections — the §64.B isolation. The
+    // the SAME physical, tenant-scoped connections — the v2.14.0 isolation. The
     // runner is the unique borrower of `pinned_conns` here (sequential within the
     // wave), so the take/restore is race-free.
     let lent = std::mem::take(pinned_conns);
@@ -1862,12 +1862,12 @@ async fn dispatch_structural(
     .with_mdn_adaptive(nd.adaptive.clone())
     .with_mdn_store_sources(nd.store_sources.clone())
     .with_pinned_conns(pin_arc.clone());
-    // §Fase 108.b — attach the columnar engine when the deployment owns one;
-    // absent, the data-plane verbs fail CLOSED in their handlers (§108.a).
+    // v2.63.0 — attach the columnar engine when the deployment owns one;
+    // absent, the data-plane verbs fail CLOSED in their handlers (v2.63.0).
     if let Some(engine) = &nd.dataspace_engine {
         dctx = dctx.with_dataspace_engine(engine.clone());
     }
-    // §Fase 111.c — mount the adversarial-analysis engine + the deployment's
+    // v2.67.0 — mount the adversarial-analysis engine + the deployment's
     // scope catalog, so a `warden` block RUNS instead of silently completing.
     // OSS mounts the deterministic `ReferenceStaticWarden` (depth
     // `static_artifact`; deeper depths fail closed with `DepthNotSupported`);
@@ -1878,19 +1878,19 @@ async fn dispatch_structural(
         std::sync::Arc::new(crate::warden::ReferenceStaticWarden),
         nd.scopes.clone(),
     );
-    // §Fase 111.d — see above: the simulator + observable catalog.
+    // v2.67.0 — see above: the simulator + observable catalog.
     dctx = dctx.with_quant(
         std::sync::Arc::new(crate::quant::ReferenceSimulator::new()),
         nd.observables.clone(),
     );
-    // §Fase 111.f — see above.
+    // v2.67.0 — see above.
     dctx = dctx.with_computes(nd.compute_specs.clone());
-    // §Fase 119.b — attach the mandate catalog so the cage can close.
+    // v2.83.0 — attach the mandate catalog so the cage can close.
     dctx = dctx.with_mandates(nd.mandate_specs.clone());
-    // §Fase 119.c — attach the ΛD + ots catalogs.
+    // v2.83.0 — attach the ΛD + ots catalogs.
     dctx = dctx.with_lambdas(nd.lambda_data_specs.clone());
     dctx = dctx.with_ots(nd.ots_specs.clone());
-    // §Fase 119.m.3 — attach the agent catalog so `<Agent>(args)` can resolve
+    // v2.83.0 — attach the agent catalog so `<Agent>(args)` can resolve
     // its bounds. This is THE production seam for the CLI/sync path.
     dctx = dctx.with_agents(nd.agent_specs.clone());
     // Share the flow's MDN interaction history across all of its navigate nodes
@@ -1938,12 +1938,12 @@ async fn execute_real_async(
     report: &mut ReportBuilder,
     registry: &ToolRegistry,
     store_registry: &StoreRegistry,
-    // §Fase 37.x.j (D1) — flow-scoped pinned connection map, populated
+    // v1.32.0 (D1) — flow-scoped pinned connection map, populated
     // by `execute_server_flow` (server-driven flows) and empty for
     // CLI / pre-37.x.j callers.
     pinned_conns: &mut std::collections::HashMap<String, crate::pinned_conn::PinnedConn>,
     api_key_override: Option<&str>,
-    // §Fase 65.A — the dispatcher-shared corpus state for structural `navigate`.
+    // v2.15.0 — the dispatcher-shared corpus state for structural `navigate`.
     // `Some` on the server path (built from the IR); `None` on the CLI path.
     nav_dispatch: Option<&NavDispatch>,
 ) -> Result<(bool, Vec<TraceEvent>), backend::BackendError> {
@@ -1990,7 +1990,7 @@ async fn execute_real_async(
         }
 
         let mut ctx = ExecContext::new(&unit.flow_name, &unit.persona_name, i);
-        // §Fase 37.b (D1) — seed the flow's parameters from the
+        // v1.32.0 (D1) — seed the flow's parameters from the
         // request body BEFORE the step walk so `${param}` resolves in
         // step prompts, `where:` clauses and `persist` field blocks.
         for (name, value) in &unit.param_bindings {
@@ -1998,7 +1998,7 @@ async fn execute_real_async(
         }
         let mut conversation = ConversationHistory::new();
         let mut context_window = ContextWindow::new();
-        // §Fase 65.B — shared MDN interaction history across this flow's
+        // v2.15.0 — shared MDN interaction history across this flow's
         // structural navigate nodes (adaptive ω reinforcement needs
         // cross-navigation variance; one Arc per flow ≡ the SSE single-ctx path).
         let nav_histories: std::sync::Arc<
@@ -2008,7 +2008,7 @@ async fn execute_real_async(
         report.begin_unit(&unit.flow_name, &unit.persona_name);
 
         // Step dependency analysis + parallel schedule
-        // §Fase 61 — the set of producing step names, so a `use Tool(k = v)`
+        // v2.11.0 — the set of producing step names, so a `use Tool(k = v)`
         // call's keyword-arg references fold into the analysis argument (a flow-
         // param reference is gated out). Without this the call's data-deps are
         // invisible and the scheduler co-schedules it with its sources.
@@ -2111,10 +2111,10 @@ async fn execute_real_async(
             .map(|(j, s)| (s.step_name.as_str(), (j, s)))
             .collect();
 
-        // §Fase 91.b — the unit's shared temporal state: ONE lazily-captured
+        // v2.46.0 — the unit's shared temporal state: ONE lazily-captured
         // instant per run, shared by parallel-wave threads (Arc) and the
         // sequential branch alike, so every `now:`-bearing step in this unit
-        // renders the SAME instant (the per-run law, plan vivo §5).
+        // renders the SAME instant (the per-run law, plan vivo section 5).
         let unit_temporal = std::sync::Arc::new(std::sync::Mutex::new(
             crate::temporal_context::TemporalState::default(),
         ));
@@ -2161,7 +2161,7 @@ async fn execute_real_async(
                 // Snapshot shared state; each thread gets its own copy.
                 let ctx_snapshot = ctx.clone();
                 let conversation_snapshot = conversation.clone();
-                // §Fase 91.b — the unit's shared temporal state (one capture,
+                // v2.46.0 — the unit's shared temporal state (one capture,
                 // all threads render the same instant).
                 let unit_temporal_for_wave = unit_temporal.clone();
 
@@ -2176,7 +2176,7 @@ async fn execute_real_async(
                         },
                     };
 
-                    // §Fase 105.h — a pure `let` co-scheduled in a parallel wave:
+                    // v2.60.0 — a pure `let` co-scheduled in a parallel wave:
                     // resolve READ-ONLY from the snapshot (the closure never mutates
                     // shared state); the merge below binds its target into `ctx`.
                     if step.step_type == "let" {
@@ -2204,7 +2204,7 @@ async fn execute_real_async(
 
                     // Native tool steps
                     if step.step_type == "use_tool" {
-                        // §Fase 58.e — `use Tool(k = v, …)` assembles a typed
+                        // v2.8.0 — `use Tool(k = v, …)` assembles a typed
                         // structured JSON body; the legacy single-`on <arg>`
                         // form keeps the flat interpolation (D5).
                         let arg = if !step.tool_named_args.is_empty() {
@@ -2212,7 +2212,7 @@ async fn execute_real_async(
                                 .tool_named_args
                                 .iter()
                                 .map(|(n, v, kind)| {
-                                    // §Fase 60 — resolve by value_kind (reference
+                                    // v2.10.0 — resolve by value_kind (reference
                                     // → binding lookup; literal → interpolation).
                                     (n.clone(), ctx_snapshot.resolve_named_arg(v, kind))
                                 })
@@ -2232,7 +2232,7 @@ async fn execute_real_async(
 
                     // LLM steps — each thread gets its own conversation copy
                     let full_system = format!("{}\n\n{}", unit.system_prompt, step.system_prompt);
-                    // §Fase 91.b — declared cognitive time (fail-closed: an
+                    // v2.46.0 — declared cognitive time (fail-closed: an
                     // unresolvable declared zone fails the step, never a
                     // silent omission). The effective zone was resolved at
                     // plan build (step `now:` ∨ context frame `now:`).
@@ -2288,7 +2288,7 @@ async fn execute_real_async(
 
                     ctx.set_step(&step.step_name, &step.step_type, j);
                     ctx.set_result(&step.step_name, &wr.output);
-                    // §Fase 105.h — a `let` resolved in the parallel closure was
+                    // v2.60.0 — a `let` resolved in the parallel closure was
                     // read-only; bind its target into the shared ctx here so
                     // downstream `${target}` + a `deliver` ref resolve it.
                     if step.step_type == "let" {
@@ -2367,16 +2367,16 @@ async fn execute_real_async(
                 );
             }
 
-            // ── §Fase 105.h — pure `let` SSA binding (no LLM, no I/O). The
+            // ── v2.60.0 — pure `let` SSA binding (no LLM, no I/O). The
             // DEPLOYED executor now materialises a flow-body `let` into the
             // ExecContext so downstream `${x}` interpolation AND a top-level
-            // `deliver`'s ref resolve it. Before §105.h a `let_binding` step fell
+            // `deliver`'s ref resolve it. Before v2.60.0 a `let_binding` step fell
             // through every arm below to the LLM path (a `let` made a model call).
-            // Mirrors the stub executor's Fase 17.c resolution (reference → dotted
+            // Mirrors the stub executor's v1.12.0 resolution (reference → dotted
             // lookup with literal fallback; else interpolate the value). Note the
             // runtime step_type is `"let"` (extract_step_info); a `let`'s step_name
             // IS its target, so `set_result` records it under the target name — a
-            // `deliver` ref then resolves it via the §105.g step-result resolver.
+            // `deliver` ref then resolves it via the v2.60.0 step-result resolver.
             if step.step_type == "let" {
                 if let Some(p) = &step.let_payload {
                     let resolved = if p.value_kind == "reference" && !p.value.is_empty() {
@@ -2415,14 +2415,14 @@ async fn execute_real_async(
 
             // ── Native tool interception ────────────────────────
             if step.step_type == "use_tool" {
-                // §Fase 58.e — `use Tool(k = v, …)` assembles a typed structured
+                // v2.8.0 — `use Tool(k = v, …)` assembles a typed structured
                 // JSON body; the legacy single-`on <arg>` form keeps the flat
                 // interpolation (D5).
                 let arg = if !step.tool_named_args.is_empty() {
                     let interpolated: Vec<(String, String)> = step
                         .tool_named_args
                         .iter()
-                        // §Fase 60 — resolve by value_kind (reference → binding
+                        // v2.10.0 — resolve by value_kind (reference → binding
                         // lookup; literal → interpolation).
                         .map(|(n, v, kind)| (n.clone(), ctx.resolve_named_arg(v, kind)))
                         .collect();
@@ -2508,10 +2508,10 @@ async fn execute_real_async(
                 let raw_expr = step.memory_expression.as_deref().unwrap_or("");
                 let expr = ctx.interpolate(raw_expr);
 
-                // §Fase 94.d — a store op against a `backend: secrets`
+                // v2.48.0 — a store op against a `backend: secrets`
                 // store on the LEGACY executor fails CLOSED: this path
                 // carries no custody port (the unified driver + SSE +
-                // enterprise executor do — the §92.g deferral shape), and
+                // enterprise executor do — the v2.46.0 deferral shape), and
                 // falling through to the KV path would FABRICATE an empty
                 // result over live custody. Loud, typed, per-step.
                 if matches!(step.step_type.as_str(), "persist" | "retrieve" | "mutate" | "purge")
@@ -2549,7 +2549,7 @@ async fn execute_real_async(
                     continue;
                 }
 
-                // §Fase 35.e — SQL routing. A persist/retrieve/mutate/
+                // v1.30.0 — SQL routing. A persist/retrieve/mutate/
                 // purge whose store resolves to a postgresql backend
                 // executes real SQL and skips the key-value path
                 // entirely. remember/recall, and every in_memory or
@@ -2559,11 +2559,11 @@ async fn execute_real_async(
                     && store_registry.backend_kind(&step.step_name)
                         == Some(StoreBackendKind::Postgresql)
                 {
-                    // §Fase 37.d (D3) — pass the RAW `store:where`
+                    // v1.32.0 (D3) — pass the RAW `store:where`
                     // expression (NOT the pre-interpolated `expr`): the
                     // filter compiler resolves `${name}` in the `where`
                     // clause into `$N` bind parameters, never a splice.
-                    // §Fase 37.x.j.10 — call the async variant via
+                    // v1.32.0 — call the async variant via
                     // `.await` on the SAME runtime as the outer
                     // `execute_server_flow` block_on_store. Pre-hotfix
                     // this was the sync `execute_sql_store_step` whose
@@ -2576,10 +2576,10 @@ async fn execute_real_async(
                         &step.step_name,
                         raw_expr,
                         step.store_fields.as_deref(),
-                        // §Fase 67.b — the retrieve `order_by:` / `limit:`.
+                        // v2.21.0 — the retrieve `order_by:` / `limit:`.
                         step.retrieve_order_by.as_deref().unwrap_or(""),
                         step.retrieve_limit.as_deref().unwrap_or(""),
-                        // §Fase 76.d — the retrieve `aggregate:` / `group_by:`.
+                        // v2.33.0 — the retrieve `aggregate:` / `group_by:`.
                         step.retrieve_aggregate.as_deref().unwrap_or(""),
                         step.retrieve_group_by.as_deref().unwrap_or(""),
                         &ctx,
@@ -2787,7 +2787,7 @@ async fn execute_real_async(
                 }
             }
 
-            // ── §Fase 65.A/B — structural verbs via the flow dispatcher ────
+            // ── v2.15.0/B — structural verbs via the flow dispatcher ────
             // navigate / drill / trail are PURE EFFECTS over the live corpus /
             // PIX state: they must run the dispatcher's REAL handler (signed-EPR
             // / ε-informative MDN nav, PIX subtree drill, breadcrumb trail) — NOT
@@ -2860,12 +2860,12 @@ async fn execute_real_async(
                 }
             }
 
-            // ── §Fase 65.D — `return <expr>` is control flow, NOT cognition ──
+            // ── v2.15.0 — `return <expr>` is control flow, NOT cognition ──
             // Resolve the return value from the flow's bindings (binding lookup
             // → literal fallback, mirroring the dispatcher's `run_return`)
             // instead of dispatching the `return` step to the LLM. Before this,
             // `return hits` re-HALLUCINATED the flow's final output via the LLM
-            // fallthrough — the second half of the Kivi gap (§65.A fixed the
+            // fallthrough — the second half of the Kivi gap (v2.15.0 fixed the
             // `navigate` step; this fixes the `return hits` that followed it).
             if let Some(value_expr) = &step.return_value_expr {
                 let resolved = ctx
@@ -2906,7 +2906,7 @@ async fn execute_real_async(
 
             // ── LLM call with variable interpolation + conversation history ──
             let full_system = format!("{}\n\n{}", unit.system_prompt, step.system_prompt);
-            // §Fase 91.b — declared cognitive time (fail-closed: an
+            // v2.46.0 — declared cognitive time (fail-closed: an
             // unresolvable declared zone fails the step — the error string
             // becomes the step result, mirroring the backend-failure shape —
             // never a silent omission).
@@ -3149,9 +3149,9 @@ async fn execute_real_async(
     Ok((true, events))
 }
 
-/// §Fase 35.e — Sync wrapper for `execute_real_async`.
+/// v1.30.0 — Sync wrapper for `execute_real_async`.
 ///
-/// §Fase 37.x.j.10 (POST-CLOSE HOTFIX) — retained for the CLI path
+/// v1.32.0 (POST-CLOSE HOTFIX) — retained for the CLI path
 /// + pre-async tests. Wraps the async fn in a SINGLE `block_on_store`
 /// so the entire flow execution lives on one temporary tokio runtime.
 /// Pre-hotfix the sync variant called `execute_sql_store_step` which
@@ -3568,7 +3568,7 @@ fn build_plan_export(
 
     for unit in units {
         // Build step infos for dependency analysis
-        // §Fase 61 — fold `use Tool(k = v)` keyword-arg references into the
+        // v2.11.0 — fold `use Tool(k = v)` keyword-arg references into the
         // analysis argument so the plan reflects the real dependency edges.
         let step_name_set: std::collections::HashSet<&str> =
             unit.steps.iter().map(|s| s.step_name.as_str()).collect();
@@ -3656,7 +3656,7 @@ pub struct ServerRunnerMetrics {
     pub step_results: Vec<String>,
     /// Per-step token chunks for streaming (simulated from step results).
     pub per_step_chunks: Vec<Vec<String>>,
-    /// §Fase 39.c.y — semantic provenance events captured during
+    /// v2.0.0 — semantic provenance events captured during
     /// flow execution. Each entry is a `kind:identifier` slug
     /// (closed taxonomy enforced by producer sites):
     ///   - `retrieve:<store>`         — Pillar II store read
@@ -3673,7 +3673,7 @@ pub struct ServerRunnerMetrics {
     /// Empty for trivial flows; populated by [`emit_provenance_event`]
     /// at the runtime sites.
     pub provenance_events: Vec<String>,
-    /// §Fase 39.c.z — closed-catalog blame attribution from runtime
+    /// v2.0.0 — closed-catalog blame attribution from runtime
     /// degradation events. Populated when:
     ///   - an anchor with severity != "error" fires (degraded path
     ///     proceeds)
@@ -3686,52 +3686,52 @@ pub struct ServerRunnerMetrics {
     /// wins (subsequent events are recorded in audit_log but do
     /// not overwrite the primary attribution).
     pub blame_attribution: Option<crate::wire_envelope::BlameContext>,
-    /// §Fase 55.b — the Theorem 5.1 `(base, scope, confidence)` triple of
+    /// v2.7.0 — the Theorem 5.1 `(base, scope, confidence)` triple of
     /// every flow-level `use <Tool>` dispatch whose tool declares an
     /// `epistemic:<level>` effect. Derived from the IR via
     /// [`crate::epistemic_capture::collect_for_flow`] — the same function
     /// the streaming path calls, so both transports surface byte-identical
-    /// envelopes (§55.c parity). Empty for flows with no epistemic tool.
+    /// envelopes (v2.7.0 parity). Empty for flows with no epistemic tool.
     pub epistemic_envelopes: Vec<crate::epistemic_capture::EpistemicEnvelope>,
-    /// §Fase 65.F — the HONEST hard-failure detail when a node's
+    /// v2.15.0 — the HONEST hard-failure detail when a node's
     /// `DispatchError` aborted the flow (a failing `persist`/`mutate`/`purge`
     /// store write, a backend error, etc.). `Some(detail)` names the FAILING
     /// NODE + the underlying cause — byte-parity with the streaming
-    /// dispatcher's `FlowError.error` (§37.e/D6 honest-failure doctrine).
-    /// `None` on the clean path. The §65.E.2 cutover regressed this: the
+    /// dispatcher's `FlowError.error` (v1.32.0/D6 honest-failure doctrine).
+    /// `None` on the clean path. The v2.15.0 cutover regressed this: the
     /// non-streaming driver swallowed the error (`success:false`, empty result,
     /// no log, no wire detail), so a pre-insert store failure presented as a
     /// silent 0-SQL abort. This field restores parity — a `BlameContext` is
     /// the WRONG surface (it is soft-degradation-on-success only, per
     /// `wire_envelope::BlameContext` docs); a hard fail needs its own slot.
     pub error: Option<String>,
-    /// §Fase 67.c — observable per-run store row counts (closing brief
+    /// v2.21.0 — observable per-run store row counts (closing brief
     /// #34 Q3: a daemon run `completed, duration 0` is no longer
     /// indistinguishable from "found no work"). Aggregated over every
     /// store op in the run (par-branch counts merged). The enterprise
     /// daemon run report / `daemon_runs` ledger / status API + audit
-    /// surface these per the §52.d.3 / §52.e contract.
+    /// surface these per the v2.4.0 / v2.4.0 contract.
     pub rows_retrieved: u64,
     pub rows_persisted: u64,
     pub rows_mutated: u64,
     pub rows_purged: u64,
-    /// §Fase 91.b — the run's temporal record when any step rendered a
+    /// v2.46.0 — the run's temporal record when any step rendered a
     /// declared `now:` (`captured_utc` + `tzdb_version` + zones, the
     /// replayability triple of `time_is_an_explicit_input`). `None` — and
     /// elided from the wire envelope — for every `now:`-less flow. NOTE:
     /// the `AXON_LEGACY_EXECUTOR` kill-switch path does not inject temporal
-    /// context (the unified dispatcher is the production engine, §65.E.2);
+    /// context (the unified dispatcher is the production engine, v2.15.0);
     /// it reports `None` here.
     pub temporal_context: Option<crate::temporal_context::TemporalRecord>,
 }
 
-/// §Fase 55.b/c — derive a flow's epistemic envelopes from the IR. This is
+/// v2.7.0 — derive a flow's epistemic envelopes from the IR. This is
 /// the SINGLE site both transports funnel through — the synchronous runner
 /// calls it directly with its in-hand `ir`; the streaming
 /// `axon_server::resolve_epistemic_envelopes_for_flow` re-derives the IR
 /// from source and calls THIS function — so the sync `FlowEnvelope` and the
 /// streaming `axon.complete` carry byte-identical `(base, scope, confidence)`
-/// triples by construction (the §55.c parity invariant: there is exactly
+/// triples by construction (the v2.7.0 parity invariant: there is exactly
 /// one derivation, never two that could drift). `input_confidence = 1.0`:
 /// a top-level flow's ψ is clean before any tool degrades it.
 pub fn derive_epistemic_envelopes_for_flow(
@@ -3745,14 +3745,14 @@ pub fn derive_epistemic_envelopes_for_flow(
         .unwrap_or_default()
 }
 
-/// §Fase 65.E.2 — the CUTOVER. The dispatcher is now the DEFAULT non-streaming
+/// v2.15.0 — the CUTOVER. The dispatcher is now the DEFAULT non-streaming
 /// server engine ("one engine, two sinks"): `execute_server_flow` runs the SAME
 /// dispatcher the SSE path uses, via the BufferSink collector. The legacy
 /// `execute_real_async` / `execute_stub` are NOT deleted — they stay one flag
 /// away behind `AXON_LEGACY_EXECUTOR` as a one-release KILL-SWITCH (fix-forward
 /// per [[feedback-versioning-discipline]]) before retirement. Verified: the
 /// 50-flow parity corpus + the `execute_server_flow` integration suite stay
-/// green with the dispatcher as the engine. §Fase 65.E.3 closed the documented
+/// green with the dispatcher as the engine. v2.15.0 closed the documented
 /// observability regression: the non-streaming envelope's `provenance_events`
 /// (IR-derived), `blame_attribution` + `anchor_breaches` (projected from the
 /// dispatcher's per-step audit records) are now at parity with the legacy
@@ -3766,118 +3766,118 @@ fn unified_driver_enabled() -> bool {
     )
 }
 
-/// §Fase 65.E — the collected result of running a flow through the dispatcher.
+/// v2.15.0 — the collected result of running a flow through the dispatcher.
 struct CollectedRun {
     success: bool,
     steps_executed: usize,
     tokens_output: u64,
     step_names: Vec<String>,
     step_results: Vec<String>,
-    // §Fase 65.E.3 — observability parity with the legacy executor. The
+    // v2.15.0 — observability parity with the legacy executor. The
     // dispatcher records per-step anchor breaches in `ctx.step_audit_records`
     // (`StepAuditRecord.anchor_breaches: Vec<String>`); the collector sums them
     // and derives the same AnchorBreach `blame_attribution` shape the legacy path
-    // produced from its `ExecutionReport`, closing the documented §65.E.2 gap.
-    // Note: the unified engine evaluates anchors on EVERY backend (§65.C.3),
+    // produced from its `ExecutionReport`, closing the documented v2.15.0 gap.
+    // Note: the unified engine evaluates anchors on EVERY backend (v2.15.0),
     // including stub — where the legacy executor under-reported (0 breaches) — so
     // the count is a faithful superset, not a byte-equal mirror, of the legacy.
     anchor_breaches: usize,
     blame_attribution: Option<crate::wire_envelope::BlameContext>,
-    /// §Fase 65.F — `Some(detail)` when a node's `DispatchError` aborted the
+    /// v2.15.0 — `Some(detail)` when a node's `DispatchError` aborted the
     /// walk: the failing NODE named + the cause, mirroring the streaming
-    /// dispatcher's `FlowError.error`. Pre-§65.F this error was swallowed
+    /// dispatcher's `FlowError.error`. Pre-v2.15.0 this error was swallowed
     /// (the `Err(_) => { success = false; break; }` arm), so a failed store
     /// write presented as a silent abort with no diagnostic.
     flow_error: Option<String>,
-    /// §Fase 67.c — per-run store row counts, read from the dispatcher
+    /// v2.21.0 — per-run store row counts, read from the dispatcher
     /// ctx's shared (par-branch-merged) counter after the walk.
     store_row_counts: crate::flow_dispatcher::StoreRowCounts,
-    /// §Fase 91.b — the run's temporal record (`now:` capture + zones),
+    /// v2.46.0 — the run's temporal record (`now:` capture + zones),
     /// read from the dispatcher ctx's shared state after the walk. `None`
     /// when the flow declares no `now:` (zero wire drift).
     temporal_context: Option<crate::temporal_context::TemporalRecord>,
 }
 
-/// §Fase 65.E — run a flow through the DISPATCHER with a BUFFER sink and collect
+/// v2.15.0 — run a flow through the DISPATCHER with a BUFFER sink and collect
 /// the result (the non-streaming half of the unified driver). This is the SAME
 /// engine the SSE path uses (`dispatch_node` over the flow's IR nodes), so the
 /// step results are equivalent — gated by the 50-flow parity corpus. The buffer
 /// channel queues every wire event; after the walk we project them into
-/// `step_names` + `step_results` (the §65.D projection captures structural-verb
+/// `step_names` + `step_results` (the v2.15.0 projection captures structural-verb
 /// outputs from `StepComplete.full_output`, not just per-token `StepToken`).
 ///
-/// §Fase 65.E.3 — anchor breaches + blame attribution are now projected from the
+/// v2.15.0 — anchor breaches + blame attribution are now projected from the
 /// dispatcher's per-step audit records (`ctx.step_audit_records`), at parity with
 /// the legacy executor. Provenance events are IR-derived by the caller (pure walk)
 /// and epistemic envelopes likewise, so both stay byte-identical. Eager
-/// connection-pinning is handled by the caller (the §37.x.j discipline).
+/// connection-pinning is handled by the caller (the v1.32.0 discipline).
 async fn collect_via_dispatcher(
     flow: &crate::ir_nodes::IRFlow,
     backend: &str,
-    // §Fase 95.f — the VERIFIED tenant this flow runs under. Set on the
+    // v2.49.0 — the VERIFIED tenant this flow runs under. Set on the
     // DispatchCtx so every tenant-scoped runtime seam that takes an EXPLICIT
     // tenant — the `axon::secret_custody` port (`rotate` enumeration/reveal,
     // `retrieve` over a `backend: secrets` store, `tool { secret: }` /
     // `secret_partition:` dispatch injection), the `mint` minter, session
     // state — receives the caller's scoped tenant, never ambient state (the
-    // §93 explicit-tenant posture). Empty ⇒ those custody surfaces fail
+    // v2.47.0 explicit-tenant posture). Empty ⇒ those custody surfaces fail
     // CLOSED (`require_tenant` refuses an unscoped call), which is correct
     // for a CLI/test with no tenant scope. The endpoint passes the
     // request-verified `route.tenant_id`; the daemon supervisor passes the
     // daemon's scoped tenant.
     tenant_id: &str,
     system_prompt: &str,
-    // §Fase 91.b — the frame-level declared cognitive timezone (the program's
+    // v2.46.0 — the frame-level declared cognitive timezone (the program's
     // first `context` declaration's `now:` — the same first-context convention
     // the system-prompt composer uses). `None` ⇒ only step-level `now:` injects.
     default_now_tz: Option<String>,
     api_key: Option<&str>,
-    // §Fase 24.g.2 (Kivi brief #37) — per-tenant LLM endpoint override.
+    // v1.18.0 (Kivi brief #37) — per-tenant LLM endpoint override.
     llm_base_url: Option<&str>,
     llm_chat_path: Option<&str>,
     anchors: std::sync::Arc<Vec<crate::ir_nodes::IRAnchor>>,
     nav_dispatch: &NavDispatch,
     registry: std::sync::Arc<ToolRegistry>,
     param_bindings: &[(String, String)],
-    // §Fase 65.E — the eager-acquired flow-scoped pins (one per postgresql
+    // v2.15.0 — the eager-acquired flow-scoped pins (one per postgresql
     // axonstore), shared with the dispatcher's store handlers for pooler
-    // coherence (§37.x.j) — the same discipline the streaming path applies.
+    // coherence (v1.32.0) — the same discipline the streaming path applies.
     pinned: std::sync::Arc<
         std::sync::Mutex<
             std::collections::HashMap<String, crate::pinned_conn::PinnedConn>,
         >,
     >,
-    // §Fase 72.c — the active `budget { … }` gate when a budgeted daemon runs
-    // this flow. `None` ⇒ unbudgeted (tool dispatch unconditional, pre-§72).
+    // v2.28.0 — the active `budget { … }` gate when a budgeted daemon runs
+    // this flow. `None` ⇒ unbudgeted (tool dispatch unconditional, pre-v2.28.0).
     budget: Option<std::sync::Arc<std::sync::Mutex<crate::runtime::budget_kernel::BudgetGate>>>,
-    // §Fase 114.e — the per-channel concurrency semaphores (`resource.capacity`),
+    // v2.69.0 — the per-channel concurrency semaphores (`resource.capacity`),
     // held on ServerState across requests. `None` ⇒ no channel is bounded.
     channel_semaphores: Option<std::sync::Arc<crate::channel_semaphore::ChannelSemaphores>>,
-    // §Fase 114.f — the tool-lease guard.
+    // v2.69.0 — the tool-lease guard.
     tool_leases: Option<std::sync::Arc<crate::resource_lease::ResourceLeaseGuard>>,
-    // §Fase 74.f — the typed event BUS (built from the program's `channel`
-    // definitions) + the durable event OUTBOX (the §74.c `EventOutbox` seam),
+    // v2.31.0 — the typed event BUS (built from the program's `channel`
+    // definitions) + the durable event OUTBOX (the v2.31.0 `EventOutbox` seam),
     // attached as a pair on the daemon path. The bus carries each channel's
     // `persistence` metadata; `run_emit` consults it to route a
     // `persistent_axonstore` emit to `outbox.append` (durable — survives the
     // consumer being down + a process restart) vs an ephemeral emit to the bus.
     // `Some` only when the enterprise supervisor injects its per-tenant Pg outbox;
     // `None` for every other caller (HTTP, CLI, tests) ⇒ `emit` keeps its prior
-    // in-process buffer behavior (byte-identical to pre-§74).
+    // in-process buffer behavior (byte-identical to pre-v2.31.0).
     event_bus: Option<std::sync::Arc<crate::runtime::channels::TypedEventBus>>,
     event_outbox: Option<std::sync::Arc<dyn crate::event_outbox::EventOutbox>>,
-    // §Fase 92.c — the compiled `credential` contracts (from `ir.credentials`)
+    // v2.46.0 — the compiled `credential` contracts (from `ir.credentials`)
     // + the minter port. `None` minter ⇒ a reached `mint` fails CLOSED with
     // `MissingDependency` (no silent stub); the enterprise executor injects
-    // its PASETO minter (§92.g) the same way it injects the event outbox.
+    // its PASETO minter (v2.46.0) the same way it injects the event outbox.
     credentials: std::sync::Arc<
         std::collections::HashMap<String, crate::ir_nodes::IRCredential>,
     >,
     credential_minter: Option<std::sync::Arc<dyn crate::credential_minter::CredentialMinter>>,
-    // §Fase 94.d — the secret-custody port behind `backend: secrets` /
+    // v2.48.0 — the secret-custody port behind `backend: secrets` /
     // `rotate` / `tool { secret: }`. `None` ⇒ all three fail CLOSED
     // (`MissingDependency`); the enterprise executor injects its
-    // envelope-encrypted Pg custody (§94.h) — the §92.c injection shape.
+    // envelope-encrypted Pg custody (v2.48.0) — the v2.46.0 injection shape.
     secret_custody: Option<std::sync::Arc<dyn crate::secret_custody::SecretCustody>>,
 ) -> CollectedRun {
     use crate::flow_dispatcher::{dispatch_node, DispatchCtx, NodeOutcome};
@@ -3891,7 +3891,7 @@ async fn collect_via_dispatcher(
         crate::cancel_token::CancellationFlag::new(),
         tx,
     )
-    // §Fase 95.f — thread the verified tenant onto the ctx (was defaulted to
+    // v2.49.0 — thread the verified tenant onto the ctx (was defaulted to
     // empty, silently unscoping every explicit-tenant custody call).
     .with_tenant_id(tenant_id)
     .with_store_registry(nav_dispatch.store_registry.clone())
@@ -3906,13 +3906,13 @@ async fn collect_via_dispatcher(
     .with_anchors(anchors)
     .with_tool_registry(registry)
     .with_pinned_conns(pinned);
-    // §Fase 108.b — attach the deployment's columnar engine so the five
+    // v2.63.0 — attach the deployment's columnar engine so the five
     // data-plane verbs execute against the DECLARED stores; absent, each
-    // fails CLOSED in its handler (the §108.a honesty floor).
+    // fails CLOSED in its handler (the v2.63.0 honesty floor).
     if let Some(engine) = &nav_dispatch.dataspace_engine {
         ctx = ctx.with_dataspace_engine(engine.clone());
     }
-    // §Fase 111.c — mount the adversarial-analysis engine + the deployment's
+    // v2.67.0 — mount the adversarial-analysis engine + the deployment's
     // scope catalog, so a `warden` block RUNS instead of silently completing.
     // OSS mounts the deterministic `ReferenceStaticWarden` (depth
     // `static_artifact`; deeper depths fail closed with `DepthNotSupported`);
@@ -3923,22 +3923,22 @@ async fn collect_via_dispatcher(
         std::sync::Arc::new(crate::warden::ReferenceStaticWarden),
         nav_dispatch.scopes.clone(),
     );
-    // §Fase 122.d — mount the memoisation tier, so a declared `cache` memoises.
+    // v2.89.0 — mount the memoisation tier, so a declared `cache` memoises.
     //
     // Attached only when the program declares one: with no `cache` block there
     // is nothing to memoise, and leaving the port `None` keeps this path
-    // byte-identical to pre-§122.d rather than adding a lookup that can only
+    // byte-identical to pre-v2.89.0 rather than adding a lookup that can only
     // miss.
     //
     // `process_local` shares the BACKEND across flow runs (entries surviving
     // between runs is what makes it a cache) and takes the TENANT from this run
-    // (D85.11 — the tenant is a key component, so isolation holds even in a
-    // single process). The enterprise §85.f Redis tier replaces the backend
+    // (the design decision — the tenant is a key component, so isolation holds even in a
+    // single process). The enterprise v2.40.0 Redis tier replaces the backend
     // here; it is not a second call site.
     //
     // The SSE path in `streaming_via_dispatcher` mounts the same tier the same
     // way. Wiring one and not the other is the "real-on-one-path,
-    // dead-on-the-other" defect §111 exists to end, and the §120 both-doors
+    // dead-on-the-other" defect v2.67.0 exists to end, and the v2.87.0 both-doors
     // rule after it; `both_dispatch_paths_mount_the_cache` pins them together.
     if !nav_dispatch.cache_plan.is_empty() {
         let cache_tenant = ctx.tenant_id.clone();
@@ -3949,7 +3949,7 @@ async fn collect_via_dispatcher(
             &nav_dispatch.cache_plan,
         );
     }
-    // §Fase 111.d — mount the Hilbert-space simulator + the observable catalog,
+    // v2.67.0 — mount the Hilbert-space simulator + the observable catalog,
     // so a `quant` block MEASURES instead of silently skipping its body. OSS
     // mounts the capped dense-statevector reference simulator (a register above
     // the cap fails closed with axon-E0783, never a silent truncation);
@@ -3958,12 +3958,12 @@ async fn collect_via_dispatcher(
         std::sync::Arc::new(crate::quant::ReferenceSimulator::new()),
         nav_dispatch.observables.clone(),
     );
-    // §Fase 111.f — attach the compute catalog so `compute … on …` evaluates its
-    // declared §70 expression NATIVELY instead of binding "compute:Name(args)".
+    // v2.67.0 — attach the compute catalog so `compute … on …` evaluates its
+    // declared v2.26.0 expression NATIVELY instead of binding "compute:Name(args)".
     ctx = ctx.with_computes(nav_dispatch.compute_specs.clone());
-    // §Fase 119.b — attach the mandate catalog so the cage can close.
+    // v2.83.0 — attach the mandate catalog so the cage can close.
     ctx = ctx.with_mandates(nav_dispatch.mandate_specs.clone());
-    // §Fase 119.c — attach the ΛD + ots catalogs.
+    // v2.83.0 — attach the ΛD + ots catalogs.
     ctx = ctx.with_lambdas(nav_dispatch.lambda_data_specs.clone());
     ctx = ctx.with_ots(nav_dispatch.ots_specs.clone());
     // The agent catalog. Measured absent on THIS engine (the non-streaming
@@ -3974,25 +3974,25 @@ async fn collect_via_dispatcher(
     // tests/agent_loop_closes_its_promises.rs, which drives the README's own
     // agent-in-a-step shape through this exact function.
     ctx = ctx.with_agents(nav_dispatch.agent_specs.clone());
-    // §Fase 72.c — attach the linear-effect budget gate (daemon path only).
+    // v2.28.0 — attach the linear-effect budget gate (daemon path only).
     if let Some(gate) = budget {
         ctx = ctx.with_budget(gate);
     }
-    // §Fase 114.e — attach the cross-request channel semaphores so `capacity:`
-    // bounds simultaneous in-flight calls (§114.d derived the number; this makes
+    // v2.69.0 — attach the cross-request channel semaphores so `capacity:`
+    // bounds simultaneous in-flight calls (v2.69.0 derived the number; this makes
     // it a bound).
     if let Some(sems) = channel_semaphores {
         ctx = ctx.with_channel_semaphores(sems);
     }
-    // §Fase 114.f — attach the tool-lease guard so a post-expiry vendor call breaches.
+    // v2.69.0 — attach the tool-lease guard so a post-expiry vendor call breaches.
     if let Some(leases) = tool_leases {
         ctx = ctx.with_tool_leases(leases);
     }
-    // §Fase 74.f — attach the typed event bus + durable outbox as a pair (daemon
+    // v2.31.0 — attach the typed event bus + durable outbox as a pair (daemon
     // path only). The bus supplies the channel's `persistence` so `run_emit`
     // routes a `persistent_axonstore` emit to `outbox.append` (durable); the
     // enterprise supervisor then drains + delivers it across replicas / restarts
-    // (the §74.f Pg outbox). Without the bus, the durability metadata is unknown
+    // (the v2.31.0 Pg outbox). Without the bus, the durability metadata is unknown
     // and the emit would fall back to the legacy in-process buffer.
     if let Some(bus) = event_bus {
         ctx = ctx.with_event_bus(bus);
@@ -4000,26 +4000,26 @@ async fn collect_via_dispatcher(
     if let Some(outbox) = event_outbox {
         ctx = ctx.with_event_outbox(outbox);
     }
-    // §Fase 37.b — seed the request-bound flow params so `${param}` resolves.
+    // v1.32.0 — seed the request-bound flow params so `${param}` resolves.
     for (k, v) in param_bindings {
         ctx.let_bindings.insert(k.clone(), v.clone());
     }
-    // §Fase 91.b — the frame-level declared zone; a step's own `now:` overrides.
+    // v2.46.0 — the frame-level declared zone; a step's own `now:` overrides.
     ctx.default_now_tz = default_now_tz;
-    // §Fase 92.c — the credential contracts + (optionally) the minter port.
+    // v2.46.0 — the credential contracts + (optionally) the minter port.
     ctx.credentials = credentials;
     ctx.credential_minter = credential_minter;
-    // §Fase 94.d — the secret-custody port (None ⇒ fail-closed).
+    // v2.48.0 — the secret-custody port (None ⇒ fail-closed).
     ctx.secret_custody = secret_custody;
 
-    // §Fase 65.E.3 — share the audit-record sink so we can read the per-step
+    // v2.15.0 — share the audit-record sink so we can read the per-step
     // anchor breaches AFTER the walk (the `drop(ctx)` below releases the ctx's
     // own handle; this Arc clone keeps the records alive for the projection).
     let audit_records = ctx.step_audit_records.clone();
-    // §Fase 91.b — share the temporal state (capture + rendered zones) so the
+    // v2.46.0 — share the temporal state (capture + rendered zones) so the
     // envelope record is readable after the walk (the same Arc discipline).
     let temporal = ctx.temporal.clone();
-    // §Fase 67.c — clone the shared row-count Arc up front (like
+    // v2.21.0 — clone the shared row-count Arc up front (like
     // `audit_records`); the store handlers increment the SAME Mutex
     // during the walk, so reading it after the walk (via this clone)
     // yields the final per-run totals even once `ctx` has been consumed.
@@ -4028,14 +4028,14 @@ async fn collect_via_dispatcher(
     let mut success = true;
     let mut tokens_output: u64 = 0;
     let mut flow_return: Option<String> = None;
-    // §Fase 65.F — the HONEST hard-failure detail. Pre-§65.F a node's
+    // v2.15.0 — the HONEST hard-failure detail. Pre-v2.15.0 a node's
     // `DispatchError` hit `Err(_) => { success = false; break; }` — swallowed
     // with no log + no wire surface, so a failing `persist` (most often a
-    // pre-insert gate: §35.g confidence-floor, registry resolve, or a
+    // pre-insert gate: v1.30.0 confidence-floor, registry resolve, or a
     // connection error — all BEFORE any SQL reaches the DB) presented to the
     // adopter as a silent abort: `success:false`, empty step result, zero
     // diagnostic. The streaming dispatcher never had this gap — it emits a
-    // `FlowError` naming the failing node + the cause (§37.e/D6). This restores
+    // `FlowError` naming the failing node + the cause (v1.32.0/D6). This restores
     // that parity on the non-streaming path.
     let mut flow_error: Option<String> = None;
     for node in &flow.steps {
@@ -4051,10 +4051,10 @@ async fn collect_via_dispatcher(
             Err(crate::flow_dispatcher::DispatchError::UpstreamCancelled) => break,
             Err(e) => {
                 success = false;
-                // §Fase 65.F — name the FAILING NODE (the four store ops + a
+                // v2.15.0 — name the FAILING NODE (the four store ops + a
                 // `step` carry a meaningful name; any other variant is named by
                 // its flow position) so the diagnostic pinpoints WHERE + WHY,
-                // byte-for-byte with `streaming_via_dispatcher`'s §37.e/D6
+                // byte-for-byte with `streaming_via_dispatcher`'s v1.32.0/D6
                 // `node_label`. The detail reaches BOTH the structured server
                 // log (parity with the streaming `tracing::error!`) AND the
                 // wire envelope (the new `ServerRunnerMetrics.error` slot).
@@ -4114,23 +4114,23 @@ async fn collect_via_dispatcher(
         }
     }
 
-    // §Fase 65.E — surface the `return` value as the flow's final result. The
+    // v2.15.0 — surface the `return` value as the flow's final result. The
     // dispatcher's `run_return` emits no wire step, so we append it here as a
     // `return` step carrying the resolved binding — matching the non-streaming
-    // runner's return-step (§65.D) so the adopter's FlowEnvelope output is the
+    // runner's return-step (v2.15.0) so the adopter's FlowEnvelope output is the
     // returned value, not the prior step's output.
     if let Some(value) = flow_return {
         step_names.push("return".to_string());
         step_results.push(value);
     }
 
-    // §Fase 65.E.3 — project anchor breaches + blame from the per-step audit
-    // records, closing the §65.E.2 cutover gap. `anchor_breaches` is the count;
+    // v2.15.0 — project anchor breaches + blame from the per-step audit
+    // records, closing the v2.15.0 cutover gap. `anchor_breaches` is the count;
     // `blame_attribution` mirrors the legacy `derive_blame_from_report`
     // AnchorBreach attribution (location `step:<name>`, structural message,
     // AnchorBreach kind), coalesced by `merge_blame`'s first-emitted-wins
     // discipline — so for a given breach the two engines emit the SAME blame
-    // shape. (The dispatcher evaluates anchors on every backend per §65.C.3, so
+    // shape. (The dispatcher evaluates anchors on every backend per v2.15.0, so
     // on stub it faithfully surfaces breaches the legacy executor dropped.)
     let mut anchor_breaches = 0usize;
     let mut blame_attribution: Option<crate::wire_envelope::BlameContext> = None;
@@ -4141,7 +4141,7 @@ async fn collect_via_dispatcher(
         anchor_breaches += rec.anchor_breaches.len();
         let blame = crate::wire_envelope::BlameContext {
             kind: crate::wire_envelope::BlameKind::AnchorBreach,
-            // §Fase 119.m.2 — negative blame, assigned by the paper by name:
+            // v2.83.0 — negative blame, assigned by the paper by name:
             // an anchor breach is the sub-agent reaching outside its granted
             // containment. This is one of only two sites in the workspace that
             // production actually emits a `BlameContext` from, so the axis is
@@ -4160,13 +4160,13 @@ async fn collect_via_dispatcher(
             crate::wire_envelope_producers::merge_blame(blame_attribution, Some(blame));
     }
 
-    // §Fase 67.c — read the shared per-run row totals the store handlers
+    // v2.21.0 — read the shared per-run row totals the store handlers
     // folded in (par-branch counts merged via the shared Arc). Bound to a
     // local so the transient `MutexGuard` doesn't outlive the struct
     // construction's tail expression.
     let store_row_counts = *row_counts.lock().unwrap();
 
-    // §Fase 91.b — project the run's temporal state into the envelope record.
+    // v2.46.0 — project the run's temporal state into the envelope record.
     // `None` when no `now:`-bearing step rendered (zero wire drift).
     let temporal_context = crate::temporal_context::record_of(&temporal.lock().unwrap());
 
@@ -4188,95 +4188,95 @@ pub fn execute_server_flow(
     ir: &crate::ir_nodes::IRProgram,
     flow_name: &str,
     backend: &str,
-    // §Fase 95.f — the VERIFIED tenant this flow executes under, set on the
+    // v2.49.0 — the VERIFIED tenant this flow executes under, set on the
     // DispatchCtx so every explicit-tenant runtime seam (the
     // `axon::secret_custody` port for `rotate`/`retrieve`-secrets/`secret:`
     // injection, the `mint` minter, session state) runs under the caller's
-    // scoped tenant — never ambient (the §93 posture). The endpoint passes
+    // scoped tenant — never ambient (the v2.47.0 posture). The endpoint passes
     // the request-verified `route.tenant_id`; the daemon supervisor passes
     // the daemon's scoped tenant; a CLI/test with no scope passes `""`
     // (custody then fails CLOSED — `require_tenant` refuses an unscoped
-    // call — which is correct). Before §95.f this was silently empty, so
+    // call — which is correct). Before v2.49.0 this was silently empty, so
     // every custody call was refused as "unscoped" in real deployments.
     tenant_id: &str,
     source_file: &str,
     api_key_override: Option<&str>,
-    // §Fase 37.b (D1) — the parsed HTTP request body. The flow's
+    // v1.32.0 (D1) — the parsed HTTP request body. The flow's
     // declared parameters bind from its same-named fields (the Request
     // Binding Contract) and seed each `ExecContext` before the step
     // walk. `None` for a caller with no request body (D5).
     request_body: Option<&serde_json::Value>,
-    // §Fase 37.y (D3) — the URL path captures (e.g. for
+    // v1.32.0 (D3) — the URL path captures (e.g. for
     // `/api/tenants/{tenant_id}` the map is `{tenant_id: "acme"}`).
     // Empty map for callers without a dynamic route (D5 backwards-
     // compat). Passed to `bind_request` alongside `request_body`.
     request_path: &std::collections::HashMap<String, String>,
-    // §Fase 37.y (D3) — the URL query string parsed into name → value.
+    // v1.32.0 (D3) — the URL query string parsed into name → value.
     // Single-value semantics in v1.38.5 (multi-value query keys
-    // deferred per plan vivo §7); axum's `Query<HashMap>` extractor
+    // deferred per plan vivo section 7); axum's `Query<HashMap>` extractor
     // provides this shape.
     request_query: &std::collections::HashMap<String, String>,
-    // §Fase 58.g (D7) — optional per-tenant / per-server tool base URL.
+    // v2.8.0 (D7) — optional per-tenant / per-server tool base URL.
     // When `Some`, every URL-dispatched program tool with a RELATIVE
     // `runtime` is resolved against it (`{base}/{slug}`) so the adopter
     // wires their tool-server via config without touching the program;
     // absolute runtimes stay verbatim (D5). `None` → no resolution.
     tool_base_url: Option<&str>,
-    // §Fase 24.g.2 (Kivi brief #37) — optional per-tenant LLM endpoint
+    // v1.18.0 (Kivi brief #37) — optional per-tenant LLM endpoint
     // override: the base URL + chat-completions path the resolved backend
     // hits, threaded into the dispatcher's backend factory. `None` (D5
     // back-compat) → the provider's env/default endpoint. Mirrors the
     // per-tenant `tool_base_url` shape, applied to the LLM call.
     llm_base_url: Option<&str>,
     llm_chat_path: Option<&str>,
-    // §Fase 72.c — the active `budget { … }` linear-effect gate when a budgeted
+    // v2.28.0 — the active `budget { … }` linear-effect gate when a budgeted
     // `daemon` runs this flow (built by the daemon supervisor from the daemon's
     // compiled budget). `None` for every other caller (HTTP, CLI, tests) — tool
-    // dispatch is then unconditional, byte-identical to pre-§72.
+    // dispatch is then unconditional, byte-identical to pre-v2.28.0.
     budget: Option<std::sync::Arc<std::sync::Mutex<crate::runtime::budget_kernel::BudgetGate>>>,
-    // §Fase 114.e — the per-channel concurrency semaphores (`resource.capacity`),
+    // v2.69.0 — the per-channel concurrency semaphores (`resource.capacity`),
     // held on ServerState across requests. `None` for every non-server caller.
     channel_semaphores: Option<std::sync::Arc<crate::channel_semaphore::ChannelSemaphores>>,
-    // §Fase 114.f — the tool-lease guard (held on ServerState). `None` off-server.
+    // v2.69.0 — the tool-lease guard (held on ServerState). `None` off-server.
     tool_leases: Option<std::sync::Arc<crate::resource_lease::ResourceLeaseGuard>>,
-    // §Fase 74.f — the durable event outbox (the §74.c `EventOutbox` seam). `Some`
+    // v2.31.0 — the durable event outbox (the v2.31.0 `EventOutbox` seam). `Some`
     // only when a `daemon` runs this flow AND the deployment configures a durable
     // channel sink (the enterprise supervisor passes its per-tenant Postgres
     // outbox); a daemon `emit` to a `persistent_axonstore` channel then APPENDS
     // durably instead of buffering in-process. `None` for every other caller
-    // (HTTP, CLI, tests) ⇒ pre-§74 in-process `emit` behavior.
+    // (HTTP, CLI, tests) ⇒ pre-v2.31.0 in-process `emit` behavior.
     event_outbox: Option<std::sync::Arc<dyn crate::event_outbox::EventOutbox>>,
-    // §Fase 92.c — the ephemeral-credential minter port behind the `mint`
+    // v2.46.0 — the ephemeral-credential minter port behind the `mint`
     // flow verb. `Some` only when the deployment owns a minter (the
-    // enterprise executor injects its PASETO minter, §92.g — the same
+    // enterprise executor injects its PASETO minter, v2.46.0 — the same
     // injection shape as `event_outbox`); `None` for every other caller
     // (HTTP, CLI, tests) ⇒ a reached `mint` fails CLOSED with a loud
-    // missing-dependency error, never a silent stub (§86 lesson).
+    // missing-dependency error, never a silent stub (v2.41.0 lesson).
     credential_minter: Option<std::sync::Arc<dyn crate::credential_minter::CredentialMinter>>,
-    // §Fase 94.d — the secret-custody port behind the `backend: secrets`
+    // v2.48.0 — the secret-custody port behind the `backend: secrets`
     // metadata store, the `rotate` verb, and `tool { secret: }` dispatch
     // injection. `Some` only when the deployment owns a custody (the
     // enterprise executor injects its envelope-encrypted Pg custody,
-    // §94.h — the same injection shape as `credential_minter`); `None`
+    // v2.48.0 — the same injection shape as `credential_minter`); `None`
     // for every other caller (HTTP, CLI, tests) ⇒ each of those surfaces
     // fails CLOSED with a loud missing-dependency error, never a silent
     // stub and never a fabricated result.
     secret_custody: Option<std::sync::Arc<dyn crate::secret_custody::SecretCustody>>,
-    // §Fase 108.b — the deterministic columnar engine port behind the five
+    // v2.63.0 — the deterministic columnar engine port behind the five
     // data-plane verbs. `Some` only when the deployment instantiated the
     // declared dataspaces (the OSS deploy hook / the enterprise executor —
     // the same injection shape as `credential_minter`); `None` for every
     // other caller ⇒ each data-plane verb fails CLOSED with a loud
-    // missing-dependency error (the §108.a honesty floor), never an LLM
+    // missing-dependency error (the v2.63.0 honesty floor), never an LLM
     // narration.
     dataspace_engine: Option<crate::dataspace_engine::SharedDataspaceEngine>,
-    // §Fase 102 (D102.9) — per-tenant scrape overrides (proxy / crawl
+    // v2.56.0 — per-tenant scrape overrides (proxy / crawl
     // concurrency) resolved by the deployed executor's `SecretResolver`, applied
     // to the request-scoped registry before any scrape dispatch (the same
     // per-tenant-rewrite shape as `tool_base_url`). `None` for every caller that
     // does no per-tenant scrape config (HTTP/CLI/tests/daemon) — the
     // source-declared scrape config then stands. The tenant is stamped onto the
-    // scrape entries regardless (from `tenant_id`), so the §102.d selector
+    // scrape entries regardless (from `tenant_id`), so the v2.56.0 selector
     // memory is keyed even without overrides.
     scrape_overrides: Option<&crate::tool_registry::ScrapeOverrides>,
 ) -> Result<ServerRunnerMetrics, String> {
@@ -4300,9 +4300,9 @@ pub fn execute_server_flow(
             anchor_instructions: build_anchor_instructions(run),
             effort: run.effort.clone(),
             resolved_anchors: run.resolved_anchors.clone(),
-            // §Fase 37.b (D1) — bind the request body to the resolved
+            // v1.32.0 (D1) — bind the request body to the resolved
             // flow's declared parameters.
-            // §Fase 37.y (D3) — extended to bind from path + query
+            // v1.32.0 (D3) — extended to bind from path + query
             // sources too; the runtime merge respects the D4
             // compile-time collision rejection (axon-T901).
             param_bindings: run
@@ -4378,9 +4378,9 @@ pub fn execute_server_flow(
             anchor_instructions: build_anchor_instructions(&run),
             effort: run.effort.clone(),
             resolved_anchors: run.resolved_anchors.clone(),
-            // §Fase 37.b (D1) — bind the request body to the flow's
+            // v1.32.0 (D1) — bind the request body to the flow's
             // declared parameters (the dynamic-route execution path).
-            // §Fase 37.y (D3) — extended to bind from path + query
+            // v1.32.0 (D3) — extended to bind from path + query
             // sources too.
             param_bindings: crate::request_binding::bind_request(
                 target_flow,
@@ -4393,23 +4393,23 @@ pub fn execute_server_flow(
 
     let mut report = crate::output::ReportBuilder::new(source_file, backend, "json");
     let mut registry = crate::tool_registry::ToolRegistry::new();
-    // §Fase 58.f — register the program's declared tools on the SERVER path
+    // v2.8.0 — register the program's declared tools on the SERVER path
     // (the CLI path already does this in `run_run`). Without this, every
     // program-declared `tool { provider: http … }` missed the registry and the
     // step silently degraded to an LLM call (the brief #22 / #17 finding). This
     // `registry` is a per-call local (built fresh above for THIS request), so
     // registration is request-scoped — no cross-tenant tool contamination
-    // between concurrent flows (§58 D10). Provider→URL resolves via each tool's
-    // declared `runtime:` field (D7); the §58.e structured body then POSTs to it.
+    // between concurrent flows (v2.8.0 D10). Provider→URL resolves via each tool's
+    // declared `runtime:` field (D7); the v2.8.0 structured body then POSTs to it.
     registry.register_from_ir(&ir.tools);
-    // §Fase 58.g (D7) — resolve relative tool runtimes against the
+    // v2.8.0 (D7) — resolve relative tool runtimes against the
     // caller-supplied per-tenant / per-server base URL. Request-scoped
     // (this `registry` is a per-call local) → no cross-tenant leakage.
     if let Some(base) = tool_base_url {
         registry.resolve_relative_endpoints(base);
     }
-    // §Fase 114.d — a tool on a `resource` derives its endpoint + concurrency from
-    // it (via the config resolver), governed exactly as an `axonstore` does (§113).
+    // v2.69.0 — a tool on a `resource` derives its endpoint + concurrency from
+    // it (via the config resolver), governed exactly as an `axonstore` does (v2.67.0).
     // Runs AFTER the base-URL pass so a resource-backed tool overrides the legacy
     // slug resolution. `refused` tools (unresolvable endpoint) are dropped, so a
     // dispatch of one fails honestly rather than reaching a phantom.
@@ -4418,20 +4418,20 @@ pub fn execute_server_flow(
         &crate::resource_resolver::EnvResourceResolver,
         &ir.fabrics,
     );
-    // §Fase 102 (D102.9) — stamp the dispatching tenant onto every scrape entry
-    // (keys the §102.d adaptive-selector memory) + apply the per-tenant
-    // proxy/concurrency overrides (§102.b). Request-scoped registry → no
+    // v2.56.0 — stamp the dispatching tenant onto every scrape entry
+    // (keys the v2.56.0 adaptive-selector memory) + apply the per-tenant
+    // proxy/concurrency overrides (v2.56.0). Request-scoped registry → no
     // cross-tenant leakage. Runs even without overrides so the tenant is always
     // stamped for the memory key.
     registry.apply_scrape_tenant_context(tenant_id, scrape_overrides);
 
-    // §Fase 35.e — build the axonstore registry from the program's
+    // v1.30.0 — build the axonstore registry from the program's
     // declarations. The D2 closed-catalog gate runs here: an unknown
     // backend fails fast, at deploy, with a named error.
-    // §Fase 65.A — Arc the registry so it can be shared (by clone) into the
+    // v2.15.0 — Arc the registry so it can be shared (by clone) into the
     // structural-navigate `DispatchCtx` while still being borrowed (via Deref)
     // by the eager-pin walk + `execute_real_async`'s own store path.
-    // §Fase 113 — build the registry GOVERNED: the store derives its DSN and its
+    // v2.67.0 — build the registry GOVERNED: the store derives its DSN and its
     // POOL SIZE from the `resource:` it names, and the `lease`s over those
     // resources are acquired so a store operation is a *use* of the resource.
     //
@@ -4439,7 +4439,7 @@ pub fn execute_server_flow(
     // .axonstore_specs)` — the legacy entry, which passes NO resources and NO
     // leases. With that call, `build_with_resources` and `build_governed` would
     // have existed and been reachable from nothing: a real engine with a dead
-    // wire, in the very fase whose purpose is deleting them. `capacity: 20` would
+    // wire, in the very cycle whose purpose is deleting them. `capacity: 20` would
     // have produced a pool of 10 in every deployed flow, and the gate proving
     // otherwise would have been testing a code path production never took.
     let store_registry = std::sync::Arc::new(
@@ -4452,20 +4452,20 @@ pub fn execute_server_flow(
         .map_err(|e| format!("axonstore registry: {e}"))?,
     );
 
-    // §Fase 65.A — build the dispatcher's corpus state from the IR exactly as
+    // v2.15.0 — build the dispatcher's corpus state from the IR exactly as
     // `run_streaming_via_dispatcher` does, so a NON-streaming `navigate` runs the
     // SAME structural MDN traversal as the SSE path (instead of hallucinating via
-    // the LLM). Static §63 graphs + dynamic §64 store-sourced corpora + the
+    // the LLM). Static v2.13.0 graphs + dynamic v2.14.0 store-sourced corpora + the
     // adaptive set are all wired.
     let nav_dispatch = build_nav_dispatch(ir, store_registry.clone(), dataspace_engine.clone());
 
-    // §Fase 37.x.j (D1) — Eager acquire one PoolConnection per
+    // v1.32.0 (D1) — Eager acquire one PoolConnection per
     // postgresql-backed axonstore referenced in the flow body BEFORE
     // executing any step. Each pin is held for the whole flow
     // execution and released on `pinned_conns` drop at the end of
     // this function (Rust handles the drop order: HashMap drops →
     // every PoolConnection drops → the per-conn `after_release
-    // DEALLOCATE ALL` hook from Fase 38.x.a D2 runs → conn returns
+    // DEALLOCATE ALL` hook from v1.31.0 D2 runs → conn returns
     // to the pool clean).
     //
     // The discovery walk filters `step.step_type` to the four SQL
@@ -4479,7 +4479,7 @@ pub fn execute_server_flow(
     // path. This preserves resilience against transient pool
     // saturation (a deploy-time `verify_postgres_schemas` failure
     // is the right gate for "store unreachable", not flow-time).
-    // §Fase 37.x.j.10 (POST-CLOSE HOTFIX) — Compute the set of
+    // v1.32.0 (POST-CLOSE HOTFIX) — Compute the set of
     // postgresql-backed axonstores referenced by ANY execution unit's
     // body. This walks the IR purely SYNCHRONOUSLY — no .await, no
     // tokio runtime needed. The actual pin acquisition happens INSIDE
@@ -4502,7 +4502,7 @@ pub fn execute_server_flow(
         needed
     };
 
-    // §Fase 65.E — REVERSIBLE unified driver. When `AXON_UNIFIED_DRIVER` is set,
+    // v2.15.0 — REVERSIBLE unified driver. When `AXON_UNIFIED_DRIVER` is set,
     // run the NON-streaming path through the SAME dispatcher the SSE path uses
     // (one engine, two sinks) + assemble the envelope from the collected events
     // and the IR-derived epistemics. OFF by default → the legacy executors below
@@ -4521,7 +4521,7 @@ pub fn execute_server_flow(
             let anchors = std::sync::Arc::new(ir.anchors.clone());
             let registry_arc = std::sync::Arc::new(registry);
             let collected = block_on_store(async {
-                // §Fase 65.E — eager pin acquisition ON THIS runtime (the §37.x.j
+                // v2.15.0 — eager pin acquisition ON THIS runtime (the v1.32.0
                 // discipline): one PoolConnection per postgresql axonstore, held
                 // for the flow + shared with the dispatcher's store handlers so
                 // every store op routes through the same physical backend
@@ -4535,11 +4535,11 @@ pub fn execute_server_flow(
                         >,
                     >,
                 > = std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new()));
-                // §Fase 96.a — skip the eager pin entirely under a session/direct
+                // v2.51.0 — skip the eager pin entirely under a session/direct
                 // pooler (store ops then acquire per-op, releasing across
                 // cognition). `acquire_pin` also refuses in that mode, but
                 // skipping here avoids the loop's work + a misleading warn.
-                // §Fase 118.b.3 — no driver, no pins to acquire. The map stays empty,
+                // v2.81.0 — no driver, no pins to acquire. The map stays empty,
                 // which is exactly what an uninhabited `PinnedConn` already guarantees.
                 #[cfg(feature = "postgres")]
                 if crate::store::pooler_mode::connection_pinning_enabled() {
@@ -4558,7 +4558,7 @@ pub fn execute_server_flow(
                     backend,
                     tenant_id,
                     &system_prompt,
-                    // §Fase 91.b — the frame-level `now:` (first-context convention).
+                    // v2.46.0 — the frame-level `now:` (first-context convention).
                     ir.contexts.first().and_then(|c| c.now_tz.clone()),
                     api_key_override,
                     llm_base_url,
@@ -4571,11 +4571,11 @@ pub fn execute_server_flow(
                     budget.clone(),
                     channel_semaphores.clone(),
                     tool_leases.clone(),
-                    // §Fase 74.f — when a durable outbox is injected (the
+                    // v2.31.0 — when a durable outbox is injected (the
                     // enterprise daemon path), build the typed event bus from the
                     // program's `channel` definitions so `run_emit` knows each
                     // channel's `persistence` + routes a `persistent_axonstore`
-                    // emit to the outbox. Paired: no outbox ⇒ no bus ⇒ pre-§74
+                    // emit to the outbox. Paired: no outbox ⇒ no bus ⇒ pre-v2.31.0
                     // in-process `emit`.
                     event_outbox.as_ref().map(|_| {
                         std::sync::Arc::new(
@@ -4583,7 +4583,7 @@ pub fn execute_server_flow(
                         )
                     }),
                     event_outbox.clone(),
-                    // §Fase 92.c — the compiled credential contracts + the
+                    // v2.46.0 — the compiled credential contracts + the
                     // minter port (None ⇒ mint fails closed).
                     std::sync::Arc::new(
                         ir.credentials
@@ -4592,7 +4592,7 @@ pub fn execute_server_flow(
                             .collect(),
                     ),
                     credential_minter.clone(),
-                    // §Fase 94.d — the custody port (None ⇒ fail-closed).
+                    // v2.48.0 — the custody port (None ⇒ fail-closed).
                     secret_custody.clone(),
                 )
                 .await
@@ -4602,11 +4602,11 @@ pub fn execute_server_flow(
                 .iter()
                 .map(|r| if r.is_empty() { Vec::new() } else { vec![r.clone()] })
                 .collect();
-            // §Fase 65.E.3 — `provenance_events` is a PURE IR walk in the legacy
+            // v2.15.0 — `provenance_events` is a PURE IR walk in the legacy
             // path (`execution_units` → `(step_type, step_name)` → closed-catalog
             // slugs), zero execution dependency — so deriving it here from the
             // same `execution_units` is byte-identical with the legacy + SSE
-            // paths, closing the §65.E.2 provenance regression.
+            // paths, closing the v2.15.0 provenance regression.
             let provenance_walk: Vec<(String, String)> = execution_units
                 .iter()
                 .flat_map(|u| {
@@ -4624,31 +4624,31 @@ pub fn execute_server_flow(
                 steps_executed: collected.steps_executed,
                 tokens_input: 0,
                 tokens_output: collected.tokens_output,
-                // §Fase 65.E.3 — projected from the dispatcher's per-step audit
+                // v2.15.0 — projected from the dispatcher's per-step audit
                 // records (count parity with the legacy walk).
                 anchor_breaches: collected.anchor_breaches,
                 step_names: collected.step_names,
                 step_results: collected.step_results,
                 per_step_chunks,
-                // §Fase 65.E.3 — IR-derived (provenance) + audit-derived (blame),
-                // both at parity with the legacy executor. The §65.E.2 regression
+                // v2.15.0 — IR-derived (provenance) + audit-derived (blame),
+                // both at parity with the legacy executor. The v2.15.0 regression
                 // is closed: the dispatcher envelope now carries the same epistemic
                 // lineage the legacy path did.
                 provenance_events,
                 blame_attribution: collected.blame_attribution,
                 // IR-derived → byte-identical with the legacy + SSE paths.
                 epistemic_envelopes: derive_epistemic_envelopes_for_flow(ir, flow_name),
-                // §Fase 65.F — the honest hard-failure detail (named node +
-                // cause), or `None` on the clean path. Closes the §65.E.2
+                // v2.15.0 — the honest hard-failure detail (named node +
+                // cause), or `None` on the clean path. Closes the v2.15.0
                 // silent-abort regression for store writes + every other node.
                 error: collected.flow_error,
-                // §Fase 67.c — the dispatcher (default engine) per-run row
+                // v2.21.0 — the dispatcher (default engine) per-run row
                 // counts the store handlers folded in.
                 rows_retrieved: collected.store_row_counts.retrieved,
                 rows_persisted: collected.store_row_counts.persisted,
                 rows_mutated: collected.store_row_counts.mutated,
                 rows_purged: collected.store_row_counts.purged,
-                // §Fase 91.b — the run's temporal record (capture + zones),
+                // v2.46.0 — the run's temporal record (capture + zones),
                 // `None` for flows with no `now:` (zero wire drift).
                 temporal_context: collected.temporal_context,
             });
@@ -4657,7 +4657,7 @@ pub fn execute_server_flow(
 
     let (success, _events) = if backend == "stub" {
         let result = execute_stub(&execution_units, false, false, Some(&nav_dispatch));
-        // §Fase 33.b Layer 1 — close the steps_executed:0 hollow-wire bug.
+        // v1.24.0 Layer 1 — close the steps_executed:0 hollow-wire bug.
         //
         // execute_stub prints step results to stdout and updates its
         // local stub_ctx but does NOT touch the ReportBuilder. The CLI
@@ -4671,7 +4671,7 @@ pub fn execute_server_flow(
         // record one StepReport per step. `result: "(stub)"` matches
         // the CLI's placeholder — adopters running on stub see the
         // step name + a sentinel result, NOT an empty event. Real
-        // backend streaming (Fase 33.d) replaces "(stub)" with the
+        // backend streaming (v1.24.0) replaces "(stub)" with the
         // actual backend chunk text.
         for unit in &execution_units {
             report.begin_unit(&unit.flow_name, &unit.persona_name);
@@ -4695,7 +4695,7 @@ pub fn execute_server_flow(
         }
         result
     } else {
-        // §Fase 37.x.j.10 (POST-CLOSE HOTFIX 2026-05-21) — SINGLE
+        // v1.32.0 (POST-CLOSE HOTFIX 2026-05-21) — SINGLE
         // outer `block_on_store` wraps BOTH the eager pin acquisition
         // AND the flow execution. This is the load-bearing structural
         // property: pin acquire + every SQL dispatch + implicit pin
@@ -4720,7 +4720,7 @@ pub fn execute_server_flow(
             // lifetime is bounded by `block_on_store` which is
             // bounded by the enclosing function — so the borrows
             // outlive the future safely.
-            // §Fase 96.a — the filter yields nothing under a session/direct
+            // v2.51.0 — the filter yields nothing under a session/direct
             // pooler, so the eager pin loop is skipped (no acquire, no
             // misleading warn); store ops then release across cognition.
             for store_name in needed_pg_stores
@@ -4785,12 +4785,12 @@ pub fn execute_server_flow(
                 &store_registry,
                 &mut pinned_conns,
                 api_key_override,
-                // §Fase 65.A — structural navigate on the server path.
+                // v2.15.0 — structural navigate on the server path.
                 Some(&nav_dispatch),
             ).await
             // — 3. `pinned_conns` drops here → every PoolConnection
             //   drops on THIS runtime → `after_release(DEALLOCATE ALL)`
-            //   hook runs (Fase 38.x.a D2) → conns return to pool
+            // hook runs (v1.31.0 D2) → conns return to pool
             //   clean. The whole pin lifecycle stayed on one runtime.
         }).map_err(|e| format!("Backend error: {:?}", e))?
     };
@@ -4798,7 +4798,7 @@ pub fn execute_server_flow(
     let hooks = crate::hooks::HookManager::new();
     let r = report.build(success, &hooks);
 
-    // §Fase 39.c.z — derive blame from the report BEFORE the
+    // v2.0.0 — derive blame from the report BEFORE the
     // partial-move loop below. The producer walks the units +
     // steps by reference; the loop afterward consumes them. We
     // must extract any structured observability from `r` first.
@@ -4837,7 +4837,7 @@ pub fn execute_server_flow(
         }
     }).collect();
 
-    // §Fase 39.c.y — derive semantic provenance events from the IR
+    // v2.0.0 — derive semantic provenance events from the IR
     // walk. Each store-touching step + each shield/ots/mandate/compute
     // apply emits a `kind:identifier` slug into the chain. The slug
     // taxonomy is closed (see ServerRunnerMetrics.provenance_events
@@ -4856,14 +4856,14 @@ pub fn execute_server_flow(
             &provenance_walk,
         );
 
-    // §Fase 39.c.z — blame_attribution was derived BEFORE the
+    // v2.0.0 — blame_attribution was derived BEFORE the
     // partial-move loop above (the report's units/steps are
     // consumed into step_names/step_results by that loop). The
     // priority order is: anchor breach > shield rejection > store
     // breach > backend soft-fail > type mismatch. The first
     // surfaced wins per `merge_blame`'s stable tie-break.
 
-    // §Fase 55.b/c — capture the epistemic envelopes via the SINGLE shared
+    // v2.7.0 — capture the epistemic envelopes via the SINGLE shared
     // derivation (the streaming path funnels through the same function).
     let epistemic_envelopes = derive_epistemic_envelopes_for_flow(ir, flow_name);
 
@@ -4879,14 +4879,14 @@ pub fn execute_server_flow(
         provenance_events,
         blame_attribution,
         epistemic_envelopes,
-        // §Fase 65.F — the LEGACY executor (kill-switch `AXON_LEGACY_EXECUTOR`,
-        // slated for deletion in §65.E.3) surfaces store-op failures INLINE in
+        // v2.15.0 — the LEGACY executor (kill-switch `AXON_LEGACY_EXECUTOR`,
+        // slated for deletion in v2.15.0) surfaces store-op failures INLINE in
         // the step result text (`"<store> → store error: …"`) and CONTINUES
         // rather than aborting, so it has no single hard-failure detail to
         // hoist here. `None` keeps the legacy wire byte-identical; the honest
         // hard-fail slot is a property of the unified (default) engine above.
         error: None,
-        // §Fase 67.c — the legacy executor surfaces row counts ONLY inline
+        // v2.21.0 — the legacy executor surfaces row counts ONLY inline
         // in the step result text (`"N row(s) persisted"`), not structurally
         // (same rationale as `error: None` above — the structured slot is a
         // property of the unified/default engine). The daemon + every
@@ -4895,7 +4895,7 @@ pub fn execute_server_flow(
         rows_persisted: 0,
         rows_mutated: 0,
         rows_purged: 0,
-        // §Fase 91.b — the legacy (kill-switch) executor does not inject
+        // v2.46.0 — the legacy (kill-switch) executor does not inject
         // temporal context; the structured record is a property of the
         // unified/default engine (same rationale as `error: None` above).
         temporal_context: None,
@@ -4940,7 +4940,7 @@ pub fn run_run(
         }
     };
 
-    // ── 2–5. Compile: EMS when imports are declared (§Fase 115.g),
+    // ── 2–5. Compile: EMS when imports are declared (v2.76.0),
     // the classic single-file pipeline otherwise.
     let ir_program = if axon_frontend::ems::source_declares_imports(&source, file) {
         let opts = axon_frontend::ems::EmsOptions {
@@ -5066,9 +5066,9 @@ pub fn run_run(
     let mut registry = ToolRegistry::new();
     registry.register_from_ir(&ir_program.tools);
 
-    // §Fase 35.e — build the axonstore registry (D2 closed-catalog
+    // v1.30.0 — build the axonstore registry (D2 closed-catalog
     // gate). An unknown `backend:` fails fast, before execution.
-    // §Fase 113 — governed: the store derives DSN + pool size from its `resource:`,
+    // v2.67.0 — governed: the store derives DSN + pool size from its `resource:`,
     // and leases over those resources are acquired (see `execute_server_flow`).
     let store_registry = match StoreRegistry::build_governed(
         &ir_program.axonstore_specs,
@@ -5113,7 +5113,7 @@ pub fn run_run(
         return 0;
     }
 
-    // §Fase 37.x.j (D1) — CLI path: no flow-scoped pinning (the CLI
+    // v1.32.0 (D1) — CLI path: no flow-scoped pinning (the CLI
     // runs one flow per process invocation; the legacy per-step
     // `StoreConn::Pool` fallback is acceptable for one-shot runs and
     // keeps CLI smoke tests byte-identical to pre-37.x.j).
@@ -5220,10 +5220,10 @@ pub fn run_run(
     if success { 0 } else { 1 }
 }
 
-// ── §Fase 35.e — sync-runner axonstore wiring tests ─────────────────
+// ── v1.30.0 — sync-runner axonstore wiring tests ─────────────────
 
 #[cfg(test)]
-mod fase58e_tests {
+mod tests_2 {
     use super::*;
 
     #[test]
@@ -5259,7 +5259,7 @@ mod fase58e_tests {
     #[test]
     fn coerce_optional_and_generic_types_use_base() {
         assert_eq!(coerce_tool_arg_value("7", Some("Int?")), serde_json::json!(7));
-        // §116.c.4 — `List<String>` → base `List` → a JSON ARRAY. A lone value
+        // v2.77.0 — `List<String>` → base `List` → a JSON ARRAY. A lone value
         // for a List param is a 1-element list (never a bare string).
         assert_eq!(
             coerce_tool_arg_value("x", Some("List<String>")),
@@ -5269,7 +5269,7 @@ mod fase58e_tests {
 
     #[test]
     fn coerce_list_materializes_the_surface_form_into_a_json_array() {
-        // §116.c.4 — the parser's lossy surface rendering `[a, b]` (items unquoted,
+        // v2.77.0 — the parser's lossy surface rendering `[a, b]` (items unquoted,
         // comma-joined) becomes a real JSON array — the FB multi-photo / IG carousel
         // unblocker. Pre-116.c.4 this stayed the opaque string "[a, b]".
         assert_eq!(
@@ -5307,7 +5307,7 @@ mod fase58e_tests {
 
     #[test]
     fn build_body_emits_a_list_param_as_a_json_array_alongside_scalars() {
-        // §116.c.4 — the EXACT assembly the runner runs at dispatch: a
+        // v2.77.0 — the EXACT assembly the runner runs at dispatch: a
         // `use facebook_publish_post(body = "album", media_urls = [a, b, c])`
         // must reach the connector with `media_urls` as a JSON ARRAY (so
         // build_publish_request materializes the multi-photo flow), while a
@@ -5339,7 +5339,7 @@ mod fase58e_tests {
     #[test]
     fn coerce_unparseable_scalar_falls_back_to_string_not_dropped() {
         // Declared Int/Bool but the (interpolated) value isn't one → lenient
-        // string rather than a drop. The §58.d type-checker already flags a
+        // string rather than a drop. The v2.8.0 type-checker already flags a
         // literal mismatch at compile time.
         assert_eq!(
             coerce_tool_arg_value("not-a-number", Some("Int")),
@@ -5397,7 +5397,7 @@ mod fase58e_tests {
 }
 
 #[cfg(test)]
-mod fase35e_tests {
+mod tests_3 {
     use super::*;
 
     fn pg_store(name: &str, connection: &str) -> IRAxonStore {
@@ -5425,17 +5425,17 @@ mod fase35e_tests {
         assert_eq!(n, 35);
     }
 
-    /// §Fase 122.e — the bridge carries the AMBIENT TENANT across its thread.
+    /// v2.89.0 — the bridge carries the AMBIENT TENANT across its thread.
     ///
     /// `block_on_store` runs its future on a freshly-spawned OS thread, and a
     /// fresh thread starts with no task-local. Every store op the synchronous
     /// runner performs crosses this boundary, and `storage_postgres.rs` derives
     /// `SET LOCAL axon.current_tenant` from `current_tenant_id()` in 30 places —
-    /// so before §122.e that RLS scope resolved to `'default'`, silently,
+    /// so before v2.89.0 that RLS scope resolved to `'default'`, silently,
     /// because the fallback is a plausible string rather than an error.
     ///
     /// This test lives HERE, in the crate, because `block_on_store` is private:
-    /// the boundary gate in `tests/fase122_e_…` can only reach the public
+    /// the boundary gate in `tests/tenant_survives_task_boundaries.rs` can only reach the public
     /// primitives, which means it proves `scope_tenant_blocking` works and
     /// proves nothing about whether this function calls it. That gap is the
     /// exact shape of the defect being fixed — a correct mechanism with no
@@ -5492,7 +5492,7 @@ mod fase35e_tests {
     #[cfg(feature = "postgres")]
     #[test]
     fn sql_persist_below_confidence_floor_is_blocked() {
-        // §35.g Pillar I — a store declaring confidence_floor rejects
+        // v1.30.0 Pillar I — a store declaring confidence_floor rejects
         // an un-elevated persist (no `_confidence` binding) with a
         // typed epistemic error, before any row is written.
         let mut store = pg_store("ledger", "postgresql://u:p@localhost:5432/db");
@@ -5527,7 +5527,7 @@ mod fase35e_tests {
     #[cfg(feature = "postgres")]
     #[test]
     fn sql_persist_scopes_the_row_to_the_declared_field_block() {
-        // §Fase 35.o — a `persist` carrying a `{ col: value }` block
+        // v1.30.0 — a `persist` carrying a `{ col: value }` block
         // writes EXACTLY those columns (value expressions interpolated
         // against the flow context), ignoring every other binding the
         // flow holds. The malformed DSN fails at connect (typed
@@ -5561,7 +5561,7 @@ mod fase35e_tests {
     #[cfg(feature = "postgres")]
     #[test]
     fn sql_mutate_scopes_the_set_to_the_declared_field_block() {
-        // §Fase 35.p — a `mutate` carrying a `{ col: value }` block
+        // v1.30.0 — a `mutate` carrying a `{ col: value }` block
         // builds the UPDATE SET from EXACTLY those columns (value
         // expressions interpolated), ignoring every other binding the
         // flow holds. The malformed DSN fails at connect (typed
@@ -5592,13 +5592,13 @@ mod fase35e_tests {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  §Fase 65.0 / 65.A — unified executor: structural navigate bridge
+// v2.15.0 — unified executor: structural navigate bridge
 // ─────────────────────────────────────────────────────────────────────────────
 #[cfg(test)]
-mod fase65_navigate_bridge {
+mod navigate_bridge {
     use super::*;
 
-    /// §Fase 65.A — the bridge is ON by default (the legacy LLM fallthrough is a
+    /// v2.15.0 — the bridge is ON by default (the legacy LLM fallthrough is a
     /// correctness bug for a pure `navigate`); the `AXON_UNIFIED_EXECUTOR`
     /// kill-switch reverts it. Serialized via a process-global env var, so this
     /// test owns the var for its body.
@@ -5615,9 +5615,9 @@ mod fase65_navigate_bridge {
         std::env::remove_var("AXON_UNIFIED_EXECUTOR");
     }
 
-    /// §Fase 65.B + §108.a — `routes_through_dispatcher` selects the pure-effect
+    /// v2.15.0 + v2.63.0 — `routes_through_dispatcher` selects the pure-effect
     /// MDN/PIX verbs (navigate / drill / trail), the custody verbs (mint /
-    /// rotate), and — since §108.a — the five DATA-PLANE verbs (ingest / focus /
+    /// rotate), and — since v2.63.0 — the five DATA-PLANE verbs (ingest / focus /
     /// associate / aggregate / explore), whose dispatcher handlers fail CLOSED
     /// until the columnar engine lands. Genuinely-cognitive verbs (forge /
     /// corroborate) and multi-agent verbs stay on the LLM path.
@@ -5649,10 +5649,10 @@ mod fase65_navigate_bridge {
             output_name: "o".into(),
         });
         assert!(routes_through_dispatcher(&drill));
-        // §108.a — a data-plane verb MUST route to the dispatcher, where its
+        // v2.63.0 — a data-plane verb MUST route to the dispatcher, where its
         // handler refuses without the engine. The legacy alternative (this
         // executor's LLM path) would NARRATE a selection that never scanned
-        // a row — the exact hallucination §108.a exists to end.
+        // a row — the exact hallucination v2.63.0 exists to end.
         let focus = IRFlowNode::Focus(IRFocusStep {
             node_type: "focus",
             source_line: 0,
@@ -5685,11 +5685,11 @@ mod fase65_navigate_bridge {
         assert!(!routes_through_dispatcher(&corroborate));
     }
 
-    /// §Fase 65.A — THE anti-hallucination guarantee (Kivi acceptance, unit
+    /// v2.15.0 — THE anti-hallucination guarantee (Kivi acceptance, unit
     /// scope): a store-sourced `navigate` whose backing store is NOT Postgres
-    /// (here an empty registry) binds an EMPTY result — the §64.B honest degrade
+    /// (here an empty registry) binds an EMPTY result — the v2.14.0 honest degrade
     /// — instead of fabricating documents. The full real-rows → real-hits E2E
-    /// runs in the Postgres CI lane (the §37.x.j precedent). Critically, this
+    /// runs in the Postgres CI lane (the v1.32.0 precedent). Critically, this
     /// path NEVER reaches the LLM: the bridge returns structural output directly.
     #[tokio::test]
     async fn store_sourced_navigate_without_postgres_binds_empty_not_hallucinated() {
@@ -5736,7 +5736,7 @@ mod fase65_navigate_bridge {
         );
     }
 
-    /// §Fase 65.B — a `drill` with no indexable PIX source in scope degrades to
+    /// v2.15.0 — a `drill` with no indexable PIX source in scope degrades to
     /// its structural placeholder (NOT an LLM call). Proves drill is routed to the
     /// dispatcher's pure handler, and that the result binds back to the runner
     /// context under the drill's `output:` name.
@@ -5765,13 +5765,13 @@ mod fase65_navigate_bridge {
         assert_eq!(ctx.get("section").map(|s| s.to_string()), Some(out));
     }
 
-    /// §Fase 65.D — the FULL Kivi flow shape (navigate → `return hits`) through
+    /// v2.15.0 — the FULL Kivi flow shape (navigate → `return hits`) through
     /// the PRODUCTION non-streaming executor (`execute_server_flow` →
-    /// `execute_real_async`, backend ≠ "stub"). §65.A fixed the `navigate` step;
+    /// `execute_real_async`, backend ≠ "stub"). v2.15.0 fixed the `navigate` step;
     /// this asserts the `return hits` that FOLLOWS resolves to the REAL navigate
     /// output instead of re-HALLUCINATING via the LLM — the second half of the
     /// Kivi gap (its envelope showed `step_names: ["LtmGraph","return"]`, BOTH
-    /// LLM-fabricated). A static §63 corpus keeps it DB-free; neither navigate
+    /// LLM-fabricated). A static v2.13.0 corpus keeps it DB-free; neither navigate
     /// (structural) nor return (control flow) calls the LLM, so a DUMMY key
     /// suffices — and if `return` regressed to an LLM step, the dummy key would
     /// surface a backend error instead of the resolved value.
@@ -5798,7 +5798,7 @@ flow Recall(q: Text) -> Text {
             &ir,
             "Recall",
             "anthropic", // a real backend name (NOT "stub" → execute_real_async)
-            "acme",      // §Fase 95.f — tenant scope
+            "acme", // v2.49.0 — tenant scope
             "kivi.axon",
             Some("dummy-key"), // no step actually calls the LLM
             Some(&body),
@@ -5807,14 +5807,14 @@ flow Recall(q: Text) -> Text {
             None,
             None,
             None,
-            None, // §Fase 72.c — budget (test: unbudgeted)
-            None, // §Fase 114.e — channel semaphores (test: none)
-            None, // §Fase 114.f — tool leases (test: none)
-            None, // §Fase 74.f — event outbox (test: no durable sink)
-            None, // §Fase 92.c — credential minter (test: none)
-            None, // §Fase 94.d — secret custody (test: none)
-                None, // §Fase 108.b dataspace_engine (tests: fail closed)
-                None, // §Fase 102 scrape_overrides
+            None, // v2.28.0 — budget (test: unbudgeted)
+            None, // v2.69.0 — channel semaphores (test: none)
+            None, // v2.69.0 — tool leases (test: none)
+            None, // v2.31.0 — event outbox (test: no durable sink)
+            None, // v2.46.0 — credential minter (test: none)
+            None, // v2.48.0 — secret custody (test: none)
+                None, // v2.63.0 dataspace_engine (tests: fail closed)
+                None, // v2.56.0 scrape_overrides
 )
         .expect("flow runs");
 
@@ -5823,12 +5823,12 @@ flow Recall(q: Text) -> Text {
         let ret = metrics.step_results.last().expect("a return result");
         // THE load-bearing assertions: `return hits` resolves to the navigate
         // step's output (binding lookup) — NOT the LLM "(stub)" hallucination it
-        // produced before §65.D (the Kivi envelope's fabricated second step).
+        // produced before v2.15.0 (the Kivi envelope's fabricated second step).
         // `step_results[0] == ret` is the proof: it holds iff `return` carried
         // the navigate output, and FAILS if `return` hit the LLM (then the
         // return result would be "(stub)" while the navigate output is its own
         // value). The navigate producing REAL content from real rows is covered
-        // separately by the Postgres lane (`fase65_navigate_pg_integration::t1`).
+        // separately by the Postgres lane (`navigate_pg_integration::t1`).
         assert_ne!(ret, "(stub)", "`return` must NOT be dispatched to the LLM");
         assert_eq!(
             metrics.step_results[0], *ret,
@@ -5837,7 +5837,7 @@ flow Recall(q: Text) -> Text {
         );
     }
 
-    /// §Fase 65.E — the REVERSIBLE unified driver: `collect_via_dispatcher` runs
+    /// v2.15.0 — the REVERSIBLE unified driver: `collect_via_dispatcher` runs
     /// the Kivi flow (navigate → return) through the SAME dispatcher the SSE path
     /// uses, with a buffer sink, and produces the real result. The `return`
     /// carries the navigate output (not "(stub)"); navigate is structural + return
@@ -5883,7 +5883,7 @@ flow Recall(q: Text) -> Text {
             mandate_specs: std::sync::Arc::new(Vec::new()),
             lambda_data_specs: std::sync::Arc::new(Vec::new()),
             ots_specs: std::sync::Arc::new(Vec::new()),
-            // §Fase 122.d — no `cache` declaration in these fixtures, so an
+            // v2.89.0 — no `cache` declaration in these fixtures, so an
             // empty plan: nothing is memoised and dispatch is unchanged.
             cache_plan: std::sync::Arc::new(crate::cache_runtime::CachePlan::default()),
         };
@@ -5891,9 +5891,9 @@ flow Recall(q: Text) -> Text {
         let collected = collect_via_dispatcher(
             flow,
             "stub",
-            "", // §Fase 95.f — tenant_id (test: no custody, empty scope ok)
+            "", // v2.49.0 — tenant_id (test: no custody, empty scope ok)
             "",
-            None, // §Fase 91.b — default_now_tz (test: no frame zone)
+            None, // v2.46.0 — default_now_tz (test: no frame zone)
             None,
             None,
             None,
@@ -5902,14 +5902,14 @@ flow Recall(q: Text) -> Text {
             std::sync::Arc::new(ToolRegistry::new()),
             &pb,
             std::sync::Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
-            None, // §Fase 72.c — budget (test: unbudgeted)
-            None, // §Fase 114.e — channel semaphores (test: none)
-            None, // §Fase 114.f — tool leases (test: none)
-            None, // §Fase 74.f — event bus (test: no durable sink)
-            None, // §Fase 74.f — event outbox (test: no durable sink)
-            std::sync::Arc::new(std::collections::HashMap::new()), // §Fase 92.c — credentials
-            None, // §Fase 92.c — credential minter (test: none)
-            None, // §Fase 94.d — secret custody (test: none)
+            None, // v2.28.0 — budget (test: unbudgeted)
+            None, // v2.69.0 — channel semaphores (test: none)
+            None, // v2.69.0 — tool leases (test: none)
+            None, // v2.31.0 — event bus (test: no durable sink)
+            None, // v2.31.0 — event outbox (test: no durable sink)
+            std::sync::Arc::new(std::collections::HashMap::new()), // v2.46.0 — credentials
+            None, // v2.46.0 — credential minter (test: none)
+            None, // v2.48.0 — secret custody (test: none)
         )
         .await;
 
@@ -5922,12 +5922,12 @@ flow Recall(q: Text) -> Text {
         assert_eq!(collected.step_results.first(), collected.step_results.last());
     }
 
-    /// §Fase 105.h — a flow-body `let` is MATERIALISED (not dropped to the LLM):
+    /// v2.60.0 — a flow-body `let` is MATERIALISED (not dropped to the LLM):
     /// its value binds under the target name so `${x}` interpolation AND a downstream
     /// reference resolve it. Pre-105.h the step_type check was `"let_binding"` while
     /// the runtime emits `"let"` (extract_step_info), so a `let` silently fell to the
     /// model. A `let`'s step_name IS its target, so it lands in `step_results` under
-    /// the target name — exactly what the §105.g `deliver` resolver reads.
+    /// the target name — exactly what the v2.60.0 `deliver` resolver reads.
     #[test]
     fn execute_server_flow_materialises_a_let_binding() {
         let source = r#"
@@ -5952,13 +5952,13 @@ flow Lead() -> Text {
             None,                                 // llm_base_url
             None,                                 // llm_chat_path
             None,                                 // budget
-            None,                                 // §Fase 114.e channel semaphores
-            None, // §Fase 114.f — tool leases (test: none)
+            None, // v2.69.0 channel semaphores
+            None, // v2.69.0 — tool leases (test: none)
             None,                                 // event_outbox
             None,                                 // credential_minter
             None,                                 // secret_custody
             None,                                 // (schemas / etc.)
-            None, // §Fase 108.b dataspace_engine (tests: fail closed)
+            None, // v2.63.0 dataspace_engine (tests: fail closed)
         )
         .expect("flow runs");
         assert!(metrics.success, "the let flow runs");
@@ -5967,7 +5967,7 @@ flow Lead() -> Text {
         // the step_type check was `"let_binding"` ≠ the runtime `"let"`, so `email`
         // was unbound and the return could not resolve it.) The DEPLOYED executor's
         // arm additionally `report.record_step`s the let under its target name, so a
-        // `deliver` ref reads it from `step_results` (§105.g resolver).
+        // `deliver` ref reads it from `step_results` (v2.60.0 resolver).
         let ret = metrics.step_results.last().expect("return value");
         assert_eq!(
             ret, "ada@acme.com",
@@ -5975,7 +5975,7 @@ flow Lead() -> Text {
         );
     }
 
-    /// §Fase 74.f.7 (Kivi brief #44) — DIRECT repro of the event-consumer binding:
+    /// v2.31.0 (Kivi brief #44) — DIRECT repro of the event-consumer binding:
     /// `execute_server_flow` for a flow invoked BY NAME (no top-level `run`, the
     /// daemon-listener path) MUST bind the flow's params from the request body and
     /// make them resolvable as `${param}`. This is exactly what the event drain
@@ -5995,7 +5995,7 @@ flow Echo(p: Text) -> Text {
             &ir,
             "Echo",
             "stub",
-            "acme", // §Fase 95.f — tenant scope
+            "acme", // v2.49.0 — tenant scope
             "echo.axon",
             None,
             Some(&body),
@@ -6005,13 +6005,13 @@ flow Echo(p: Text) -> Text {
             None,
             None,
             None, // budget
-            None, // §Fase 114.e — channel semaphores (test: none)
-            None, // §Fase 114.f — tool leases (test: none)
+            None, // v2.69.0 — channel semaphores (test: none)
+            None, // v2.69.0 — tool leases (test: none)
             None, // outbox
-            None, // §Fase 92.c — credential minter (test: none)
-            None, // §Fase 94.d — secret custody (test: none)
-                None, // §Fase 108.b dataspace_engine (tests: fail closed)
-                None, // §Fase 102 scrape_overrides
+            None, // v2.46.0 — credential minter (test: none)
+            None, // v2.48.0 — secret custody (test: none)
+                None, // v2.63.0 dataspace_engine (tests: fail closed)
+                None, // v2.56.0 scrape_overrides
 )
         .expect("flow runs");
         assert!(metrics.success, "the flow runs");
@@ -6022,7 +6022,7 @@ flow Echo(p: Text) -> Text {
         );
     }
 
-    /// §Fase 74.f.7 (Kivi brief #44) — the EXACT consumer shape: TWO params, the
+    /// v2.31.0 (Kivi brief #44) — the EXACT consumer shape: TWO params, the
     /// SECOND used downstream, fed the FULL event payload (the row `s`, with extra
     /// fields). Mirrors `LearnFromHibernation(tenant_id, session_id_generic)` over
     /// the `SessionHibernated` payload, to catch a param-order / extra-field /
@@ -6050,13 +6050,13 @@ flow Learn(tenant_id: Text, session_id_generic: Text) -> Text {
             None, // llm_base_url
             None, // llm_chat_path
             None, // budget
-            None, // §Fase 114.e channel semaphores
-            None, // §Fase 114.f — tool leases (test: none)
+            None, // v2.69.0 channel semaphores
+            None, // v2.69.0 — tool leases (test: none)
             None, // event_outbox
-            None, // §Fase 92.c — credential minter (test: none)
-            None, // §Fase 94.d — secret custody (test: none)
-                None, // §Fase 108.b dataspace_engine (tests: fail closed)
-                None, // §Fase 102 scrape_overrides
+            None, // v2.46.0 — credential minter (test: none)
+            None, // v2.48.0 — secret custody (test: none)
+                None, // v2.63.0 dataspace_engine (tests: fail closed)
+                None, // v2.56.0 scrape_overrides
 )
         .expect("flow runs");
         assert!(metrics.success);
@@ -6067,13 +6067,13 @@ flow Learn(tenant_id: Text, session_id_generic: Text) -> Text {
         );
     }
 
-    /// §Fase 74.f — the headline of the OSS producer wiring: when a durable
+    /// v2.31.0 — the headline of the OSS producer wiring: when a durable
     /// `event_outbox` is injected into `execute_server_flow` (the enterprise
     /// daemon path), a flow's `emit` to a `persistent_axonstore` channel APPENDS
     /// to that outbox — durably — instead of buffering in-process. This proves the
     /// runner builds the typed bus from the program's `channel` defs + attaches
     /// the bus+outbox pair so `run_emit` routes the persistent emit to the outbox.
-    /// Without the outbox (`None`) the emit stays in-process (the pre-§74 path,
+    /// Without the outbox (`None`) the emit stays in-process (the pre-v2.31.0 path,
     /// covered by the other runner tests).
     #[test]
     fn execute_server_flow_appends_a_persistent_emit_to_the_injected_outbox() {
@@ -6097,7 +6097,7 @@ flow Producer(tenant_id: Text) -> Text {
             &ir,
             "Producer",
             "stub",
-            "acme", // §Fase 95.f — tenant scope
+            "acme", // v2.49.0 — tenant scope
             "producer.axon",
             None,
             Some(&body),
@@ -6106,15 +6106,15 @@ flow Producer(tenant_id: Text) -> Text {
             None,
             None,
             None,
-            None, // §Fase 72.c — budget (unbudgeted)
-            None, // §Fase 114.e — channel semaphores (test: none)
-            None, // §Fase 114.f — tool leases (test: none)
-            // §Fase 74.f — inject the durable outbox (the enterprise daemon path).
+            None, // v2.28.0 — budget (unbudgeted)
+            None, // v2.69.0 — channel semaphores (test: none)
+            None, // v2.69.0 — tool leases (test: none)
+            // v2.31.0 — inject the durable outbox (the enterprise daemon path).
             Some(probe.clone() as std::sync::Arc<dyn EventOutbox>),
-            None, // §Fase 92.c — credential minter (test: none)
-            None, // §Fase 94.d — secret custody (test: none)
-                None, // §Fase 108.b dataspace_engine (tests: fail closed)
-                None, // §Fase 102 scrape_overrides
+            None, // v2.46.0 — credential minter (test: none)
+            None, // v2.48.0 — secret custody (test: none)
+                None, // v2.63.0 dataspace_engine (tests: fail closed)
+                None, // v2.56.0 scrape_overrides
 )
         .expect("flow runs");
 
@@ -6151,7 +6151,7 @@ flow Producer(tenant_id: Text) -> Text {
             mandate_specs: std::sync::Arc::new(Vec::new()),
             lambda_data_specs: std::sync::Arc::new(Vec::new()),
             ots_specs: std::sync::Arc::new(Vec::new()),
-            // §Fase 122.d — no `cache` declaration in these fixtures, so an
+            // v2.89.0 — no `cache` declaration in these fixtures, so an
             // empty plan: nothing is memoised and dispatch is unchanged.
             cache_plan: std::sync::Arc::new(crate::cache_runtime::CachePlan::default()),
         }

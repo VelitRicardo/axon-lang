@@ -2,7 +2,7 @@
 //
 // Produces a regulated payment-decision flow with a financial-data
 // redaction shield, audited HTTP boundary, and a transaction-posting
-// lane that segregates requester from approver (§404 SoD).
+// lane that segregates requester from approver (an earlier release SoD).
 
 // ── Regulated data types ──────────────────────────────────────────
 

@@ -10,7 +10,7 @@
 //!
 //! API key sourced from environment: <PROVIDER>_API_KEY.
 //!
-//! # §Fase 33.x.i — Retirement-in-progress
+//! # v1.24.0 — Retirement-in-progress
 //!
 //! This module is the LEGACY synchronous LLM-call surface. The
 //! production async path uses [`crate::backends::Backend`] +
@@ -33,7 +33,7 @@
 //! resilient_backend.rs, tenant_secrets.rs) carry a top-level
 //! `#![allow(deprecated)]` while the deeper async migration of
 //! the synchronous CLI/server paths progresses under a
-//! followup sub-fase (Fase 33.x.i.2 — sync→async migration of the
+//! followup step (v1.24.0 — sync→async migration of the
 //! 4 callers, separate from this consolidation cycle).
 
 #![allow(deprecated)]
@@ -99,14 +99,14 @@ fn provider_spec(name: &str) -> Option<ProviderSpec> {
     }
 }
 
-/// §Fase 33.x.i — Re-export the consolidated single source of truth.
+/// v1.24.0 — Re-export the consolidated single source of truth.
 ///
 /// The canonical 7-provider list lives in
 /// [`crate::backends::CANONICAL_PROVIDERS`]; this re-export keeps
 /// existing call sites compiling without churn while the deeper
-/// async migration (Fase 33.x.i.2) progresses. Drift-gated by
+/// async migration (v1.24.0) progresses. Drift-gated by
 /// `backends::resolver_tests::canonical_providers_equals_legacy_supported_backends`
-/// + `tests/fase33x_i_mono_file_retirement.rs`.
+/// + `tests/mono_file_retirement.rs`.
 pub use crate::backends::CANONICAL_PROVIDERS as SUPPORTED_BACKENDS;
 
 // ── Public types ────────────────────────────────────────────────────────────
@@ -135,7 +135,7 @@ impl std::fmt::Display for BackendError {
 
 // ── Public API ──────────────────────────────────────────────────────────────
 
-/// §Fase 33.x.i — Get the API key for a given backend from
+/// v1.24.0 — Get the API key for a given backend from
 /// environment.
 ///
 /// This is a thin shim around [`crate::backends::get_api_key`]
@@ -151,11 +151,11 @@ pub fn get_api_key(backend: &str) -> Result<String, BackendError> {
 /// Call the LLM API for the given backend (blocking).
 /// Dispatches to the correct API family based on provider spec.
 ///
-/// §Fase 33.x.i — DEPRECATED. New code MUST use the async
+/// v1.24.0 — DEPRECATED. New code MUST use the async
 /// [`crate::backends::Backend`] trait via
 /// [`crate::backends::Registry`]. The 4 caller files of this
 /// function carry `#![allow(deprecated)]` while the deeper async
-/// migration progresses under Fase 33.x.i.2.
+/// migration progresses under v1.24.0.
 #[deprecated(
     since = "1.25.0",
     note = "use crate::backends::Registry::get(name)?.complete() instead; \
@@ -219,7 +219,7 @@ pub fn call(
 /// Call the LLM API with streaming — text chunks arrive via `on_chunk` callback.
 /// Returns the complete `ModelResponse` after the stream ends.
 /// Anchor checking and other post-processing run on the accumulated text.
-/// §Fase 33.x.i — DEPRECATED single-message streaming call.
+/// v1.24.0 — DEPRECATED single-message streaming call.
 /// New code MUST use [`crate::backends::Backend::stream`] instead.
 #[deprecated(
     since = "1.25.0",
@@ -287,7 +287,7 @@ where
 /// Call the LLM API with conversation history (blocking).
 /// The `messages` slice contains prior user/assistant turns. The current
 /// `user_prompt` is appended as the final user message.
-/// §Fase 33.x.i — DEPRECATED multi-turn synchronous call.
+/// v1.24.0 — DEPRECATED multi-turn synchronous call.
 /// New code MUST use [`crate::backends::Backend::complete`] with
 /// a populated `ChatRequest::messages` history.
 #[deprecated(
@@ -356,7 +356,7 @@ pub fn call_multi(
 }
 
 /// Call the LLM API with conversation history and streaming.
-/// §Fase 33.x.i — DEPRECATED multi-turn streaming call.
+/// v1.24.0 — DEPRECATED multi-turn streaming call.
 /// New code MUST use [`crate::backends::Backend::stream`] with a
 /// populated `ChatRequest::messages` history.
 #[deprecated(

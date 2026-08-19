@@ -1,6 +1,6 @@
 //! axon-csys — C23 metal-bound kernels for axon-lang.
 //!
-//! Fase 25 — Silicon + Cognition (sesión 1). This crate is the Rust shim
+//! v1.19.0 — Silicon + Cognition (sesión 1). This crate is the Rust shim
 //! around a small set of carefully chosen C23 kernels. The C side handles
 //! what C does best — cache-line layout, bit twiddling, hardware
 //! intrinsics, FSM dispatch with computed gotos. The Rust side handles
@@ -24,7 +24,7 @@
 //! identical / epsilon-bounded drift gate that catches divergence before
 //! it leaves CI.
 
-// §Fase 119.h — these four modules ARE the C kernels: a cache-line slab
+// v2.83.0 — these four modules ARE the C kernels: a cache-line slab
 // allocator, a G.711/PCM resampler, a computed-goto effects FSM, and the
 // build-infrastructure probe. There is no meaningful pure-Rust "fallback" for
 // them — a Rust slab allocator is a different artifact, not the same one —
@@ -41,30 +41,30 @@ pub mod crypto;
 pub mod effects;
 pub mod envelope;
 // ⚠️ Every module that binds C symbols carries its OWN `#[cfg]`, attribute
-// directly above the `pub mod` line. §124.b inserted `ed25519` between an
+// directly above the `pub mod` line. v4.0.0 inserted `ed25519` between an
 // existing cfg and the `probe` it guarded — the attribute silently moved to
 // the new module and `mldsa`/`probe`/`shake` compiled in non-native builds,
 // referencing C that was never built. The local workspace linked anyway
 // (nothing reached the dead wrappers); the packaged `axon-lang` verify did
 // not. axon-csys 0.4.0 shipped with that defect and is yanked; 0.4.1 is the
 // corrected build.
-/// §Fase 124.b — Ed25519 (RFC 8032) bound from the VENDORED kernel.
+/// v4.0.0 — Ed25519 (RFC 8032) bound from the VENDORED kernel.
 /// Implements nothing itself; see `c-src/vendor/PROVENANCE.toml`.
 #[cfg(feature = "native")]
 pub mod ed25519;
-/// §Fase 124.b — ML-DSA-65 (FIPS 204) bound from the VENDORED kernel.
+/// v4.0.0 — ML-DSA-65 (FIPS 204) bound from the VENDORED kernel.
 /// Implements nothing itself; see `c-src/vendor/PROVENANCE.toml`.
 #[cfg(feature = "native")]
 pub mod mldsa;
 #[cfg(feature = "native")]
 pub mod probe;
-/// §Fase 124.b — FIPS 202 (SHA-3 / SHAKE) bound from the VENDORED kernel.
+/// v4.0.0 — FIPS 202 (SHA-3 / SHAKE) bound from the VENDORED kernel.
 /// Implements nothing itself; see `c-src/vendor/PROVENANCE.toml`.
 #[cfg(feature = "native")]
 pub mod shake;
 pub mod tokens;
 
-// §Fase 39.c.x — re-export the epistemic envelope public surface.
+// v2.0.0 — re-export the epistemic envelope public surface.
 pub use envelope::{
     clamp_ceiling, theorem_5_1_ceiling_from_c, validate_degradation, EpistemicEnvelope,
     EpistemicEnvelopeCRepr, EpistemicKind, THEOREM_5_1_CEILING,

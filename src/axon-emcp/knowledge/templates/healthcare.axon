@@ -23,7 +23,7 @@ type ClinicalTrial compliance [HIPAA, GxP] {
 type DiagnosticReport { summary: String }
 
 // Request types — the endpoint body's field names match the flow's
-// parameter names (Fase 37 + 37.y D3 — Request Binding Contract).
+// parameter names (v1.32.0 + 37.y D3 — Request Binding Contract).
 type PatientSummaryRequest { rec: PatientRecord }
 type TrialEntryRequest     { entry: ClinicalTrial }
 

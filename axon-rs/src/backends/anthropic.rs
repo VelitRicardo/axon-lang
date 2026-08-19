@@ -1,4 +1,4 @@
-//! Anthropic Claude Messages API backend — Fase 24.c.
+//! Anthropic Claude Messages API backend — v1.18.0.
 //!
 //! Async port of the legacy `axon::backend::call_anthropic` (blocking
 //! `reqwest::blocking`) and the Python `axon.server.model_clients`
@@ -302,7 +302,7 @@ impl Backend for AnthropicBackend {
         &self,
         request: ChatRequest,
     ) -> Result<ChatStream, BackendError> {
-        // §Fase 33.d — Real Anthropic SSE streaming.
+        // v1.24.0 — Real Anthropic SSE streaming.
         //
         // Wire shape per https://docs.anthropic.com/claude/reference/streaming:
         //   POST /v1/messages  (body { ..., "stream": true })
@@ -405,7 +405,7 @@ impl Backend for AnthropicBackend {
                 }
             }
         });
-        // Step 5 — §Fase 33.x.e. Cancel-aware wrap so `next()`
+        // Step 5 — v1.24.0. Cancel-aware wrap so `next()`
         // returns `None` ≤100ms p95 after `request.cancel.cancel()`.
         let inner: ChatStream = Box::pin(chunks);
         Ok(super::sse_streaming::cancel_aware(inner, request.cancel.clone()))
@@ -641,7 +641,7 @@ type AnthropicChatStream =
     Pin<Box<dyn Stream<Item = Result<ChatChunk, BackendError>> + Send>>;
 
 // ────────────────────────────────────────────────────────────────────
-//  §Fase 33.d — SSE chunk parsing
+// v1.24.0 — SSE chunk parsing
 // ────────────────────────────────────────────────────────────────────
 
 /// Parse one Anthropic SSE event into an optional `ChatChunk`.
@@ -659,7 +659,7 @@ type AnthropicChatStream =
 ///     with `delta = delta.text`, no finish_reason yet.
 ///   - `content_block_delta` w/ other delta types (input_json_delta
 ///     for tool use, etc.) → empty-delta chunk; tool-use streaming
-///     surface lands in Fase 33.e.
+/// surface lands in v1.24.0.
 ///   - `message_start` → empty-delta chunk carrying initial usage
 ///     `{input_tokens: N}` so adopters can show "tokens budgeted"
 ///     before any text arrives.
@@ -1154,7 +1154,7 @@ mod tests {
 
     #[tokio::test]
     async fn stream_real_anthropic_sse_implementation_transport_path() {
-        // §Fase 33.d — Anthropic now ships a real SSE streamer.
+        // v1.24.0 — Anthropic now ships a real SSE streamer.
         // Unreachable-port test exercises the transport-error path.
         let b = AnthropicBackend::with_api_key(Some("k".into()))
             .with_base_url("http://127.0.0.1:1");
@@ -1183,7 +1183,7 @@ mod tests {
         }
     }
 
-    // ── §Fase 33.d — Anthropic SSE chunk parsing (pure-unit) ────────
+    // ── v1.24.0 — Anthropic SSE chunk parsing (pure-unit) ────────
 
     use super::parse_anthropic_chunk;
     use super::super::sse_streaming::SseEvent;
@@ -1298,7 +1298,7 @@ mod tests {
     fn parse_anthropic_input_json_delta_yields_empty_text_chunk() {
         // Tool-use streams emit input_json_delta — for 33.d we emit
         // an empty-delta chunk; the tool-use streaming surface lands
-        // in Fase 33.e.
+        // in v1.24.0.
         let ev = anthropic_event(
             "content_block_delta",
             r#"{"delta":{"type":"input_json_delta","partial_json":"{\"loc\":"}}"#,

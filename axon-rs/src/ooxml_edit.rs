@@ -1,22 +1,22 @@
-//! §Fase 100.e — the surgical edit engine: mutate an ingested OOXML package in
+//! v2.54.0 — the surgical edit engine: mutate an ingested OOXML package in
 //! place, touch only the targeted parts, leave every other part BYTE-IDENTICAL,
-//! and emit a machine-checkable **per-part hash manifest** proving it (D100.6 /
-//! D100.7).
+//! and emit a machine-checkable **per-part hash manifest** proving it (the design decision /
+//! the design decision).
 //!
-//! **Preserve-by-default (D100.6).** The editor NEVER round-trips through §99's
-//! authoring IR — that IR models a bounded subset (D99.9), so parsing a foreign
+//! **Preserve-by-default.** The editor NEVER round-trips through v2.53.0's
+//! authoring IR — that IR models a bounded subset, so parsing a foreign
 //! `.docx` into it and re-serialising would silently destroy tracked changes,
 //! comments, SmartArt, custom parts, and unknown namespaces. Instead it keeps
 //! the original package bytes and mutates only the targeted XML, re-zipping
-//! deterministically (the §99 writer discipline).
+//! deterministically (the v2.53.0 writer discipline).
 //!
-//! **The manifest is the payoff (D100.7).** For every part it records the
+//! **The manifest is the payoff.** For every part it records the
 //! `sha256` before and after and whether it was touched — so an auditor can
 //! verify an edit changed `word/document.xml` and *nothing else*: no macro
 //! added, no relationship rewritten, no custom part dropped. No document library
 //! on any runtime offers this.
 //!
-//! **Edits inherit taint (D100.8).** Opening an `Untrusted` document, editing a
+//! **Edits inherit taint.** Opening an `Untrusted` document, editing a
 //! cell, and saving does NOT produce a trusted document — laundering by round-
 //! trip is closed. The output carries the input's taint verbatim.
 
@@ -62,7 +62,7 @@ pub struct PartManifestEntry {
 pub struct EditedDocument {
     pub bytes: Vec<u8>,
     pub sha256_hex: String,
-    /// Inherited from the input (D100.8) — never elevated by the edit.
+    /// Inherited from the input — never elevated by the edit.
     pub taint: EpistemicTaint,
     pub manifest: Vec<PartManifestEntry>,
 }
@@ -85,7 +85,7 @@ impl EditedDocument {
 /// Why an edit was refused.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EditError {
-    /// The edit targets a part not present in the source package (§6).
+    /// The edit targets a part not present in the source package (section 6).
     TargetPartMissing(String),
     /// `ReplaceText` found no occurrence of `find` in the target part.
     TextNotFound(String, String),
@@ -104,9 +104,9 @@ impl std::fmt::Display for EditError {
 }
 impl std::error::Error for EditError {}
 
-/// §Fase 100.e — apply surgical `edits` to an ingested document, preserve-by-
+/// v2.54.0 — apply surgical `edits` to an ingested document, preserve-by-
 /// default, and return the new bytes + the per-part hash manifest. The taint is
-/// inherited (D100.8). Every untouched part is byte-identical.
+/// inherited. Every untouched part is byte-identical.
 pub fn edit_document(doc: &IngestedDocument, edits: &[PartEdit]) -> Result<EditedDocument, EditError> {
     // (1) validate every target exists — before mutating anything.
     for e in edits {
@@ -153,7 +153,7 @@ pub fn edit_document(doc: &IngestedDocument, edits: &[PartEdit]) -> Result<Edite
         });
     }
 
-    // (4) re-zip deterministically (the §99 writer discipline: fixed DateTime,
+    // (4) re-zip deterministically (the v2.53.0 writer discipline: fixed DateTime,
     // Deflated, BTreeMap order).
     let bytes = zip_parts(&new_parts).map_err(EditError::Encode)?;
     let sha256_hex = hex(&Sha256::digest(&bytes));
@@ -161,7 +161,7 @@ pub fn edit_document(doc: &IngestedDocument, edits: &[PartEdit]) -> Result<Edite
     Ok(EditedDocument {
         bytes,
         sha256_hex,
-        // (D100.8) the edit inherits the input's taint — never elevated.
+        // the edit inherits the input's taint — never elevated.
         taint: doc.taint,
         manifest,
     })
@@ -216,7 +216,7 @@ mod tests {
     }
 
     /// A docx fixture carrying a comment, a custom part, and an unknown
-    /// namespace — the parts the manifest must prove untouched (D100 §8).
+    /// namespace — the parts the manifest must prove untouched (D100 section 8).
     fn rich_docx() -> IngestedDocument {
         let bytes = build_zip(&[
             ("[Content_Types].xml", b"<Types/>"),
@@ -280,7 +280,7 @@ mod tests {
             find: "100".into(),
             replace: "1".into(),
         }]).unwrap();
-        // Opening an Untrusted doc + editing + saving stays Untrusted (D100.8).
+        // Opening an Untrusted doc + editing + saving stays Untrusted.
         assert_eq!(out.taint, EpistemicTaint::Untrusted);
     }
 

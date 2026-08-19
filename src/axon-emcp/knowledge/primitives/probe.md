@@ -79,7 +79,7 @@ maps named observables to backend-specific telemetry channels.
 ### `probe <Target> { ... }` (block form)
 
 A braced block may follow the target; the body is **reserved**
-for future structured-observation clauses (paper §6 — epistemic
+for future structured-observation clauses (paper section 6 — epistemic
 levels, certainty tracking). Today the parser skips the body;
 the runtime exposes only the target.
 

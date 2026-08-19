@@ -1,4 +1,4 @@
-//! §Fase 33.z.k.f (v1.28.0) — `anthropic` Messages streaming dialect adapter.
+//! v1.28.0 — `anthropic` Messages streaming dialect adapter.
 //!
 //! Matches the Anthropic Messages API streaming wire verbatim per
 //! the published API reference:
@@ -127,16 +127,16 @@ pub struct AnthropicDialectAdapter {
     /// Tracks how the stream terminated for adopter visibility on
     /// the axon.metadata frame.
     saw_terminal_reason: TerminalReason,
-    /// §Fase 33.z.k.h — Algebraic-policy envelope stashed at
+    /// v1.24.0 — Algebraic-policy envelope stashed at
     /// FlowComplete time so `flush_terminator()` can emit a
     /// POPULATED `axon.metadata` frame. `None` pre-FlowComplete.
     /// Adopters consuming the anthropic wire receive per-step
     /// provenance (banking PCI DSS Req 10 / government FedRAMP
-    /// AU-2 / legal FRE 502 / medicine 21 CFR Part 11 §11.10) via
+    /// AU-2 / legal FRE 502 / medicine 21 CFR Part 11 section 11.10) via
     /// this extension frame; anthropic-compat SDKs ignore unknown
-    /// event names verbatim per Anthropic spec §Streaming.
+    /// event names verbatim per Anthropic spec Streaming.
     stashed_envelope: Option<CompleteEnvelope>,
-    /// §Fase 37.e (D6) — the `FlowError.error` diagnostic, stashed when
+    /// v1.32.0 (D6) — the `FlowError.error` diagnostic, stashed when
     /// a `FlowError` is translated so `build_axon_metadata_frame()`
     /// surfaces it as the metadata frame's `error` field. Anthropic
     /// has no native error stop_reason; without this the wire signalled
@@ -283,10 +283,10 @@ impl AnthropicDialectAdapter {
         Self::build_event("message_stop", payload)
     }
 
-    /// §Q7 + §Fase 33.z.k.h — Build the `axon.metadata` extension
+    /// Q7 + v1.24.0 — Build the `axon.metadata` extension
     /// frame carrying the full algebraic-policy side-channel data
     /// + flow envelope. Anthropic-compat clients ignore unknown
-    /// `event:` names per Anthropic spec §Streaming / "Other events"
+    /// `event:` names per Anthropic spec Streaming / "Other events"
     /// ("any event-type your client doesn't recognize should be
     /// silently dropped"); SDK-free clients + axon-aware tooling
     /// consume `event: axon.metadata` directly to surface vertical-
@@ -322,7 +322,7 @@ impl AnthropicDialectAdapter {
                 serde_json::json!(envelope.latency_ms),
             );
 
-            // §Fase 33.e — stream_policies (elided when empty).
+            // v1.24.0 — stream_policies (elided when empty).
             if !envelope.effect_policies.is_empty() {
                 let arr: Vec<serde_json::Value> = envelope
                     .effect_policies
@@ -334,7 +334,7 @@ impl AnthropicDialectAdapter {
                     serde_json::Value::Array(arr),
                 );
             }
-            // §Fase 33.x.d — enforcement_summary (elided when empty).
+            // v1.24.0 — enforcement_summary (elided when empty).
             if !envelope.enforcement_summaries.is_empty() {
                 let mut obj = serde_json::Map::new();
                 for (step, summary) in &envelope.enforcement_summaries {
@@ -348,7 +348,7 @@ impl AnthropicDialectAdapter {
                     serde_json::Value::Object(obj),
                 );
             }
-            // §Fase 33.x.g — runtime_warnings (elided when empty).
+            // v1.24.0 — runtime_warnings (elided when empty).
             if !envelope.runtime_warnings.is_empty() {
                 let arr: Vec<serde_json::Value> = envelope
                     .runtime_warnings
@@ -360,7 +360,7 @@ impl AnthropicDialectAdapter {
                     serde_json::Value::Array(arr),
                 );
             }
-            // §Fase 33.x.f — step_audit (elided when empty).
+            // v1.24.0 — step_audit (elided when empty).
             if !envelope.step_audit_records.is_empty() {
                 let arr: Vec<serde_json::Value> = envelope
                     .step_audit_records
@@ -379,7 +379,7 @@ impl AnthropicDialectAdapter {
             "terminal_reason".to_string(),
             serde_json::json!(terminal_str),
         );
-        // §Fase 37.e (D6) — honest failure: when the flow errored, the
+        // v1.32.0 (D6) — honest failure: when the flow errored, the
         // metadata frame names WHY. Elided on a non-erroring flow.
         if let Some(err) = self.error_detail.as_ref() {
             metadata.insert("error".to_string(), serde_json::json!(err));
@@ -477,7 +477,7 @@ impl WireFormatAdapter for AnthropicDialectAdapter {
                 // error signaling (terminal_reason: "error").
                 self.terminal_emitted = true;
                 self.saw_terminal_reason = TerminalReason::Error;
-                // §Fase 37.e (D6) — stash the diagnostic for the
+                // v1.32.0 (D6) — stash the diagnostic for the
                 // axon.metadata frame's `error` field.
                 self.error_detail = Some(error.clone());
                 let mut events = self.close_text_block_if_open();
@@ -487,7 +487,7 @@ impl WireFormatAdapter for AnthropicDialectAdapter {
         }
     }
 
-    /// §Fase 33.z.k.h — Stash the full envelope so flush_terminator()
+    /// v1.24.0 — Stash the full envelope so flush_terminator()
     /// can populate the `axon.metadata` frame with real algebraic-
     /// policy data, then emit the standard message_delta sequence
     /// (close-text-block-if-open + message_delta with stop_reason).
@@ -503,7 +503,7 @@ impl WireFormatAdapter for AnthropicDialectAdapter {
     }
 
     fn flush_terminator(&mut self) -> Vec<Event> {
-        // §Fase 33.z.k.j defense-in-depth — close any orphan text
+        // v1.24.0 defense-in-depth — close any orphan text
         // block before emitting the terminator. In production this
         // is unreachable (build_complete_envelope_event +
         // translate(FlowComplete/FlowError) both call
@@ -511,7 +511,7 @@ impl WireFormatAdapter for AnthropicDialectAdapter {
         // input stream (producer crashed mid-flight, channel dropped
         // before FlowComplete, fuzz harness driving incomplete
         // sequences) could leave a block open. The Anthropic spec
-        // (§Streaming / "ill-formed streams") requires every
+        // (Streaming / "ill-formed streams") requires every
         // content_block_start to be balanced by content_block_stop;
         // emitting message_stop with an orphan open block produces
         // wire that some strict-validating clients reject.

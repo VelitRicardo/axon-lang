@@ -150,7 +150,7 @@ fn template_threats() -> Vec<Template> {
             controls: &["CC6.6", "FDP_ACC.1", "A.5.36"],
             treatment: Treatment::Mitigate,
             primitive: "Compile-time Compliance (RTT)",
-            // §124.c — gated on the coverage rule HOLDING, not on a label
+            // v4.0.0 — gated on the coverage rule HOLDING, not on a label
             // being present: this row asserts the risk is MITIGATED, and
             // presence of an annotation mitigates nothing.
             feature_gate: Some("compliance_coverage_holds"),
@@ -295,11 +295,11 @@ fn program_features(program: &IRProgram) -> HashSet<String> {
     if !program.topologies.is_empty()   { features.insert("has_topology".into()); }
     if !program.endpoints.is_empty()    { features.insert("has_endpoint".into()); }
 
-    // §124.c — was `has_compliance_annotation`, granted on the mere PRESENCE
+    // v4.0.0 — was `has_compliance_annotation`, granted on the mere PRESENCE
     // of a label anywhere. The rows that lean on this feature assert
     // mitigation, so the feature now means the coverage rule HOLDS — every
     // regulated boundary names a shield whose κ covers the data's κ. The
-    // rule lives once, in `coverage.rs` (§120.e: a rule duplicated drifts).
+    // rule lives once, in `coverage.rs` (v2.87.0: a rule duplicated drifts).
     if super::coverage::compliance_coverage_holds(program) {
         features.insert("compliance_coverage_holds".into());
     }
@@ -329,7 +329,7 @@ pub fn generate_risk_register(program: &IRProgram) -> Vec<Risk> {
         let impact = tpl.impact.as_str().to_string();
         let residual_score = residual(&likelihood, &impact);
 
-        // §Fase 111 F8 — a risk may only be reported as MITIGATED by a
+        // v2.67.0 F8 — a risk may only be reported as MITIGATED by a
         // primitive that actually runs. The Cognitive-I/O kernels
         // (`heal`/`reconcile`/`lease`/`immune`/`reflex`/`ensemble`/`observe`/
         // `resource`) have no dispatch path, so a template claiming
@@ -444,8 +444,8 @@ mod tests {
         );
     }
 
-    /// 🎯 §124.c — the regulated-boundary row asserts MITIGATION, and it
-    /// appears exactly when the coverage rule holds. Pre-§124.c, all three
+    /// 🎯 v4.0.0 — the regulated-boundary row asserts MITIGATION, and it
+    /// appears exactly when the coverage rule holds. Pre-v4.0.0, all three
     /// programs below scored identically: any label anywhere granted the gate.
     #[test]
     fn the_regulated_boundary_risk_requires_coverage_not_presence() {

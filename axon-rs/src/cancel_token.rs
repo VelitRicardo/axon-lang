@@ -1,4 +1,4 @@
-//! §Fase 33.f — Cancellation primitives (D6 cancel-safety).
+//! v1.24.0 — Cancellation primitives (D6 cancel-safety).
 //!
 //! Provides the building blocks for **cooperative** cancellation of
 //! long-running streaming executions when the SSE client disconnects.
@@ -72,7 +72,7 @@ pub struct CancellationFlag {
 
 impl std::fmt::Debug for CancellationFlag {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // §Fase 33.x.e — Required so `ChatRequest` (which derives
+        // v1.24.0 — Required so `ChatRequest` (which derives
         // `Debug`) can carry a CancellationFlag field. We surface
         // only the cancelled state, NOT the Notify internals (which
         // don't impl Debug and aren't meaningful to log anyway).

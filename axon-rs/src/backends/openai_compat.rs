@@ -1,4 +1,4 @@
-//! OpenAI-compatible shared backend — Fase 24.d.
+//! OpenAI-compatible shared backend — v1.18.0.
 //!
 //! Async port of `axon/backends/_openai_compatible.py`. Five providers
 //! share this wire shape and only diverge on `(provider_name,
@@ -110,7 +110,7 @@ pub struct OpenAICompatConfig {
     /// endpoint. Default `/v1/chat/completions` (the OpenAI convention,
     /// shared by Kimi / OpenRouter / Ollama). Configurable because some
     /// OpenAI-compatible gateways serve a non-`/v1` native path — e.g.
-    /// Zhipu/z.ai's `/api/paas/v4/chat/completions` (Fase 24.g.2, Kivi
+    /// Zhipu/z.ai's `/api/paas/v4/chat/completions` (v1.18.0, Kivi
     /// brief #37).
     pub chat_completions_path: String,
     /// Default model when a request omits one.
@@ -118,12 +118,12 @@ pub struct OpenAICompatConfig {
     /// Environment variable that holds the API key. Used in error
     /// messages so adopters can wire credentials correctly.
     pub api_key_env: Option<&'static str>,
-    /// Environment variable that overrides `base_url` when set (Fase
+    /// Environment variable that overrides `base_url` when set (cycle
     /// 24.g.2). E.g. `GLM_BASE_URL` to point the GLM backend at a
     /// regional / z.ai endpoint instead of the bigmodel.cn default.
     pub base_url_env: Option<&'static str>,
     /// Environment variable that overrides `chat_completions_path` when
-    /// set (Fase 24.g.2). E.g. `GLM_CHAT_PATH=/api/paas/v4/chat/completions`.
+    /// set (v1.18.0). E.g. `GLM_CHAT_PATH=/api/paas/v4/chat/completions`.
     pub chat_path_env: Option<&'static str>,
 }
 
@@ -160,7 +160,7 @@ impl OpenAICompatConfig {
 
     /// Provider-canonical `GLM` (Zhipu) configuration. The bigmodel.cn
     /// default serves `/api/paas/v1/...`; adopters on z.ai override via
-    /// `GLM_BASE_URL` + `GLM_CHAT_PATH` (Fase 24.g.2, Kivi brief #37).
+    /// `GLM_BASE_URL` + `GLM_CHAT_PATH` (v1.18.0, Kivi brief #37).
     pub fn glm() -> Self {
         Self {
             provider_name: "glm",
@@ -204,7 +204,7 @@ impl OpenAICompatConfig {
         }
     }
 
-    /// §Fase 24.g.2 — apply the per-provider `*_BASE_URL` / `*_CHAT_PATH`
+    /// v1.18.0 — apply the per-provider `*_BASE_URL` / `*_CHAT_PATH`
     /// environment overrides onto this config (when the vars are set and
     /// non-empty). Called by each provider's `from_env()` — the
     /// deployment path — so the process environment can redirect a
@@ -228,7 +228,7 @@ impl OpenAICompatConfig {
         }
     }
 
-    /// §Fase 24.g.2 — apply EXPLICIT base-URL / chat-path overrides (each
+    /// v1.18.0 — apply EXPLICIT base-URL / chat-path overrides (each
     /// applied only when `Some` + non-empty). These are the highest-
     /// precedence tier — a per-tenant `llm.<backend>.base_url` /
     /// `.chat_path` secret the enterprise layer threads through the flow
@@ -308,7 +308,7 @@ impl OpenAICompatibleBackend {
     }
 
     /// Override the chat-completions path appended to the base URL
-    /// (§Fase 24.g.2). Default `/v1/chat/completions`; z.ai/Zhipu native
+    /// (v1.18.0). Default `/v1/chat/completions`; z.ai/Zhipu native
     /// is `/api/paas/v4/chat/completions`.
     pub fn with_chat_path(mut self, path: impl Into<String>) -> Self {
         self.config.chat_completions_path = normalize_chat_path(&path.into());
@@ -487,7 +487,7 @@ impl Backend for OpenAICompatibleBackend {
         &self,
         request: ChatRequest,
     ) -> Result<ChatStream, BackendError> {
-        // §Fase 33.d — Real OpenAI-compatible SSE streaming.
+        // v1.24.0 — Real OpenAI-compatible SSE streaming.
         //
         // Wire shape per OpenAI streaming docs (shared by Kimi, GLM,
         // Ollama-as-openai-compat, OpenRouter):
@@ -566,7 +566,7 @@ impl Backend for OpenAICompatibleBackend {
                 }
             }
         });
-        // Step 5 — §Fase 33.x.e. Wrap with the cancel-aware adapter
+        // Step 5 — v1.24.0. Wrap with the cancel-aware adapter
         // so the consumer's `next()` returns `None` within ≤100ms
         // p95 after `request.cancel.cancel()` fires. The dropped
         // wrapper releases the reqwest body, aborting the HTTP
@@ -674,7 +674,7 @@ pub(crate) fn build_request_body(
     if let Some(p) = request.top_p {
         body_obj.insert("top_p".into(), json!(p));
     }
-    // §Fase 119.b (Tier 1) — the mandate engine's token bans. OpenAI's wire
+    // v2.83.0 (Tier 1) — the mandate engine's token bans. OpenAI's wire
     // wants string keys. Inserted BEFORE the locked-model strip below, which
     // already lists `logit_bias` for o1/o3 — a locked model silently loses
     // the bias and the mandate loop (Tier 2) carries the guarantee alone.
@@ -825,7 +825,7 @@ fn finish_reason_label(reason: &FinishReason) -> &'static str {
 }
 
 // ────────────────────────────────────────────────────────────────────
-//  §Fase 33.d — SSE chunk parsing
+// v1.24.0 — SSE chunk parsing
 // ────────────────────────────────────────────────────────────────────
 
 /// Parse one OpenAI-compatible SSE event into an optional `ChatChunk`.
@@ -983,7 +983,7 @@ mod tests {
         assert!(b.config.base_url.starts_with("http://127.0.0.1"));
     }
 
-    // ── §Fase 24.g.2 — configurable base-URL + chat path (Kivi #37) ──
+    // ── v1.18.0 — configurable base-URL + chat path (Kivi #37) ──
 
     #[test]
     fn every_preset_defaults_to_the_v1_chat_completions_path() {
@@ -1209,7 +1209,7 @@ mod tests {
         assert!(body.get("top_p").is_none());
     }
 
-    /// §Fase 119.b (Tier 1) — the mandate engine's token bans reach the wire
+    /// v2.83.0 (Tier 1) — the mandate engine's token bans reach the wire
     /// as string-keyed `logit_bias`, and a locked model strips them (the loop
     /// then carries the guarantee alone).
     #[test]
@@ -1405,7 +1405,7 @@ mod tests {
         assert!(!b.supports(Capability::LockedParams, "moonshot-v1-8k"));
     }
 
-    // ── §Fase 33.d — SSE chunk parsing (pure-unit, network-free) ────
+    // ── v1.24.0 — SSE chunk parsing (pure-unit, network-free) ────
 
     use super::parse_openai_compat_chunk;
     use super::super::sse_streaming::SseEvent;

@@ -1,9 +1,9 @@
 ---
 name: par
-summary: "Concurrent fan-out — executes its branches in parallel (a real `join_all`, §65) and joins their results; branch tool calls ride the §114.e channel semaphore."
+summary: "Concurrent fan-out — executes its branches in parallel (a real `join_all`, v2.15.0) and joins their results; branch tool calls ride the v2.69.0 channel semaphore."
 category: cognition
 top_level: false
-since: "pre-§65; real fan-out Fase 65"
+since: "pre-v2.15.0; real fan-out v2.15.0"
 grammar: |
   par {
       <branch-steps>
@@ -15,11 +15,11 @@ grammar: |
 `par` is **concurrent fan-out**: its branches execute in parallel and
 their results join.
 
-## What the runtime actually does (§65)
+## What the runtime actually does (v2.15.0)
 
 A real `futures::join_all` over the lowered branches
 (`parallel::run_par`) — not sequential execution wearing a concurrent
-keyword. Branch tool calls ride the §114.e channel semaphore, so a
+keyword. Branch tool calls ride the v2.69.0 channel semaphore, so a
 `resource { capacity: N }` bound holds ACROSS a fan-out.
 
 ## Honest limits

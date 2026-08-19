@@ -1,8 +1,8 @@
-//! §Fase 112.b — **the Cognitive-I/O Supervisor: the loop that was never built.**
+//! v2.67.0 — **the Cognitive-I/O Supervisor: the loop that was never built.**
 //!
 //! # What was missing
 //!
-//! §111 found the nine λ-L-E Cognitive-I/O primitives (`observe` · `reconcile` ·
+//! v2.67.0 found the nine λ-L-E Cognitive-I/O primitives (`observe` · `reconcile` ·
 //! `lease` · `ensemble` · `immune` · `reflex` · `heal` · `resource` · `fabric`)
 //! **unreachable**: declared, type-checked, carried into the IR, and consumed by
 //! nothing. I first called that a *language-design* problem. It was not.
@@ -36,7 +36,7 @@
 //!
 //! # The law it inherits
 //!
-//! An `observe` that cannot be taken **refuses** (§112.a). The supervisor does not
+//! An `observe` that cannot be taken **refuses** (v2.67.0). The supervisor does not
 //! soften that. A refusal is recorded as a refusal and **does not feed the
 //! downstream kernels** — an `immune` must never learn a baseline from an
 //! observation nobody actually took, and a `reflex` must never fire (or fail to
@@ -44,7 +44,7 @@
 //!
 //! `lease` is **not** driven here. It cannot work: the CT-2 Anchor Breach the
 //! README promises is *breach on post-expiry **use***, and **a flow can never *use*
-//! a `resource`** (§111's islands finding). Wiring `LeaseKernel` before **§113**
+//! a `resource`** (v2.67.0's islands finding). Wiring `LeaseKernel` before **v2.67.0**
 //! gives the resource a use-site would be shipping a primitive whose headline
 //! guarantee is structurally impossible.
 
@@ -65,7 +65,7 @@ use crate::runtime::reconcile_loop::{ReconcileLoop, ReconcileTickReport};
 /// Every field is a **record of what happened**, not a summary of what was
 /// intended. `observation_refusals` is first-class and never empty-by-omission: a
 /// supervisor that quietly dropped its refusals would recreate, at a higher level,
-/// exactly the `DryRunHandler` defect §112.a removed.
+/// exactly the `DryRunHandler` defect v2.67.0 removed.
 #[derive(Debug, Default)]
 pub struct SupervisorTick {
     /// `observe` name → the outcome, for the observations that were actually taken.
@@ -152,7 +152,7 @@ impl SupervisorTick {
             // `fired` is the truth; the rest were EVALUATED and declined (below the
             // declared on_level, or idempotency-skipped for a signature already
             // acted on). Counting evaluations as firings would overstate what the
-            // immune system actually did — the same class of overclaim §111 spent
+            // immune system actually did — the same class of overclaim v2.67.0 spent
             // itself removing.
             "reflexes_fired": self.reflexes.iter().filter(|r| r.fired).count(),
             "reflexes": self
@@ -279,7 +279,7 @@ impl CognitiveIoSupervisor {
         // A refusal is recorded AS a refusal. It does not become an observation
         // with low confidence, and it does not feed anything downstream. The
         // difference between "I looked and it's fine" and "I could not look" is
-        // the entire reason this primitive exists (§112.a).
+        // the entire reason this primitive exists (v2.67.0).
         let manifests: HashMap<&str, _> = self
             .program
             .manifests
@@ -330,7 +330,7 @@ impl CognitiveIoSupervisor {
 
         // ── 3. immune — the KL-divergence sensor over what it watches ──────
         //
-        // ## The baseline lifecycle (§112.d)
+        // ## The baseline lifecycle (v2.67.0)
         //
         // `immune.baseline: learned` is the language's default, and `window:` is —
         // in the AST's own words — "samples used to estimate baseline". **The
@@ -481,7 +481,7 @@ heal    Repair { source: Sentinel  on_level: doubt  mode: audit_only  scope: ten
     /// **The flagship.** A tick walks observe → immune → reflex/heal, and the health
     /// report is produced from an observation that was *actually taken*.
     ///
-    /// §112.d — the first ticks LEARN. `immune.baseline: learned` is the language's
+    /// v2.67.0 — the first ticks LEARN. `immune.baseline: learned` is the language's
     /// default and `window:` is, in the AST's own words, "samples used to estimate
     /// baseline". Until the baseline exists there is nothing to be anomalous with
     /// respect to, so no health report is emitted and no reflex can fire — a reflex
@@ -533,7 +533,7 @@ heal    Repair { source: Sentinel  on_level: doubt  mode: audit_only  scope: ten
     /// a baseline from an observation nobody took, and a reflex must never fire (or
     /// fail to fire) on a health report synthesised from silence.
     ///
-    /// This is the §112.a defect one level up: a supervisor that quietly dropped its
+    /// This is the v2.67.0 defect one level up: a supervisor that quietly dropped its
     /// refusals would recreate `DryRunHandler`'s `c: 1.0` in a new place.
     #[test]
     fn a_refused_observation_feeds_nothing_downstream() {

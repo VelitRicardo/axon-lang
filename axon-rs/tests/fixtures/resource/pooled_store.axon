@@ -1,0 +1,28 @@
+// v2.89.0 (group B) — the `.axon` input `resource_is_a_wire.rs`
+// never had.
+//
+// v2.67.0's flagship assertion is the difference between the resource being a
+// WIRE and being a LABEL: before it, `capacity:` was declared, type-checked,
+// lowered into the IR, advertised in the README as a pool cap — and read by
+// nothing. Every pool was 10, always, for everyone.
+//
+// Its gates hand-build `IRResource` and `IRAxonStore`, which proves the
+// registry. This is the program an adopter writes: a resource declaring a pool
+// of twenty behind a config-key endpoint, and a store that takes its wire from
+// the resource rather than carrying its own `connection:`.
+//
+// The store deliberately declares NO `connection:`. If the DSN still came from
+// the store, the resource would be decorative and v2.67.0 would have moved
+// nothing (axon-T944: a config key is the only way an address may reach the
+// runtime).
+
+resource Db {
+    kind:      postgres
+    endpoint:  "db.main"
+    capacity:  20
+    lifetime:  affine
+}
+
+axonstore Users {
+    resource: Db
+}

@@ -1,22 +1,22 @@
-//! §Fase 80.d — the `upstream` runtime: dial + auth + reconnect + transcode.
+//! v2.37.0 — the `upstream` runtime: dial + auth + reconnect + transcode.
 //!
-//! An `upstream` (§80.b) is the client dual of `socket`: axon dials OUT to a
+//! An `upstream` (v2.37.0) is the client dual of `socket`: axon dials OUT to a
 //! third-party vendor (streaming STT, TTS, fused realtime speech) over a
-//! persistent WebSocket, and the declared `map:` projection (§80.c, T849)
+//! persistent WebSocket, and the declared `map:` projection (v2.37.0, T849)
 //! transcodes between the axon-facing typed session messages and the
 //! vendor's wire frames. **This module is what makes "any vendor" true**: a
 //! new provider is a new `upstream` DECLARATION (frame shape + projection),
 //! never new Rust code, as long as it speaks JSON-envelope or binary frames
 //! over WS.
 //!
-//! Responsibilities (design doc §7):
+//! Responsibilities (design doc section 7):
 //! - **Config resolution** — `resolve:`/`secret:` are per-tenant config keys.
 //!   The runtime never sees a URL or credential in the program; a
 //!   [`UpstreamConfigResolver`] supplies both. The OSS default is
 //!   [`EnvConfigResolver`] (`upstream.deepgram.url` → env
-//!   `AXON_UPSTREAM_DEEPGRAM_URL`), mirroring `AXON_TOOL_BASE_URL` (§58.g);
-//!   enterprise binds its per-tenant secret custody instead (§80.e).
-//! - **Auth handshake** — the closed catalog from §80.a: `header` (secret as
+//! `AXON_UPSTREAM_DEEPGRAM_URL`), mirroring `AXON_TOOL_BASE_URL` (v2.8.0);
+//! enterprise binds its per-tenant secret custody instead (v2.37.0).
+//! - **Auth handshake** — the closed catalog from v2.37.0: `header` (secret as
 //!   a header value, optional prefix), `query` (secret as a query param),
 //!   `signed_url` (the resolved URL is already complete + signed).
 //! - **Reconnect** — exponential backoff (doubling from `backoff_ms`,
@@ -25,18 +25,18 @@
 //!   an event, never a silent hang).
 //! - **Transcoding** — [`project_outbound`] / [`classify_inbound`], pure
 //!   functions over the compiled projection. Inbound JSON payloads are open
-//!   values the flow navigates totally (§73 `Json`) — the projection is a
+//! values the flow navigates totally (v2.26.0 `Json`) — the projection is a
 //!   routing skeleton, not a codegen system.
 //! - **Overflow** — when the VENDOR is the slow side, the outbound queue
 //!   applies the declared policy: `drop_oldest` | `pause_upstream` | `fail`.
 //! - **Lifecycle witnessing** — every `connected` / `reconnected` /
 //!   `exhausted` transition flows through an [`UpstreamLifecycleWitness`]
-//!   BEFORE it takes effect; a witness refusal aborts the dial (the §76.c
+//! BEFORE it takes effect; a witness refusal aborts the dial (the v2.33.0
 //!   fail-closed pattern — an upstream that cannot witness its own lifecycle
 //!   refuses to dial). The OSS default witness logs via `tracing` and never
-//!   refuses; enterprise binds the audit chain (§80.e).
+//! refuses; enterprise binds the audit chain (v2.37.0).
 //!
-//! **The honest line (D80.4):** duality, credit discipline, and projection
+//! **The honest line:** duality, credit discipline, and projection
 //! totality are compiler-proved up to the wire. This module DEFENDS across
 //! the trust boundary (overflow policy, fail-closed reconnect, witnessed
 //! lifecycle) and surfaces every frame outside the declared projection as
@@ -73,7 +73,7 @@ pub enum UpstreamError {
     Dial { upstream: String, detail: String },
     /// The resolved URL could not be turned into a client request.
     BadUrl { upstream: String, detail: String },
-    /// An outbound message with no `send` rule in the projection. The §80.c
+    /// An outbound message with no `send` rule in the projection. The v2.37.0
     /// checker makes this unrepresentable for compiled programs; the runtime
     /// still refuses (defence in depth for hand-built specs).
     UnmappedOutbound { upstream: String, message: String },
@@ -83,9 +83,9 @@ pub enum UpstreamError {
     Exhausted { upstream: String, attempts: u32 },
     /// The handle is closed (driver task ended).
     Closed { upstream: String },
-    /// §Fase 114.u — the lease over this upstream's resource is no longer
+    /// v2.69.0 — the lease over this upstream's resource is no longer
     /// held: a dial is a USE of the channel, and a post-expiry use is the
-    /// CT-2 Anchor Breach (the §113.d/§114.f law, now on the client leg).
+    /// CT-2 Anchor Breach (the v2.67.0/v2.69.0 law, now on the client leg).
     LeaseBreach { upstream: String, detail: String },
 }
 
@@ -122,18 +122,18 @@ impl fmt::Display for UpstreamError {
 
 impl std::error::Error for UpstreamError {}
 
-// ── Config resolution (the §58.g "config, not code" seam) ──────────────────
+// ── Config resolution (the v2.8.0 "config, not code" seam) ──────────────────
 
 /// Supplies the two per-tenant values the program deliberately cannot name:
 /// the vendor URL (`resolve:`) and the credential (`secret:`). Enterprise
-/// implements this over its secret custody (§75/§80.e); OSS defaults to env.
+/// implements this over its secret custody (v2.37.0/v2.37.0); OSS defaults to env.
 pub trait UpstreamConfigResolver: Send + Sync {
     fn resolve(&self, key: &str) -> Option<String>;
     fn reveal_secret(&self, key: &str) -> Option<String>;
 }
 
 /// `upstream.deepgram.url` → env `AXON_UPSTREAM_DEEPGRAM_URL` — the same
-/// env-fallback convention as `AXON_TOOL_BASE_URL` (§58.g), generalised:
+/// env-fallback convention as `AXON_TOOL_BASE_URL` (v2.8.0), generalised:
 /// `AXON_` + uppercase(key) with `.`/`-` → `_`.
 pub struct EnvConfigResolver;
 
@@ -159,7 +159,7 @@ impl UpstreamConfigResolver for EnvConfigResolver {
     }
 }
 
-// ── Lifecycle witnessing (the §76.c fail-closed pattern) ───────────────────
+// ── Lifecycle witnessing (the v2.33.0 fail-closed pattern) ───────────────────
 
 /// One lifecycle transition, witnessed BEFORE it takes effect.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -172,13 +172,13 @@ pub enum UpstreamLifecycle {
     Exhausted { attempts: u32 },
 }
 
-/// One boxed witness future — the §76.c fail-closed pattern is inherently
+/// One boxed witness future — the v2.33.0 fail-closed pattern is inherently
 /// asynchronous for a real audit backend (the durable append must SUCCEED
 /// before the lifecycle transition proceeds), so the trait speaks futures
 /// without forcing an `async-trait` dependency on implementors.
 pub type WitnessFuture<'a> = std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), String>> + Send + 'a>>;
 
-/// The witness seam enterprise binds to its audit chain (§80.e): a `Connected`
+/// The witness seam enterprise binds to its audit chain (v2.37.0): a `Connected`
 /// / `Reconnected` refusal ABORTS the dial (an upstream that cannot witness
 /// its own lifecycle refuses to dial); an `Exhausted` refusal cannot un-exhaust
 /// the budget — it is logged and the exhaustion proceeds (the failure is
@@ -201,7 +201,7 @@ impl UpstreamLifecycleWitness for TracingLifecycleWitness {
     }
 }
 
-// ── Pure transcoding (the §80.a contract, both directions) ─────────────────
+// ── Pure transcoding (the v2.37.0 contract, both directions) ─────────────────
 
 /// An outbound payload from flow code: JSON for `as json` rules, raw bytes
 /// for `as binary` rules (audio).
@@ -212,7 +212,7 @@ pub enum OutboundPayload {
 }
 
 /// One classified inbound frame: the session message the vendor frame maps
-/// to, plus its payload (open `Json` for json rules — §73 total navigation —
+/// to, plus its payload (open `Json` for json rules — v2.26.0 total navigation —
 /// or raw bytes for the binary rule).
 #[derive(Debug, Clone, PartialEq)]
 pub enum InboundPayload {
@@ -221,7 +221,7 @@ pub enum InboundPayload {
 }
 
 /// What the consumer receives from the handle. Frames outside the declared
-/// projection are EXPLICIT events, never silently dropped (D80.4: we defend
+/// projection are EXPLICIT events, never silently dropped (the design decision: we defend
 /// and witness; we do not pretend the vendor is proved sound).
 #[derive(Debug, Clone, PartialEq)]
 pub enum UpstreamEvent {
@@ -254,7 +254,7 @@ pub enum UpstreamEvent {
 pub fn project_outbound(rule: &IRUpstreamMapRule, payload: &OutboundPayload) -> Message {
     match rule.framing.as_str() {
         "binary" => match payload {
-            // §Fase 117.c — tungstenite 0.26+ carries frame payloads as
+            // v2.81.0 — tungstenite 0.26+ carries frame payloads as
             // `bytes::Bytes` / `Utf8Bytes` rather than `Vec<u8>` / `String`,
             // so the wire types convert at this boundary. Purely
             // representational: the same bytes go out.
@@ -283,7 +283,7 @@ pub fn project_outbound(rule: &IRUpstreamMapRule, payload: &OutboundPayload) -> 
 
 /// Classify one inbound wire frame against the `receive` rules.
 ///
-/// - A binary frame matches the (unique, §80.c-enforced) `receive … as
+/// - A binary frame matches the (unique, v2.37.0-enforced) `receive … as
 ///   binary` rule.
 /// - A text frame is parsed as JSON and matched in TWO passes: equality
 ///   discriminators first (`when "f" = "v"`, defaulting to `"type" =
@@ -291,7 +291,7 @@ pub fn project_outbound(rule: &IRUpstreamMapRule, payload: &OutboundPayload) -> 
 ///   discriminators (`when "f"` — vendors like Gemini Live mark frame
 ///   kinds by which key exists). Specific-before-broad keeps dispatch
 ///   deterministic when both shapes target the same field. The WHOLE
-///   vendor body is the payload — the flow navigates it as §73 `Json`.
+/// vendor body is the payload — the flow navigates it as v2.26.0 `Json`.
 ///
 /// `None` ⇒ no rule matches — a frame OUTSIDE the declared projection,
 /// surfaced by the driver as [`UpstreamEvent::Unmapped`] (narrowing the
@@ -393,8 +393,8 @@ pub fn backoff_delay(backoff_ms: i64, attempt: u32) -> Duration {
 // ── The overflow queue (vendor is the slow side) ────────────────────────────
 
 /// Bounded outbound queue applying the declared `overflow:` policy. The
-/// §80.c checker admits `drop_oldest` / `pause_upstream` / `fail`; `fail` is
-/// also the undeclared default (design doc §1: no silently-lossy audio
+/// v2.37.0 checker admits `drop_oldest` / `pause_upstream` / `fail`; `fail` is
+/// also the undeclared default (design doc section 1: no silently-lossy audio
 /// unless the adopter opts in).
 struct OverflowQueue {
     inner: Mutex<VecDeque<Message>>,
@@ -491,7 +491,7 @@ pub struct UpstreamHandle {
     queue: Arc<OverflowQueue>,
     events: mpsc::Receiver<UpstreamEvent>,
     driver: tokio::task::JoinHandle<()>,
-    /// §Fase 114.u — the instance permit under the resource's `capacity`
+    /// v2.69.0 — the instance permit under the resource's `capacity`
     /// bound. Held for the LIFE of the handle (reconnects re-dial the same
     /// instance, they do not mint a new one); dropping the handle releases
     /// the slot. `None` for un-resourced upstreams — unbounded, the
@@ -544,16 +544,16 @@ impl UpstreamHandle {
 
 type WsStream = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
-// ── §Fase 114.u — the connection-INSTANCE bound ─────────────────────────────
+// ── v2.69.0 — the connection-INSTANCE bound ─────────────────────────────
 //
 // `upstream X { resource: R }` + `resource R { capacity: N }` ⇒ at most N
 // concurrently-dialed instances of X in this process. Frames are already
 // flow-controlled by `backpressure_credit`; capacity bounds CONNECTIONS —
-// making it frames would state one fact twice (founder-ratified, §114.u).
+// making it frames would state one fact twice (founder-ratified, v2.69.0).
 //
-// Same documented limit as §114.e: the semaphore is in-memory / per-process.
+// Same documented limit as v2.69.0: the semaphore is in-memory / per-process.
 // Across horizontally-scaled replicas `capacity: N` is a per-process bound; a
-// true global bound needs a distributed semaphore (future fase).
+// true global bound needs a distributed semaphore (future cycle).
 static INSTANCE_BOUNDS: std::sync::OnceLock<
     std::sync::Mutex<std::collections::HashMap<String, (i64, Arc<Semaphore>)>>,
 > = std::sync::OnceLock::new();
@@ -590,11 +590,11 @@ pub async fn dial_upstream(
 ) -> Result<UpstreamHandle, UpstreamError> {
     let name = spec.name.clone();
 
-    // §Fase 114.u — a DIAL is a USE of the channel's resource. When a lease
+    // v2.69.0 — a DIAL is a USE of the channel's resource. When a lease
     // guard governs it, charge BEFORE anything else: a post-expiry dial is
-    // the CT-2 Anchor Breach, fail-closed (the §113.d/§114.f law on the
+    // the CT-2 Anchor Breach, fail-closed (the v2.67.0/v2.69.0 law on the
     // client leg). `None` for every caller without lease governance — the
-    // pre-114.u behaviour, and the same signature convention as §114.e's
+    // pre-114.u behaviour, and the same signature convention as v2.69.0's
     // channel semaphores.
     if let Some(guard) = lease {
         if !spec.resource_ref.is_empty() {
@@ -612,7 +612,7 @@ pub async fn dial_upstream(
         key: spec.resolve.clone(),
     })?;
     let secret = if spec.auth_kind == "signed_url" {
-        String::new() // the URL already carries its signature (§80.a).
+        String::new() // the URL already carries its signature (v2.37.0).
     } else {
         resolver.reveal_secret(&spec.secret).ok_or_else(|| UpstreamError::MissingSecret {
             upstream: name.clone(),
@@ -620,8 +620,8 @@ pub async fn dial_upstream(
         })?
     };
 
-    // §Fase 114.u — acquire the connection-INSTANCE permit under the
-    // resource's `capacity`. The N+1th dial WAITS for a slot (the §114.e
+    // v2.69.0 — acquire the connection-INSTANCE permit under the
+    // resource's `capacity`. The N+1th dial WAITS for a slot (the v2.69.0
     // held-across-requests semantics: a bound that queues, not one that
     // lies by refusing). Config holes fail BEFORE this point so a
     // misconfigured upstream never queues.

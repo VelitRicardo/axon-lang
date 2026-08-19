@@ -1,14 +1,14 @@
-# §Fase 124.b — provenance of every third-party source file inside the
+# v4.0.0 — provenance of every third-party source file inside the
 # cryptographic module boundary (CMB).
 #
 # ## Why this file exists
 #
-# D124.3 ratified a SINGLE cryptographic boundary in `axon-csys`: a FIPS 140-3
+# the design decision ratified a SINGLE cryptographic boundary in `axon-csys`: a FIPS 140-3
 # evaluation requires a declared boundary, and splitting crypto between C23 and
 # Rust crates doubles the surface an assessor must examine — the Rust runtime,
 # the `Cargo.lock` closure, and the FFI bindings all enter scope.
 #
-# D124.6 then settled HOW that boundary is populated. Hand-writing a lattice
+# the design decision then settled HOW that boundary is populated. Hand-writing a lattice
 # signature scheme is months of work and is the first thing a CMVP assessor
 # questions; the boundary argument is about what is INSIDE it, not about who
 # typed the code. So vetted reference implementations are vendored in, and this
@@ -38,7 +38,7 @@ repository = "https://github.com/PQClean/PQClean"
 commit = "0586a824fc0d49df0b6b6e9179d8d15d06d0974f"
 imported = "2026-08-17"
 license = "Public Domain"
-# PQClean's README §License: "The files in `common` contain licensing
+# PQClean's README License: "The files in `common` contain licensing
 # information at the top of the file (and are currently either public domain or
 # MIT)." `fips202.c`'s own header records the lineage: the public-domain
 # SUPERCOP `crypto_hash/keccakc512/simple` by Ronny Van Keer, and the

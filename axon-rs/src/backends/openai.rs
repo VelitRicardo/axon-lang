@@ -1,4 +1,4 @@
-//! OpenAI Chat Completions backend — Fase 24.d.
+//! OpenAI Chat Completions backend — v1.18.0.
 //!
 //! Thin factory + capability override on top of [`OpenAICompatibleBackend`].
 //! The OpenAI provider is the canonical OpenAI-compat shape; everything
@@ -59,7 +59,7 @@ pub struct OpenAIBackend {
 impl OpenAIBackend {
     /// Construct from env. `OPENAI_API_KEY` is read at construction time
     /// (`None` is permitted — auth check fires at first call). The
-    /// `OPENAI_BASE_URL` / `OPENAI_CHAT_PATH` overrides (§Fase 24.g.2)
+    /// `OPENAI_BASE_URL` / `OPENAI_CHAT_PATH` overrides (v1.18.0)
     /// redirect the backend at an Azure / proxy OpenAI-compatible
     /// endpoint without a code change.
     pub fn from_env() -> Self {
@@ -78,7 +78,7 @@ impl OpenAIBackend {
         }
     }
 
-    /// §Fase 24.g.2 — construct with a per-tenant key + optional explicit
+    /// v1.18.0 — construct with a per-tenant key + optional explicit
     /// base-URL / chat-path overrides (precedence: explicit > env >
     /// default). `api_key = None` falls back to `OPENAI_API_KEY`.
     pub fn with_api_key_and_endpoint(
@@ -339,7 +339,7 @@ mod tests {
 
     #[tokio::test]
     async fn stream_delegates_to_base_real_sse_implementation() {
-        // §Fase 33.d — OpenAI-compat now implements SSE streaming
+        // v1.24.0 — OpenAI-compat now implements SSE streaming
         // natively. Without a reachable server this test exercises the
         // transport-error path (early failure before any chunk).
         let b = OpenAIBackend::with_api_key(Some("k".into()))

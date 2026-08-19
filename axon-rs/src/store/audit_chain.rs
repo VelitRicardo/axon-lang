@@ -1,18 +1,18 @@
-//! §Fase 35.h (v1.30.0) — Pillar II: audit-chained mutations.
+//! v1.30.0 — Pillar II: audit-chained mutations.
 //!
 //! Every `persist` / `mutate` / `purge` against an `axonstore` appends
 //! a delta to a **tamper-evident HMAC-Merkle mutation chain**. The
 //! chain's complete history is independently verifiable: given the
 //! chain and its HMAC key, any alteration of any past delta is
 //! detectable. Regulatory replay (PCI DSS Req 10, FedRAMP AU-2,
-//! 21 CFR Part 11 §11.10) becomes a language primitive — not an
+//! 21 CFR Part 11 section 11.10) becomes a language primitive — not an
 //! event-sourcing framework the adopter bolts on.
 //!
-//! # Joins Fase 6 / `esk::provenance`
+//! # Joins v1.2.0 / `esk::provenance`
 //!
 //! The chain mechanism is not reinvented here — it is
 //! [`crate::esk::provenance::ProvenanceChain`], the HMAC-SHA256
-//! Merkle-linked signed-entry chain Fase 6.2 already ships. This
+//! Merkle-linked signed-entry chain v1.2.0 already ships. This
 //! module is the thin **store-domain layer** over it: a store mutation
 //! is the chained payload; `on_breach` is the policy fired on a
 //! detected tamper.
@@ -21,11 +21,11 @@
 //!
 //! An `axonstore` may declare `on_breach: { log | raise | rollback }`
 //! (the catalog the type-checker's `VALID_STORE_ON_BREACH` already
-//! enforces — §7 question #3 resolved to this set, not a new one).
+//! enforces — section 7 question #3 resolved to this set, not a new one).
 //! When chain verification detects tampering, the resolved
 //! [`OnBreachPolicy`] decides the [`BreachOutcome`].
 //!
-//! # OSS / ENTERPRISE seam (§6 — 35.h is SPLIT)
+//! # OSS / ENTERPRISE seam (section 6 — 35.h is SPLIT)
 //!
 //! This module is the **OSS mechanism**: the HMAC-Merkle chain with
 //! `sha2`/`hmac` crypto + the `on_breach` policy. The chain is

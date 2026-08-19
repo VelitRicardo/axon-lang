@@ -1,18 +1,18 @@
-//! §Fase 51.a — Proof-Carrying Code: the portable proof object.
+//! v2.4.0 — Proof-Carrying Code: the portable proof object.
 //!
 //! A [`ProofTerm`] is the serializable artifact a producer (the axon
 //! compiler) emits alongside compiled code, certifying that a declared
 //! property holds. A consumer runs the INDEPENDENT checker
 //! ([`crate::pcc::checker`]) to verify it — WITHOUT trusting the
-//! producer (D51.2). The term travels as JSON, the same delivery
+//! producer. The term travels as JSON, the same delivery
 //! surface as the SBOM / in-toto statements in [`crate::esk::attestation`],
 //! but unlike those it is a *proof* the consumer re-checks, not an
 //! attestation the consumer trusts.
 //!
-//! ## D51.1 — representation
+//! ## the design decision — representation
 //!
-//! - [`PropertyClass`] — closed enum of property kinds. §51.a ships
-//!   exactly [`PropertyClass::ComplianceCoverage`]; §51.b-e extend it.
+//! - [`PropertyClass`] — closed enum of property kinds. v2.4.0 ships
+//! exactly [`PropertyClass::ComplianceCoverage`]; v2.4.0-e extend it.
 //! - `artifact_digest` — SHA-256 hex of the canonical IR JSON the proof
 //!   is ABOUT. Binds the proof to a specific artifact: a proof for
 //!   program A cannot be replayed against program B (the checker
@@ -26,12 +26,12 @@ use serde::{Deserialize, Serialize};
 
 /// The closed catalog of properties a [`ProofTerm`] can certify.
 ///
-/// §Fase 51.a ships [`Self::ComplianceCoverage`]. The §51.b-e classes
+/// v2.4.0 ships [`Self::ComplianceCoverage`]. The v2.4.0-e classes
 /// (`EffectRowSoundness`, `CapabilityIsolation`, `ResourceBounds`,
 /// `ShieldHaltGuarantee`) land as the proof-term language generalizes
-/// (D51.4 — "universal" is the architecture, shipped one class at a
+/// (the design decision — "universal" is the architecture, shipped one class at a
 /// time). Adding a variant here requires a matching witness variant +
-/// checker arm — the §51.a drift gate pins this lockstep.
+/// checker arm — the v2.4.0 drift gate pins this lockstep.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PropertyClass {
     /// Every regulatory class an apx/axonendpoint declares in
@@ -42,7 +42,7 @@ pub enum PropertyClass {
     /// typo'd `HIPPA`) and compliance-claimed-without-enforcement
     /// (declaring GDPR with no attached shield).
     ComplianceCoverage,
-    /// §51.b — every entry in a tool's `effects: <...>` row is
+    /// v2.4.0 — every entry in a tool's `effects: <...>` row is
     /// well-formed: its base is in the closed effect catalog
     /// ([`crate::pcc::effects::EFFECT_BASES`]); `stream` / `trust`
     /// carry a qualifier (`stream`'s in the backpressure catalog); and
@@ -51,8 +51,8 @@ pub enum PropertyClass {
     /// `stream` without a backpressure policy, and pure/impure
     /// contradictions.
     EffectRowSoundness,
-    /// §51.c — every capability gate an `axonstore` declares (its
-    /// Pillar IV `capability` slug, §Fase 35.j) is a well-formed §32.g
+    /// v2.4.0 — every capability gate an `axonstore` declares (its
+    /// Pillar IV `capability` slug, v1.30.0) is a well-formed v1.23.0
     /// capability scope (matches the closed grammar
     /// `^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$`, via the OSS
     /// `axon_frontend::parser::is_valid_capability_slug`). A malformed
@@ -65,20 +65,20 @@ pub enum PropertyClass {
     /// containment half — an apx's reachable store gates ⊆ its declared
     /// `requires:` set — needs the endpoint `requires_capabilities`
     /// (AST / enterprise deploy metadata, NOT lowered to the frontend
-    /// IR) + flow→store reachability, and is deferred to §51.x
+    /// IR) + flow→store reachability, and is deferred to v2.4.0
     /// (enterprise PCC consumption, where `requires` lives).
     CapabilityIsolation,
-    /// §51.d — declared resource bounds are within sane limits:
+    /// v2.4.0 — declared resource bounds are within sane limits:
     /// an apx/axonendpoint's `retries` is in `[0, MAX_RETRIES]`
     /// (negative is nonsensical; above the ceiling is a retry storm),
     /// and a `socket` carrying a DECLARED `backpressure: credit(k)`
-    /// has `k >= 1` (a credit window of 0 deadlocks the §Fase 41.b
+    /// has `k >= 1` (a credit window of 0 deadlocks the v2.3.0
     /// typed-resource gate). Unspecified socket credit is a legitimate
     /// type state and is NOT refuted. `timeout` is out of scope by
     /// design — it is a closed duration enum (`{5s,15s,30s,60s}`)
     /// already bounded at parse time, not an unbounded-resource risk.
     ResourceBounds,
-    /// §51.e — a shield's breach policy provides a real guarantee:
+    /// v2.4.0 — a shield's breach policy provides a real guarantee:
     /// `on_breach` is a recognized policy (closed catalog — catches a
     /// typo'd `hault`, which the parser does NOT reject since it reads
     /// `on_breach` as a bare identifier), and a shield declaring
@@ -86,8 +86,8 @@ pub enum PropertyClass {
     /// an empty `scan: []` can never detect a breach, so the halt never
     /// fires — a vacuous guarantee / security theater).
     ShieldHaltGuarantee,
-    /// §51.x — the CONTAINMENT half of capability isolation (the
-    /// deferral §51.c flagged): every capability gate on a store the
+    /// v2.4.0 — the CONTAINMENT half of capability isolation (the
+    /// deferral v2.4.0 flagged): every capability gate on a store the
     /// apx's `execute_flow` REACHES is covered by the endpoint's
     /// declared `requires:` scopes. Otherwise the flow touches a store
     /// gated by capability `G` the endpoint does not declare requiring
@@ -99,12 +99,12 @@ pub enum PropertyClass {
     /// unresolvable `execute_flow` is REFUTED (cannot certify
     /// containment for a flow the artifact does not contain).
     CapabilityContainment,
-    /// §58.i — every structured `use <Tool>(k = v, …)` call satisfies the
+    /// v2.8.0 — every structured `use <Tool>(k = v, …)` call satisfies the
     /// called tool's declared `parameters:` input schema: no argument
     /// names a parameter the tool does not declare; no argument is
     /// supplied twice; every required (non-optional) parameter is
     /// supplied; and every UNAMBIGUOUS-LITERAL argument's type aligns
-    /// with the declared type. This makes the §58.d CT-2 caller-blame
+    /// with the declared type. This makes the v2.8.0 CT-2 caller-blame
     /// check an INDEPENDENTLY-VERIFIABLE proof — the tool schema rides
     /// the bundle and the verifier re-derives the call's soundness from
     /// the artifact, never trusting the compiler that ran the type-check
@@ -116,7 +116,7 @@ pub enum PropertyClass {
     /// statically. A schema-less tool (no `parameters:`) and the legacy
     /// `use <Tool> on <arg>` form carry no contract → no proof (D5).
     ToolCallSoundness,
-    /// §72.f — every `budget { rate/max … on Tool(X) }` a daemon declares is
+    /// v2.28.0 — every `budget { rate/max … on Tool(X) }` a daemon declares is
     /// well-formed + ENFORCEABLE: each quota's `on Tool(X)` resolves to a
     /// declared tool in the program; each `limit` is positive; each `period` is
     /// in the closed catalog (`second|minute|hour|day`); and `on_exhausted` is in
@@ -124,38 +124,38 @@ pub enum PropertyClass {
     /// linearity (the `effects_are_linear` doctrine) an INDEPENDENTLY-VERIFIABLE
     /// fact: the verifier re-derives, from the artifact alone, that every quota is
     /// a sound contract the dispatch gate can enforce — never trusting the
-    /// compiler that ran the §72.a type-check (`axon-T830`–`T834`). A daemon with
+    /// compiler that ran the v2.28.0 type-check (`axon-T830`–`T834`). A daemon with
     /// no `budget` carries no contract → no proof (mirrors "no effects → no
     /// effect-row proof").
     EffectBudgeted,
-    /// §73.g — every `Json<T>` shape LENS an `axonstore` column declares is
+    /// v2.26.0 — every `Json<T>` shape LENS an `axonstore` column declares is
     /// SOUND: its `T` resolves to a declared struct `type` in the program.
-    /// This makes the §73.a/§73.e lens well-formedness (the `axon-T840`
+    /// This makes the v2.26.0/v2.26.0 lens well-formedness (the `axon-T840`
     /// invariant — "the shape is a declared struct") an INDEPENDENTLY-
     /// VERIFIABLE fact: the verifier re-derives, from the artifact alone,
     /// that every column lens shape names a real struct whose fields are a
     /// closed, finite catalog — so navigation over the lens is DECIDABLE by
     /// construction (a finite fold over the struct's fields, the
     /// `open_data_is_total` guarantee). It never trusts the compiler that
-    /// ran the §73.a type-check. A store with no `Json<T>` lens column
+    /// ran the v2.26.0 type-check. A store with no `Json<T>` lens column
     /// carries no contract → no proof (mirrors "no effects → no effect-row
     /// proof"); an open `Json` column (no shape) is unconstrained and is
     /// not a lens site.
     JsonShapeSoundness,
-    /// §74.g — every typed `channel` a `daemon` `listen`s on has a PRODUCER:
+    /// v2.31.0 — every typed `channel` a `daemon` `listen`s on has a PRODUCER:
     /// some flow (or daemon-listener body) `emit`s to it. A `listen`er on a
     /// channel that NOTHING emits to NEVER fires — the original Kivi brief
-    /// #39 defect (a daemon waiting on an event no producer raises). §74
+    /// #39 defect (a daemon waiting on an event no producer raises). v2.31.0
     /// wired flow→daemon delivery (the listener fires when an event arrives),
     /// so the remaining delivery defect is the unproduced channel — and this
     /// proof makes it INDEPENDENTLY VERIFIABLE: the verifier re-derives, from
     /// the artifact alone, that every consumed channel has a matching `emit`,
     /// so the declared `qos`/`persistence` delivery is actually reachable
     /// (`delivery_is_a_kept_promise`). The compile-time mirror is `axon-W009`
-    /// (§52.g, reworked in §74.g). A channel with no listener carries no
+    /// (v2.4.0, reworked in v2.31.0). A channel with no listener carries no
     /// delivery contract → no proof.
     ChannelDeliverySoundness,
-    /// §76.e — every `retrieve … { aggregate: / group_by: }` in the program
+    /// v2.33.0 — every `retrieve … { aggregate: / group_by: }` in the program
     /// is SOUND: the aggregate resolves against the CLOSED function catalog
     /// (`count` / `sum(col)` / `avg(col)` / `min(col)` / `max(col)`), every
     /// referenced column satisfies the identifier discipline, the cross-rules
@@ -165,76 +165,76 @@ pub enum PropertyClass {
     /// through the closed catalog, nothing more. The verifier re-derives the
     /// parse from the artifact alone via the SAME runtime clause parser
     /// (`store::filter::parse_aggregate_clause`) — never trusting the
-    /// compiler that ran the §76.d type-check (`axon-T843`–`T845`). A
+    /// compiler that ran the v2.33.0 type-check (`axon-T843`–`T845`). A
     /// retrieve with no aggregate surface carries no contract → no proof.
     AggregateSoundness,
-    /// §77.b — every EGRESS-marked `channel` in the artifact is derivable
+    /// v2.34.0 — every EGRESS-marked `channel` in the artifact is derivable
     /// from the program and sound: the channel handle's `egress_sign` equals
     /// what re-walking the publish sites derives (a `publish C within S`
     /// where shield S declares `sign:`), the algorithm is in the closed
     /// signing catalog, and the channel is DURABLE
     /// (`persistence: persistent_axonstore`) so signed external delivery
-    /// inherits the §74 outbox's at-least-once (`egress_is_a_kept_promise`).
+    /// inherits the v2.31.0 outbox's at-least-once (`egress_is_a_kept_promise`).
     /// A forged handle (egress marking with no deriving publish site), a
     /// bogus algorithm, or an ephemeral egress channel refutes — and the
-    /// §52 deploy gate rejects the bundle fail-closed. The compile-time
+    /// v2.4.0 deploy gate rejects the bundle fail-closed. The compile-time
     /// mirror is `axon-T846`/`T848`. A channel with neither a declared nor
     /// a derivable egress marking carries no contract → no proof.
     ChannelEgressSoundness,
-    /// §Fase 79.c — an **interruptible session region** (`interrupt … on
+    /// v2.36.0 — an **interruptible session region** (`interrupt … on
     /// <Signal> as <sig> resumable …`) is sound: the signal is in the closed
-    /// `CallInterruptCause` catalog (D79.2), the region declares both a body and
+    /// `CallInterruptCause` catalog, the region declares both a body and
     /// a resumable handler, and the handler reaches a **two-exit** terminal
-    /// (`resume` or `end`, D79.11a). Re-derived from the IR session steps; a
+    /// (`resume` or `end`, the design decision). Re-derived from the IR session steps; a
     /// forged witness (e.g. `signal_in_catalog: true` for a bogus cause) is
-    /// caught by recomputation. Compile-time mirror: the §79.c type-checker's
+    /// caught by recomputation. Compile-time mirror: the v2.36.0 type-checker's
     /// interrupt validation.
     InterruptibleSessionSoundness,
-    /// §Fase 79.f — `ParkedResidualSoundness`: the data-at-rest surface that
+    /// v2.36.0 — `ParkedResidualSoundness`: the data-at-rest surface that
     /// interruption opens. A socket whose protocol contains an interrupt region
-    /// parks the body's residual (a possibly PII-bearing κ) into the §41.g
-    /// `cognitive_state` snapshot for the TTL window — a surface the §77 shield
+    /// parks the body's residual (a possibly PII-bearing κ) into the v2.3.0
+    /// `cognitive_state` snapshot for the TTL window — a surface the v2.34.0 shield
     /// (which reasons about *channel egress*, not snapshot-at-rest) never sees.
-    /// The obligation (paper §7): the socket must declare `reconnect:
+    /// The obligation (paper section 7): the socket must declare `reconnect:
     /// cognitive_state` (so the park is AAD-bound + recoverable) AND a
     /// `legal_basis` (so the at-rest retention is governed). This is the
     /// genuinely-new fourth member of the `CallSoundnessCertificate` — not an
-    /// emergent conjunction of the other three (D79.8).
+    /// emergent conjunction of the other three.
     ParkedResidualSoundness,
-    /// §Fase 80 — `UpstreamProjectionSoundness`: an `upstream`'s declared
+    /// v2.37.0 — `UpstreamProjectionSoundness`: an `upstream`'s declared
     /// wire↔session projection (`map:`) is a TOTAL, unambiguous cover of the
     /// bound role's message set, and its `resolve:`/`secret:` values are
-    /// config KEYS (never endpoint/credential literals). This is §80's core
+    /// config KEYS (never endpoint/credential literals). This is v2.37.0's core
     /// claim — "no message falls through untranscoded, no vendor coordinate
     /// in source" — as a machine-checkable obligation re-derived from the IR
     /// alone (the `no_unwitnessed_advantage` discipline applied to the trust
-    /// boundary D80.4 stops at: everything up to the wire is proved, the
+    /// boundary the design decision stops at: everything up to the wire is proved, the
     /// vendor's side is defended + witnessed, never claimed). Compile-time
-    /// mirror: the §80.c type-checker (T849/T850/T851).
+    /// mirror: the v2.37.0 type-checker (T849/T850/T851).
     UpstreamProjectionSoundness,
-    /// §Fase 83 — `CorsPolicyConsistency`: for every `axonendpoint.cors:`
+    /// v2.38.0 — `CorsPolicyConsistency`: for every `axonendpoint.cors:`
     /// reference in the program, the referenced `cors` declaration exists;
     /// no `cors` declaration combines an any-origin `allow_origins` with
     /// `allow_credentials: true` (the CORS spec's own forbidden pairing);
     /// and no two `axonendpoint`s sharing a `path:` reference different (or
     /// inconsistently unset/set) `cors:` declarations. Re-derives the same
-    /// closed checks the §83.c type-checker already ran (T853/T856/T857) —
+    /// closed checks the v2.38.0 type-checker already ran (T853/T856/T857) —
     /// belt-and-suspenders against a stored IR whose compile-time proof has
     /// gone stale (a hand-edited or version-drifted deployment).
     CorsPolicyConsistency,
-    /// §84.c — for each `target:`-bound technician `tool`, re-derives the
-    /// Remote Hands safety facts the §84.c type-checker already proved
+    /// v2.39.0 — for each `target:`-bound technician `tool`, re-derives the
+    /// Remote Hands safety facts the v2.39.0 type-checker already proved
     /// (T858/T859/T860): a `provider: bash` tool has a non-empty `argv:`
     /// template; every `${param}` in that argv is a WHOLE argv element bound
     /// to a declared parameter (no unbound, no partial/fused token — the
-    /// injection-safety keystone, D84.1); and a `risk: destructive` tool's
+    /// injection-safety keystone, the design decision); and a `risk: destructive` tool's
     /// bound session offers a reachable `branch{ approved / denied }`
-    /// confirmation (D84.2). Belt-and-suspenders against a stored IR whose
+    /// confirmation. Belt-and-suspenders against a stored IR whose
     /// compile-time proof has gone stale (a hand-edited or version-drifted
     /// deployment reaching a real machine — the highest-stakes surface, so it
     /// gets a deploy-time re-derivation like everything else).
     TechnicianCommandSafety,
-    /// §85.c — re-derives the program-wide cache laws the §85.c type-checker
+    /// v2.40.0 — re-derives the program-wide cache laws the v2.40.0 type-checker
     /// proved: at most one `cache { default: true }` (T863); every cache that
     /// widens `apply_to_effects:` beyond `[pure]` carries a finite `ttl:`
     /// (T865, the "never cache a non-deterministic result forever" invariant);
@@ -243,53 +243,53 @@ pub enum PropertyClass {
     /// gone stale — a mis-cached result is a correctness bug (serving a foreign
     /// or stale value), so it gets a deploy-time re-derivation.
     CacheSoundness,
-    /// §86.c — for each `forge` block, re-derives the Directed Creative
-    /// Synthesis well-formedness the §86.c type-checker proved (T868–T872): the
+    /// v2.41.0 — for each `forge` block, re-derives the Directed Creative
+    /// Synthesis well-formedness the v2.41.0 type-checker proved (T868–T872): the
     /// creativity `mode` is in the Boden catalog; `novelty` ∈ [0,1]; `depth`
     /// and `branches` ≥ 1; a `seed` is present; and a non-empty `constraints:`
     /// resolves to a declared `anchor` carrying a `confidence_floor`. This
     /// certifies the pipeline is well-formed and WILL run its fail-closed
     /// verification gate — the measured-novelty *outcome* is data-dependent and
-    /// enforced at runtime (D86.6).
+    /// enforced at runtime.
     ForgeSoundness,
-    /// §87.g — for each `savant` (the long-horizon autonomous research
-    /// primitive), re-derives the governance invariants the §87.b/c type-checker
+    /// v2.42.0 — for each `savant` (the long-horizon autonomous research
+    /// primitive), re-derives the governance invariants the v2.42.0 type-checker
     /// proved: a bounded ontological `domain` (T873); at least one well-formed
     /// `mandate` (T874); a mandatory, positive compute `budget.max_iterations`
-    /// (T877 — the §72 linear-budget discipline, the load-bearing
+    /// (T877 — the v2.28.0 linear-budget discipline, the load-bearing
     /// "budget-bounded" half of the doctrine `autonomy_is_a_governed_
     /// orchestration_not_a_loop`); and valid `cognition` catalogs (T876). This
     /// certifies a stored/deployed savant is STILL governed — an autonomous loop
     /// that runs for weeks with a stale proof that dropped its budget would be
     /// fail-open, so it gets a deploy-time re-derivation. (Interruptibility +
-    /// provenance are enforced by the enterprise host, §87.k.)
+    /// provenance are enforced by the enterprise host, v2.42.0.)
     SavantSoundness,
-    /// §88.e — for each `warden` adversarial-analysis block, re-derives the
-    /// authorization invariants the §88.b/c type-checker proved: the mandatory
+    /// v2.43.0 — for each `warden` adversarial-analysis block, re-derives the
+    /// authorization invariants the v2.43.0 type-checker proved: the mandatory
     /// `within <Scope>` RESOLVES to a declared `scope` (T887), and that scope is
     /// well-formed — a non-empty `targets` allowlist (T884), a catalog `depth`
     /// (T885), and a named `approver` (T886). This certifies a stored/deployed
     /// warden is STILL authorized — a security-analysis block whose stale proof
     /// dropped its scope (or whose scope lost its approver) would be an
     /// ungoverned offensive capability, so it gets a deploy-time re-derivation.
-    /// The target-in-allowlist + depth-ceiling enforcement is runtime (§88.h).
+    /// The target-in-allowlist + depth-ceiling enforcement is runtime (v2.43.0).
     WardenSoundness,
-    /// §89.c — the doctrine `every_boundary_is_guarded` as an
+    /// v2.44.0 — the doctrine `every_boundary_is_guarded` as an
     /// independently-verifiable fact. For each DISPATCHING `axonendpoint`
     /// (non-empty `execute:` — a real trust boundary), re-derives that it is
     /// AUTHORIZED: covered by ≥1 discipline (a non-empty `requires:` OR
     /// `shield:` OR `compliance:`) OR marked with the explicit, auditable
-    /// opt-out `public: true`. This makes the §89.b `axon-T890` type-check an
+    /// opt-out `public: true`. This makes the v2.44.0 `axon-T890` type-check an
     /// independently-verifiable proof — the verifier re-derives, from the IR
     /// alone, that no boundary dispatches un-covered by silent omission (the
     /// audit's Modo 1), never trusting the compiler that ran the check. A
     /// stored/deployed IR whose stale proof dropped an endpoint's coverage is
-    /// REFUTED, and the §52 deploy gate rejects the bundle fail-closed. A
+    /// REFUTED, and the v2.4.0 deploy gate rejects the bundle fail-closed. A
     /// non-dispatching endpoint crosses no boundary → no proof.
     AuthorizationCoverage,
-    /// §90.b — the doctrine `every_requirement_is_grantable`, the completeness
-    /// dual of `AuthorizationCoverage`. §89 proved every boundary DECLARES a
-    /// guard; §90 proves every declared guard is SATISFIABLE. Given a grantable
+    /// v2.45.0 — the doctrine `every_requirement_is_grantable`, the completeness
+    /// dual of `AuthorizationCoverage`. v2.44.0 proved every boundary DECLARES a
+    /// guard; v2.45.0 proves every declared guard is SATISFIABLE. Given a grantable
     /// authority catalog (RBAC colon perms ∪ reserved dotted caps ∪
     /// SA-grantable — supplied by the deploy environment, since pure OSS has no
     /// authority system), re-derives the whole-program `requires:` set from the
@@ -297,23 +297,23 @@ pub enum PropertyClass {
     /// — re-checking that no two authorities fracture into one capability), and
     /// certifies `requires ⊆ π(catalog)`. A `requires: [x]` whose `x` no
     /// authority grants is a DEAD boundary — declarable but never satisfiable
-    /// (`axon-T891`), the dual of the §89 Modo-2 dead permission. A
+    /// (`axon-T891`), the dual of the v2.44.0 Modo-2 dead permission. A
     /// stored/deployed IR whose stale proof admitted a dead requirement is
-    /// REFUTED and the §52 deploy gate rejects the bundle fail-closed.
+    /// REFUTED and the v2.4.0 deploy gate rejects the bundle fail-closed.
     CapabilityGrantability,
-    /// §91.c — the doctrine `time_is_an_explicit_input` applied to cognition
-    /// (§91). For every declared cognitive timezone (`now:` on a step or on a
-    /// `context` frame, §91.a), re-derives: (1) the IANA shape law the §91.a
+    /// v2.46.0 — the doctrine `time_is_an_explicit_input` applied to cognition
+    /// (v2.46.0). For every declared cognitive timezone (`now:` on a step or on a
+    /// `context` frame, v2.46.0), re-derives: (1) the IANA shape law the v2.46.0
     /// type-checker proved (`axon-T892`), and (2) — STRICTLY STRONGER than the
     /// zero-dependency frontend can check — actual membership in this build's
     /// tz database (chrono-tz). A plausible-but-unknown zone (`Fake/Zone`)
-    /// passes the frontend's shape law and fails CLOSED at runtime (§91.b);
+    /// passes the frontend's shape law and fails CLOSED at runtime (v2.46.0);
     /// this proof catches it at verify/deploy time, before the first request
     /// dies. Program-wide, 0-or-1 proof (the `cors`/`cache` shape); a program
     /// with no `now:` declarations has no temporal contract → no proof.
     TemporalContextSoundness,
-    /// §92.d — the STATIC half of the doctrine `authority_only_attenuates`
-    /// (§92): every `mint` resolves to a declared `credential` contract
+    /// v2.46.0 — the STATIC half of the doctrine `authority_only_attenuates`
+    /// (v2.46.0): every `mint` resolves to a declared `credential` contract
     /// (`axon-T895`, re-derived), and every declared contract is
     /// well-formed — non-empty valid-slug `grants:` (`axon-T893`) and a
     /// TTL in `(0, 24h]` (`axon-T894`). Belt-and-suspenders against a
@@ -321,11 +321,11 @@ pub enum PropertyClass {
     /// contract that grants nothing, outlives the ephemeral ceiling, or a
     /// mint of a ghost contract is refuted BEFORE deploy. The DYNAMIC half
     /// of the law (`grants ⊆ capabilities(minter)`) is data-dependent and
-    /// enforced fail-closed at mint time (§92.c handler + port).
+    /// enforced fail-closed at mint time (v2.46.0 handler + port).
     /// Program-wide, 0-or-1 proof; no `credential`/`mint` → no proof.
     CredentialAttenuation,
-    /// §94.e — the STATIC half of the doctrine
-    /// `rotation_without_revelation` (§94): every `backend: secrets`
+    /// v2.48.0 — the STATIC half of the doctrine
+    /// `rotation_without_revelation` (v2.48.0): every `backend: secrets`
     /// store carries a shape-valid `class:` (`axon-T900`, re-derived),
     /// every `rotate` targets a declared secrets store (`axon-T898`) and
     /// a declared tool (`axon-T899`), and NO write verb touches a
@@ -333,15 +333,15 @@ pub enum PropertyClass {
     /// API and the mediated rotate commit). Belt-and-suspenders against
     /// a stored/hand-edited IR whose compile-time proof has gone stale.
     /// The DYNAMIC halves (CAS commit, reveal-only-into-the-exchange)
-    /// are enforced fail-closed by the §94.d dispatcher + custody port —
+    /// are enforced fail-closed by the v2.48.0 dispatcher + custody port —
     /// by construction of the wire, no term evaluates to a value.
     /// Program-wide, 0-or-1 proof; no secrets store and no `rotate` →
     /// no proof.
     SecretCustodySoundness,
-    /// §98.d — for a program declaring any web-acquisition tool, re-derives
-    /// the §98.d provenance invariants the type-checker proved: every scrape
+    /// v2.52.0 — for a program declaring any web-acquisition tool, re-derives
+    /// the v2.52.0 provenance invariants the type-checker proved: every scrape
     /// provider's `effects:` carries `web` (T904 — scraped values are born
-    /// Untrusted, D98.1); no `scrape_dom` dishonestly declares `network`
+    /// Untrusted, the design decision); no `scrape_dom` dishonestly declares `network`
     /// (T904 — it does no I/O); and every flow that acquires web content and
     /// feeds an unshielded belief step applies a shield (T908 — the content-
     /// injection barrier). Belt-and-suspenders against a stored/hand-edited IR
@@ -349,16 +349,16 @@ pub enum PropertyClass {
     /// content reach an agent's beliefs unscanned is refuted BEFORE deploy.
     /// Program-wide, 0-or-1 proof; no scrape tool → no proof.
     ScrapeProvenanceSoundness,
-    /// §116.a (D116.9) — for a program declaring any tool with a non-empty
+    /// v2.77.0 — for a program declaring any tool with a non-empty
     /// `requires:`, re-derives the `axon-T956` scope-coverage invariant the
     /// type-checker proved: every `use` of a scope-declaring tool is covered by
-    /// the program's GRANTED set (∪ `credential.grants` §92 ∪ endpoint/daemon
-    /// `requires_capabilities` §51.x/§52.d). A stored/hand-edited IR that adds a
+    /// the program's GRANTED set (∪ `credential.grants` v2.46.0 ∪ endpoint/daemon
+    /// `requires_capabilities` v2.4.0/v2.4.0). A stored/hand-edited IR that adds a
     /// tool-use requiring an ungranted scope — or strips the credential that
     /// granted it — is REFUTED before deploy. Program-wide, 0-or-1 proof; no
     /// scope-declaring tool → no proof.
     ScopeCoverageSoundness,
-    /// §99.d — for a program declaring any `document`, re-derives the §99.d
+    /// v2.53.0 — for a program declaring any `document`, re-derives the v2.53.0
     /// egress invariants the type-checker proved: every document's `target` is
     /// in the catalog (T910); a document binding `sensitive:*` carries a
     /// `legal:*` basis (T913); and every assertive-slot flow-value binding is
@@ -367,7 +367,7 @@ pub enum PropertyClass {
     /// an unattributed assertion into a signed-looking document is refuted
     /// BEFORE deploy. Program-wide, 0-or-1 proof; no `document` → no proof.
     DocumentProvenanceSoundness,
-    /// §105 — for a program declaring any `deliver`, re-derives the §105 egress
+    /// v2.60.0 — for a program declaring any `deliver`, re-derives the v2.60.0 egress
     /// invariants the type-checker proved: every delivery's `target` is in the
     /// catalog (T921); a delivery binding `sensitive:*` carries a `legal:*` basis
     /// (T924); and a `provenance: cleared` delivery that binds a flow value sits
@@ -376,8 +376,8 @@ pub enum PropertyClass {
     /// launder a vendor guess into the CRM as a bare fact is refuted BEFORE
     /// deploy. Program-wide, 0-or-1 proof; no `deliver` → no proof.
     DeliveryProvenanceSoundness,
-    /// §107 — for a program declaring any `method: QUERY` axonendpoint, re-derives
-    /// the RFC 10008 §2 safety guarantee the type-checker proved (`axon-T927`): the
+    /// v2.62.0 — for a program declaring any `method: QUERY` axonendpoint, re-derives
+    /// the RFC 10008 section 2 safety guarantee the type-checker proved (`axon-T927`): the
     /// endpoint's flow reaches NO declared write (`persist`/`mutate`/`purge`/`emit`/
     /// `publish`/`rotate`/`mint`/`transact`, at any nesting depth), and the program
     /// declares no `deliver`/`document` egress (those fire for every flow). A QUERY
@@ -386,57 +386,57 @@ pub enum PropertyClass {
     /// behind a safe method is REFUTED BEFORE DEPLOY. Program-wide, 0-or-1 proof;
     /// no QUERY endpoint → no proof.
     QuerySafetySoundness,
-    /// §Fase 108.d — the dataspace schema law (`axon-T928`/`axon-T930`),
+    /// v2.63.0 — the dataspace schema law (`axon-T928`/`axon-T930`),
     /// re-derived: every query verb targets a DECLARED dataspace and
     /// references only DECLARED columns; every dataspace schema uses the
     /// closed type catalog. A hand-edited IR that queries a ghost column
     /// or smuggles an unknown column type is refuted at deploy.
     DataspaceSchemaSoundness,
-    /// §Fase 109.b — the proof-carrying derivative (`axon-T931`/`T932`,
+    /// v2.65.0 — the proof-carrying derivative (`axon-T931`/`T932`,
     /// re-derived): every `grad` step's stored derivatives EQUAL the
     /// re-differentiation of its original expression (post-simplification,
-    /// D109.4). A hand-edited gradient is refuted at deploy.
+    /// the design decision). A hand-edited gradient is refuted at deploy.
     GradientSoundness,
-    /// §Fase 110.b — governed human notification (`axon-T933`/`T934`/`T935`,
+    /// v2.66.0 — governed human notification (`axon-T933`/`T934`/`T935`,
     /// re-derived): every `notify`'s recipient is a custody ref, its window
     /// is present, and a cleared-provenance notify binding flow values is
     /// vouched. A hand-edited artifact that launders a guess to a human's
     /// pocket is refuted at deploy.
     NotificationProvenanceSoundness,
-    /// §100.e — for a program declaring any ingesting tool (`ingest:*`), re-
-    /// derives the §100.d ingestion invariants: no tool producing
+    /// v2.54.0 — for a program declaring any ingesting tool (`ingest:*`), re-
+    /// derives the v2.54.0 ingestion invariants: no tool producing
     /// `ingest:inferred` also declares `epistemic:know` (T1001, the Inferred
     /// ceiling); and no flow feeds ingested (born-Untrusted) content to an
-    /// agent's beliefs unshielded (T908, the ingestion barrier reused from §98).
+    /// agent's beliefs unshielded (T908, the ingestion barrier reused from v2.52.0).
     /// Program-wide, 0-or-1 proof; no ingesting tool → no proof.
     DocumentIngestionSoundness,
-    /// §101.b — the Inferred-ceiling property. §100 shipped the `ingest:inferred`
-    /// class with NO producer (D100.14, the vacuum); §101 introduces the first
+    /// v2.54.0 — the Inferred-ceiling property. v2.54.0 shipped the `ingest:inferred`
+    /// class with NO producer (the design decision, the vacuum); v2.54.0 introduces the first
     /// producers. This class re-derives, over exactly those producers, that the
     /// vacuum is now *inhabited but still safe*: every `ingest:inferred` tool is
-    /// capped at `believe` (no `epistemic:know`, T1001, D101.1) and none feeds an
+    /// capped at `believe` (no `epistemic:know`, T1001, the design decision) and none feeds an
     /// agent's beliefs unshielded (T908). Program-wide, 0-or-1 proof; **no
-    /// inferred producer → no proof** (the dual of §100's vacuum test).
+    /// inferred producer → no proof** (the dual of v2.54.0's vacuum test).
     InferredCeilingSoundness,
 }
 
-/// §72.f — the closed period catalog for `budget` quotas. The checker's own
-/// statement of the spec (D51.2) — mirror of
+/// v2.28.0 — the closed period catalog for `budget` quotas. The checker's own
+/// statement of the spec — mirror of
 /// `axon_frontend::type_checker::VALID_BUDGET_PERIODS`.
 pub const VALID_BUDGET_PERIODS: &[&str] = &["second", "minute", "hour", "day"];
 
-/// §72.f — the closed exhaustion-policy catalog for `budget`. Mirror of
+/// v2.28.0 — the closed exhaustion-policy catalog for `budget`. Mirror of
 /// `axon_frontend::type_checker::VALID_ON_EXHAUSTED`.
 pub const VALID_ON_EXHAUSTED: &[&str] = &["block", "defer", "shed"];
 
-/// §51.e — the closed breach-policy catalog. Mirror of
+/// v2.4.0 — the closed breach-policy catalog. Mirror of
 /// `axon_frontend::type_checker::VALID_ON_BREACH_POLICIES` (private
-/// const). The checker's own statement of the spec (D51.2). Cross-crate
-/// drift gate deferred to §51.f alongside the effect catalog.
+/// const). The checker's own statement of the spec. Cross-crate
+/// drift gate deferred to v2.4.0 alongside the effect catalog.
 pub const VALID_BREACH_POLICIES: &[&str] =
     &["deflect", "escalate", "halt", "quarantine", "sanitize_and_retry"];
 
-/// §51.d — the retry-storm ceiling. A declared `retries` above this is
+/// v2.4.0 — the retry-storm ceiling. A declared `retries` above this is
 /// almost certainly a defect (an unbounded-ish retry storm), not a
 /// legitimate config. Generous on purpose so legitimate high-retry
 /// configs are not false-positived; the negative-retries case is the
@@ -487,18 +487,18 @@ impl PropertyClass {
     }
 }
 
-/// §79.c — the closed `CallInterruptCause` catalog. The checker's own statement
-/// of the spec (D51.2) — mirror of
+/// v2.36.0 — the closed `CallInterruptCause` catalog. The checker's own statement
+/// of the spec — mirror of
 /// `axon_frontend::type_checker::CALL_INTERRUPT_CAUSES`. Cross-crate drift is
 /// gated the same way the other mirrored catalogs are.
 pub const CALL_INTERRUPT_CAUSES: &[&str] =
     &["CallerSpeech", "Dtmf", "SilenceTimeout", "AgentFault"];
 
-/// §51.a — witness for [`PropertyClass::ComplianceCoverage`].
+/// v2.4.0 — witness for [`PropertyClass::ComplianceCoverage`].
 ///
 /// The derivation the producer recorded. The checker RE-DERIVES every
 /// field from the artifact and rejects the proof if the witness
-/// disagrees (D51.2 — a forged witness is caught because the checker
+/// disagrees (the design decision — a forged witness is caught because the checker
 /// recomputes, it does not believe the claim).
 ///
 /// The property certified: the shield attached to a compliance-bearing
@@ -532,11 +532,11 @@ pub struct ComplianceCoverageWitness {
     pub uncovered_classes: Vec<String>,
 }
 
-/// §51.b — witness for [`PropertyClass::EffectRowSoundness`].
+/// v2.4.0 — witness for [`PropertyClass::EffectRowSoundness`].
 ///
 /// The derivation for one tool's declared effect row. The checker
 /// re-derives every field from the tool's IR and rejects a disagreement
-/// as forgery (D51.2).
+/// as forgery.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EffectRowSoundnessWitness {
     /// The tool this proof is about.
@@ -559,12 +559,12 @@ pub struct EffectRowSoundnessWitness {
     pub purity_violation: bool,
 }
 
-/// §51.c — witness for [`PropertyClass::CapabilityIsolation`].
+/// v2.4.0 — witness for [`PropertyClass::CapabilityIsolation`].
 ///
 /// The derivation for one `axonstore`'s capability gate. The checker
-/// re-reads the store's `capability` from the IR and re-runs the §32.g
+/// re-reads the store's `capability` from the IR and re-runs the v1.23.0
 /// grammar validator; a forged witness is rejected because the
-/// recomputation disagrees (D51.2).
+/// recomputation disagrees.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CapabilityIsolationWitness {
     /// The `axonstore` this proof is about.
@@ -572,11 +572,11 @@ pub struct CapabilityIsolationWitness {
     /// The store's declared Pillar IV capability gate slug.
     pub capability: String,
     /// True when `capability` is non-empty AND does NOT match the
-    /// §32.g capability-scope grammar. False for a verifying proof.
+    /// v1.23.0 capability-scope grammar. False for a verifying proof.
     pub malformed: bool,
 }
 
-/// §51.d — witness for [`PropertyClass::ResourceBounds`]. One subject
+/// v2.4.0 — witness for [`PropertyClass::ResourceBounds`]. One subject
 /// per proof: an endpoint's retry bound OR a socket's credit window.
 /// Tagged by `subject` so the JSON is self-describing.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -596,17 +596,17 @@ pub enum ResourceBoundsWitness {
     SocketCredit {
         socket_name: String,
         credit: i64,
-        /// True when `credit >= 1` (a 0 window deadlocks per §41.b).
+        /// True when `credit >= 1` (a 0 window deadlocks per v2.3.0).
         positive: bool,
     },
 }
 
-/// §51.e — witness for [`PropertyClass::ShieldHaltGuarantee`].
+/// v2.4.0 — witness for [`PropertyClass::ShieldHaltGuarantee`].
 ///
 /// The derivation for one shield's breach policy. The checker re-reads
 /// the shield's `on_breach` + `scan` from the IR and recomputes both
 /// facts; a forged witness is rejected because the recomputation
-/// disagrees (D51.2).
+/// disagrees.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ShieldHaltGuaranteeWitness {
     /// The shield this proof is about.
@@ -623,13 +623,13 @@ pub struct ShieldHaltGuaranteeWitness {
     pub vacuous_halt: bool,
 }
 
-/// §51.x — witness for [`PropertyClass::CapabilityContainment`].
+/// v2.4.0 — witness for [`PropertyClass::CapabilityContainment`].
 ///
 /// The derivation for one endpoint's reachable-store-gate containment.
 /// The checker re-resolves the `execute_flow`, re-walks its reachable
 /// store ops, re-resolves each store's capability gate, and recomputes
 /// the uncovered set; a forged witness is rejected because the
-/// recomputation disagrees (D51.2).
+/// recomputation disagrees.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CapabilityContainmentWitness {
     /// The apx / axonendpoint this proof is about.
@@ -650,14 +650,14 @@ pub struct CapabilityContainmentWitness {
     pub uncovered_gates: Vec<String>,
 }
 
-/// §58.i — witness for [`PropertyClass::ToolCallSoundness`].
+/// v2.8.0 — witness for [`PropertyClass::ToolCallSoundness`].
 ///
 /// The derivation for ONE structured `use <Tool>(k = v, …)` call site.
 /// The checker re-walks the named flow, locates the call at `call_index`
 /// (deterministic walk order over the same digest-bound IR), re-reads
 /// the called tool's `parameters:` schema, and recomputes every fact; a
 /// forged witness (e.g. hiding an unknown argument) is rejected because
-/// the recomputation disagrees (D51.2).
+/// the recomputation disagrees.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ToolCallSoundnessWitness {
     /// The flow containing the call.
@@ -696,14 +696,14 @@ pub struct ToolCallSoundnessWitness {
     pub type_mismatches: Vec<String>,
 }
 
-/// §72.f — witness for [`PropertyClass::EffectBudgeted`].
+/// v2.28.0 — witness for [`PropertyClass::EffectBudgeted`].
 ///
 /// The property certified: every quota in a daemon's `budget { … }` is a sound,
 /// enforceable contract — its `on Tool(X)` resolves to a declared tool, its limit
 /// is positive, its period is in the closed catalog, and the budget's
 /// `on_exhausted` is in the closed catalog. The checker RE-DERIVES every field
 /// from the artifact (the daemon's IR budget + the program's tools) and rejects
-/// the proof if the witness disagrees (D51.2 — a forged witness is caught because
+/// the proof if the witness disagrees (the design decision — a forged witness is caught because
 /// the checker recomputes). A verifying proof has all four defect lists empty +
 /// `on_exhausted_valid == true`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -729,14 +729,14 @@ pub struct EffectBudgetedWitness {
     pub on_exhausted_valid: bool,
 }
 
-/// §73.g — witness for [`PropertyClass::JsonShapeSoundness`].
+/// v2.26.0 — witness for [`PropertyClass::JsonShapeSoundness`].
 ///
 /// The property certified: every `Json<T>` shape lens an `axonstore`
 /// declares (a column typed `Json<T>` / `Jsonb<T>`) has `T` resolving to a
 /// declared struct `type` in the program. The checker RE-DERIVES every
 /// field from the artifact (the store's IR columns + the program's
 /// `type` declarations) and rejects the proof if the witness disagrees
-/// (D51.2 — a forged witness is caught because the checker recomputes). A
+/// (the design decision — a forged witness is caught because the checker recomputes). A
 /// verifying proof has `unresolved_shapes` empty.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct JsonShapeSoundnessWitness {
@@ -755,13 +755,13 @@ pub struct JsonShapeSoundnessWitness {
     pub unresolved_shapes: Vec<String>,
 }
 
-/// §74.g — witness for [`PropertyClass::ChannelDeliverySoundness`].
+/// v2.31.0 — witness for [`PropertyClass::ChannelDeliverySoundness`].
 ///
 /// The property certified: a typed `channel` a `daemon` `listen`s on has a
 /// PRODUCER (some flow / daemon-listener body `emit`s to it), so the
 /// listener can actually fire. The checker RE-DERIVES every field from the
 /// artifact (the program's `emit` sites + daemon `listen` sites) and
-/// rejects the proof if the witness disagrees (D51.2). A verifying proof
+/// rejects the proof if the witness disagrees. A verifying proof
 /// has `has_consumer && has_producer` (or no consumer at all → no proof is
 /// generated).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -778,12 +778,12 @@ pub struct ChannelDeliverySoundnessWitness {
     pub has_consumer: bool,
 }
 
-/// §76.e — witness for [`PropertyClass::AggregateSoundness`].
+/// v2.33.0 — witness for [`PropertyClass::AggregateSoundness`].
 ///
 /// One aggregate-`retrieve` site. The checker RE-DERIVES every field from
 /// the artifact (re-walking the flows / daemon-listener bodies and
 /// re-parsing the clause through the SAME runtime parser) and rejects the
-/// proof if the witness disagrees (D51.2). A verifying proof has empty
+/// proof if the witness disagrees. A verifying proof has empty
 /// `violations`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AggregateSoundnessWitness {
@@ -812,17 +812,17 @@ pub struct AggregateSoundnessWitness {
     pub violations: Vec<String>,
 }
 
-/// §77.b — the closed egress-signing catalog. The checker's own statement
-/// of the spec (D51.2) — mirror of
+/// v2.34.0 — the closed egress-signing catalog. The checker's own statement
+/// of the spec — mirror of
 /// `axon_frontend::type_checker::VALID_SIGN_ALGORITHMS`.
 pub const VALID_SIGN_ALGORITHMS: &[&str] = &["hmac_sha256"];
 
-/// §77.b — witness for [`PropertyClass::ChannelEgressSoundness`].
+/// v2.34.0 — witness for [`PropertyClass::ChannelEgressSoundness`].
 ///
 /// One egress-marked channel. The checker RE-DERIVES every field from the
 /// artifact (re-walking the publish sites against the declared shields —
 /// never trusting the IR's pre-resolved `sign` stamps) and rejects the
-/// proof if the witness disagrees (D51.2). A verifying proof has
+/// proof if the witness disagrees. A verifying proof has
 /// `declared_egress_sign == derived_sign`, a catalog algorithm, and
 /// `durable == true`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -840,16 +840,16 @@ pub struct ChannelEgressSoundnessWitness {
     pub shield_ref: String,
     /// The channel's declared `persistence`.
     pub persistence: String,
-    /// `persistence == "persistent_axonstore"` — the §77 durable-egress
-    /// requirement (D77.6).
+    /// `persistence == "persistent_axonstore"` — the v2.34.0 durable-egress
+    /// requirement.
     pub durable: bool,
 }
 
-/// §79.c — witness for [`PropertyClass::InterruptibleSessionSoundness`].
+/// v2.36.0 — witness for [`PropertyClass::InterruptibleSessionSoundness`].
 ///
 /// One interruptible region, located by `(session_name, role_name, signal)`.
 /// The checker RE-DERIVES every field from the IR session steps and rejects the
-/// proof if the witness disagrees (D51.2). A verifying proof has
+/// proof if the witness disagrees. A verifying proof has
 /// `signal_in_catalog && has_body && has_handler && handler_reaches_exit`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct InterruptibleSessionSoundnessWitness {
@@ -867,16 +867,16 @@ pub struct InterruptibleSessionSoundnessWitness {
     /// The region declares a resumable `handler` arm.
     pub has_handler: bool,
     /// The handler reaches a two-exit terminal (`resume` or `end`) on every
-    /// path (D79.11a — a handler that falls off the end would leak a linear
+    /// path (the design decision — a handler that falls off the end would leak a linear
     /// continuation capability).
     pub handler_reaches_exit: bool,
 }
 
-/// §79.f — witness for [`PropertyClass::ParkedResidualSoundness`].
+/// v2.36.0 — witness for [`PropertyClass::ParkedResidualSoundness`].
 ///
 /// One socket that carries an interruptible session (so its body residual may
 /// be parked at rest). The checker re-derives every field from the IR and
-/// rejects a disagreement (D51.2). A verifying proof has `session_has_interrupt
+/// rejects a disagreement. A verifying proof has `session_has_interrupt
 /// → (reconnect_cognitive_state && legal_basis_declared)`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ParkedResidualSoundnessWitness {
@@ -888,20 +888,20 @@ pub struct ParkedResidualSoundnessWitness {
     /// residual can be parked at rest).
     pub session_has_interrupt: bool,
     /// The socket declares `reconnect: cognitive_state` — the park is AAD-bound
-    /// and recoverable (§41.g), not a second, unsealed store.
+    /// and recoverable (v2.3.0), not a second, unsealed store.
     pub reconnect_cognitive_state: bool,
     /// The socket declares a `legal_basis` — the at-rest retention of the
     /// parked κ is governed (its TTL has a legal ceiling).
     pub legal_basis_declared: bool,
 }
 
-/// §80 — witness for [`PropertyClass::UpstreamProjectionSoundness`].
+/// v2.37.0 — witness for [`PropertyClass::UpstreamProjectionSoundness`].
 ///
 /// One `upstream`, located by name. The checker RE-DERIVES the required
 /// message sets from the referenced session's bound role, the covered sets
 /// from the `map:` rules, and the key-shape verdicts from the strings
 /// themselves — a forged `projection_total: true` is caught by
-/// recomputation (D51.2). A verifying proof has `projection_total &&
+/// recomputation. A verifying proof has `projection_total &&
 /// config_keys_valid`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UpstreamProjectionSoundnessWitness {
@@ -931,14 +931,14 @@ pub struct UpstreamProjectionSoundnessWitness {
     pub config_keys_valid: bool,
 }
 
-/// §83.c — witness for [`PropertyClass::CorsPolicyConsistency`].
+/// v2.38.0 — witness for [`PropertyClass::CorsPolicyConsistency`].
 ///
 /// Unlike most witnesses (one channel / socket / upstream), this property is
 /// inherently PROGRAM-WIDE: "every reference resolves" and "no two endpoints
 /// on one path disagree" are statements about the whole declaration set, not
 /// one declaration. The checker RE-DERIVES every field from the IR's
 /// `cors_policies` + `endpoints` and rejects the proof if the witness
-/// disagrees (D51.2). A verifying proof has `all_references_resolve == true`
+/// disagrees. A verifying proof has `all_references_resolve == true`
 /// and both violation lists empty.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CorsPolicyConsistencyWitness {
@@ -960,10 +960,10 @@ pub struct CorsPolicyConsistencyWitness {
     pub cross_method_conflicts: Vec<(String, String)>,
 }
 
-/// §84.c — witness for [`PropertyClass::TechnicianCommandSafety`], one per
+/// v2.39.0 — witness for [`PropertyClass::TechnicianCommandSafety`], one per
 /// `target:`-bound technician `tool`. The checker RE-DERIVES every field from
 /// the IR (`tools` + `sockets` + `sessions`) and rejects the proof if the
-/// witness disagrees (D51.2). A verifying proof has `argv_present == true`,
+/// witness disagrees. A verifying proof has `argv_present == true`,
 /// both violation lists empty, and (`risk != "destructive"` OR
 /// `confirm_branch_reachable == true`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -994,7 +994,7 @@ pub struct TechnicianCommandSafetyWitness {
     pub confirm_branch_reachable: bool,
 }
 
-/// §85.c — witness for [`PropertyClass::CacheSoundness`], one per program (the
+/// v2.40.0 — witness for [`PropertyClass::CacheSoundness`], one per program (the
 /// laws are inherently whole-module). The checker RE-DERIVES every field from
 /// `ir.caches` + `ir.tools` + `ir.channels` and rejects on disagreement. A
 /// verifying proof has `default_count <= 1` and both violation lists empty.
@@ -1012,7 +1012,7 @@ pub struct CacheSoundnessWitness {
     pub unresolved_refs: Vec<String>,
 }
 
-/// §86.c — witness for [`PropertyClass::ForgeSoundness`], one per `forge`
+/// v2.41.0 — witness for [`PropertyClass::ForgeSoundness`], one per `forge`
 /// block. The checker RE-DERIVES every field from the IR (`flows` + `anchors`)
 /// and rejects on disagreement. A verifying proof has every `*_ok` flag true.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1039,7 +1039,7 @@ pub struct ForgeSoundnessWitness {
     pub constraints_ok: bool,
 }
 
-/// §87.g — witness for [`PropertyClass::SavantSoundness`], one per `savant`. The
+/// v2.42.0 — witness for [`PropertyClass::SavantSoundness`], one per `savant`. The
 /// checker RE-DERIVES every field from `ir.savants` (+ `ir.memories`/
 /// `ir.corpus_specs` for the memory binding) and rejects on disagreement. A
 /// verifying proof has every `*_ok` flag true.
@@ -1054,7 +1054,7 @@ pub struct SavantSoundnessWitness {
     pub domain_present: bool,
     /// At least one mandate, each with a non-empty objective + output type (T874).
     pub mandate_ok: bool,
-    /// A mandatory, positive `budget.max_iterations` (T877 — the §72 discipline;
+    /// A mandatory, positive `budget.max_iterations` (T877 — the v2.28.0 discipline;
     /// the load-bearing "budget-bounded" invariant).
     pub budget_bounded: bool,
     /// `cognition` absent, OR its `depth`/`divergence` are in catalog and
@@ -1064,7 +1064,7 @@ pub struct SavantSoundnessWitness {
     pub memory_ref_ok: bool,
 }
 
-/// §88.e — witness for [`PropertyClass::WardenSoundness`], one per `warden`
+/// v2.43.0 — witness for [`PropertyClass::WardenSoundness`], one per `warden`
 /// block. The checker RE-DERIVES every field from the IR (`flows` + `scopes`)
 /// and rejects on disagreement. A verifying proof has every `*_ok` flag true.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1082,7 +1082,7 @@ pub struct WardenSoundnessWitness {
     pub approver_present: bool,
 }
 
-/// §89.c — witness for [`PropertyClass::AuthorizationCoverage`], one per
+/// v2.44.0 — witness for [`PropertyClass::AuthorizationCoverage`], one per
 /// DISPATCHING `axonendpoint`. The checker RE-DERIVES every field from the IR
 /// endpoint and rejects on disagreement (a forged witness claiming
 /// `authorized: true` for an uncovered endpoint is caught by recomputation).
@@ -1107,7 +1107,7 @@ pub struct AuthorizationCoverageWitness {
     pub authorized: bool,
 }
 
-/// §90.b — witness for [`PropertyClass::CapabilityGrantability`], one per
+/// v2.45.0 — witness for [`PropertyClass::CapabilityGrantability`], one per
 /// program. The checker RE-DERIVES `required` from the IR endpoints, RE-BUILDS
 /// the grantable set from `authorities` through `π`, and rejects on: a forged
 /// `required` (disagrees with the IR), a FRACTURED catalog (two authorities
@@ -1131,14 +1131,14 @@ pub struct CapabilityGrantabilityWitness {
     pub all_grantable: bool,
 }
 
-/// §91.c — witness for [`PropertyClass::TemporalContextSoundness`].
+/// v2.46.0 — witness for [`PropertyClass::TemporalContextSoundness`].
 ///
 /// Program-wide (the `cors`/`cache` shape): "every declared cognitive
 /// timezone is well-formed and resolvable" quantifies over the whole
 /// declaration set. The checker RE-DERIVES every field from the IR's
 /// `contexts` + the flows' step trees (recursing through Conditional /
 /// ForIn / Par / Listen / Warden / Quant bodies) and rejects the proof if
-/// the witness disagrees (D51.2). A verifying proof has both violation
+/// the witness disagrees. A verifying proof has both violation
 /// lists empty.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TemporalContextSoundnessWitness {
@@ -1150,17 +1150,17 @@ pub struct TemporalContextSoundnessWitness {
     /// a verifying proof.
     pub format_violations: Vec<String>,
     /// Zones passing the shape law but UNKNOWN to this build's tz database
-    /// (chrono-tz — the authority the frontend defers to, §71.a split).
+    /// (chrono-tz — the authority the frontend defers to, v2.27.0 split).
     /// Empty for a verifying proof.
     pub unknown_zones: Vec<String>,
 }
 
-/// §92.d — witness for [`PropertyClass::CredentialAttenuation`].
+/// v2.46.0 — witness for [`PropertyClass::CredentialAttenuation`].
 ///
 /// Program-wide (the `cors`/`temporal` shape). The checker RE-DERIVES every
 /// field from the IR's `credentials` + the flows' step trees (recursing
 /// through the nesting variants) and rejects the proof if the witness
-/// disagrees (D51.2). A verifying proof has both violation lists empty.
+/// disagrees. A verifying proof has both violation lists empty.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CredentialAttenuationWitness {
     /// `(name, ttl_secs, grants)` for every declared `credential`,
@@ -1177,18 +1177,18 @@ pub struct CredentialAttenuationWitness {
     pub invalid_contracts: Vec<String>,
 }
 
-/// §94.e — witness for [`PropertyClass::SecretCustodySoundness`].
+/// v2.48.0 — witness for [`PropertyClass::SecretCustodySoundness`].
 ///
 /// Program-wide (the `cors`/`temporal`/`credential` shape). The checker
 /// RE-DERIVES every field from the IR's `axonstore_specs` + `tool_specs` +
 /// the flows' step trees and rejects the proof if the witness disagrees
-/// (D51.2). A verifying proof has every violation list empty.
+///. A verifying proof has every violation list empty.
 ///
 /// The dynamic halves of `rotation_without_revelation` — the CAS commit,
 /// the reveal-only-into-the-exchange discipline — are enforced fail-closed
-/// by the dispatcher + the custody port (§94.d), BY CONSTRUCTION of the
+/// by the dispatcher + the custody port (v2.48.0), BY CONSTRUCTION of the
 /// wire (no term evaluates to a value); data-dependent, so deliberately
-/// NOT claimed here (the §92.d honesty split).
+/// NOT claimed here (the v2.46.0 honesty split).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SecretCustodySoundnessWitness {
     /// `(store_name, class)` for every `backend: secrets` axonstore,
@@ -1212,7 +1212,7 @@ pub struct SecretCustodySoundnessWitness {
     /// custody is written only by the seed API and the mediated `rotate`
     /// commit). Empty for a verifying proof.
     pub write_violations: Vec<(String, String, String)>,
-    /// §Fase 95.a — tool names whose `secret_partition:` is ill-formed
+    /// v2.49.0 — tool names whose `secret_partition:` is ill-formed
     /// (`axon-T903`, re-derived from the IR): a partition without a
     /// `secret:`, a partition naming a parameter the tool does not
     /// declare (or one that is not a required `String`), or a partition
@@ -1224,16 +1224,16 @@ pub struct SecretCustodySoundnessWitness {
     /// a partition pointing at a ghost/non-string parameter is REFUTED
     /// before it mounts. Empty for a verifying proof.
     ///
-    /// `#[serde(default)]` so a proof emitted by a pre-§95 axon-lang
+    /// `#[serde(default)]` so a proof emitted by a pre-v2.49.0 axon-lang
     /// (no partition concept) still deserializes — the absent field
     /// defaults to empty, which re-derives equal for any program with no
-    /// partitions (a §95-partitioned program has no pre-§95 proof to skew
+    /// partitions (a v2.49.0-partitioned program has no pre-v2.49.0 proof to skew
     /// against). Forward-compatible verification across the version bump.
     #[serde(default)]
     pub partition_violations: Vec<String>,
 }
 
-/// §98.d — witness for [`PropertyClass::ScrapeProvenanceSoundness`], one per
+/// v2.52.0 — witness for [`PropertyClass::ScrapeProvenanceSoundness`], one per
 /// program (the web-acquisition provenance laws are whole-module). The checker
 /// RE-DERIVES every field from `ir.tools` + `ir.flows` + `ir.agents` and
 /// rejects on disagreement. A verifying proof has every violation list empty.
@@ -1256,7 +1256,7 @@ pub struct ScrapeProvenanceSoundnessWitness {
     pub unshielded_flows: Vec<String>,
 }
 
-/// §116.a (D116.9) — witness for [`PropertyClass::ScopeCoverageSoundness`], one
+/// v2.77.0 — witness for [`PropertyClass::ScopeCoverageSoundness`], one
 /// per program (the authorization laws are whole-module). The checker RE-DERIVES
 /// every field from `ir.tools` + `ir.credentials` + `ir.endpoints` + `ir.daemons`
 /// + `ir.flows` and rejects on disagreement. A verifying proof has
@@ -1277,7 +1277,7 @@ pub struct ScopeCoverageSoundnessWitness {
     pub uncovered_uses: Vec<(String, String, String)>,
 }
 
-/// §99.d — witness for [`PropertyClass::DocumentProvenanceSoundness`], one per
+/// v2.53.0 — witness for [`PropertyClass::DocumentProvenanceSoundness`], one per
 /// program (the egress laws are whole-module). The checker RE-DERIVES every
 /// field from `ir.documents` and rejects on disagreement. A verifying proof has
 /// every violation list empty.
@@ -1299,7 +1299,7 @@ pub struct DocumentProvenanceSoundnessWitness {
     pub unattributed_slots: Vec<String>,
 }
 
-/// §105 — witness for [`PropertyClass::DeliveryProvenanceSoundness`], one per
+/// v2.60.0 — witness for [`PropertyClass::DeliveryProvenanceSoundness`], one per
 /// program (the egress laws are whole-module). The checker RE-DERIVES every
 /// field from `ir.deliveries` and rejects on disagreement. A verifying proof has
 /// every violation list empty.
@@ -1321,7 +1321,7 @@ pub struct DeliveryProvenanceSoundnessWitness {
     pub laundered_deliveries: Vec<String>,
 }
 
-/// §107 — witness for [`PropertyClass::QuerySafetySoundness`], one per program.
+/// v2.62.0 — witness for [`PropertyClass::QuerySafetySoundness`], one per program.
 /// The checker RE-DERIVES every field from `ir.endpoints` + `ir.flows` +
 /// `ir.deliveries`/`ir.documents` and rejects on disagreement. A verifying proof
 /// has both violation lists empty.
@@ -1330,19 +1330,19 @@ pub struct QuerySafetySoundnessWitness {
     /// `(endpoint, flow)` for every `method: QUERY` endpoint, source order.
     pub query_endpoints: Vec<(String, String)>,
     /// `"<endpoint>:<verb>"` for every QUERY endpoint whose flow reaches a declared
-    /// write at ANY nesting depth (`axon-T927`, re-derived). RFC 10008 §2 requires
+    /// write at ANY nesting depth (`axon-T927`, re-derived). RFC 10008 section 2 requires
     /// a QUERY to change no state; a hand-edited IR that smuggles a write behind a
     /// safe method is refuted here. Empty for a verifying proof.
     pub unsafe_queries: Vec<String>,
     /// `"deliver:<name>"` / `"document:<name>"` — program-level egress declarations,
-    /// which FIRE for every flow the executor runs (D105.7-B), so no QUERY endpoint
+    /// which FIRE for every flow the executor runs (the design decision-B), so no QUERY endpoint
     /// in this program could be safe. Empty for a verifying proof.
     pub egress_declarations: Vec<String>,
 }
 
-/// §109.b — witness for [`PropertyClass::GradientSoundness`], one per
+/// v2.65.0 — witness for [`PropertyClass::GradientSoundness`], one per
 /// program. The checker RE-DIFFERENTIATES every grad step's `original`
-/// (symbolic rules + the SAME deterministic simplifier, D109.4) and
+/// (symbolic rules + the SAME deterministic simplifier, the design decision) and
 /// compares the canonical JSON of the stored derivatives. A verifying
 /// proof has the violation list empty.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1354,7 +1354,7 @@ pub struct GradientSoundnessWitness {
     pub violations: Vec<String>,
 }
 
-/// §110.b — witness for [`PropertyClass::NotificationProvenanceSoundness`],
+/// v2.66.0 — witness for [`PropertyClass::NotificationProvenanceSoundness`],
 /// one per program. The checker RE-DERIVES every field from
 /// `ir.notifications` and rejects on disagreement. A verifying proof has
 /// every violation list empty.
@@ -1374,7 +1374,7 @@ pub struct NotificationProvenanceSoundnessWitness {
     pub laundered_notifications: Vec<String>,
 }
 
-/// §108.d — witness for [`PropertyClass::DataspaceSchemaSoundness`], one per
+/// v2.63.0 — witness for [`PropertyClass::DataspaceSchemaSoundness`], one per
 /// program. The checker RE-DERIVES every field from `ir.dataspace_specs` +
 /// `ir.flows` and rejects on disagreement. A verifying proof has the
 /// violation list empty.
@@ -1390,7 +1390,7 @@ pub struct DataspaceSchemaSoundnessWitness {
     pub violations: Vec<String>,
 }
 
-/// §100.e — witness for [`PropertyClass::DocumentIngestionSoundness`], one per
+/// v2.54.0 — witness for [`PropertyClass::DocumentIngestionSoundness`], one per
 /// program. The checker RE-DERIVES every field from `ir.tools` + `ir.flows` and
 /// rejects on disagreement. A verifying proof has every violation list empty.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1399,7 +1399,7 @@ pub struct DocumentIngestionSoundnessWitness {
     pub ingest_tools: Vec<(String, String)>,
     /// Tools declaring BOTH `ingest:inferred` and `epistemic:know` (`axon-T1001`,
     /// the Inferred ceiling, re-derived). Empty for a verifying proof — and in
-    /// §100, always empty (no `inferred` producer exists, D100.14).
+    /// v2.54.0, always empty (no `inferred` producer exists, the design decision).
     pub inferred_ceiling_violations: Vec<String>,
     /// Flow names that feed ingested (born-Untrusted) content to an agent's
     /// beliefs with no shield (`axon-T908`, re-derived). Empty for a verifying
@@ -1407,20 +1407,20 @@ pub struct DocumentIngestionSoundnessWitness {
     pub unshielded_flows: Vec<String>,
 }
 
-/// §101.b — witness for [`PropertyClass::InferredCeilingSoundness`], one per
+/// v2.54.0 — witness for [`PropertyClass::InferredCeilingSoundness`], one per
 /// program. The checker RE-DERIVES every field from `ir.tools` + `ir.flows`; a
 /// verifying proof has both violation lists empty. Distinct from
 /// [`DocumentIngestionSoundnessWitness`]: that fires for ANY ingesting tool and
-/// is (in §100) vacuous on the inferred axis; THIS fires only when an
-/// `ingest:inferred` producer exists — the state §100 forbade and §101 creates.
+/// is (in v2.54.0) vacuous on the inferred axis; THIS fires only when an
+/// `ingest:inferred` producer exists — the state v2.54.0 forbade and v2.54.0 creates.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct InferredCeilingSoundnessWitness {
-    /// The tools that produce `ingest:inferred` content (§101's producers), in
-    /// source order. Non-empty — else there is no proof (the §100 vacuum holds).
+    /// The tools that produce `ingest:inferred` content (v2.54.0's producers), in
+    /// source order. Non-empty — else there is no proof (the v2.54.0 vacuum holds).
     pub inferred_producers: Vec<String>,
     /// Producers that ALSO declare `epistemic:know` (`axon-T1001`, the ceiling,
     /// re-derived). Empty for a verifying proof — an inferred read can never be
-    /// `know` (D101.1).
+    /// `know`.
     pub ceiling_violations: Vec<String>,
     /// Flow names feeding an inferred producer's (born-Untrusted) output to an
     /// agent's beliefs with no shield (`axon-T908`, re-derived). Empty for a
@@ -1460,23 +1460,23 @@ pub enum Witness {
     CredentialAttenuation(CredentialAttenuationWitness),
     SecretCustodySoundness(SecretCustodySoundnessWitness),
     ScrapeProvenanceSoundness(ScrapeProvenanceSoundnessWitness),
-    /// §Fase 116.a.
+    /// v2.77.0.
     ScopeCoverageSoundness(ScopeCoverageSoundnessWitness),
     DocumentProvenanceSoundness(DocumentProvenanceSoundnessWitness),
     DeliveryProvenanceSoundness(DeliveryProvenanceSoundnessWitness),
     QuerySafetySoundness(QuerySafetySoundnessWitness),
-    /// §Fase 108.d.
+    /// v2.63.0.
     DataspaceSchemaSoundness(DataspaceSchemaSoundnessWitness),
-    /// §Fase 109.b.
+    /// v2.65.0.
     GradientSoundness(GradientSoundnessWitness),
-    /// §Fase 110.b.
+    /// v2.66.0.
     NotificationProvenanceSoundness(NotificationProvenanceSoundnessWitness),
     DocumentIngestionSoundness(DocumentIngestionSoundnessWitness),
     InferredCeilingSoundness(InferredCeilingSoundnessWitness),
 }
 
 impl Witness {
-    /// §51.f — the subject (endpoint / tool / store / socket / shield)
+    /// v2.4.0 — the subject (endpoint / tool / store / socket / shield)
     /// the witness is about, for human-readable CLI output. Total.
     pub fn subject_name(&self) -> &str {
         match self {
@@ -1502,22 +1502,22 @@ impl Witness {
             Witness::InterruptibleSessionSoundness(w) => &w.session_name,
             Witness::ParkedResidualSoundness(w) => &w.socket_name,
             Witness::UpstreamProjectionSoundness(w) => &w.upstream_name,
-            // §83.c — program-wide property, no single named subject.
+            // v2.38.0 — program-wide property, no single named subject.
             Witness::CorsPolicyConsistency(_) => "<program>",
             Witness::TechnicianCommandSafety(w) => &w.tool_name,
-            // §85.c — program-wide property, no single named subject.
+            // v2.40.0 — program-wide property, no single named subject.
             Witness::CacheSoundness(_) => "<program>",
             Witness::ForgeSoundness(w) => &w.forge_name,
             Witness::SavantSoundness(w) => &w.savant_name,
             Witness::WardenSoundness(w) => &w.warden_target,
             Witness::AuthorizationCoverage(w) => &w.endpoint_name,
-            // §90.b — program-wide property, no single named subject.
+            // v2.45.0 — program-wide property, no single named subject.
             Witness::CapabilityGrantability(_) => "<program>",
-            // §91.c — program-wide property, no single named subject.
+            // v2.46.0 — program-wide property, no single named subject.
             Witness::TemporalContextSoundness(_) => "<program>",
-            // §92.d — program-wide property, no single named subject.
+            // v2.46.0 — program-wide property, no single named subject.
             Witness::CredentialAttenuation(_) => "<program>",
-            // §94.e — program-wide property, no single named subject.
+            // v2.48.0 — program-wide property, no single named subject.
             Witness::SecretCustodySoundness(_) => "<program>",
             Witness::ScrapeProvenanceSoundness(_) => "<program>",
             Witness::ScopeCoverageSoundness(_) => "<program>",
@@ -1528,13 +1528,13 @@ impl Witness {
             Witness::GradientSoundness(_) => "<program>",
             Witness::NotificationProvenanceSoundness(_) => "<program>",
             Witness::DocumentIngestionSoundness(_) => "<program>",
-            // §101.b — program-wide property, no single named subject.
+            // v2.54.0 — program-wide property, no single named subject.
             Witness::InferredCeilingSoundness(_) => "<program>",
         }
     }
 }
 
-/// The portable proof object (D51.1). Serializes to JSON; travels with
+/// The portable proof object. Serializes to JSON; travels with
 /// the artifact; the independent checker verifies it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProofTerm {
@@ -1549,7 +1549,7 @@ pub struct ProofTerm {
     pub axon_version: String,
 }
 
-/// §51.f — the portable proof bundle the `axon pcc prove` CLI emits +
+/// v2.4.0 — the portable proof bundle the `axon pcc prove` CLI emits +
 /// `axon pcc verify` consumes. Carries every proof generated for an
 /// artifact plus the artifact digest they all bind to (a quick
 /// sanity field — the per-proof `artifact_digest` is the authoritative
@@ -1564,15 +1564,15 @@ pub struct ProofBundle {
     pub proofs: Vec<ProofTerm>,
 }
 
-/// §79.f — the unified **`CallSoundnessCertificate`** for one socket bundle:
+/// v2.36.0 — the unified **`CallSoundnessCertificate`** for one socket bundle:
 /// the composed proofs (interruptible-session soundness of the session +
 /// parked-residual soundness of the socket + the socket's resource bound) plus
 /// the bundle identity. Served by the enterprise `GET
-/// /admin/calls/certificate/{bundle_id}` (§79.f ENT). The overall verdict —
+/// /admin/calls/certificate/{bundle_id}` (v2.36.0 ENT). The overall verdict —
 /// "can this call ever misbehave" — is computed by the independent checker
 /// ([`crate::pcc::checker::check_call_soundness_certificate`]): EVERY member
 /// must verify, and the composition adds the genuinely-new parked-residual
-/// obligation, not a mere conjunction of pre-existing classes (D79.8).
+/// obligation, not a mere conjunction of pre-existing classes.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CallSoundnessCertificate {
     /// The socket that binds the interruptible session (the bundle id).

@@ -1,6 +1,6 @@
-//! §Fase 33.y.b — Per-IRFlowNode async dispatcher skeleton.
+//! v1.24.0 — Per-IRFlowNode async dispatcher skeleton.
 //!
-//! This module ships the **structural foundation** of the Fase 33.y
+//! This module ships the **structural foundation** of the v1.24.0
 //! universal-algebraic-streaming cycle: a closed-catalog, compiler-
 //! enforced exhaustive dispatch table over the 45-variant
 //! [`crate::ir_nodes::IRFlowNode`] enum. Each arm in
@@ -18,7 +18,7 @@
 //!   nesting), and the per-step counter.
 //! - [`NodeOutcome`] — closed catalog of dispatcher outcomes. In
 //!   33.y.b only the transitional [`NodeOutcome::LegacyShimHandled`]
-//!   variant exists; subsequent sub-fases 33.y.c–j add real outcomes
+//! variant exists; subsequent steps 33.y.c–j add real outcomes
 //!   (`Completed`, `Break`, `LoopContinue`, `Return`, etc.) and
 //!   33.y.l removes `LegacyShimHandled` once every variant has its
 //!   real handler.
@@ -39,9 +39,9 @@
 //!
 //! # What 33.y.b does NOT ship
 //!
-//! - Real per-variant async logic (lands per sub-fase 33.y.c–j).
+//! - Real per-variant async logic (lands per step 33.y.c–j).
 //! - Integration with `server_execute_streaming` (lands incrementally
-//!   per sub-fase as each variant comes online).
+//! per step as each variant comes online).
 //! - Wire-format extensions (per-step `wire_status`, `branch_path`
 //!   field on `StepAuditRecord`, `axon-W003 partial-streaming-
 //!   activation` warning — all land in 33.y.c–l).
@@ -52,7 +52,7 @@
 //!   match below is the compiler-enforced totality witness.
 //! - **D4** — Wire byte-compat preserved. No production code path
 //!   calls `dispatch_node` in 33.y.b; the module exists to lock the
-//!   shape that subsequent sub-fases extend.
+//! shape that subsequent steps extend.
 //! - **D7** — Production-grade per-variant handler discipline. The
 //!   shim is INTENTIONALLY a no-op transition — not an
 //!   `unimplemented!()` panic, not a `todo!()`, not a `_ =>` catch-all.
@@ -67,36 +67,36 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::{mpsc, Mutex};
 
-/// §Fase 33.y.c — Pure-shape variant handlers (Step / Probe / Reason /
+/// v1.24.0 — Pure-shape variant handlers (Step / Probe / Reason /
 /// Validate / Refine / Weave). All 6 variants reduce to "produce a
 /// single LLM response from a prompt + cognitive framing"; the module
 /// houses the shared async core (`run_pure_shape`) + 6 thin
 /// per-variant entry points that build the variant's framing.
-/// §Fase 114.a — the budget gate, in ONE place, on EVERY tool path.
+/// v2.69.0 — the budget gate, in ONE place, on EVERY tool path.
 ///
-/// Until §114 it was inlined in `pure_shape` and reachable only by a streaming
+/// Until v2.69.0 it was inlined in `pure_shape` and reachable only by a streaming
 /// tool, inside a daemon, on the enterprise supervisor. The canonical
 /// `use Tool(…)` path — the one `advertised.rs` cites as PROOF that `tool` is
 /// Real — had no budget at all.
 pub mod budget_gate;
-/// §Fase 119.m.1 — the `agent` executor: `strategy:` as a CONTROL policy.
+/// v2.83.0 — the `agent` executor: `strategy:` as a CONTROL policy.
 ///
 /// `agent` was advertised, type-checked against two closed catalogs, lowered
 /// to `IRAgent` with eleven fields — and executed by nothing. This module is
 /// the loop and its termination proof, composed from machinery that already
-/// runs (`run_pure_shape`, `run_use_tool`, `run_forge`, the §72 budget gate,
+/// runs (`run_pure_shape`, `run_use_tool`, `run_forge`, the v2.28.0 budget gate,
 /// the Theorem 5.1 ceiling) rather than reimplemented beside it.
 pub mod agent_loop;
 pub mod pure_shape;
 
-/// §Fase 33.y.d — Orchestration variant handlers (Let / Conditional /
+/// v1.24.0 — Orchestration variant handlers (Let / Conditional /
 /// ForIn / Break / Continue / Return). 6 variants — control-flow
 /// constructs that compose child handlers via recursive
 /// `dispatch_node` calls + sentinel-driven loop semantics +
 /// `branch_path` segments threading the orchestration tree.
 pub mod orchestration;
 
-/// §Fase 33.y.e — Parallel variant handler (`Par`) + public helper
+/// v1.24.0 — Parallel variant handler (`Par`) + public helper
 /// [`parallel::run_branches_concurrently`] for concurrent dispatch
 /// via `futures::future::join_all` with per-branch DispatchCtx
 /// clones + post-join step_counter merge + Return-sentinel
@@ -106,9 +106,9 @@ pub mod orchestration;
 /// public helper.
 pub mod parallel;
 
-/// §Fase 33.y.e — Stream variant handler (`Stream`) + public bridge
+/// v1.24.0 — Stream variant handler (`Stream`) + public bridge
 /// [`effects_bridge::bridge_effect_stream_yield`] integrating the
-/// Fase 23 algebraic-effects runtime: scans the instruction block
+/// v1.17.0 algebraic-effects runtime: scans the instruction block
 /// for `perform Stream.Yield x` (statically + via trace), runs the
 /// `EffectRuntime`, and emits one `axon.token` per Yield with the
 /// resolved value. `IRStreamBlock` is payload-free in v1.25.0; the
@@ -117,12 +117,12 @@ pub mod parallel;
 /// the public bridge.
 pub mod effects_bridge;
 
-/// §Fase 120 — **the algebraic-effect machine**: `handle` / `perform` /
+/// v2.87.0 — **the algebraic-effect machine**: `handle` / `perform` /
 /// `resume` / `abort` / `forward`, Plotkin/Pretnar handlers with one-shot
 /// delimited continuations, over `IRFlowNode`.
 ///
 /// Distinct from [`effects_bridge`] above and from [`crate::effects`], and the
-/// distinction is the design (D120.1): `crate::effects::EffectRuntime` is an
+/// distinction is the design: `crate::effects::EffectRuntime` is an
 /// FSM over the JSON `Instruction` alphabet whose catch-all variant is INERT,
 /// so a handler body lowered onto it would execute nothing while compiling
 /// clean. This module's alphabet is the dispatcher's own, so a clause can
@@ -130,7 +130,7 @@ pub mod effects_bridge;
 /// compositional property the whole paradigm rests on.
 pub mod effect_handlers;
 
-/// §Fase 33.y.f — Cognitive primitives (Fase 11 neuro-symbolic).
+/// v1.24.0 — Cognitive primitives (v1.4.0 neuro-symbolic).
 /// 10 variants: `Remember` / `Recall` are PEM-bound (write-through
 /// + read-back via the optional [`DispatchCtx::pem_backend`]);
 /// `Forge` is payload-free wire shape (canonical
@@ -141,12 +141,12 @@ pub mod effect_handlers;
 /// system prompt.
 pub mod cognitive;
 
-/// §Fase 33.y.g — Algebraic-effect handler nodes.
+/// v1.24.0 — Algebraic-effect handler nodes.
 /// 6 variants: `ShieldApply` / `OtsApply` / `MandateApply` — apply
 /// a named capability to a target with structured output binding;
 /// `ComputeApply` — invoke a compute capability with positional
-/// arguments; `Listen` — wait on a Fase 13 typed channel for an
-/// event; `DaemonStep` — invoke a Fase 16 daemon supervisor by
+/// arguments; `Listen` — wait on a v1.6.0 typed channel for an
+/// event; `DaemonStep` — invoke a v1.11.0 daemon supervisor by
 /// reference. Each handler emits wire shape with the canonical
 /// `step_type` slug + public `apply_*` helpers that enterprise
 /// integrations override (per the OSS/ENTERPRISE/SPLIT charter
@@ -154,9 +154,9 @@ pub mod cognitive;
 /// `axon_enterprise.shield`).
 pub mod algebraic_handlers;
 
-/// §Fase 33.y.h — Wire-integration handler nodes (π-calc +
+/// v1.24.0 — Wire-integration handler nodes (π-calc +
 /// persistence + multi-agent deliberation). 10 variants:
-/// **Emit / Publish / Discover** (Fase 13 typed channels — π-calc
+/// **Emit / Publish / Discover** (v1.6.0 typed channels — π-calc
 /// output prefix + capability extrusion + dual discovery);
 /// **Persist / Retrieve / Mutate / Purge / Transact** (persistence
 /// primitives — snapshot / load / update / delete / transactional
@@ -166,9 +166,9 @@ pub mod algebraic_handlers;
 /// override.
 pub mod wire_integrations;
 
-/// §Fase 33.y.i — PIX variants (paper §6 hidden-state primitives).
+/// v1.24.0 — PIX variants (paper section 6 hidden-state primitives).
 /// 3 variants: **Hibernate** (CPS-style event-await with timeout
-/// — Fase 11.e + Fase 16 supervisor); **Drill** (PIX subtree
+/// v1.4.0 + v1.11.0 supervisor); **Drill** (PIX subtree
 /// navigation); **Trail** (breadcrumb walk over a prior
 /// navigation). OSS reference impl uses `__pix_*` /
 /// `__hibernating_*` namespaced let_bindings keys; enterprise R&D
@@ -176,16 +176,16 @@ pub mod wire_integrations;
 /// continuation-passing semantics + PIX state machines.
 pub mod pix;
 
-/// §Fase 33.y.j — Lambda + UseTool (the final 2 variants).
-/// **LambdaDataApply** — Fase 15 ΛD apply (the sync runner walks
+/// v1.24.0 — Lambda + UseTool (the final 2 variants).
+/// **LambdaDataApply** — v1.10.0 ΛD apply (the sync runner walks
 /// a CPS dispatcher mapping lambda data structures to expressions;
 /// 33.y.j ships the OSS wire shape + helper). **UseTool** —
-/// mid-step tool invocation (Fase 22 backend tools; the
+/// mid-step tool invocation (v1.16.0 backend tools; the
 /// `ChatRequest.tools` cross-cutting plumb-through lands in
 /// 33.y.k D8). Completes the 45-variant total coverage.
 pub mod lambda_tools;
 
-/// §Fase 34.g — Unified stream handler (4-disjunction convergence).
+/// v1.29.0 — Unified stream handler (4-disjunction convergence).
 /// Pre-34.g the four streaming-effect disjunctions (LLM-side
 /// `output: Stream<T>`, `apply: <stream-tool>`, `use_tool` syntax,
 /// `perform Stream.Yield`) had divergent drain paths — disjunct (a)
@@ -233,7 +233,7 @@ pub mod unified_stream;
 /// Monotonic per-flow counter. Each Step (or pure-shape variant
 /// promoted to Step) increments. Surface fed into `step_audit` so
 /// the row index is correct under nested orchestration.
-/// §Fase 67.c — per-run store row counts, observable on
+/// v2.21.0 — per-run store row counts, observable on
 /// `ServerRunnerMetrics`. Surfaces "how much work did this run touch"
 /// (closing brief #34 Q3: a daemon run reporting `completed, duration 0`
 /// stops being indistinguishable from "found no rows"). Each store op
@@ -246,7 +246,7 @@ pub struct StoreRowCounts {
     pub purged: u64,
 }
 
-/// §Fase 67.c — which counter a store op increments.
+/// v2.21.0 — which counter a store op increments.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StoreRowKind {
     Retrieved,
@@ -255,13 +255,13 @@ pub enum StoreRowKind {
     Purged,
 }
 
-/// §Fase 111.d — the active `quant` block's resolved parameters, held for the
+/// v2.67.0 — the active `quant` block's resolved parameters, held for the
 /// duration of its body so a nested `yield` knows what Hilbert space it is
 /// measuring in and with which observable.
 ///
 /// This exists because `quant` and `yield` are two halves of one operation:
 /// `quant { … }` declares the space (encoding + observable + register width) and
-/// `yield <carrier>` performs the collapse `E = ⟨ψ|M|ψ⟩`. Before §111.d neither
+/// `yield <carrier>` performs the collapse `E = ⟨ψ|M|ψ⟩`. Before v2.67.0 neither
 /// half did anything, so the split cost nothing; now that both are real, the
 /// frame is what connects them.
 #[derive(Clone, Debug)]
@@ -280,14 +280,14 @@ pub struct QuantFrame {
 pub struct DispatchCtx {
     pub flow_name: String,
     pub backend_name: String,
-    /// §Fase 65.C — the per-tenant API key resolved from the tenant secrets
+    /// v2.15.0 — the per-tenant API key resolved from the tenant secrets
     /// manager (the same key the non-streaming runner receives as
     /// `api_key_override`). When `Some`, the LLM handlers resolve the backend
     /// via [`crate::backends::resolve_streaming_backend_with_key`] so the call
     /// uses THIS tenant's key, not the process env var. `None` (the
     /// `DispatchCtx::new` default) ⇒ env-key behavior, unchanged.
     pub api_key: Option<String>,
-    /// §Fase 24.g.2 (Kivi brief #37) — optional per-tenant LLM endpoint
+    /// v1.18.0 (Kivi brief #37) — optional per-tenant LLM endpoint
     /// override (base URL + chat path) threaded from the enterprise
     /// `llm.<backend>.base_url` / `.chat_path` secret. When `Some`, the LLM
     /// handlers resolve the backend via
@@ -295,10 +295,10 @@ pub struct DispatchCtx {
     /// the call hits THIS tenant's endpoint (e.g. z.ai's `/api/paas/v4`)
     /// instead of the provider default. `None` ⇒ env/default, unchanged.
     pub llm_base_url: Option<String>,
-    /// §Fase 24.g.2 — companion to `llm_base_url`: the chat-completions path
+    /// v1.18.0 — companion to `llm_base_url`: the chat-completions path
     /// (e.g. `/api/paas/v4/chat/completions` for z.ai, vs the `/v1/...` default).
     pub llm_chat_path: Option<String>,
-    /// §Fase 65.C.2 — the flow's conversation history, accumulated across LLM
+    /// v2.15.0 — the flow's conversation history, accumulated across LLM
     /// steps so each step sees the prior turns. Before this the dispatcher's
     /// LLM path was STATELESS single-shot — every streaming/SSE step lost the
     /// prior steps' Q&A, unlike the non-streaming runner (which threads its
@@ -306,60 +306,60 @@ pub struct DispatchCtx {
     /// so it persists across nodes and is shared by par-branches — one
     /// conversation per flow, matching the runner's per-unit history.
     pub conversation: std::sync::Arc<std::sync::Mutex<crate::conversation::ConversationHistory>>,
-    /// §Fase 65.C.2 — char budget for `conversation`; the oldest turn pairs are
+    /// v2.15.0 — char budget for `conversation`; the oldest turn pairs are
     /// dropped before each LLM call when exceeded (the runner's `ContextWindow`
     /// discipline). Default = `ContextWindow::new().max_chars`; 0 = unlimited.
     pub context_budget: usize,
-    /// §Fase 65.C.3 — the flow's resolved anchors, checked against each LLM
+    /// v2.15.0 — the flow's resolved anchors, checked against each LLM
     /// step's output. Before this the dispatcher's (streaming/SSE) path NEVER
     /// enforced anchors — declared `require:` constraints were silently ignored
     /// on SSE. Now a breach is surfaced in the step audit record. The
-    /// regenerate-on-breach RETRY stays on the non-streaming runner until §65.D
+    /// regenerate-on-breach RETRY stays on the non-streaming runner until v2.15.0
     /// (retry-while-streaming is fraught — tokens already on the wire). Empty
     /// (the `DispatchCtx::new` default) ⇒ no anchor checking, unchanged.
     pub anchors: std::sync::Arc<Vec<crate::ir_nodes::IRAnchor>>,
     pub system_prompt: String,
-    /// §Fase 91.b — the frame-level declared cognitive timezone: the program's
+    /// v2.46.0 — the frame-level declared cognitive timezone: the program's
     /// first `context` declaration's `now:` (the same first-context convention
     /// `flow_plan::compose_system_prompt_public` uses for the frame itself).
     /// A step's own `now:` overrides it. `None` (the `new` default) ⇒ only
     /// step-level declarations inject.
     pub default_now_tz: Option<String>,
-    /// §Fase 91.b — shared per-run temporal state: ONE lazily-captured instant
+    /// v2.46.0 — shared per-run temporal state: ONE lazily-captured instant
     /// + the zones actually rendered. `Arc<Mutex>` so `par` branches share the
     /// capture and the collector reads the final state after the walk (the
-    /// §67.c side-channel discipline; the lock is never held across an
+    /// v2.21.0 side-channel discipline; the lock is never held across an
     /// `.await`).
     pub temporal: std::sync::Arc<std::sync::Mutex<crate::temporal_context::TemporalState>>,
-    /// §Fase 92.c — the ephemeral-credential minter port behind the `mint`
+    /// v2.46.0 — the ephemeral-credential minter port behind the `mint`
     /// flow verb. `None` (the `new` default) ⇒ a reached `mint` fails CLOSED
     /// with `MissingDependency` — never a silent stub. The enterprise
-    /// executor injects its PASETO minter (§92.g); tests use
+    /// executor injects its PASETO minter (v2.46.0); tests use
     /// `credential_minter::InMemoryMinter`.
     pub credential_minter: Option<std::sync::Arc<dyn crate::credential_minter::CredentialMinter>>,
-    /// §Fase 92.c — the compiled `credential` contracts by name (from
+    /// v2.46.0 — the compiled `credential` contracts by name (from
     /// `ir.credentials`), set by the plan builders like `mdn_corpora`.
     /// Empty for a credential-less program.
     pub credentials:
         std::sync::Arc<std::collections::HashMap<String, crate::ir_nodes::IRCredential>>,
-    /// §Fase 94.d — the secret-custody port behind the `backend: secrets`
+    /// v2.48.0 — the secret-custody port behind the `backend: secrets`
     /// metadata store, the `rotate` verb, and the `tool { secret: }`
     /// dispatch injection (`rotation_without_revelation`). `None` (the
     /// `new` default) ⇒ every one of those surfaces fails CLOSED with
     /// `MissingDependency` — never a silent stub, never an LLM
     /// fallthrough. The enterprise executor injects its envelope-encrypted
-    /// Postgres custody (§94.h); tests use `secret_custody::InMemoryCustody`.
+    /// Postgres custody (v2.48.0); tests use `secret_custody::InMemoryCustody`.
     pub secret_custody: Option<std::sync::Arc<dyn crate::secret_custody::SecretCustody>>,
-    /// §Fase 108.b — the deterministic columnar engine port behind the five
-    /// data-plane verbs (`ingest` §108.c; `focus`/`associate`/`aggregate`/
-    /// `explore` §108.d). `None` (the `new` default) ⇒ each verb fails
+    /// v2.63.0 — the deterministic columnar engine port behind the five
+    /// data-plane verbs (`ingest` v2.63.0; `focus`/`associate`/`aggregate`/
+    /// `explore` v2.63.0). `None` (the `new` default) ⇒ each verb fails
     /// CLOSED with `MissingDependency { name: "dataspace_engine" }` — never
-    /// an LLM narration (the §108.a honesty floor). The deploy hook builds
+    /// an LLM narration (the v2.63.0 honesty floor). The deploy hook builds
     /// it from the compiled `ir.dataspace_specs`.
     pub dataspace_engine: Option<crate::dataspace_engine::SharedDataspaceEngine>,
-    /// §Fase 111.c — the adversarial-analysis port behind the `warden` block.
+    /// v2.67.0 — the adversarial-analysis port behind the `warden` block.
     ///
-    /// Before §111 there was NO port here, which is why `warden` could not have
+    /// Before v2.67.0 there was NO port here, which is why `warden` could not have
     /// worked even in principle: `run_warden` recorded the scope name in a
     /// let-binding nobody read, returned an empty string, and **silently
     /// discarded the block's body** — while `StepComplete` went out on the wire
@@ -367,23 +367,23 @@ pub struct DispatchCtx {
     /// (`crate::warden::{WardenBackend, ReferenceStaticWarden, Vulnerability,
     /// verify}`) and no code path could reach it; enterprise's `saas-warden`
     /// was mounted only on the `POST /api/v1/warden/{scope}` HTTP route. The
-    /// math was a library nobody wired to the keyword (§111 F12).
+    /// math was a library nobody wired to the keyword (v2.67.0 F12).
     ///
     /// `None` (the `new` default) ⇒ the block fails CLOSED with
     /// `MissingDependency { name: "warden_backend" }`. An unanalysed target must
     /// never return "no findings" — an empty result and a refusal look identical
     /// to a reader, and only one of them is honest.
     pub warden_backend: Option<std::sync::Arc<dyn crate::warden::WardenBackend + Send + Sync>>,
-    /// §Fase 111.c — the compiled `scope` declarations, so `warden(<t>) within
+    /// v2.67.0 — the compiled `scope` declarations, so `warden(<t>) within
     /// <Scope>` can resolve its authorization envelope at dispatch time. Empty
     /// (the `new` default) ⇒ every `warden` fails CLOSED: a scope that cannot be
-    /// resolved authorises nothing (the §88 fail-closed posture — the `within`
+    /// resolved authorises nothing (the v2.43.0 fail-closed posture — the `within`
     /// clause is mandatory precisely so an analysis can never run unscoped).
     pub scopes: Arc<Vec<crate::ir_nodes::IRScope>>,
-    /// §Fase 111.d — the Hilbert-space port behind the `quant` block and its
+    /// v2.67.0 — the Hilbert-space port behind the `quant` block and its
     /// `yield` measurement point.
     ///
-    /// Same shape as `warden` (§111 F12): `run_quant` was a **pure no-op** — it
+    /// Same shape as `warden` (v2.67.0 F12): `run_quant` was a **pure no-op** — it
     /// inserted `__quant_backend` (a key nothing read), returned an empty
     /// output, and **silently skipped every step inside `quant { … }`**, even
     /// though `ir_generator` had faithfully lowered them. `run_yield` stored the
@@ -397,50 +397,50 @@ pub struct DispatchCtx {
     /// `None` (the `new` default) ⇒ `quant` fails CLOSED with
     /// `MissingDependency { name: "quant_backend" }`.
     pub quant_backend: Option<std::sync::Arc<dyn crate::quant::QuantBackend + Send + Sync>>,
-    /// §Fase 111.d — the compiled `observable` declarations (the Pauli-sum
+    /// v2.67.0 — the compiled `observable` declarations (the Pauli-sum
     /// catalog). A `quant` block measures `E = ⟨ψ|M|ψ⟩`; with no resolvable `M`
     /// there is nothing to measure, so an unresolvable observable fails CLOSED
     /// rather than returning a number that means nothing.
     pub observables: Arc<Vec<crate::ir_nodes::IRObservable>>,
-    /// §Fase 111.d — the active `quant` frame, pushed by `run_quant` for the
+    /// v2.67.0 — the active `quant` frame, pushed by `run_quant` for the
     /// duration of its body so a nested `yield` knows which Hilbert space it is
     /// collapsing into. `None` outside a `quant` block ⇒ a bare `yield` fails
     /// CLOSED (a measurement with no state to measure is not a weak result, it
     /// is a category error).
     pub quant_frame: Option<QuantFrame>,
-    /// §Fase 111.f — the compiled `compute` declarations: named PURE FUNCTIONS
-    /// over the §70 expression language.
+    /// v2.67.0 — the compiled `compute` declarations: named PURE FUNCTIONS
+    /// over the v2.26.0 expression language.
     ///
-    /// Before §111 this catalog did not need to exist, because `IRCompute`
+    /// Before v2.67.0 this catalog did not need to exist, because `IRCompute`
     /// carried only `name` + `shield_ref` — no parameters, no body. The handler
     /// therefore bound the literal string `"compute:Name(args)"`, and a
     /// downstream step consumed that TEXT where it expected a number, while the
     /// README promised "native Fast-Path execution bypassing the LLM" with an
-    /// O(n) guarantee (§111 F10).
+    /// O(n) guarantee (v2.67.0 F10).
     ///
     /// Empty ⇒ `compute … on …` fails CLOSED (axon-T941 catches it at compile
     /// time; this is the runtime's belt).
     pub compute_specs: Arc<Vec<crate::ir_nodes::IRCompute>>,
-    /// §Fase 119.m.3 — the compiled `agent` declarations, so an `<Agent>(args)`
+    /// v2.83.0 — the compiled `agent` declarations, so an `<Agent>(args)`
     /// call can resolve its bounds, strategy and tool grant at dispatch.
     ///
     /// Empty ⇒ every agent call fails CLOSED. That is not a nicety here: the
     /// declaration is where `max_iterations` lives, so an unresolved agent is
     /// an unbounded one, and running it would spend without a ceiling anybody
-    /// wrote. The §111.f compute doctrine, applied to the loop.
+    /// wrote. The v2.67.0 compute doctrine, applied to the loop.
     pub agent_specs: Arc<Vec<crate::ir_nodes::IRAgent>>,
-    /// §Fase 119.b — the compiled `mandate` declarations, so a `mandate X on Y`
+    /// v2.83.0 — the compiled `mandate` declarations, so a `mandate X on Y`
     /// (flow-level node or step-scoped guard) can build its enforcement loop at
     /// dispatch. Empty ⇒ every mandate application fails CLOSED — a mandate
     /// that cannot be resolved enforces nothing, so nothing is released
-    /// (the §111.f compute doctrine, applied to the cage).
+    /// (the v2.67.0 compute doctrine, applied to the cage).
     pub mandate_specs: Arc<Vec<crate::ir_nodes::IRMandate>>,
-    /// §Fase 119.c — the compiled `lambda` (ΛD) declarations, so a
+    /// v2.83.0 — the compiled `lambda` (ΛD) declarations, so a
     /// `lambda X on y` can construct ψ = ⟨T, V, E⟩ at dispatch instead of
     /// binding the placeholder string "lambda:<name>(<target>)". Empty ⇒
     /// fails CLOSED.
     pub lambda_data_specs: Arc<Vec<crate::ir_nodes::IRLambdaData>>,
-    /// §Fase 119.c — the compiled `ots` declarations, resolved against the
+    /// v2.83.0 — the compiled `ots` declarations, resolved against the
     /// name-keyed `ots_registry`. Empty ⇒ fails CLOSED.
     pub ots_specs: Arc<Vec<crate::ir_nodes::IROts>>,
     pub cancel: CancellationFlag,
@@ -454,7 +454,7 @@ pub struct DispatchCtx {
     pub runtime_warnings: Arc<
         Mutex<Vec<crate::runtime_warnings::RuntimeWarning>>,
     >,
-    /// §Fase 67.c — shared (par-branch-merged) per-run store row counts.
+    /// v2.21.0 — shared (par-branch-merged) per-run store row counts.
     /// A plain `std::sync::Mutex` (the update is instant — lock, add,
     /// drop — never held across an `.await`). Like the audit side-
     /// channels, the collector injects its own Arc via
@@ -464,7 +464,7 @@ pub struct DispatchCtx {
     pub store_row_counts: std::sync::Arc<std::sync::Mutex<StoreRowCounts>>,
     pub branch_path: Vec<String>,
     pub step_counter: usize,
-    /// §Fase 33.y.f — Optional PEM async surface for cognitive
+    /// v1.24.0 — Optional PEM async surface for cognitive
     /// primitives (Remember / Recall etc.). When `Some(backend)`,
     /// `run_remember` write-through persists to PEM and `run_recall`
     /// restores from PEM as a write-back cache layered over
@@ -472,32 +472,32 @@ pub struct DispatchCtx {
     /// `let_bindings`-only (in-memory) — the canonical adopter
     /// path for tests + adopters that don't opt into persistent
     /// cognitive state. Arc-cloned per branch for concurrent
-    /// dispatch (Fase 33.y.e parity).
+    /// dispatch (v1.24.0 parity).
     pub pem_backend: Option<std::sync::Arc<dyn crate::pem::PersistenceBackend>>,
-    /// §Fase 33.y.f — Session anchor for PEM persistence. Defaults
+    /// v1.24.0 — Session anchor for PEM persistence. Defaults
     /// to `flow_name` in [`DispatchCtx::new`]; adopters override
     /// for multi-session flows.
     pub session_id: String,
-    /// §Fase 33.y.f — Tenant routing tag for PEM persistence.
+    /// v1.24.0 — Tenant routing tag for PEM persistence.
     /// Defaults to empty in [`DispatchCtx::new`]; multi-tenant
     /// adopters set this before dispatch.
     pub tenant_id: String,
-    /// §Fase 33.y.d — Let-binding scope. Map from binding name to its
+    /// v1.24.0 — Let-binding scope. Map from binding name to its
     /// resolved value. `run_let` inserts; `run_conditional` reads to
     /// evaluate the condition; `run_for_in` inserts the iteration
     /// variable per iter. Bindings persist through the flow's
     /// lifetime — sub-scoping is NOT introduced in 33.y.d (the
     /// sync runner's let semantics are flow-scoped + monotonic,
     /// matching this discipline for D10 parity). The `HashMap` is
-    /// cheap to clone for branch isolation when sub-fases 33.y.e
+    /// cheap to clone for branch isolation when steps 33.y.e
     /// introduce parallel branches with private scopes (Par block).
     pub let_bindings: std::collections::HashMap<String, String>,
-    /// §Fase 120 — the live algebraic-effect handler stack (D3: a handler scope
+    /// v2.87.0 — the live algebraic-effect handler stack (D3: a handler scope
     /// is DELIMITED). `handle E { … } in { … }` pushes a frame for the duration
     /// of its `in` body; a `perform` walks the stack innermost-out for a frame
     /// that names its effect.
     ///
-    /// This field is D120.1 made concrete. The alternative — lowering handler
+    /// This field is the design decision made concrete. The alternative — lowering handler
     /// bodies onto `crate::effects::Instruction` and running
     /// `crate::effects::EffectRuntime` — was measured and rejected: that
     /// alphabet's catch-all variant is INERT, so every non-effect node in a
@@ -506,9 +506,9 @@ pub struct DispatchCtx {
     /// an ordinary `Vec<IRFlowNode>` and composes with every primitive.
     ///
     /// Empty for every program that declares no effects, so nothing changes for
-    /// pre-§120 artifacts.
+    /// pre-v2.87.0 artifacts.
     pub effect_frames: Vec<crate::flow_dispatcher::effect_handlers::EffectFrame>,
-    /// §Fase 120 — the `frame_id` of the handler clause currently executing, or
+    /// v2.87.0 — the `frame_id` of the handler clause currently executing, or
     /// `None` outside one.
     ///
     /// An `abort` must terminate the frame whose clause raised it, and the
@@ -519,7 +519,7 @@ pub struct DispatchCtx {
     /// one — which is what `crate::effects::EffectRuntime` does today, against
     /// its own documented semantics, invisibly, because nothing reaches it.
     pub effect_clause_frame: Option<u32>,
-    /// §Fase 33.y.c — Per-node declared `<stream:<policy>>` resolved
+    /// v1.24.0 — Per-node declared `<stream:<policy>>` resolved
     /// by the caller BEFORE invoking `dispatch_node`. The pure-shape
     /// handlers read + consume this field (set back to `None` on
     /// entry) so each handler observes the policy intended for ITS
@@ -527,11 +527,11 @@ pub struct DispatchCtx {
     /// handler skips `StreamPolicyEnforcer` wrapping + emits chunks
     /// directly to the wire.
     ///
-    /// Subsequent sub-fases 33.y.d-l adopt the same pattern for
+    /// Subsequent steps 33.y.d-l adopt the same pattern for
     /// orchestration handlers (`Par` / `ForIn`) when child nodes
     /// declare effects.
     pub pending_effect_policy: Option<BackpressurePolicy>,
-    /// §Fase 34.d (v1.29.0) — Tool registry surface for the
+    /// v1.29.0 — Tool registry surface for the
     /// streaming-tool dispatcher branch. When `Some(registry)`,
     /// `pure_shape::run_step` resolves `step.apply_ref` against
     /// the registry; if the entry's `is_streaming` flag is true,
@@ -542,24 +542,24 @@ pub struct DispatchCtx {
     /// LLM-side path is taken regardless of source-declared
     /// `effects: <stream:<policy>>` — adopters who haven't wired
     /// the registry yet see no behavior change. Arc-shared for
-    /// concurrent dispatch (Fase 33.y.e parity).
+    /// concurrent dispatch (v1.24.0 parity).
     pub tool_registry: Option<std::sync::Arc<crate::tool_registry::ToolRegistry>>,
-    /// §Fase 63.B — the MDN corpus graphs built from `corpus { relations: … }`
+    /// v2.13.0 — the MDN corpus graphs built from `corpus { relations: … }`
     /// declarations (those that carry typed edges). When a `navigate <ref>`
     /// names a key here, the handler runs real MDN graph navigation
     /// (`mdn::navigate_corpus` / signed EPR) instead of PIX tree navigation.
     /// `Arc`-shared so branch clones (Par) are cheap.
     pub mdn_corpora: Option<std::sync::Arc<std::collections::HashMap<String, crate::mdn::Corpus>>>,
-    /// §Fase 63.C — the names of corpora declared `adaptive: true` (the memory
+    /// v2.13.0 — the names of corpora declared `adaptive: true` (the memory
     /// endofunctor is enabled for navigations over them).
     pub mdn_adaptive: std::sync::Arc<std::collections::HashSet<String>>,
-    /// §Fase 63.C — per-corpus interaction history (mutable, accumulates across a
+    /// v2.13.0 — per-corpus interaction history (mutable, accumulates across a
     /// flow's navigations). A navigation over an adaptive corpus applies the
     /// memory endofunctor (`mdn_memory::apply_memory`) using this history, then
     /// records its own trajectory. `Arc<Mutex<…>>` so branch clones share it.
     pub mdn_histories:
         std::sync::Arc<std::sync::Mutex<std::collections::HashMap<String, crate::mdn_memory::History>>>,
-    /// §Fase 64.B — the DYNAMIC, store-sourced MDN corpora (`corpus N from
+    /// v2.14.0 — the DYNAMIC, store-sourced MDN corpora (`corpus N from
     /// axonstore { … }`): a map from corpus name to its store-mapping spec. A
     /// navigation over one of these does NOT use the pre-built `mdn_corpora`;
     /// instead the runtime reads the mapped stores tenant-scoped and builds a
@@ -567,7 +567,7 @@ pub struct DispatchCtx {
     /// grow). `Arc`-shared so branch clones (Par) are cheap.
     pub mdn_store_sources:
         std::sync::Arc<std::collections::HashMap<String, crate::ir_nodes::IRCorpusStoreSource>>,
-    /// §Fase 35.f (v1.30.0) — axonstore registry for SQL-vs-KV
+    /// v1.30.0 — axonstore registry for SQL-vs-KV
     /// dispatch. When `Some(registry)`, `run_persist` / `run_retrieve`
     /// / `run_mutate` / `run_purge` resolve `store_name` against it: a
     /// `postgresql`-backed store routes through `PostgresStoreBackend`,
@@ -577,7 +577,7 @@ pub struct DispatchCtx {
     /// unchanged (D3). Arc-shared so concurrent branches share one
     /// per-DSN pool cache.
     pub store_registry: Option<std::sync::Arc<crate::store::registry::StoreRegistry>>,
-    /// §Fase 35.j (v1.30.0) — Pillar IV: the capability slugs the
+    /// v1.30.0 — Pillar IV: the capability slugs the
     /// current request carries (the JWT bearer's `capabilities`
     /// claim). When `Some`, the store handlers re-check a
     /// capability-gated store against this set before any access —
@@ -585,23 +585,23 @@ pub struct DispatchCtx {
     /// guarantee. When `None` (the `DispatchCtx::new` default), there
     /// is no capability context at this layer and the runtime
     /// re-check is a no-op: the compile-time check + the endpoint's
-    /// Fase 32.g `requires:` gate stand.
+    /// v1.23.0 `requires:` gate stand.
     pub held_capabilities: Option<Vec<String>>,
-    /// §Fase 35.h (v1.30.0) — Pillar II: the flow's tamper-evident
+    /// v1.30.0 — Pillar II: the flow's tamper-evident
     /// HMAC-Merkle mutation chain. Every `persist`/`mutate`/`purge`
     /// appends a delta. Shared (`Arc`) across concurrent branches so a
     /// `Par` block's mutations land in one chain; the Merkle head is a
     /// verifiable fingerprint of the flow's complete mutation history.
     pub audit_chain:
         std::sync::Arc<std::sync::Mutex<crate::store::audit_chain::StoreAuditChain>>,
-    /// §Fase 37.x.j (D2) — Per-flow pinned Postgres connections.
+    /// v1.32.0 (D2) — Per-flow pinned Postgres connections.
     /// Populated at stream start by `run_streaming_via_dispatcher`:
     /// the IR is walked, every postgresql-backed `axonstore` referenced
     /// by the flow body has ONE `PoolConnection<Postgres>` acquired,
     /// and the map holds them by axonstore name for the flow's
     /// lifetime. The map drops at the end of the streaming task,
     /// returning every conn to the pool via the `after_release
-    /// DEALLOCATE ALL` hook (Fase 38.x.a D2 composing with 37.x.j D1).
+    /// DEALLOCATE ALL` hook (v1.31.0 D2 composing with 37.x.j D1).
     ///
     /// Wire-integration store handlers consult this map per op:
     /// `take` the pin out → run the SQL via `StoreConn::Pinned(&mut pin)`
@@ -614,7 +614,7 @@ pub struct DispatchCtx {
     /// callers that haven't eager-acquired (non-streaming RPC paths,
     /// CLI tests, etc.) — D5 byte-identical backwards-compat.
     ///
-    /// Per D6.b (sub-fase 37.x.j.6): `par {}` branches that share this
+    /// Per D6.b (step 37.x.j.6): `par {}` branches that share this
     /// Arc serialize on its mutex. The D6.a default (per-branch
     /// sub-pin) replaces this Arc with a fresh empty map at par-branch
     /// clone time so branches do NOT serialize on the parent's pins.
@@ -626,48 +626,48 @@ pub struct DispatchCtx {
             >,
         >,
     >,
-    /// §Fase 72.c — the active `budget { … }` linear-effect gate, when the flow
+    /// v2.28.0 — the active `budget { … }` linear-effect gate, when the flow
     /// is being run by a budgeted `daemon`. Before a tool effect is emitted, the
     /// dispatcher consults this gate; an exhausted quota under `on_exhausted:
     /// block` fails the step (`EffectQuotaExhausted`). `None` for a flow run with
     /// no budget (every non-daemon path, and budgetless daemons) — the tool
-    /// dispatch is then unconditional, byte-identical to pre-§72. Shared
+    /// dispatch is then unconditional, byte-identical to pre-v2.28.0. Shared
     /// (`Arc<Mutex>`) so the cumulative bucket state spans the daemon's flows +
     /// (cloned) par branches within a tick.
     pub budget: Option<
         std::sync::Arc<std::sync::Mutex<crate::runtime::budget_kernel::BudgetGate>>,
     >,
-    /// §Fase 114.e — the per-channel concurrency semaphores (`resource.capacity`),
+    /// v2.69.0 — the per-channel concurrency semaphores (`resource.capacity`),
     /// held across requests so `capacity: 8` bounds simultaneous in-flight calls.
     /// `None` (the `DispatchCtx::new` default) ⇒ no channel is bounded, byte-
-    /// identical to pre-§114. Attached on the server path via
+    /// identical to pre-v2.69.0. Attached on the server path via
     /// [`DispatchCtx::with_channel_semaphores`].
     pub channel_semaphores: Option<std::sync::Arc<crate::channel_semaphore::ChannelSemaphores>>,
-    /// §Fase 114.f — the leases over tool-held resources, held across requests. A
+    /// v2.69.0 — the leases over tool-held resources, held across requests. A
     /// post-expiry vendor call is a CT-2 Anchor Breach. `None` ⇒ no lease governs a
     /// tool's channel in this program.
     pub tool_leases: Option<std::sync::Arc<crate::resource_lease::ResourceLeaseGuard>>,
-    /// §Fase 122.d — the memoisation tier behind the `cache` primitive.
+    /// v2.89.0 — the memoisation tier behind the `cache` primitive.
     ///
     /// `None` (the `DispatchCtx::new` default) ⇒ nothing is memoised and every
-    /// call computes, byte-identical to pre-§122.d. Both production paths
-    /// attach one via [`DispatchCtx::with_cache`]; the enterprise §85.f Redis
+    /// call computes, byte-identical to pre-v2.89.0. Both production paths
+    /// attach one via [`DispatchCtx::with_cache`]; the enterprise v2.40.0 Redis
     /// tier will arrive as an injected [`crate::cache_runtime::CacheBackend`],
     /// not as a second call site.
     ///
     /// # What this field closed
     ///
-    /// §85 shipped the language, the safety proofs (`axon-T863`–`T867`), the
+    /// v2.40.0 shipped the language, the safety proofs (`axon-T863`–`T867`), the
     /// audit vocabulary and a production-hardened cache core with its own
-    /// passing tests — and then deferred wiring it (§85.h, *"deferred, not
-    /// built"*). §122.a measured the consequence: `CacheRuntime::dispatch` had
+    /// passing tests — and then deferred wiring it (v2.40.0, *"deferred, not
+    /// built"*). v2.89.0 measured the consequence: `CacheRuntime::dispatch` had
     /// ZERO production callers, so `backend:`, `ttl:`, `key_params:`,
     /// `invalidate_on:` and `default_policy:` were inert in both flavours.
     /// `backend: redis` was not a downgrade to in-process — there was no cache.
-    /// The row shipped as `Real` in 2.88.0, which is the public exposure §122
+    /// The row shipped as `Real` in 2.88.0, which is the public exposure v2.89.0
     /// exists to end.
     pub cache_runtime: Option<std::sync::Arc<crate::cache_runtime::CacheRuntime>>,
-    /// §Fase 122.d — tool name → the policy memoising it, resolved from the
+    /// v2.89.0 — tool name → the policy memoising it, resolved from the
     /// `IRProgram` ONCE at plan-build time.
     ///
     /// Empty (the default, and the case for every program with no `cache`
@@ -678,45 +678,45 @@ pub struct DispatchCtx {
         std::sync::Arc<
             std::collections::HashMap<String, crate::cache_runtime::ResolvedCachePolicy>,
         >,
-    /// §Fase 122.d — the declared `cache` blocks by name, for `retrieve …
+    /// v2.89.0 — the declared `cache` blocks by name, for `retrieve …
     /// cache: <Name>` (which names its cache directly, so there is no
     /// eligibility to resolve) and for flushing by namespace.
     pub caches: std::sync::Arc<std::collections::HashMap<String, crate::ir_nodes::IRCache>>,
-    /// §Fase 122.d — channel name → the cache namespaces an `emit` on it
+    /// v2.89.0 — channel name → the cache namespaces an `emit` on it
     /// flushes (`invalidate_on:`), inverted at plan-build time so the emit path
     /// answers with one lookup instead of scanning every cache declaration.
     ///
     /// Empty ⇒ no cache in this program declares `invalidate_on:`, and `emit`
-    /// is byte-identical to pre-§122.d.
+    /// is byte-identical to pre-v2.89.0.
     pub cache_invalidation_channels:
         std::sync::Arc<std::collections::HashMap<String, Vec<String>>>,
-    /// §Fase 74.a — the shared typed-channel event bus a flow's `emit`
+    /// v2.31.0 — the shared typed-channel event bus a flow's `emit`
     /// routes to (the producer side of durable event delivery). `None`
     /// (the `DispatchCtx::new` default — HTTP / CLI / test paths) ⇒ `emit`
     /// falls back to the legacy per-flow in-memory buffer, byte-identical
-    /// to pre-§74. When `Some` (the daemon-supervisor path attaches it via
+    /// to pre-v2.31.0. When `Some` (the daemon-supervisor path attaches it via
     /// [`DispatchCtx::with_event_bus`]), `emit Channel(payload)` delivers
     /// to the bus → a `daemon`'s `listen Channel` receives it. The bus is
     /// shared (`Arc`) so producer flows + consumer listeners in one runtime
     /// reach the same transport.
     pub event_bus: Option<std::sync::Arc<crate::runtime::channels::TypedEventBus>>,
-    /// §Fase 74.c — the durable event outbox a flow's `emit` to a
+    /// v2.31.0 — the durable event outbox a flow's `emit` to a
     /// `persistent_axonstore` channel appends to (so the event survives the
-    /// consumer being down — and, on the §74.f Postgres outbox, a crash).
+    /// consumer being down — and, on the v2.31.0 Postgres outbox, a crash).
     /// `None` (the `DispatchCtx::new` default) ⇒ no durable outbox; `emit`
-    /// uses the ephemeral bus / legacy buffer (pre-§74.c). When `Some` (the
+    /// uses the ephemeral bus / legacy buffer (pre-v2.31.0). When `Some` (the
     /// supervisor path attaches it via [`DispatchCtx::with_event_outbox`]),
     /// a `persistent_axonstore` channel's `emit` is appended to the outbox.
     pub event_outbox: Option<std::sync::Arc<dyn crate::event_outbox::EventOutbox>>,
-    /// §Fase 74.e — optional replay/audit-chain sink. When attached, a
+    /// v2.31.0 — optional replay/audit-chain sink. When attached, a
     /// flow's `emit` records an `emit:<channel>` `ReplayToken` (the
-    /// producer's Chan-Output reduction in the §11.c chain). `None` (the
-    /// `DispatchCtx::new` default) ⇒ no recording (pre-§74.e).
+    /// producer's Chan-Output reduction in the v1.4.0 chain). `None` (the
+    /// `DispatchCtx::new` default) ⇒ no recording (pre-v2.31.0).
     pub replay_log: Option<std::sync::Arc<dyn crate::replay_token::ReplayLog>>,
 }
 
 impl DispatchCtx {
-    /// Construct a fresh context for a new flow. Subsequent sub-fases
+    /// Construct a fresh context for a new flow. Subsequent steps
     /// extend this with builder methods as the surface grows (PEM /
     /// ReplayToken / CognitiveState plumbing in 33.y.f, tool registry
     /// in 33.y.k, etc.).
@@ -747,31 +747,31 @@ impl DispatchCtx {
             )),
             credential_minter: None,
             credentials: std::sync::Arc::new(std::collections::HashMap::new()),
-            // §Fase 94.d — no custody by default: rotate / secrets-retrieve /
+            // v2.48.0 — no custody by default: rotate / secrets-retrieve /
             // secret-bearing tool dispatch all fail CLOSED until one is attached.
             secret_custody: None,
-            // §Fase 108.b — no engine by default: the five data-plane verbs
+            // v2.63.0 — no engine by default: the five data-plane verbs
             // fail CLOSED until the deploy hook attaches one.
             dataspace_engine: None,
-            // §Fase 111.c — no warden backend and no scope catalog by default:
+            // v2.67.0 — no warden backend and no scope catalog by default:
             // a `warden` block fails CLOSED until BOTH are attached. Analysis
             // requires an engine to run it AND an authorization envelope to run
             // it within; neither is optional.
             warden_backend: None,
             scopes: Arc::new(Vec::new()),
-            // §Fase 111.d — no simulator and no observable catalog by default:
+            // v2.67.0 — no simulator and no observable catalog by default:
             // a `quant` block fails CLOSED until both are attached. Measuring
             // requires a Hilbert space to measure IN and an observable to
             // measure WITH; neither is optional.
             quant_backend: None,
             observables: Arc::new(Vec::new()),
             quant_frame: None,
-            // §Fase 111.f — no compute catalog by default: an apply fails CLOSED.
+            // v2.67.0 — no compute catalog by default: an apply fails CLOSED.
             compute_specs: Arc::new(Vec::new()),
             agent_specs: Arc::new(Vec::new()),
-            // §Fase 119.b — no mandate catalog by default: an apply fails CLOSED.
+            // v2.83.0 — no mandate catalog by default: an apply fails CLOSED.
             mandate_specs: Arc::new(Vec::new()),
-            // §Fase 119.c — no ΛD / ots catalogs by default: fail CLOSED.
+            // v2.83.0 — no ΛD / ots catalogs by default: fail CLOSED.
             lambda_data_specs: Arc::new(Vec::new()),
             ots_specs: Arc::new(Vec::new()),
             cancel,
@@ -801,34 +801,34 @@ impl DispatchCtx {
             audit_chain: std::sync::Arc::new(std::sync::Mutex::new(
                 crate::store::audit_chain::StoreAuditChain::new(),
             )),
-            // §Fase 37.x.j (D2) — empty pin map by default; populated
+            // v1.32.0 (D2) — empty pin map by default; populated
             // by `run_streaming_via_dispatcher` via `with_pinned_conns`.
             pinned_conns: std::sync::Arc::new(std::sync::Mutex::new(
                 std::collections::HashMap::new(),
             )),
-            // §Fase 72.c — no budget by default (unbudgeted dispatch). The daemon
+            // v2.28.0 — no budget by default (unbudgeted dispatch). The daemon
             // path attaches one via `with_budget`.
             budget: None,
             channel_semaphores: None,
             tool_leases: None,
-            // §Fase 122.d — no cache by default: every call computes. Both
+            // v2.89.0 — no cache by default: every call computes. Both
             // production paths attach one via `with_cache`.
             cache_runtime: None,
             cache_policies: std::sync::Arc::new(std::collections::HashMap::new()),
             caches: std::sync::Arc::new(std::collections::HashMap::new()),
             cache_invalidation_channels: std::sync::Arc::new(std::collections::HashMap::new()),
-            // §Fase 74.a — no event bus by default; `emit` uses the legacy
+            // v2.31.0 — no event bus by default; `emit` uses the legacy
             // per-flow buffer. The daemon supervisor attaches the shared bus
             // via `with_event_bus` so `emit` delivers to `listen`ers.
             event_bus: None,
-            // §Fase 74.c — no durable outbox by default.
+            // v2.31.0 — no durable outbox by default.
             event_outbox: None,
-            // §Fase 74.e — no replay sink by default.
+            // v2.31.0 — no replay sink by default.
             replay_log: None,
         }
     }
 
-    /// §Fase 94.d — Builder: attach the secret-custody port so the
+    /// v2.48.0 — Builder: attach the secret-custody port so the
     /// `backend: secrets` metadata store, the `rotate` verb, and
     /// `tool { secret: }` dispatch injection have a live custody behind
     /// them. Without this, all three fail CLOSED (`MissingDependency`).
@@ -840,10 +840,10 @@ impl DispatchCtx {
         self
     }
 
-    /// §Fase 108.b — Builder: attach the deterministic columnar engine so
+    /// v2.63.0 — Builder: attach the deterministic columnar engine so
     /// the five data-plane verbs have live declared stores behind them.
     /// Without this, all five fail CLOSED (`MissingDependency`, the
-    /// §108.a honesty floor). Built at deploy from `ir.dataspace_specs`
+    /// v2.63.0 honesty floor). Built at deploy from `ir.dataspace_specs`
     /// via [`crate::dataspace_engine::DataspaceEngine::from_ir`].
     pub fn with_dataspace_engine(
         mut self,
@@ -853,12 +853,12 @@ impl DispatchCtx {
         self
     }
 
-    /// §Fase 111.c — Builder: attach the adversarial-analysis engine AND the
+    /// v2.67.0 — Builder: attach the adversarial-analysis engine AND the
     /// compiled scope catalog, so a `warden` block can actually run.
     ///
     /// Both, together, on purpose. An engine without a scope catalog would be an
     /// analysis with no authorization envelope to run within — and the `within
-    /// <Scope>` clause is mandatory in the grammar (§88) *precisely* so that
+    /// <Scope>` clause is mandatory in the grammar (v2.43.0) *precisely* so that
     /// cannot happen. Taking them as one argument pair makes the unscoped
     /// configuration unrepresentable, rather than merely discouraged.
     ///
@@ -875,7 +875,7 @@ impl DispatchCtx {
         self
     }
 
-    /// §Fase 111.d — Builder: attach the Hilbert-space simulator AND the
+    /// v2.67.0 — Builder: attach the Hilbert-space simulator AND the
     /// compiled observable catalog, so a `quant` block can actually measure.
     ///
     /// Both together, for the same reason as [`Self::with_warden`]: a simulator
@@ -885,7 +885,7 @@ impl DispatchCtx {
     /// at `OSS_QUBIT_CAP` qubits — a register above the cap fails closed with
     /// `axon-E0783`, never a silent truncation). Enterprise mounts its
     /// `Q32Simulator` behind the same trait.
-    /// §Fase 111.f — Builder: attach the compiled `compute` declarations, so
+    /// v2.67.0 — Builder: attach the compiled `compute` declarations, so
     /// `compute <Name> on …` evaluates its declared expression natively instead
     /// of binding a placeholder string.
     pub fn with_computes(mut self, specs: Arc<Vec<crate::ir_nodes::IRCompute>>) -> Self {
@@ -893,18 +893,18 @@ impl DispatchCtx {
         self
     }
 
-    /// §Fase 119.m.3 — Builder: attach the compiled `agent` declarations, so
+    /// v2.83.0 — Builder: attach the compiled `agent` declarations, so
     /// `<Agent>(args)` resolves its bounds and tool grant at dispatch.
     ///
     /// Every production seam that builds a `DispatchCtx` must call this. That
-    /// is the whole lesson of §119.f.7: a catalog the executor reads and no
+    /// is the whole lesson of v2.83.0: a catalog the executor reads and no
     /// entry point fills is an executor that never runs.
     pub fn with_agents(mut self, specs: Arc<Vec<crate::ir_nodes::IRAgent>>) -> Self {
         self.agent_specs = specs;
         self
     }
 
-    /// §Fase 119.b — Builder: attach the compiled `mandate` declarations, so
+    /// v2.83.0 — Builder: attach the compiled `mandate` declarations, so
     /// `mandate <Name> on …` builds its enforcement loop at dispatch instead
     /// of discarding the name on the first line.
     pub fn with_mandates(mut self, specs: Arc<Vec<crate::ir_nodes::IRMandate>>) -> Self {
@@ -912,14 +912,14 @@ impl DispatchCtx {
         self
     }
 
-    /// §Fase 119.c — Builder: attach the compiled ΛD declarations, so
+    /// v2.83.0 — Builder: attach the compiled ΛD declarations, so
     /// `lambda <Name> on …` constructs ψ instead of a placeholder string.
     pub fn with_lambdas(mut self, specs: Arc<Vec<crate::ir_nodes::IRLambdaData>>) -> Self {
         self.lambda_data_specs = specs;
         self
     }
 
-    /// §Fase 119.c — Builder: attach the compiled `ots` declarations.
+    /// v2.83.0 — Builder: attach the compiled `ots` declarations.
     pub fn with_ots(mut self, specs: Arc<Vec<crate::ir_nodes::IROts>>) -> Self {
         self.ots_specs = specs;
         self
@@ -935,10 +935,10 @@ impl DispatchCtx {
         self
     }
 
-    /// §Fase 74.a — Builder: attach the shared typed-channel event bus so a
+    /// v2.31.0 — Builder: attach the shared typed-channel event bus so a
     /// flow's `emit Channel(payload)` delivers to it (the producer side of
     /// durable event delivery). Without this, `emit` buffers locally
-    /// (pre-§74 behaviour).
+    /// (pre-v2.31.0 behaviour).
     pub fn with_event_bus(
         mut self,
         bus: std::sync::Arc<crate::runtime::channels::TypedEventBus>,
@@ -947,7 +947,7 @@ impl DispatchCtx {
         self
     }
 
-    /// §Fase 74.c — Builder: attach the durable event outbox so a flow's
+    /// v2.31.0 — Builder: attach the durable event outbox so a flow's
     /// `emit` to a `persistent_axonstore` channel is APPENDED to it
     /// (durable intent), instead of the ephemeral bus. Pairs with
     /// `with_event_bus` (the bus is the channel registry that resolves a
@@ -960,7 +960,7 @@ impl DispatchCtx {
         self
     }
 
-    /// §Fase 74.e — Builder: attach the replay/audit-chain sink so a flow's
+    /// v2.31.0 — Builder: attach the replay/audit-chain sink so a flow's
     /// `emit` records an `emit:<channel>` ReplayToken (and the daemon
     /// receive-loop records `deliver:<channel>` tokens).
     pub fn with_replay_log(
@@ -971,7 +971,7 @@ impl DispatchCtx {
         self
     }
 
-    /// §Fase 72.c — Builder: attach the active `budget { … }` gate (the daemon
+    /// v2.28.0 — Builder: attach the active `budget { … }` gate (the daemon
     /// path). Shared so cumulative bucket state spans the daemon's flows + par
     /// branches within a tick.
     pub fn with_budget(
@@ -982,7 +982,7 @@ impl DispatchCtx {
         self
     }
 
-    /// §Fase 114.e — attach the cross-request channel semaphores.
+    /// v2.69.0 — attach the cross-request channel semaphores.
     pub fn with_channel_semaphores(
         mut self,
         sems: std::sync::Arc<crate::channel_semaphore::ChannelSemaphores>,
@@ -991,7 +991,7 @@ impl DispatchCtx {
         self
     }
 
-    /// §Fase 122.d — attach the memoisation tier and resolve every cache
+    /// v2.89.0 — attach the memoisation tier and resolve every cache
     /// policy the program declares, in ONE call.
     ///
     /// # Why this takes the whole `IRProgram` and not four arguments
@@ -1006,7 +1006,7 @@ impl DispatchCtx {
     /// So they arrive bundled as one
     /// [`crate::cache_runtime::CachePlan`], resolved from the IR by whoever
     /// holds it, and the only way to half-wire the cache is not to call this —
-    /// which is the existing, honest `None` default. This is the §120 lesson
+    /// which is the existing, honest `None` default. This is the v2.87.0 lesson
     /// stated as an API: make the second door impossible rather than
     /// remembering to walk through it.
     pub fn with_cache(
@@ -1022,7 +1022,7 @@ impl DispatchCtx {
         self
     }
 
-    /// §Fase 114.f — attach the cross-request tool-lease guard.
+    /// v2.69.0 — attach the cross-request tool-lease guard.
     pub fn with_tool_leases(
         mut self,
         leases: std::sync::Arc<crate::resource_lease::ResourceLeaseGuard>,
@@ -1031,7 +1031,7 @@ impl DispatchCtx {
         self
     }
 
-    /// §Fase 37.x.j (D2) — Builder: attach an Arc-shared pinned
+    /// v1.32.0 (D2) — Builder: attach an Arc-shared pinned
     /// connection map populated by the caller. `run_streaming_via_dispatcher`
     /// uses this to install the eagerly-acquired flow-scoped pins
     /// BEFORE the dispatcher walks any node. Returns `self` so the
@@ -1052,7 +1052,7 @@ impl DispatchCtx {
         self
     }
 
-    /// §Fase 65.C — Builder: pin the per-tenant API key the dispatcher's LLM
+    /// v2.15.0 — Builder: pin the per-tenant API key the dispatcher's LLM
     /// handlers use to resolve the backend (instead of the process env var).
     /// Returns `self` so builders chain. `None` leaves env-key behavior.
     pub fn with_api_key(mut self, api_key: Option<String>) -> Self {
@@ -1060,7 +1060,7 @@ impl DispatchCtx {
         self
     }
 
-    /// §Fase 24.g.2 (Kivi brief #37) — Builder: pin a per-tenant LLM endpoint
+    /// v1.18.0 (Kivi brief #37) — Builder: pin a per-tenant LLM endpoint
     /// override (base URL + chat path) the dispatcher threads into the backend
     /// factory. Either may be `None` (then env/default applies for that part).
     pub fn with_llm_endpoint(
@@ -1073,14 +1073,14 @@ impl DispatchCtx {
         self
     }
 
-    /// §Fase 65.C.2 — Builder: set the conversation char budget (0 = unlimited).
+    /// v2.15.0 — Builder: set the conversation char budget (0 = unlimited).
     /// Returns `self` so builders chain.
     pub fn with_context_budget(mut self, max_chars: usize) -> Self {
         self.context_budget = max_chars;
         self
     }
 
-    /// §Fase 65.C.3 — Builder: install the flow's resolved anchors so each LLM
+    /// v2.15.0 — Builder: install the flow's resolved anchors so each LLM
     /// step's output is checked against them (breaches surfaced in the step
     /// audit). Returns `self` so builders chain.
     pub fn with_anchors(mut self, anchors: std::sync::Arc<Vec<crate::ir_nodes::IRAnchor>>) -> Self {
@@ -1088,7 +1088,7 @@ impl DispatchCtx {
         self
     }
 
-    /// §Fase 35.f — Builder: attach the `axonstore` registry so the
+    /// v1.30.0 — Builder: attach the `axonstore` registry so the
     /// wire-integration store handlers route postgresql-backed stores
     /// to SQL. Without it, every store op stays key-value (D3).
     /// Returns `self` so builders chain.
@@ -1100,7 +1100,7 @@ impl DispatchCtx {
         self
     }
 
-    /// §Fase 35.j — Builder: attach the request's held capability
+    /// v1.30.0 — Builder: attach the request's held capability
     /// slugs so the store handlers re-check capability-gated stores
     /// (Pillar IV). Returns `self` so builders chain.
     pub fn with_held_capabilities(mut self, capabilities: Vec<String>) -> Self {
@@ -1108,7 +1108,7 @@ impl DispatchCtx {
         self
     }
 
-    /// §Fase 34.d — Builder: attach a tool registry so the
+    /// v1.29.0 — Builder: attach a tool registry so the
     /// dispatcher's streaming-tool branch can resolve `apply_ref`
     /// against it. Returns `self` so builders chain.
     pub fn with_tool_registry(
@@ -1119,7 +1119,7 @@ impl DispatchCtx {
         self
     }
 
-    /// §Fase 63.B — Builder: attach the MDN corpus graphs (built from the IR's
+    /// v2.13.0 — Builder: attach the MDN corpus graphs (built from the IR's
     /// `corpus { relations: … }` declarations) so `navigate <corpus>` runs real
     /// graph navigation. Returns `self` so builders chain.
     pub fn with_mdn_corpora(
@@ -1130,7 +1130,7 @@ impl DispatchCtx {
         self
     }
 
-    /// §Fase 63.C — Builder: mark which corpora are `adaptive` (memory-enabled).
+    /// v2.13.0 — Builder: mark which corpora are `adaptive` (memory-enabled).
     pub fn with_mdn_adaptive(
         mut self,
         adaptive: std::sync::Arc<std::collections::HashSet<String>>,
@@ -1139,7 +1139,7 @@ impl DispatchCtx {
         self
     }
 
-    /// §Fase 64.B — Builder: register the DYNAMIC, store-sourced MDN corpora
+    /// v2.14.0 — Builder: register the DYNAMIC, store-sourced MDN corpora
     /// (`corpus N from axonstore { … }`) by name → store-mapping spec.
     pub fn with_mdn_store_sources(
         mut self,
@@ -1182,7 +1182,7 @@ impl DispatchCtx {
         self
     }
 
-    /// §Fase 33.z.c — Builder: inject external Arc-backed side-channels
+    /// v1.24.0 — Builder: inject external Arc-backed side-channels
     /// so the dispatcher's per-variant handlers populate the SAME
     /// Mutexes that `server_execute_streaming` reads from for the SSE
     /// wire's `enforcement_summary`, `step_audit`, and `runtime_warnings`
@@ -1215,7 +1215,7 @@ impl DispatchCtx {
         runtime_warnings: std::sync::Arc<
             tokio::sync::Mutex<Vec<crate::runtime_warnings::RuntimeWarning>>,
         >,
-        // §Fase 67.c — the collector injects its own row-count Arc so it
+        // v2.21.0 — the collector injects its own row-count Arc so it
         // can read the totals after the dispatcher walk completes.
         store_row_counts: std::sync::Arc<std::sync::Mutex<StoreRowCounts>>,
     ) -> Self {
@@ -1226,7 +1226,7 @@ impl DispatchCtx {
         self
     }
 
-    /// §Fase 67.c — fold a store op's row count into the shared per-run
+    /// v2.21.0 — fold a store op's row count into the shared per-run
     /// totals. The guard is dropped at the end of the statement (never
     /// held across an `.await`), so the `std::sync::Mutex` is safe inside
     /// the async store handlers.
@@ -1261,7 +1261,7 @@ impl DispatchCtx {
 // ────────────────────────────────────────────────────────────────────
 
 /// Closed catalog of dispatcher outcomes. 33.y.b ships only the
-/// transitional [`LegacyShimHandled`] variant; subsequent sub-fases
+/// transitional [`LegacyShimHandled`] variant; subsequent steps
 /// 33.y.c–j add real outcomes:
 ///
 /// - `Completed { output, tokens_emitted }` — handler ran to
@@ -1286,7 +1286,7 @@ impl DispatchCtx {
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub enum NodeOutcome {
-    /// §Fase 33.y.c+ — Handler ran to completion. `output` is the
+    /// v1.24.0+ — Handler ran to completion. `output` is the
     /// concatenated chunk content captured during streaming;
     /// `tokens_emitted` is the count of non-empty `StepToken` events
     /// fanned to the wire (post-policy enforcement for steps with a
@@ -1300,24 +1300,24 @@ pub enum NodeOutcome {
         tokens_emitted: u64,
         step_index: usize,
     },
-    /// §Fase 33.y.d sentinel — emitted by the `Break` handler. The
+    /// v1.24.0 sentinel — emitted by the `Break` handler. The
     /// enclosing `ForIn` handler observes this outcome from its
     /// child dispatch + terminates the loop (skips remaining
     /// iterations). Parser scope check guarantees `Break` only
     /// appears inside a `ForIn` body, so non-loop ancestors that
     /// observe this outcome MUST propagate it upward unchanged.
     Break,
-    /// §Fase 33.y.d sentinel — emitted by the `Continue` handler.
+    /// v1.24.0 sentinel — emitted by the `Continue` handler.
     /// The enclosing `ForIn` handler observes this + skips to the
     /// next iteration. Same propagation discipline as
     /// [`NodeOutcome::Break`].
     LoopContinue,
-    /// §Fase 33.y.d sentinel — emitted by the `Return` handler.
+    /// v1.24.0 sentinel — emitted by the `Return` handler.
     /// Terminates the flow loop with the carried `value` as the
     /// final flow output. Parents propagate unchanged until the
     /// flow-loop level observes it.
     Return { value: String },
-    /// §Fase 119.d — the hibernate handler observed its suspension point.
+    /// v2.83.0 — the hibernate handler observed its suspension point.
     /// The WALK LOOP (which alone knows the node's position in the body)
     /// parks the continuation and HALTS the run. Nested constructs that see
     /// this outcome refuse — suspending inside a branch has no defined
@@ -1327,7 +1327,7 @@ pub enum NodeOutcome {
         timeout: String,
         step_index: usize,
     },
-    /// §Fase 120 sentinel — a handler clause invoked `resume(v)`.
+    /// v2.87.0 sentinel — a handler clause invoked `resume(v)`.
     ///
     /// Propagated up out of the clause body exactly like `Break` / `Return`,
     /// and consumed by the `perform` that dispatched the clause: that site
@@ -1335,15 +1335,15 @@ pub enum NodeOutcome {
     /// continuation IS the caller's remaining node list, so it is consumed
     /// exactly once (D2) with nothing to clone and nothing to release.
     EffectResumed { value: String },
-    /// §Fase 120 sentinel — a handler clause invoked `abort(v)`, or ran off its
-    /// end without resuming (which `fase_23` §3.1 publishes as an implicit
+    /// v2.87.0 sentinel — a handler clause invoked `abort(v)`, or ran off its
+    /// end without resuming (which `the design plan` section 3.1 publishes as an implicit
     /// abort: `Done() -> { websocket.close() }`).
     ///
     /// `frame_id` names the `handle` this terminates. Every construct BUT that
     /// handle propagates it unchanged — an inner handler must not swallow an
     /// outer one's exit.
     EffectAborted { frame_id: u32, value: String },
-    /// §Fase 120 sentinel — a handler clause invoked `forward E.Op(args)`
+    /// v2.87.0 sentinel — a handler clause invoked `forward E.Op(args)`
     /// (D12). The `perform` that dispatched the clause resumes its search
     /// strictly OUTSIDE the frame just left, which is what makes a handler a
     /// decorator rather than a terminator.
@@ -1388,20 +1388,20 @@ pub enum DispatchError {
     /// `UpstreamCancelled`).
     ChannelClosed,
 
-    /// §Fase 72.c — a budgeted effect (`budget { … on Tool(X) }`) was blocked
+    /// v2.28.0 — a budgeted effect (`budget { … on Tool(X) }`) was blocked
     /// because its rate/max quota is exhausted and the daemon's `on_exhausted`
     /// policy is `block` (fail-closed). `effect` is the tool name; `retry_at_ms`
     /// is when a token next frees up (operator diagnostics — the call did NOT
     /// emit). The typed `axon-E08xx EffectQuotaExhausted` surface.
     EffectQuotaExhausted { effect: String, retry_at_ms: i64 },
 
-    /// §Fase 72.d — a budgeted effect was DEFERRED (`on_exhausted: defer`): the
+    /// v2.28.0 — a budgeted effect was DEFERRED (`on_exhausted: defer`): the
     /// quota is exhausted, so the daemon's tick should re-run when a token frees
     /// up at `retry_at_ms`. Distinct from `EffectQuotaExhausted` so the supervisor
     /// can DISTINGUISH "reschedule me" from "I failed": the enterprise supervisor
-    /// records a coalesced deferred tick (the §71.d defer-ledger) targeting
+    /// records a coalesced deferred tick (the v2.27.0 defer-ledger) targeting
     /// `retry_at_ms`; the OSS single-process driver degrades to a logged retry on
-    /// the next cron tick (the §71.c degradation). The current flow does NOT
+    /// the next cron tick (the v2.27.0 degradation). The current flow does NOT
     /// complete this tick.
     EffectDeferred { effect: String, retry_at_ms: i64 },
 }
@@ -1435,7 +1435,7 @@ impl std::fmt::Display for DispatchError {
 impl std::error::Error for DispatchError {}
 
 // ────────────────────────────────────────────────────────────────────
-//  §Fase 33.y.l — ShimReason enum + legacy_shim function retired
+// v1.24.0 — ShimReason enum + legacy_shim function retired
 // ────────────────────────────────────────────────────────────────────
 //
 // After 33.y.j reached 45/45 IRFlowNode graduation, the
@@ -1461,7 +1461,7 @@ impl std::error::Error for DispatchError {}
 //
 // Search the codebase: `grep -E "unimplemented|todo!|legacy_shim"
 // axon-rs/src/flow_dispatcher/*.rs` returns ZERO matches post-33.y.l
-// (verified by the `fase33y_l_parity_gate.rs::d7_no_legacy_markers`
+// (verified by the `dispatcher_shim_free_parity_gate.rs::d7_no_legacy_markers`
 // drift-gate test).
 //
 // Build-time guarantee: `legacy_shim` is gone → compiler enforces
@@ -1477,7 +1477,7 @@ impl std::error::Error for DispatchError {}
 ///
 /// # 45/45 graduation FINAL (33.y.j)
 ///
-/// As of Fase 33.y.j, every IRFlowNode variant has a NAMED async
+/// As of v1.24.0, every IRFlowNode variant has a NAMED async
 /// handler. There are NO `_ =>` catch-all arms, NO `legacy_shim`
 /// calls, NO `unimplemented!()` markers. Adding a 46th IRFlowNode
 /// variant fails the Rust build here until a real per-variant
@@ -1505,7 +1505,7 @@ impl std::error::Error for DispatchError {}
 /// # Cancellation
 ///
 /// Every per-variant handler checks `ctx.cancel.is_cancelled()`
-/// at entry and at every `.await` boundary per the Fase 33.x.e
+/// at entry and at every `.await` boundary per the v1.24.0
 /// `cancel_aware` discipline. Cancel propagation is uniform
 /// across the entire 45-variant catalog.
 pub async fn dispatch_node(
@@ -1516,25 +1516,25 @@ pub async fn dispatch_node(
     // named arm. Adding a 46th IRFlowNode variant fails the build
     // here until the new arm is added. ZERO `_ =>` catch-all.
     match node {
-        // §Fase 33.y.c — pure-shape variants graduated to real
+        // v1.24.0 — pure-shape variants graduated to real
         // async handlers. Each delegates to its labeled
         // `pure_shape::run_*` entry which wraps the shared
         // `pure_shape::run_pure_shape` async core. The shim is
-        // retired for these 6 variants; subsequent sub-fases retire
+        // retired for these 6 variants; subsequent steps retire
         // it for the remaining 39 variants per the topological
-        // schedule in `docs/fase/fase_33y_algebraic_streaming_dispatcher.md`.
+        // schedule in `docs/cycle/algebraic_streaming_dispatcher.md`.
         IRFlowNode::Step(step) => pure_shape::run_step(step, ctx).await,
         IRFlowNode::Probe(probe) => pure_shape::run_probe(probe, ctx).await,
         IRFlowNode::Reason(reason) => pure_shape::run_reason(reason, ctx).await,
         IRFlowNode::Validate(validate) => pure_shape::run_validate(validate, ctx).await,
         IRFlowNode::Refine(refine) => pure_shape::run_refine(refine, ctx).await,
         IRFlowNode::Weave(weave) => pure_shape::run_weave(weave, ctx).await,
-        // §Fase 33.y.j — UseTool graduated.
+        // v1.24.0 — UseTool graduated.
         IRFlowNode::UseTool(node) => lambda_tools::run_use_tool(node, ctx).await,
-        // §Fase 33.y.f — cognitive primitives PEM-bound.
+        // v1.24.0 — cognitive primitives PEM-bound.
         IRFlowNode::Remember(node) => cognitive::run_remember(node, ctx).await,
         IRFlowNode::Recall(node) => cognitive::run_recall(node, ctx).await,
-        // §Fase 33.y.d — orchestration variants graduated to real
+        // v1.24.0 — orchestration variants graduated to real
         // async handlers. Each composes child handlers via recursive
         // `dispatch_node` calls + threads sentinel outcomes (Break /
         // LoopContinue / Return) up through orchestration parents.
@@ -1544,22 +1544,22 @@ pub async fn dispatch_node(
         IRFlowNode::Return(ret) => orchestration::run_return(ret, ctx).await,
         IRFlowNode::Break(brk) => orchestration::run_break(brk, ctx).await,
         IRFlowNode::Continue(cont) => orchestration::run_continue(cont, ctx).await,
-        // §Fase 33.y.j — LambdaDataApply graduated.
+        // v1.24.0 — LambdaDataApply graduated.
         IRFlowNode::LambdaDataApply(node) => lambda_tools::run_lambda_data_apply(node, ctx).await,
-        // §Fase 33.y.e — Par graduated to real async handler. The
+        // v1.24.0 — Par graduated to real async handler. The
         // payload-free `IRParallelBlock` emits the canonical
         // `step_type: "par"` wire shape; future IR extensions
         // delegate to `parallel::run_branches_concurrently`.
         IRFlowNode::Par(par) => parallel::run_par(par, ctx).await,
-        // §Fase 33.y.i — PIX variants graduated.
+        // v1.24.0 — PIX variants graduated.
         IRFlowNode::Hibernate(node) => pix::run_hibernate(node, ctx).await,
-        // §Fase 33.y.h — multi-agent deliberation blocks.
+        // v1.24.0 — multi-agent deliberation blocks.
         IRFlowNode::Deliberate(node) => wire_integrations::run_deliberate(node, ctx).await,
         IRFlowNode::Consensus(node) => wire_integrations::run_consensus(node, ctx).await,
-        // §Fase 33.y.f — Forge payload-free wire shape.
+        // v1.24.0 — Forge payload-free wire shape.
         IRFlowNode::Forge(node) => cognitive::run_forge(node, ctx).await,
-        // §Fase 33.y.f — cognitive framing handlers reuse pure_shape.
-        // §Fase 109.b — the proof-carrying derivative: evaluate the
+        // v1.24.0 — cognitive framing handlers reuse pure_shape.
+        // v2.65.0 — the proof-carrying derivative: evaluate the
         // compile-time-derived expressions at the current bindings.
         IRFlowNode::Grad(node) => orchestration::run_grad(node, ctx).await,
         IRFlowNode::Focus(node) => cognitive::run_focus(node, ctx).await,
@@ -1567,18 +1567,18 @@ pub async fn dispatch_node(
         IRFlowNode::Aggregate(node) => cognitive::run_aggregate(node, ctx).await,
         IRFlowNode::Explore(node) => cognitive::run_explore(node, ctx).await,
         IRFlowNode::Ingest(node) => cognitive::run_ingest(node, ctx).await,
-        // §Fase 33.y.g — algebraic-effect handler nodes graduated.
+        // v1.24.0 — algebraic-effect handler nodes graduated.
         IRFlowNode::ShieldApply(node) => algebraic_handlers::run_shield_apply(node, ctx).await,
-        // §Fase 33.y.e — Stream graduated to real async handler.
+        // v1.24.0 — Stream graduated to real async handler.
         // The payload-free `IRStreamBlock` emits the canonical
         // `step_type: "stream"` wire shape; future IR extensions
         // delegate to `effects_bridge::bridge_effect_stream_yield`.
         IRFlowNode::Stream(stream) => effects_bridge::run_stream(stream, ctx).await,
-        // §Fase 120 — the algebraic-effect constructs. THE arms that make the
+        // v2.87.0 — the algebraic-effect constructs. THE arms that make the
         // subsystem reachable: before them the language had no grammar for
         // effects at all, and `EffectRuntime` was constructible only from its
         // own tests. See `effect_handlers` for why the machine lives here and
-        // not in `crate::effects` (D120.1).
+        // not in `crate::effects`.
         IRFlowNode::Handle(node) => effect_handlers::run_handle(node, ctx).await,
         IRFlowNode::Perform(node) => effect_handlers::run_perform(node, ctx).await,
         IRFlowNode::Resume(node) => effect_handlers::run_resume(node, ctx).await,
@@ -1591,46 +1591,46 @@ pub async fn dispatch_node(
         IRFlowNode::OtsApply(node) => algebraic_handlers::run_ots_apply(node, ctx).await,
         IRFlowNode::MandateApply(node) => algebraic_handlers::run_mandate_apply(node, ctx).await,
         IRFlowNode::ComputeApply(node) => algebraic_handlers::run_compute_apply(node, ctx).await,
-        // §Fase 119.m.3 — `<Agent>(args)`: §119.m.1's bounded control loop,
+        // v2.83.0 — `<Agent>(args)`: v2.83.0's bounded control loop,
         // reachable from source at last.
         IRFlowNode::AgentCall(node) => agent_loop::run_agent_call(node, ctx).await,
         IRFlowNode::Listen(node) => algebraic_handlers::run_listen(node, ctx).await,
         IRFlowNode::DaemonStep(node) => algebraic_handlers::run_daemon_step(node, ctx).await,
-        // §Fase 92.c — ephemeral-credential minting (attenuated, fail-closed).
+        // v2.46.0 — ephemeral-credential minting (attenuated, fail-closed).
         IRFlowNode::Mint(node) => wire_integrations::run_mint(node, ctx).await,
-        // §Fase 94.b — mediated secret renewal (fail-closed without the
+        // v2.48.0 — mediated secret renewal (fail-closed without the
         // custody port; an LLM fallthrough would HALLUCINATE a rotation).
         IRFlowNode::Rotate(node) => wire_integrations::run_rotate(node, ctx).await,
-        // §Fase 33.y.h — π-calc typed channels (Fase 13).
+        // v1.24.0 — π-calc typed channels (v1.6.0).
         IRFlowNode::Emit(node) => wire_integrations::run_emit(node, ctx).await,
         IRFlowNode::Publish(node) => wire_integrations::run_publish(node, ctx).await,
         IRFlowNode::Discover(node) => wire_integrations::run_discover(node, ctx).await,
-        // §Fase 33.y.h — persistence primitives.
+        // v1.24.0 — persistence primitives.
         IRFlowNode::Persist(node) => wire_integrations::run_persist(node, ctx).await,
         IRFlowNode::Retrieve(node) => wire_integrations::run_retrieve(node, ctx).await,
         IRFlowNode::Mutate(node) => wire_integrations::run_mutate(node, ctx).await,
         IRFlowNode::Purge(node) => wire_integrations::run_purge(node, ctx).await,
         IRFlowNode::Transact(node) => wire_integrations::run_transact(node, ctx).await,
-        // §Fase 51.a — the `quant` cognitive block. SURFACE only in this
-        // sub-fase: the OSS dispatcher recognizes it and emits the canonical
+        // v2.4.0 — the `quant` cognitive block. SURFACE only in this
+        // step: the OSS dispatcher recognizes it and emits the canonical
         // `step_type: "quant"` wire shape but does NOT execute the Hilbert-space
         // body — real evaluation requires the `QuantBackend` port + reference
-        // simulator (§51.e) and the effect injection + `yield` measurement
-        // (§51.d), and is hardware-accelerated only in the enterprise backend.
+        // simulator (v2.4.0) and the effect injection + `yield` measurement
+        // (v2.4.0), and is hardware-accelerated only in the enterprise backend.
         IRFlowNode::Quant(node) => wire_integrations::run_quant(node, ctx).await,
-        // §Fase 88.a — the `warden` adversarial-analysis block. SURFACE only:
+        // v2.43.0 — the `warden` adversarial-analysis block. SURFACE only:
         // emits the canonical `step_type: "warden"` wire shape but does NOT run
-        // the analysis — the real engine (`WardenBackend` port + reference, §88.d;
-        // enterprise abduction, §88.f) + the authorization gate land later.
+        // the analysis — the real engine (`WardenBackend` port + reference, v2.43.0;
+        // enterprise abduction, v2.43.0) + the authorization gate land later.
         IRFlowNode::Warden(node) => wire_integrations::run_warden(node, ctx).await,
-        // §Fase 51.d.2 — the `yield` measurement point. SURFACE only: emits the
+        // v2.4.0 — the `yield` measurement point. SURFACE only: emits the
         // canonical `step_type: "yield"` wire shape. The actual amplitude
-        // collapse + one-shot delimited continuation is the §51.e reference
+        // collapse + one-shot delimited continuation is the v2.4.0 reference
         // simulator / enterprise QuIDD-QPU backend.
         IRFlowNode::Yield(node) => wire_integrations::run_yield(node, ctx).await,
-        // §Fase 52.c — `run <Flow>(args)` flow-step. SURFACE here (binds the
+        // v2.4.0 — `run <Flow>(args)` flow-step. SURFACE here (binds the
         // invocation outcome); the real recursive flow dispatch under the
-        // daemon's identity is the §52.c daemon executor.
+        // daemon's identity is the v2.4.0 daemon executor.
         IRFlowNode::Run(node) => algebraic_handlers::run_run(node, ctx).await,
     }
 }
@@ -1646,7 +1646,7 @@ mod tests {
 
     #[test]
     fn budget_dispatch_errors_carry_their_typed_codes() {
-        // §Fase 72.c/d — the two budget-exhaustion surfaces have distinct codes
+        // v2.28.0 — the two budget-exhaustion surfaces have distinct codes
         // so an operator (and the enterprise supervisor) can tell a hard block
         // from a reschedule.
         let blocked = DispatchError::EffectQuotaExhausted {
@@ -1667,7 +1667,7 @@ mod tests {
         assert!(msg.contains("EffectDeferred") && msg.contains("reschedules"), "{msg}");
     }
 
-    /// §Fase 33.y.l drift-gate update — the historical
+    /// v1.24.0 drift-gate update — the historical
     /// `shim_reason_cardinality_45_variants` /
     /// `shim_reason_slugs_are_unique` /
     /// `shim_reason_slugs_are_well_formed` /
@@ -1676,11 +1676,11 @@ mod tests {
     /// `shim_reason_slug_matches_ir_flow_node_kind` tests are
     /// RETIRED here. The replacement coverage lives in:
     ///
-    ///   - `tests/fase33y_b_dispatcher_skeleton.rs` — IR-variant
+    ///   - `tests/dispatcher_skeleton.rs` — IR-variant
     ///     catalog cardinality + slug uniqueness via
     ///     `flow_plan::ir_flow_node_kind` directly (single source
     ///     of truth, no more `ShimReason::slug` duplication).
-    ///   - `tests/fase33y_l_parity_gate.rs` — D7 build-time grep
+    ///   - `tests/dispatcher_shim_free_parity_gate.rs` — D7 build-time grep
     ///     invariant: zero `unimplemented!` / `todo!` / `legacy_shim`
     ///     symbols in `flow_dispatcher/*.rs`.
 
@@ -1700,7 +1700,7 @@ mod tests {
         assert_eq!(ctx.step_counter, 0);
     }
 
-    /// §Fase 65.C — `with_api_key` carries the per-tenant key into the ctx;
+    /// v2.15.0 — `with_api_key` carries the per-tenant key into the ctx;
     /// the default is `None` (env-key behavior).
     #[test]
     fn dispatch_ctx_with_api_key_carries_per_tenant_key() {
@@ -1811,7 +1811,7 @@ mod tests {
     }
 }
 
-/// §Fase 119.d — re-enter a parked continuation: rebuild a ctx from the
+/// v2.83.0 — re-enter a parked continuation: rebuild a ctx from the
 /// seed, bind the wake payload under the event name, walk the remaining
 /// top-level nodes, and record the terminal outcome in the parking lot
 /// (the original client's stream ended at the halt, so the lot is where

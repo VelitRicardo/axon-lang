@@ -1,4 +1,4 @@
-//! §Fase 25.j — Audio kernel benchmark.
+//! v1.19.0 — Audio kernel benchmark.
 //!
 //! Measures throughput of:
 //!   • `axon_csys::mulaw_decode` (μ-law → PCM16)

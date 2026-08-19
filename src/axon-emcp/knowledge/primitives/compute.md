@@ -3,7 +3,7 @@ name: compute
 summary: Binds a flow to a specific compute backend — model selection, effort hint, parallelism, deterministic seed.
 category: operators
 top_level: true
-since: Fase 17
+since: v1.12.0
 grammar: |
   compute <Name> [(<params>)] [-> <ReturnType>] {
       shield: <ShieldRef>      # optional — defence layer
@@ -36,7 +36,7 @@ deployment-level `compute:` field on the bound `run`.
 
 > **`axon-W006`** — a step's `apply: <Compute>` for model selection is
 > a no-op the compiler warns on; declare the capability need on the
-> step with `requires_context:` (§Fase 68) and let the resolver pick
+> step with `requires_context:` (v2.22.0) and let the resolver pick
 > the model. See `axon://primitives/step`.
 
 ```axon
@@ -65,7 +65,7 @@ field. Additional adopter-facing fields (e.g. `model:`,
 `effort:`, `seed:`, `parallelism:`) are **parsed permissively**
 (via the `skip_value` fallback) and validated at deploy time
 by the runtime's compute-binding registry rather than at parse
-time. A future Fase will tighten this surface to a typed AST
+time. A future cycle will tighten this surface to a typed AST
 node; until then, the runtime is the source of truth for
 which fields a given backend honours.
 

@@ -1,4 +1,4 @@
-//! §Fase 25.d — Buffer pool slab allocator test suite.
+//! v1.19.0 — Buffer pool slab allocator test suite.
 //!
 //! Exercises the full surface of `axon_csys::buffer::*`. The C kernel
 //! (cache-line slabs + bitmap free-list + hugepages opt-in) and the

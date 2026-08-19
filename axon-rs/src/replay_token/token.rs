@@ -13,7 +13,7 @@
 //! ```
 //!
 //! where `RS = 0x1E` (ASCII Record Separator). The canonicaliser
-//! matches the one already used by the §Fase 10.g audit chain
+//! matches the one already used by the v1.4.0 audit chain
 //! (recursive key sort, UTF-8 encoding, ASCII-safe escapes) so a
 //! token can be re-hashed by the enterprise audit writer with zero
 //! translation.
@@ -204,7 +204,7 @@ impl ReplayTokenBuilder {
 
 /// Compute SHA-256 of `v` after canonical JSON encoding. The
 /// canonical form sorts object keys recursively and omits optional
-/// whitespace — identical to the §Fase 10.g audit-chain canonicaliser.
+/// whitespace — identical to the v1.4.0 audit-chain canonicaliser.
 pub fn canonical_hash(v: &Value) -> [u8; 32] {
     let canonical = canonicalize(v);
     let mut h = Sha256::new();

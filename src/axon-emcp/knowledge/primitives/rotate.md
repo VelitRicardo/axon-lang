@@ -3,12 +3,12 @@ name: rotate
 summary: "The mediated secret-renewal flow verb — renews every matching entry of a `backend: secrets` store's class through one runtime-mediated tool exchange per key, without the value ever entering the program."
 category: wire
 top_level: false
-since: Fase 94
+since: v2.48.0
 grammar: |
   rotate <SecretsStore> [where "<filter>"] with <Tool> as <binding>
   # <SecretsStore> must resolve to a declared `backend: secrets` axonstore
   # (axon-T898); <Tool> must be a declared tool (axon-T899); the optional
-  # `where` filter is the §67 metadata grammar (expires_at / key / version /
+  # `where` filter is the v2.21.0 metadata grammar (expires_at / key / version /
   # created_at), proven against the synthesized schema. Omitting the filter
   # rotates the WHOLE class — the deliberate post-breach bulk shape.
   # <binding> receives the metadata-only summary {attempted, rotated, failed}.

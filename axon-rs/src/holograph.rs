@@ -1,15 +1,15 @@
-//! §Fase 87.e — the `HolographBackend` port + the OSS reference HRR codec.
+//! v2.42.0 — the `HolographBackend` port + the OSS reference HRR codec.
 //!
 //! This is the OSS half of the `savant` memory layer's RUNTIME: the Holographic
 //! Reduced Representation (HRR / Vector-Symbolic Architecture) codec that lets a
 //! long-horizon research loop compress an entire epistemic graph into a single
 //! fixed-dimension vector and decode only the slice it needs — so a mandate
 //! started on day 1 keeps exact causal influence on day 15 without the quadratic
-//! context-window rot of token sequences (paper §5).
+//! context-window rot of token sequences (paper section 5).
 //!
 //! It defines:
 //!   - [`HolographBackend`] — the **port** (charter split R1). Enterprise mounts
-//!     the production SIMD/Q-stable codec (§87.i) behind this same trait; the OSS
+//! the production SIMD/Q-stable codec (v2.42.0) behind this same trait; the OSS
 //!     crate ships only the reference implementation below.
 //!   - [`ReferenceHolographCodec`] — a genuinely usable HRR codec over `f64`,
 //!     hard-capped at [`HOLOGRAPH_DIM_CAP`] and power-of-two dimensions. It runs
@@ -20,24 +20,24 @@
 //!   - *bind* (`⊛`) = circular convolution, computed in the frequency domain as
 //!     `x ⊛ y = F⁻¹(F(x) ⊙ F(y))` — `O(n log n)` via a self-contained radix-2 FFT
 //!     (no `rustfft`/`num-complex` dependency, mirroring `quant.rs`'s rolled-own
-//!     complex discipline). This is the paper's §5.2 identity.
+//! complex discipline). This is the paper's section 5.2 identity.
 //!   - *unbind* = circular correlation, `y# ⊛ c` where `y#` is the involution
 //!     `y#[k] = y[(-k) mod n]`, i.e. `F⁻¹(F(c) ⊙ conj(F(y)))`.
-//!   - *unitary projection* (`make_unitary`) = the paper's §5.2 "iterative
+//! - *unitary projection* (`make_unitary`) = the paper's section 5.2 "iterative
 //!     projection to a numerically well-behaved point": set every frequency-bin
 //!     magnitude to 1 while preserving phase. Binding with a **unitary** key is
 //!     then EXACTLY invertible by correlation (recovery cosine = 1), which is the
 //!     ">100% retrieval-efficacy" stability the paper cites. Random (non-unitary)
 //!     keys recover approximately — the honest HRR property.
 //!
-//! Honest bound (doctrine `no_unwitnessed_advantage`, §69): this is a memory
+//! Honest bound (doctrine `no_unwitnessed_advantage`, v2.23.0): this is a memory
 //! *compression* primitive, not a claim of cognitive advantage. Its guarantee is
 //! exact, testable algebra (bind∘unbind = identity for unitary keys), nothing more.
 
 use std::f64::consts::PI;
 
 /// The hard dimensionality cap of the OSS reference codec. Above this the
-/// enterprise SIMD engine (§87.i) is required; the reference returns
+/// enterprise SIMD engine (v2.42.0) is required; the reference returns
 /// [`HolographError::CapacityExceeded`] rather than allocate unboundedly.
 pub const HOLOGRAPH_DIM_CAP: usize = 4096;
 
@@ -168,7 +168,7 @@ pub trait HolographBackend {
     /// `bind` when `key` is unitary (see [`Self::make_unitary`]).
     fn unbind(&self, c: &[f64], key: &[f64]) -> Result<Vec<f64>, HolographError>;
     /// Project `v` onto the unitary manifold: unit magnitude in every frequency
-    /// bin, phase preserved (paper §5.2). Binding with a unitary key is exactly
+    /// bin, phase preserved (paper section 5.2). Binding with a unitary key is exactly
     /// invertible.
     fn make_unitary(&self, v: &[f64]) -> Result<Vec<f64>, HolographError>;
     /// A deterministic role/filler vector `~ N(0, 1/dim)` seeded by `seed`
@@ -349,7 +349,7 @@ mod tests {
     #[test]
     fn unitary_bind_unbind_recovers_exactly() {
         // The load-bearing HRR guarantee: with a unitary key, bind∘unbind is the
-        // identity (recovery cosine = 1). This is the paper's §5.2 stability.
+        // identity (recovery cosine = 1). This is the paper's section 5.2 stability.
         let c = ReferenceHolographCodec::new(512).unwrap();
         let filler = c.role_vector(10);
         let key = c.make_unitary(&c.role_vector(20)).unwrap();

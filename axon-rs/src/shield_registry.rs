@@ -1,4 +1,4 @@
-//! §Fase 40.b — Shield scanner extension point.
+//! v2.0.0 — Shield scanner extension point.
 //!
 //! # Why this exists
 //!
@@ -8,7 +8,7 @@
 //! vertical scanner *implementations* (HIPAA / legal / AML) are enterprise
 //! R&D and live in the BSL `axon-enterprise` workspace.
 //!
-//! Before Fase 40.b there was no clean way for an external crate to inject
+//! Before v2.0.0 there was no clean way for an external crate to inject
 //! a scanner: the apply helper was a hardcoded identity. This module is the
 //! **public registration hook** the enterprise vertical crate uses. It is a
 //! deliberate language extension point — axon-for-axon: it makes axon a
@@ -135,20 +135,20 @@ pub fn lookup_shield_scanner(shield_name: &str) -> Option<Arc<dyn ShieldScanner>
         .cloned()
 }
 
-/// §Fase 122.a — what a shield site must do, decided ONCE for every site.
+/// v2.89.0 — what a shield site must do, decided ONCE for every site.
 ///
 /// There are two shield enforcement sites (`run_shield_apply` and `run_emit`'s
 /// σ-gate) and they must never disagree about when a missing scanner is
-/// tolerable. §120 is the reason this is a projection and not a rule: two
+/// tolerable. v2.87.0 is the reason this is a projection and not a rule: two
 /// public entry points into one subsystem, each with its own copy of the
-/// decision, drifted in silence for entire fases. Here the decision has one
+/// decision, drifted in silence for entire cycles. Here the decision has one
 /// home and the sites only obey it.
 pub enum ScanDisposition {
     /// A scanner is registered — run it.
     Scanner(Arc<dyn ShieldScanner>),
     /// No scanner, and the shield DECLARES no `scan:`. Identity is honest:
     /// a filter that filters nothing leaves the data untouched and claims
-    /// nothing about it (§119.c's argument, kept deliberately).
+    /// nothing about it (v2.83.0's argument, kept deliberately).
     IdentityIsHonest,
     /// No scanner, but the shield DECLARES a `scan:` list. Refuse.
     ///
@@ -156,8 +156,8 @@ pub enum ScanDisposition {
     /// the content ("nothing past this point carries an injection"), which the
     /// PCC proves over and the ESK maps to ISO 27001 A.8.23. Passing the value
     /// through and binding it under a name that claims the property is the
-    /// §111 F12 shape `warden` already refuses: a clean-looking result for
-    /// something never examined. It is also what makes §98.d's web-taint
+    /// v2.67.0 F12 shape `warden` already refuses: a clean-looking result for
+    /// something never examined. It is also what makes v2.52.0's web-taint
     /// barrier real — `<web>` content is born Untrusted and `prompt_injection`
     /// is what it must pass; an identity there tracks the taint at compile
     /// time and evaporates it at runtime.
@@ -167,7 +167,7 @@ pub enum ScanDisposition {
     },
 }
 
-/// §Fase 122.a — resolve what a shield site must do for `shield_name`, given
+/// v2.89.0 — resolve what a shield site must do for `shield_name`, given
 /// the `scan:` list the artifact carries for it (stamped at lowering).
 pub fn resolve_scan(shield_name: &str, declared_scan: &[String]) -> ScanDisposition {
     if let Some(scanner) = lookup_shield_scanner(shield_name) {
@@ -234,7 +234,7 @@ pub fn clear_shield_registry() {
 }
 
 // ────────────────────────────────────────────────────────────────────────
-//  §Fase 53.e — NO PHANTOM GUARDRAILS (founder refinement C)
+// v2.5.0 — NO PHANTOM GUARDRAILS (founder refinement C)
 // ────────────────────────────────────────────────────────────────────────
 
 /// Every `(shield_name, category)` where a shield declares an
@@ -279,7 +279,7 @@ pub fn unscanned_extension_scan_categories(
     violations
 }
 
-/// §Fase 53.e — the boot gate. `Ok(())` when every extension scan
+/// v2.5.0 — the boot gate. `Ok(())` when every extension scan
 /// category used by a shield has a registered scanner; `Err(blame)` (a
 /// Server-Blame message) otherwise. The boot sequence MUST treat `Err`
 /// as FATAL — refuse to serve rather than present a ghost guardrail
@@ -303,10 +303,10 @@ pub fn check_extension_scan_coverage(ir: &crate::ir_nodes::IRProgram) -> Result<
 }
 
 // ────────────────────────────────────────────────────────────────────────
-//  §Fase 114.w — the `on_breach:` catalog, HONORED
+// v2.69.0 — the `on_breach:` catalog, HONORED
 // ────────────────────────────────────────────────────────────────────────
 //
-// The shield doc has promised five policies since Fase 20:
+// The shield doc has promised five policies since v1.13.1:
 //
 // | `halt`               | stop; surface a typed error                    |
 // | `quarantine`         | route the candidate to the `quarantine:` sink |
@@ -314,12 +314,12 @@ pub fn check_extension_scan_coverage(ir: &crate::ir_nodes::IRProgram) -> Result<
 // | `sanitize_and_retry` | apply `redact:` + re-scan, ≤ `max_retries:`   |
 // | `escalate`           | hand off to the escalation queue              |
 //
-// …and the runtime ALWAYS halted. §114.w gives each policy its documented
+// …and the runtime ALWAYS halted. v2.69.0 gives each policy its documented
 // meaning. Two seams stay registry-backed, mirroring the scanner model:
 // the quarantine SINKS (named — enterprise mounts the DLQ under the audit
 // hash chain) and the ESCALATION queue (one per process). A policy whose
 // destination is not mounted HALTS with a diagnostic naming the hole —
-// fail-closed, never a phantom guardrail (the §53.e doctrine).
+// fail-closed, never a phantom guardrail (the v2.5.0 doctrine).
 
 /// A breach destination: where `quarantine` routes and `escalate` hands off.
 /// OSS ships **no** implementations (charter: framework here, verticals in
@@ -427,13 +427,13 @@ fn mask_fields(value: &mut serde_json::Value, redact: &[String]) {
     }
 }
 
-/// §Fase 114.w — run the shield's declared `on_breach:` policy over a
+/// v2.69.0 — run the shield's declared `on_breach:` policy over a
 /// REJECTED candidate. Called by BOTH enforcement sites (the shield STEP and
 /// `run_emit`'s σ-gate) — the policy arrives ON THE NODE (`IRBreachPolicy`,
 /// resolved at lowering), so every dispatch path honors it by construction.
 ///
 /// `None` policy ⇒ `halt` (the fail-closed default, byte-identical to the
-/// pre-§114.w behaviour).
+/// pre-v2.69.0 behaviour).
 pub fn apply_on_breach(
     tenant_id: &str,
     shield_name: &str,
@@ -566,7 +566,7 @@ mod tests {
         }
     }
 
-    // ── §Fase 53.e — phantom-guardrail boot gate ───────────────────
+    // ── v2.5.0 — phantom-guardrail boot gate ───────────────────
 
     fn ir_from(src: &str) -> crate::ir_nodes::IRProgram {
         let tokens = crate::lexer::Lexer::new(src, "<test>")

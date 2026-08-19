@@ -1,6 +1,6 @@
 //! `Stream<T>` — temporal algebraic effect with mandatory backpressure.
 //!
-//! §λ-L-E Fase 11.a — every `Stream<T>` declaration MUST carry a
+//! v1.4.0 — every `Stream<T>` declaration MUST carry a
 //! [`BackpressurePolicy`] annotation. The checker rejects any flow
 //! that declares a stream-valued parameter or return without one.
 //! The rationale is operational: a reactive stream without an

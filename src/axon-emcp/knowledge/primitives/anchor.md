@@ -65,10 +65,10 @@ Canonical values:
 | `evidence_backed` | Every claim is supported by a retrieved chunk in the bound `axonstore`. |
 | `cross_referenced` | Each claim appears in ≥ 2 independent sources. |
 | `deterministic` | The flow's output is byte-identical for the same input (no LLM sampling drift). |
-| `legal_basis_present` | Every data access carries a §40 legal-basis tag in the audit row. |
+| `legal_basis_present` | Every data access carries a v2.0.0 legal-basis tag in the audit row. |
 | `confidence_floor` | Every output's self-reported confidence ≥ `confidence_floor:`. |
 
-The catalog grows with each compliance Fase; the type checker
+The catalog grows with each compliance cycle; the type checker
 rejects unknown values at parse time.
 
 ### `reject:` (optional)

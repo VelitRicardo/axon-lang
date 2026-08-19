@@ -3,7 +3,7 @@ name: cache
 summary: "A named, referenced result-memoization policy — cacheability derives from the type system's `effects: pure` proof; a single `default: true` auto-covers every pure tool, non-pure caches must carry a finite `ttl:`."
 category: operators
 top_level: true
-since: Fase 85 (v2.40.0)
+since: v2.40.0
 grammar: |
   cache <Name> {
       backend: redis | in_process          # optional — tier (default in_process)
@@ -65,7 +65,7 @@ tool Weather {
 `in_process` (the default single-replica tier — a bounded LRU with
 per-entry TTL) or `redis` (the multi-replica tier). A closed
 catalog (`axon-T866` on anything else). Which backend / how much
-capacity is a **per-tenant, deployment-level** knob (D85.5);
+capacity is a **per-tenant, deployment-level** knob;
 *eligibility* to cache is the source-level property.
 
 ### `ttl:` (optional — but REQUIRED for a non-pure cache)
@@ -107,14 +107,14 @@ is a **widening** (`axon-W013` names each non-pure tool a
 ### `invalidate_on:` (optional)
 
 Channel names (`axon-T864` if undeclared). An `emit` on any listed
-`channel` flushes this cache's namespace — reusing the §13 pub/sub,
+`channel` flushes this cache's namespace — reusing the v1.6.0 pub/sub,
 not a second mechanism.
 
 ## Budget interaction
 
 A cache **hit short-circuits before** the underlying tool/retrieve
-executes, so a `budget { rate:/max: }` quota (§72) is **never**
-decremented by a hit (D85.3). Hits and misses are audited
+executes, so a `budget { rate:/max: }` quota (v2.28.0) is **never**
+decremented by a hit. Hits and misses are audited
 distinctly (`cache:hit` / `cache:miss`) from `budget:consumed`, so
 an adopter sees real cost savings.
 
@@ -124,7 +124,7 @@ an adopter sees real cost savings.
   semantic/conversational recall state (what the agent remembers
   about a conversation); `cache` is result-memoization of a
   deterministic or explicitly-accepted-stale tool/retrieve call. An
-  agent can use both, for different reasons (D85.6).
+  agent can use both, for different reasons.
 - **Not a way to cache a non-deterministic result forever.** The
   compiler forbids it (`axon-T865`) — the same purity proof that
   authorises caching-forever is exactly what it withholds from a

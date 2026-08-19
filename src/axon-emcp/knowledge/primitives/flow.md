@@ -64,7 +64,7 @@ flow AnalyzeContract(doc: Document) -> ContractAnalysis {
   parameters. Types must resolve to a declared `type`, a built-in
   (`String`, `Number`, `Bool`), a generic application
   (`List<T>`, `Stream<T>`, `Optional<T>`?), or a recursive
-  generic (`FlowEnvelope<List<TenantRecord>>`, since Fase 39.a).
+  generic (`FlowEnvelope<List<TenantRecord>>`, since v2.0.0).
 - **`-> <ReturnType>`** — optional. When present, the flow's last
   evaluated step (or explicit `return`) must produce a value
   assignable to `<ReturnType>`. When omitted, the flow is treated
@@ -103,7 +103,7 @@ The compiler enforces three structural rules across the body:
    `return` statement (or the last expression-step) must produce
    a `<T>`.
 
-## Conditions: the pure expression engine (§Fase 70)
+## Conditions: the pure expression engine (v2.26.0)
 
 An `if` condition is a **pure, total, statically-typed expression**
 (`axon://logic/total_expressions`). The closed operator catalog is:
@@ -132,12 +132,12 @@ statically decides its branch and raises `axon-W008` (the other branch is
 dead code). A reference of unknown static type is permissive. Evaluation is
 deterministic and side-effect-free — overflow and division-by-zero fail
 closed (the branch is not taken). A simple `if x == "v"` (a reference
-compared to a literal) keeps its pre-§70 form unchanged.
+compared to a literal) keeps its pre-v2.26.0 form unchanged.
 
-## Streaming returns (Fase 33)
+## Streaming returns (v1.24.0)
 
 A flow whose return type is `Stream<T>` participates in the
-**algebraic stream effect runtime** (§Fase 33). Each step that
+**algebraic stream effect runtime** (v1.24.0). Each step that
 emits chunks does so via the `<stream: ...>` effect row; the
 runtime materialises the emissions as Server-Sent Events on the
 declared transport (`axonendpoint` route, `socket`, etc.).

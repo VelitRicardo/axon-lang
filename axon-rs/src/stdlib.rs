@@ -391,9 +391,9 @@ pub const TOOLS: &[StdlibTool] = &[
         sandbox: false,
         version: "0.1.0",
     },
-    // §Fase 101.b — Inferred Ingestion: extract a PDF's text via the registered
+    // v2.54.0 — Inferred Ingestion: extract a PDF's text via the registered
     // extraction engine (born `Inferred`, measured confidence). Native dispatch
-    // arm — with no engine, a TYPED refusal, never model-invented text (D101.7).
+    // arm — with no engine, a TYPED refusal, never model-invented text.
     StdlibTool {
         name: "PDFExtractor",
         description: "Extract text from a PDF as born-Inferred spans with measured confidence (native).",
@@ -403,8 +403,8 @@ pub const TOOLS: &[StdlibTool] = &[
         sandbox: false,
         version: "0.1.0",
     },
-    // §Fase 101.b — OCR: read an image's text (`ots:transform:image:text`) via
-    // the deterministic IDP-E / registered engine. Distinct from vision (D101.3).
+    // v2.54.0 — OCR: read an image's text (`ots:transform:image:text`) via
+    // the deterministic IDP-E / registered engine. Distinct from vision.
     StdlibTool {
         name: "ImageTextExtractor",
         description: "OCR an image into born-Inferred text spans with measured confidence (native).",
@@ -414,9 +414,9 @@ pub const TOOLS: &[StdlibTool] = &[
         sandbox: false,
         version: "0.1.0",
     },
-    // §Fase 101.b — vision captioning (`ots:transform:image:description`). A
+    // v2.54.0 — vision captioning (`ots:transform:image:description`). A
     // model's interpretation of a scene — born `Inferred`, same ceiling as OCR
-    // but a distinct capability, cost, and RBAC posture (D101.3). Provider-backed.
+    // but a distinct capability, cost, and RBAC posture. Provider-backed.
     StdlibTool {
         name: "ImageAnalyzer",
         description: "Describe an image via a vision model as born-Inferred spans (native, provider-backed).",
@@ -453,10 +453,10 @@ pub const TOOLS: &[StdlibTool] = &[
         sandbox: false,
         version: "0.1.0",
     },
-    // §Fase 99.e — Native Document Synthesis: renders a `document` IR + bound
+    // v2.53.0 — Native Document Synthesis: renders a `document` IR + bound
     // values into deterministic OOXML (DOCX/PPTX/XLSX) bytes. A REAL native
     // executor (`tool_executor::document_render_execute`), never a fall-through
-    // to the model (§99 §8).
+    // to the model (v2.53.0 section 8).
     StdlibTool {
         name: "DocumentRenderer",
         description: "Render a declared `document` into deterministic DOCX/PPTX/XLSX bytes (native).",
@@ -466,7 +466,7 @@ pub const TOOLS: &[StdlibTool] = &[
         sandbox: false,
         version: "0.1.0",
     },
-    // §Fase 100.c/d — read an ingested DOCX/PPTX/XLSX into a bounded, born-
+    // v2.54.0 — read an ingested DOCX/PPTX/XLSX into a bounded, born-
     // Untrusted, Parsed text tree. A REAL native executor, never a fall-through.
     StdlibTool {
         name: "DocumentReader",
@@ -477,7 +477,7 @@ pub const TOOLS: &[StdlibTool] = &[
         sandbox: true,
         version: "0.1.0",
     },
-    // §Fase 100.e — surgical edit with a per-part hash manifest (native).
+    // v2.54.0 — surgical edit with a per-part hash manifest (native).
     StdlibTool {
         name: "DocumentEditor",
         description: "Surgically edit an OOXML document; touch only targeted parts + emit a hash manifest (native).",

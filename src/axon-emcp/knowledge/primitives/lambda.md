@@ -3,7 +3,7 @@ name: lambda
 summary: A typed lambda-data declaration — names provenance + certainty + temporal frame for a derived value, supporting `lambda apply` semantics.
 category: operators
 top_level: true
-since: Fase 15
+since: v1.10.0
 grammar: |
   lambda <Name> {
       ontology: "<string>"                                # optional — ontological class
@@ -31,7 +31,7 @@ metadata** for a derived value: what it claims, how confident,
 when valid, where it came from, how it was derived.
 
 The companion **flow-step form** `lambda <Name> on <target> ->
-<Out>` (the "lambda apply" pattern, Fase 15) applies the
+<Out>` (the "lambda apply" pattern, v1.10.0) applies the
 declared metadata to a step's output — producing a typed,
 audit-traceable derived value.
 
@@ -98,7 +98,7 @@ runtime checks the chain.
 | `"<start>" "<end>"` | Closed frame between start and end. |
 
 The runtime treats values used outside their declared frame
-as `Uncertainty` per the epistemic lattice (§Fase 11).
+as `Uncertainty` per the epistemic lattice (v1.4.0).
 
 ### `provenance:` (optional)
 
@@ -121,7 +121,7 @@ A **single identifier** from the closed derivation catalogue
 
 ## The `lambda apply` flow-step form
 
-The Fase 15 application pattern attaches a top-level `lambda`
+The v1.10.0 application pattern attaches a top-level `lambda`
 declaration to a specific step's output. The grammar is:
 
 ```
@@ -157,5 +157,5 @@ output as it flows downstream. Audit row:
   lambda's `certainty:`.
 - `axon://primitives/compute` — pins WHICH model produced the
   value the lambda annotates.
-- `axon://compliance/gxp` — examples of GxP §21 CFR Part 11
+- `axon://compliance/gxp` — examples of GxP section 21 CFR Part 11
   audit-trail propagation through lambda metadata.

@@ -58,7 +58,7 @@ impl ExecContext {
         self.vars.get(key).map(|s| s.as_str())
     }
 
-    /// §Fase 37.d (D3) — the full variable map, for resolving `${name}`
+    /// v1.32.0 (D3) — the full variable map, for resolving `${name}`
     /// placeholders in a store `where:` clause against the flow context
     /// (the Request Binding Contract on the synchronous filter path).
     pub fn vars(&self) -> &HashMap<String, String> {
@@ -88,7 +88,7 @@ impl ExecContext {
         interpolate_vars(text, &self.vars)
     }
 
-    /// §Fase 60 — resolve a `use Tool(k = v)` keyword-arg value by its
+    /// v2.10.0 — resolve a `use Tool(k = v)` keyword-arg value by its
     /// `value_kind` (reference → binding lookup; literal → interpolation).
     /// Delegates to the free [`resolve_named_arg_value`] so the sync runner and
     /// the streaming dispatcher resolve kwargs byte-identically (D5).
@@ -105,7 +105,7 @@ impl ExecContext {
     /// runner built-in ([`BUILTIN_VARS`]): `let` bindings and step
     /// results keyed by step name. These are the columns a `persist` /
     /// `mutate` into a postgresql-backed `axonstore` writes as a row
-    /// (Fase 35.e). Sorted by name for deterministic SQL.
+    /// (v1.30.0). Sorted by name for deterministic SQL.
     pub fn user_bindings(&self) -> Vec<(String, String)> {
         let mut out: Vec<(String, String)> = self
             .vars
@@ -118,14 +118,14 @@ impl ExecContext {
     }
 }
 
-/// §Fase 35.o — Interpolate `${name}` / `$name` references in `text`
+/// v1.30.0 — Interpolate `${name}` / `$name` references in `text`
 /// against an arbitrary variable map. Extracted from
 /// [`ExecContext::interpolate`] so both execution paths — the sync
 /// runner (`ExecContext.vars`) and the streaming dispatcher
 /// (`DispatchCtx.let_bindings`) — interpolate `persist` field values
 /// with byte-identical semantics (D5: the two paths never diverge).
 /// Unknown variables are left literal.
-/// §Fase 66 (Q1) — resolve a `${...}` variable reference, supporting dotted
+/// v2.17.0 (Q1) — resolve a `${...}` variable reference, supporting dotted
 /// FIELD-ACCESS on a binding whose value is a JSON object (`${e.to_id}` where
 /// `e` is a `for e in List<Record>` loop element).
 ///
@@ -146,14 +146,14 @@ pub(crate) fn resolve_dotted_var(vars: &HashMap<String, String>, key: &str) -> O
     let base_val = vars.get(base)?;
     let mut cur: serde_json::Value = serde_json::from_str(base_val).ok()?;
     for field in rest.split('.') {
-        // §Fase 73.d — a `jsonb` column surfaces two ways depending on the
+        // v2.26.0 — a `jsonb` column surfaces two ways depending on the
         // backend: the Postgres decode yields a LIVE nested object, but the
         // in_memory KV path (and any double-encoded payload) carries it as a
         // JSON-STRING. Re-parse a string intermediate so `${alias.col.field}`
         // navigates INTO a jsonb column uniformly across backends — total +
         // honest: a string that is not a JSON object is left as-is (the next
         // match falls through to a literal miss). Mirrors the eval engine's
-        // `as_json` (§73.b), keeping interpolation and `eval_expr` in parity.
+        // `as_json` (v2.26.0), keeping interpolation and `eval_expr` in parity.
         if let serde_json::Value::String(s) = &cur {
             if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(s) {
                 if parsed.is_object() {
@@ -180,7 +180,7 @@ pub fn interpolate_vars(text: &str, vars: &HashMap<String, String>) -> String {
     while i < bytes.len() {
         if bytes[i] == b'$' && i + 1 < bytes.len() {
             if bytes[i + 1] == b'{' {
-                // ${name} form — incl. §66 dotted field-access (${e.field}).
+                // ${name} form — incl. v2.17.0 dotted field-access (${e.field}).
                 if let Some(close) = text[i + 2..].find('}') {
                     let var_name = &text[i + 2..i + 2 + close];
                     if let Some(val) = resolve_dotted_var(vars, var_name) {
@@ -218,14 +218,14 @@ pub fn interpolate_vars(text: &str, vars: &HashMap<String, String>) -> String {
     out
 }
 
-/// §Fase 60 — resolve a `use Tool(k = v)` keyword-argument VALUE against the
+/// v2.10.0 — resolve a `use Tool(k = v)` keyword-argument VALUE against the
 /// runtime bindings, by its frontend-classified `value_kind`:
 ///
 /// - `"reference"` — a bare identifier (`company`), a `let` name, or a
 ///   `Step.output` — resolved by binding lookup, mirroring the `let` reference
 ///   handler ([`crate::flow_dispatcher::orchestration`]). Steps bind their output
 ///   under their bare name, so a trailing `.output` maps to the step-name key.
-///   An unbound reference yields the empty string (the type-checker §60.c rejects
+/// An unbound reference yields the empty string (the type-checker v2.10.0 rejects
 ///   unknown references at compile time, so a type-checked program never hits
 ///   this) — never a silent passthrough of the literal name (the pre-60 bug).
 /// - anything else (`"literal"`) — `${…}` / `$name` interpolation, as before.
@@ -247,15 +247,15 @@ pub fn resolve_named_arg_value(
     }
 }
 
-/// §Fase 66.1 — resolve a VALUE-POSITION expression (a `for … in <expr>`
+/// v2.17.0 — resolve a VALUE-POSITION expression (a `for … in <expr>`
 /// iterable, a `return <expr>`) against the runtime bindings. These positions
-/// carry no frontend `value_kind` classification (unlike a §60 kwarg), so this
+/// carry no frontend `value_kind` classification (unlike a v2.10.0 kwarg), so this
 /// resolves the three reference forms a flow author writes, in order:
 ///
 ///   1. `"${X}"` / `"${e.field}"` / `$name` — string interpolation (incl. the
-///      §66 dotted field-access). Detected by a `$` anywhere in the expr.
+/// v2.17.0 dotted field-access). Detected by a `$` anywhere in the expr.
 ///   2. `Step.output` — a step's output. Steps bind their output under their
-///      BARE NAME (`pure_shape` / the §36.x.e contract), so a trailing
+/// BARE NAME (`pure_shape` / the v1.31.0 contract), so a trailing
 ///      `.output` maps to the step-name key. This is the canonical form an
 ///      author writes for `for e in ClassifyEdges.output` / `return Step.output`
 ///      (the same `.output` sugar `resolve_named_arg_value` handles for kwargs).
@@ -263,7 +263,7 @@ pub fn resolve_named_arg_value(
 ///
 /// Falls back to the verbatim expr when nothing resolves (a genuine literal).
 /// Mirrors the persist field-value resolution (`store_row` → `interpolate_vars`)
-/// so a reference resolves identically in EVERY value position (the §66.1 fix:
+/// so a reference resolves identically in EVERY value position (the v2.17.0 fix:
 /// a `for`-iterable + a `return` previously did a bare exact-key lookup, so
 /// `ClassifyEdges.output` / `${Summarize}` reached the runtime as the literal).
 pub fn resolve_value_reference(expr: &str, vars: &HashMap<String, String>) -> String {
@@ -287,7 +287,7 @@ pub fn resolve_value_reference(expr: &str, vars: &HashMap<String, String>) -> St
 mod tests {
     use super::*;
 
-    // ── §Fase 60 — resolve_named_arg_value ──────────────────────────────────
+    // ── v2.10.0 — resolve_named_arg_value ──────────────────────────────────
 
     fn bindings() -> HashMap<String, String> {
         let mut m = HashMap::new();
@@ -463,13 +463,13 @@ mod tests {
         assert!(ctx.user_bindings().is_empty());
     }
 
-    // ── §Fase 66 (Q1) — dotted field-access interpolation ───────────────
+    // ── v2.17.0 (Q1) — dotted field-access interpolation ───────────────
 
     #[test]
     fn interpolate_resolves_dotted_field_of_a_json_object_binding() {
         // The `for e in List<Record>` element: `e` binds to a JSON object;
         // `${e.to_id}` must resolve to the field's inner string value (not the
-        // literal `${e.to_id}`, the pre-§66 behavior the kivi brief #27 hit).
+        // literal `${e.to_id}`, the pre-v2.17.0 behavior the kivi brief #27 hit).
         let mut vars = HashMap::new();
         vars.insert(
             "e".to_string(),
@@ -491,7 +491,7 @@ mod tests {
         );
     }
 
-    // ── §Fase 73.d — `${alias.col.field}` navigation into a jsonb column ─
+    // ── v2.26.0 — `${alias.col.field}` navigation into a jsonb column ─
 
     #[test]
     fn interpolate_navigates_into_a_string_encoded_jsonb_column() {
@@ -552,7 +552,7 @@ mod tests {
         assert_eq!(interpolate_vars("${o}", &vars), r#"{"a":"1"}"#);
     }
 
-    // ── §Fase 66.1 — value-position reference resolution ────────────────
+    // ── v2.17.0 — value-position reference resolution ────────────────
 
     #[test]
     fn resolve_value_reference_handles_step_output_and_interpolation() {
@@ -568,7 +568,7 @@ mod tests {
             resolve_value_reference("ClassifyEdges.output", &vars),
             r#"[{"to_id":"x"}]"#
         );
-        // `${Step}` interpolation — the `return "${Summarize}"` case (#28 §C).
+        // `${Step}` interpolation — the `return "${Summarize}"` case (#28 C).
         assert_eq!(
             resolve_value_reference("${Summarize}", &vars),
             "the summary"

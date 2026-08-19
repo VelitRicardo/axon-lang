@@ -1,9 +1,9 @@
-//! §Fase 33.y.h — Wire-integration handler nodes.
+//! v1.24.0 — Wire-integration handler nodes.
 //!
 //! Ten variants graduated in 33.y.h, organised in 3 architectural
 //! groups:
 //!
-//! 1. **π-calc typed channels** (Fase 13) — `Emit` / `Publish` /
+//! 1. **π-calc typed channels** (v1.6.0) — `Emit` / `Publish` /
 //!    `Discover`. Output prefix + capability extrusion + dual
 //!    discovery. OSS in-memory backing via `ctx.let_bindings` under
 //!    `__channel_<ref>` / `__pub_<ref>` / `__cap_<ref>` namespaced
@@ -73,7 +73,7 @@ use crate::store::registry::StoreHandle;
 /// Emit a value onto a typed channel. OSS default: append the
 /// resolved value to a `__channel_<ref>` queue (newline-separated
 /// in let_bindings). Enterprise overrides route through the
-/// typed-channel runtime (Fase 13 + axon_enterprise.channels).
+/// typed-channel runtime (v1.6.0 + axon_enterprise.channels).
 pub fn emit_to_channel(channel_ref: &str, value: &str, ctx: &mut DispatchCtx) -> String {
     let key = format!("__channel_{channel_ref}");
     let existing = ctx.let_bindings.get(&key).cloned().unwrap_or_default();
@@ -176,11 +176,11 @@ pub fn purge_from_store(
 }
 
 // ────────────────────────────────────────────────────────────────────
-//  §Fase 35.f — axonstore SQL routing
+// v1.30.0 — axonstore SQL routing
 // ────────────────────────────────────────────────────────────────────
 //
 // `run_persist`/`run_retrieve`/`run_mutate`/`run_purge` consult the
-// `DispatchCtx`'s `store_registry` (Fase 35.d). A `postgresql`-backed
+// `DispatchCtx`'s `store_registry` (v1.30.0). A `postgresql`-backed
 // store routes through `PostgresStoreBackend`; every other store —
 // and every store when no registry is attached — takes the byte-
 // identical key-value path above (D3, absolute). D5: this is the SAME
@@ -206,7 +206,7 @@ fn resolve_pg_backend(
     };
     match registry.resolve(store_name)? {
         StoreHandle::InMemory => Ok(None),
-        // §Fase 94.d — a secrets store never reaches this resolver's
+        // v2.48.0 — a secrets store never reaches this resolver's
         // callers: `run_retrieve` routes it to custody FIRST, and the
         // write handlers refuse it FIRST. Falling through to KV here
         // would fabricate results — route it like InMemory is wrong,
@@ -224,7 +224,7 @@ fn resolve_pg_backend(
     }
 }
 
-/// §Fase 94.d — resolve a store name to its secrets `class:` when (and
+/// v2.48.0 — resolve a store name to its secrets `class:` when (and
 /// only when) it is a declared `backend: secrets` store. The pre-check
 /// every store handler runs BEFORE the SQL-vs-KV fork.
 fn resolve_secrets_class(ctx: &DispatchCtx, store_name: &str) -> Option<String> {
@@ -235,7 +235,7 @@ fn resolve_secrets_class(ctx: &DispatchCtx, store_name: &str) -> Option<String> 
     }
 }
 
-/// §Fase 94.d — the write-verb guard (the runtime mirror of axon-T897):
+/// v2.48.0 — the write-verb guard (the runtime mirror of axon-T897):
 /// a `persist`/`mutate`/`purge` that reaches dispatch against a secrets
 /// store (stale or hand-edited IR — the compiler refuses it) fails
 /// CLOSED, never falls through to KV or SQL.
@@ -274,7 +274,7 @@ fn sql_row_from_bindings(ctx: &DispatchCtx) -> Vec<(String, SqlValue)> {
     row
 }
 
-/// §Fase 35.o / 35.p — Build the SQL row a `persist` (`INSERT`
+/// v1.30.0 — Build the SQL row a `persist` (`INSERT`
 /// columns) or a `mutate` (`UPDATE … SET` assignments) writes.
 ///
 /// When the step declared a `{ col: value }` block, the row is EXACTLY
@@ -304,13 +304,13 @@ fn store_row(fields: &[(String, String)], ctx: &DispatchCtx) -> Vec<(String, Sql
         .collect()
 }
 
-/// §Fase 66.1 (Q1.c) — detect an UNRESOLVED `${reference}` left in a
+/// v2.17.0 (Q1.c) — detect an UNRESOLVED `${reference}` left in a
 /// `persist`/`mutate` value AFTER interpolation. An identifier-shaped `${name}`
 /// (or `${e.field}`) that survived interpolation means the reference did not
 /// resolve — a missing binding, or a loop-var field-access that missed. Sending
 /// it verbatim to the database is SILENT CORRUPTION (kivi brief #28: `${e.to_id}`
 /// arrived at Postgres as the literal text → `invalid input syntax for type
-/// uuid`). The runtime fails honestly instead (the §59 doctrine). Only
+/// uuid`). The runtime fails honestly instead (the v2.9.0 doctrine). Only
 /// identifier-shaped references are flagged, so a literal like `${100}` or a `$`
 /// in free text is never a false positive.
 #[cfg_attr(not(feature = "postgres"), allow(dead_code))]
@@ -337,7 +337,7 @@ fn unresolved_reference(value: &str) -> Option<String> {
     None
 }
 
-/// §Fase 66.1 (Q1.c) — fail a `persist`/`mutate` whose row carries an unresolved
+/// v2.17.0 (Q1.c) — fail a `persist`/`mutate` whose row carries an unresolved
 /// `${reference}` rather than writing the literal to the database.
 #[cfg_attr(not(feature = "postgres"), allow(dead_code))]
 fn reject_unresolved_row(
@@ -374,10 +374,10 @@ fn sql_dispatch_error(e: StoreError) -> DispatchError {
     }
 }
 
-/// §Fase 35.j Pillar IV — re-check a capability-gated store against the
+/// v1.30.0 Pillar IV — re-check a capability-gated store against the
 /// request's held capabilities before any access. A no-op when no
 /// capability context is attached (`held_capabilities == None`) — the
-/// type-checker's compile-time guarantee + the endpoint's Fase 32.g
+/// type-checker's compile-time guarantee + the endpoint's v1.23.0
 /// `requires:` gate stand. A denial surfaces as a structured
 /// `axon.error`, never a silent read of isolated data.
 fn enforce_store_capability(
@@ -401,7 +401,7 @@ fn enforce_store_capability(
     )
 }
 
-/// §Fase 35.h Pillar II — append a mutation delta to the flow's
+/// v1.30.0 Pillar II — append a mutation delta to the flow's
 /// tamper-evident HMAC-Merkle audit chain. Called after a `persist` /
 /// `mutate` / `purge` succeeds (a failed op `return`s before reaching
 /// here). Best-effort: a poisoned lock is recovered, never panicked.
@@ -419,7 +419,7 @@ fn record_store_mutation(
 }
 
 // ────────────────────────────────────────────────────────────────────
-//  Emit (Fase 13 π-calc output prefix)
+// Emit (v1.6.0 π-calc output prefix)
 // ────────────────────────────────────────────────────────────────────
 
 /// Emit a value onto a channel. Wire shape: `step_type: "emit"`.
@@ -447,15 +447,15 @@ pub async fn run_emit(
         .cloned()
         .unwrap_or_else(|| node.value_ref.clone());
 
-    // §Fase 114 (owed) — scan the egressing value through the channel's declared
+    // v2.69.0 (owed) — scan the egressing value through the channel's declared
     // σ-shield (`channel C { … shield: S }`, resolved onto the emit node at
     // lowering) BEFORE it leaves — on EVERY routing path below. Mirrors the shield
     // STEP exactly: `Pass(redacted)` emits the possibly-redacted content;
     // `Reject` FAILS CLOSED — the violating value never reaches the bus, the
     // outbox, or the buffer. In OSS with no scanner registered for the name, this
     // is an identity passthrough (the enterprise layer registers the real
-    // HIPAA/Legal/AML scanners), byte-identical to a pre-§114 emit for an
-    // unshielded channel or an OSS deployment. Before §114 the channel's `shield:`
+    // HIPAA/Legal/AML scanners), byte-identical to a pre-section 114 emit for an
+    // unshielded channel or an OSS deployment. Before v2.69.0 the channel's `shield:`
     // was declared, PCC-checked, and DEAD — `run_emit` never invoked the scanner.
     let resolved_value = if node.shield_ref.is_empty() {
         resolved_value
@@ -466,7 +466,7 @@ pub async fn run_emit(
                     crate::shield_registry::ShieldScanContext::new(node.shield_ref.clone());
                 match scanner.scan(&resolved_value, &scan_ctx) {
                     crate::shield_registry::ShieldVerdict::Pass(content) => content,
-                    // §Fase 114.w — a Reject runs the shield's DECLARED
+                    // v2.69.0 — a Reject runs the shield's DECLARED
                     // `on_breach:` policy (it used to always halt). `Proceed`
                     // egresses declared/sanitized content — never any part of
                     // the rejected value on `deflect`; `Halt` fails closed
@@ -495,7 +495,7 @@ pub async fn run_emit(
                     }
                 }
             }
-            // §Fase 122.a — a declared `scan:` with nothing to run it REFUSES,
+            // v2.89.0 — a declared `scan:` with nothing to run it REFUSES,
             // and it refuses HERE, before the value reaches the bus, the outbox
             // or the buffer — the same fail-closed point a `Reject` uses.
             crate::shield_registry::ScanDisposition::UnhonouredScan { message } => {
@@ -509,14 +509,14 @@ pub async fn run_emit(
         }
     };
 
-    // §Fase 74 — `emit` routing, in precedence order:
-    //   1. §74.c — a `persistent_axonstore` channel + an attached durable
+    // v2.31.0 — `emit` routing, in precedence order:
+    // 1. v2.31.0 — a `persistent_axonstore` channel + an attached durable
     //      OUTBOX → APPEND (survives the consumer being down / a crash on
     //      the durable backend). Durability is resolved from the bus's
     //      channel handle (the registry).
-    //   2. §74.a — an attached event BUS + a registered typed channel →
+    // 2. v2.31.0 — an attached event BUS + a registered typed channel →
     //      EMIT (ephemeral in-process delivery). Fails CLOSED on error.
-    //   3. the legacy per-flow buffer (no bus / untyped topic) — pre-§74.
+    // 3. the legacy per-flow buffer (no bus / untyped topic) — pre-v2.31.0.
     let bus_handle = ctx
         .event_bus
         .as_ref()
@@ -526,7 +526,7 @@ pub async fn run_emit(
         .map_or(false, |h| h.persistence == "persistent_axonstore");
 
     let emitted = if let (true, Some(outbox)) = (is_durable, ctx.event_outbox.clone()) {
-        // §74.c — durable: append to the outbox (the receive driver drains
+        // v2.31.0 — durable: append to the outbox (the receive driver drains
         // + delivers + acks; redeliverable until acked).
         let payload = serde_json::from_str::<serde_json::Value>(&resolved_value)
             .unwrap_or_else(|_| serde_json::Value::String(resolved_value.clone()));
@@ -534,7 +534,7 @@ pub async fn run_emit(
         resolved_value.clone()
     } else if let Some(bus) = ctx.event_bus.clone() {
         if bus.get_handle(&node.channel_ref).is_ok() {
-            // §74.a — ephemeral in-process delivery via the bus.
+            // v2.31.0 — ephemeral in-process delivery via the bus.
             let payload = serde_json::from_str::<serde_json::Value>(&resolved_value)
                 .unwrap_or_else(|_| serde_json::Value::String(resolved_value.clone()));
             bus.emit(
@@ -554,10 +554,10 @@ pub async fn run_emit(
         emit_to_channel(&node.channel_ref, &resolved_value, ctx)
     };
 
-    // ── §Fase 122.d — `invalidate_on:` stops being inert ────────────────────
+    // ── v2.89.0 — `invalidate_on:` stops being inert ────────────────────
     //
     // `cache C { invalidate_on: [Orders] }` means an `emit Orders(…)` flushes
-    // C's namespace. §85 typed the reference (`axon-T864` proves the channel
+    // C's namespace. v2.40.0 typed the reference (`axon-T864` proves the channel
     // exists) and never flushed anything, which is the worst of the three
     // inert fields for a regulated adopter: a cache with a long `ttl:` and a
     // declared invalidation channel reads as "stale data has a bounded, and
@@ -569,7 +569,7 @@ pub async fn run_emit(
     // flushes a cache. Flushing first would mean a failed emit still threw away
     // good entries, turning a fail-closed egress into a cache-clearing one.
     //
-    // Reuses the §13 pub/sub rather than adding a second mechanism, exactly as
+    // Reuses the v1.6.0 pub/sub rather than adding a second mechanism, exactly as
     // the paper specifies. The lookup is against a channel→namespaces map
     // inverted at plan-build time, so a program with no `invalidate_on:`
     // (nearly all of them) pays one failed hash lookup per emit.
@@ -581,17 +581,17 @@ pub async fn run_emit(
         }
     }
 
-    // §Fase 119.d — the wake signal: an emit on channel C resumes every
+    // v2.83.0 — the wake signal: an emit on channel C resumes every
     // unexpired continuation hibernating on C. Fire-and-forget: the resumed
     // run has no attached client, its result lands in the parking lot's
     // outcome record. Expired entries are reaped here (lazy timeout).
     //
-    // §Fase 119.m.4 — scoped to THIS RUN'S TENANT. The parking lot is a process
+    // v2.83.0 — scoped to THIS RUN'S TENANT. The parking lot is a process
     // singleton indexed by event name, so before this the wake crossed tenants:
     // A's emit on `C` resumed B's parked flow — as B, since `resume_parked_flow`
     // restores the parked `tenant_id` — with A's payload bound under the event
-    // name. `ParkedFlow` has carried the tenant since §119.d; nothing read it.
-    // The §66 cross-tenant class, inside a primitive that shipped in 2.83.0.
+    // name. `ParkedFlow` has carried the tenant since v2.83.0; nothing read it.
+    // The v2.17.0 cross-tenant class, inside a primitive that shipped in 2.83.0.
     {
         let now = crate::flow_execution_event::now_ms() as i64;
         let woken = crate::hibernation::parking_lot()
@@ -603,10 +603,10 @@ pub async fn run_emit(
     }
 
 
-    // §Fase 74.e — record the producer's Chan-Output (`emit:<channel>`) in
-    // the §11.c replay/audit chain when a sink is attached. Best-effort —
+    // v2.31.0 — record the producer's Chan-Output (`emit:<channel>`) in
+    // the v1.4.0 replay/audit chain when a sink is attached. Best-effort —
     // the emit already happened; a receipt-append failure is logged, not
-    // fatal (hardened in §74.f's durable audit-chain sink).
+    // fatal (hardened in v2.31.0's durable audit-chain sink).
     if let Some(log) = ctx.replay_log.clone() {
         let payload = serde_json::from_str::<serde_json::Value>(&emitted)
             .unwrap_or_else(|_| serde_json::Value::String(emitted.clone()));
@@ -631,7 +631,7 @@ pub async fn run_emit(
 }
 
 // ────────────────────────────────────────────────────────────────────
-//  Publish (Fase 13 π-calc capability extrusion)
+// Publish (v1.6.0 π-calc capability extrusion)
 // ────────────────────────────────────────────────────────────────────
 
 /// Publish a capability. Wire shape: `step_type: "publish"`.
@@ -654,11 +654,11 @@ pub async fn run_publish(
 
     let output = publish_capability(&node.channel_ref, &node.shield_ref, ctx);
 
-    // §Fase 77.b — a publish under a SIGNING shield (the IR pre-resolved
-    // `sign`, §77.a) additionally records the EGRESS intent: the single
+    // v2.34.0 — a publish under a SIGNING shield (the IR pre-resolved
+    // `sign`, v2.34.0) additionally records the EGRESS intent: the single
     // in-context fact the enterprise egress driver reads to know this
     // channel's durable events are signed-deliverable externally. Empty
-    // `sign` ⇒ pure π-calc capability extrusion, byte-identical to pre-§77.
+    // `sign` ⇒ pure π-calc capability extrusion, byte-identical to pre-v2.34.0.
     if !node.sign.is_empty() {
         ctx.let_bindings
             .insert(format!("__egress_{}", node.channel_ref), node.sign.clone());
@@ -674,7 +674,7 @@ pub async fn run_publish(
 }
 
 // ────────────────────────────────────────────────────────────────────
-//  Discover (Fase 13 π-calc dual of Publish)
+// Discover (v1.6.0 π-calc dual of Publish)
 // ────────────────────────────────────────────────────────────────────
 
 /// Discover a capability. Wire shape: `step_type: "discover"`.
@@ -732,27 +732,27 @@ pub async fn run_persist(
     } else {
         node.store_name.clone()
     };
-    // §Fase 94.d — the axon-T897 runtime mirror: never write custody.
+    // v2.48.0 — the axon-T897 runtime mirror: never write custody.
     refuse_secrets_store_write(ctx, "persist", &node.store_name)?;
-    // §Fase 35.j Pillar IV — capability gate (before any side effect).
+    // v1.30.0 Pillar IV — capability gate (before any side effect).
     enforce_store_capability(ctx, &node.store_name)?;
     emit_step_start(ctx, &step_name, step_index, "persist")?;
 
     let output = match resolve_pg_backend(ctx, &node.store_name) {
         #[cfg(feature = "postgres")]
         Ok(Some((backend, floor))) => {
-            // §35.o — scope the row to the declared `{ col: value }`
+            // v1.30.0 — scope the row to the declared `{ col: value }`
             // block when present; else the v1.31.0 user-bindings form.
             let row = store_row(&node.fields, ctx);
-            // §Fase 66.1 (Q1.c) — refuse to write an UNRESOLVED `${reference}`
+            // v2.17.0 (Q1.c) — refuse to write an UNRESOLVED `${reference}`
             // (a missed loop-var field-access / step output) to the database;
             // fail honestly instead of silently corrupting the column.
             reject_unresolved_row(&node.store_name, "persist", &row)?;
-            // §35.g Pillar I — a sub-floor or un-elevated write into a
+            // v1.30.0 Pillar I — a sub-floor or un-elevated write into a
             // confidence-floored store is a typed error.
             epistemic::enforce_persist_floor(&row, floor, &node.store_name)
                 .map_err(|e| sql_dispatch_error(StoreError::from(e)))?;
-            // §Fase 37.x.j (D2, D6.a) — Take the pin OUT of the shared
+            // v1.32.0 (D2, D6.a) — Take the pin OUT of the shared
             // map (if any). On a MISS (empty map ≡ this is a par-branch
             // sub-context post-clone, or a non-eager-acquired path),
             // lazily acquire a fresh pin for the branch — D6.a default
@@ -786,7 +786,7 @@ pub async fn run_persist(
                     .unwrap()
                     .insert(node.store_name.clone(), p);
             }
-            // §Fase 67.c — observable per-run row count.
+            // v2.21.0 — observable per-run row count.
             ctx.record_store_rows(crate::flow_dispatcher::StoreRowKind::Persisted, n as u64);
             format!("persisted {n} row(s) to `{}`", node.store_name)
         }
@@ -801,7 +801,7 @@ pub async fn run_persist(
         Err(e) => return Err(sql_dispatch_error(e)),
     };
 
-    // §Fase 35.h Pillar II — chain the mutation.
+    // v1.30.0 Pillar II — chain the mutation.
     record_store_mutation(ctx, StoreMutationKind::Persist, &node.store_name, &output);
     emit_step_complete(ctx, &step_name, step_index, &output, 0)?;
 
@@ -833,14 +833,14 @@ pub async fn run_retrieve(
     } else {
         node.alias.clone()
     };
-    // §Fase 35.j Pillar IV — capability gate (before any side effect).
+    // v1.30.0 Pillar IV — capability gate (before any side effect).
     enforce_store_capability(ctx, &node.store_name)?;
     emit_step_start(ctx, &step_name, step_index, "retrieve")?;
 
-    // ── §Fase 122.d — `retrieve … cache: <Name>` stops being inert ───────────
+    // ── v2.89.0 — `retrieve … cache: <Name>` stops being inert ───────────
     //
-    // `IRRetrieveStep.cache` has existed since §85.b and this function never
-    // read it. §122.a counted `cache`'s consumers as one; there were three, and
+    // `IRRetrieveStep.cache` has existed since v2.40.0 and this function never
+    // read it. v2.89.0 counted `cache`'s consumers as one; there were three, and
     // this was the one nobody had noticed, because the ledger's attention was
     // on `tool.cache:`.
     //
@@ -853,8 +853,8 @@ pub async fn run_retrieve(
     // - Before the backend fork, so `cache:` means the same thing on all three
     //   backends (custody metadata, Postgres, KV). Placing it inside one arm
     //   would have made a declared field silently conditional on which backend
-    //   the store happens to use — the exact species of half-truth §122 exists
-    //   to remove, reintroduced by the fase removing it.
+    // the store happens to use — the exact species of half-truth v2.89.0 exists
+    // to remove, reintroduced by the cycle removing it.
     //
     // Unlike a tool, a retrieve names its cache directly, so there is no
     // eligibility to resolve. `axon-T865` already forces a finite `ttl:` here,
@@ -905,7 +905,7 @@ pub async fn run_retrieve(
         _ => None,
     };
 
-    // §Fase 94.d — a `backend: secrets` store routes to the custody port
+    // v2.48.0 — a `backend: secrets` store routes to the custody port
     // (metadata only), NEVER to SQL and NEVER to the KV fallback (a
     // silent KV read would fabricate an empty result over live custody).
     if let Some(class) = resolve_secrets_class(ctx, &node.store_name) {
@@ -935,7 +935,7 @@ pub async fn run_retrieve(
             crate::flow_dispatcher::StoreRowKind::Retrieved,
             count as u64,
         );
-        // §Fase 122.d — memoise the custody metadata read, if declared.
+        // v2.89.0 — memoise the custody metadata read, if declared.
         if let Some((runtime, slot)) = retrieve_cache_slot {
             runtime.store(&slot, envelope.clone().into_bytes());
         }
@@ -953,12 +953,12 @@ pub async fn run_retrieve(
     let value = match resolve_pg_backend(ctx, &node.store_name) {
         #[cfg(feature = "postgres")]
         Ok(Some((backend, floor))) => {
-            // §35.i Pillar III — retrieve drains off a lazy cursor,
+            // v1.30.0 Pillar III — retrieve drains off a lazy cursor,
             // bounded + cancel-aware (never materializes a huge result
-            // set). §35.g Pillar I — every tuple born Untrusted,
+            // set). v1.30.0 Pillar I — every tuple born Untrusted,
             // confidence_floor filters sub-floor rows. The bound value
             // is an epistemic envelope carrying both dispositions.
-            // §Fase 37.x.j (D2, D6.a) — Take the pin OUT of the shared
+            // v1.32.0 (D2, D6.a) — Take the pin OUT of the shared
             // map. On a MISS (empty map = this is a par-branch sub-
             // context with a fresh Arc post-clone in `parallel.rs`, or
             // simply a non-eager-acquired path), lazily acquire a
@@ -973,7 +973,7 @@ pub async fn run_retrieve(
             };
             if pin.is_none() {
                 if let Ok(p) = backend.acquire_pin().await {
-                    // §Fase 37.x.j (D4 + D6.c) — emit lazy acquire
+                    // v1.32.0 (D4 + D6.c) — emit lazy acquire
                     // event. `branch_index` is derived from the depth
                     // of `ctx.branch_path` (non-empty ≡ inside a par-
                     // block); the field is `None` for a linear parent
@@ -1003,19 +1003,19 @@ pub async fn run_retrieve(
                     &mut store_conn,
                     &node.store_name,
                     &node.where_expr,
-                    // §Fase 67.b — the adopter `order_by:` / `limit:` clauses
+                    // v2.21.0 — the adopter `order_by:` / `limit:` clauses
                     // (this IS the `retrieve` step handler on the production
                     // dispatcher path — the daemon runs through here).
                     &node.order_by,
                     &node.limit_expr,
-                    // §Fase 76.d — the adopter `aggregate:` / `group_by:`
+                    // v2.33.0 — the adopter `aggregate:` / `group_by:`
                     // clauses (closed catalog; structural SQL).
                     &node.aggregate,
                     &node.group_by,
                     row_stream::DEFAULT_RETRIEVE_POLICY,
                     row_stream::DEFAULT_MAX_ROWS,
                     &ctx.cancel,
-                    // §Fase 37.d (D3) — resolve `${name}` in the `where`
+                    // v1.32.0 (D3) — resolve `${name}` in the `where`
                     // clause to `$N` bind parameters via the filter
                     // compiler (never string-spliced into the SQL).
                     &ctx.let_bindings,
@@ -1030,8 +1030,8 @@ pub async fn run_retrieve(
             }
             let stream_outcome = stream_outcome_result
             .map_err(sql_dispatch_error)?;
-            // §Fase 67.c — observable per-run row count: the rows the
-            // `where:` (+ §67.b LIMIT) actually matched, captured BEFORE
+            // v2.21.0 — observable per-run row count: the rows the
+            // `where:` (+ v2.21.0 LIMIT) actually matched, captured BEFORE
             // the epistemic floor consumes the vec. This is the number
             // brief #34 Q3 wanted — "did the sweep find work?".
             ctx.record_store_rows(
@@ -1053,9 +1053,9 @@ pub async fn run_retrieve(
         Ok(None) => retrieve_from_store(&node.store_name, &node.where_expr, ctx),
         Err(e) => return Err(sql_dispatch_error(e)),
     };
-    // §Fase 122.d — fill the slot the probe reserved. Reached only when the
+    // v2.89.0 — fill the slot the probe reserved. Reached only when the
     // read SUCCEEDED: every failure above returns through `?` before this line,
-    // so a backend error is never memoised (D85.10) without needing a flag to
+    // so a backend error is never memoised without needing a flag to
     // say so.
     if let Some((runtime, slot)) = retrieve_cache_slot {
         runtime.store(&slot, value.clone().into_bytes());
@@ -1075,14 +1075,14 @@ pub async fn run_retrieve(
 }
 
 // ────────────────────────────────────────────────────────────────────
-//  §Fase 64.B — read a store's rows tenant-scoped (for the dynamic,
+// v2.14.0 — read a store's rows tenant-scoped (for the dynamic,
 //  store-sourced MDN corpus graph: `corpus N from axonstore { … }`).
 // ────────────────────────────────────────────────────────────────────
 
-/// §Fase 64.B — read ALL rows of a store, **tenant-scoped**, reusing the flow's
-/// connection-pinned Postgres backend (the §37.x.j pinned-conn path + the §40
+/// v2.14.0 — read ALL rows of a store, **tenant-scoped**, reusing the flow's
+/// connection-pinned Postgres backend (the v1.32.0 pinned-conn path + the v2.0.0
 /// RLS GUC `axon.current_tenant`). An empty `where` returns every row visible to
-/// the CURRENT tenant — RLS scopes the result, so this is the §64.B
+/// the CURRENT tenant — RLS scopes the result, so this is the v2.14.0
 /// tenant-isolation guarantee, INHERITED by reusing the flow's pinned connection
 /// rather than acquiring a fresh one (the cross-tenant leak the risk matrix
 /// flagged). Returns `Ok(None)` when the store is not Postgres-backed: the
@@ -1092,10 +1092,10 @@ pub async fn run_retrieve(
 pub async fn read_all_store_rows(
     ctx: &mut DispatchCtx,
     store_name: &str,
-    // §Fase 66 (Q2) — optional column-scope filter (the navigate `where:`),
+    // v2.17.0 (Q2) — optional column-scope filter (the navigate `where:`),
     // pushed to the SELECT that sources the corpus rows. Empty string = no
-    // column filter (the §64 default: all rows visible to the axon-tenant via
-    // RLS). A non-empty expr is compiled by the §37.d filter compiler (in
+    // column filter (the v2.14.0 default: all rows visible to the axon-tenant via
+    // RLS). A non-empty expr is compiled by the v1.32.0 filter compiler (in
     // `stream_retrieve`), which resolves `${name}` → `$N` bind params against
     // `ctx.let_bindings` — injection-safe — so an adopter multiplexing
     // sub-tenants in one axon-tenant via a column scopes the MDN graph to a
@@ -1105,7 +1105,7 @@ pub async fn read_all_store_rows(
     match resolve_pg_backend(ctx, store_name) {
         #[cfg(feature = "postgres")]
         Ok(Some((backend, _floor))) => {
-            // §37.x.j (D2/D6.a) — take the pin out of the shared map; lazily
+            // v1.32.0 (D2/D6.a) — take the pin out of the shared map; lazily
             // acquire on a miss so this read shares the flow's single physical
             // tenant-scoped connection, then restore it.
             let mut pin: Option<crate::pinned_conn::PinnedConn> =
@@ -1124,15 +1124,15 @@ pub async fn read_all_store_rows(
                     &backend,
                     &mut store_conn,
                     store_name,
-                    // §Fase 66 (Q2) — the navigate `where:` column-scope filter
+                    // v2.17.0 (Q2) — the navigate `where:` column-scope filter
                     // (empty → all rows visible to the axon-tenant, RLS-scoped,
-                    // the §64 default). `${name}` resolves to `$N` bind params
-                    // against `let_bindings` (§37.d) — injection-safe.
+                    // the v2.14.0 default). `${name}` resolves to `$N` bind params
+                    // against `let_bindings` (v1.32.0) — injection-safe.
                     where_expr,
-                    // §Fase 67.b — navigate corpus scan has no adopter ORDER BY/LIMIT.
+                    // v2.21.0 — navigate corpus scan has no adopter ORDER BY/LIMIT.
                     "",
                     "",
-                    // §Fase 76.d — nor an aggregate.
+                    // v2.33.0 — nor an aggregate.
                     "",
                     "",
                     row_stream::DEFAULT_RETRIEVE_POLICY,
@@ -1156,7 +1156,7 @@ pub async fn read_all_store_rows(
     }
 }
 
-/// §Fase 64.B — project the mapped columns out of the raw store rows into the
+/// v2.14.0 — project the mapped columns out of the raw store rows into the
 /// [`crate::mdn::Corpus::from_rows`] tuples: `(id, title)` from the documents
 /// store, `(from, to, etype, weight)` from the edge store. Pure: takes already-
 /// fetched rows (so it is unit-testable without a database). A row missing a
@@ -1201,7 +1201,7 @@ pub fn extract_corpus_rows(
     (docs, edges)
 }
 
-/// §Fase 64.C — plan the per-edge weight reinforcements to PERSIST after a
+/// v2.14.0 — plan the per-edge weight reinforcements to PERSIST after a
 /// navigation over an adaptive store-sourced corpus. The incremental semantic
 /// signal of the just-recorded outcome (score `s_o`) on each traversed edge is
 /// `Δ = η · (s_o − s̄)` (paper Def 6 for the latest outcome; `s̄` = mean over the
@@ -1237,7 +1237,7 @@ pub fn plan_edge_reinforcements(
     out
 }
 
-/// §Fase 64.C — PERSIST a reinforcement plan to the edge store via the atomic,
+/// v2.14.0 — PERSIST a reinforcement plan to the edge store via the atomic,
 /// relative `UPDATE` ([`PostgresStoreBackend::reinforce`]), **tenant-scoped** by
 /// reusing the flow's connection-pinned, RLS-scoped store connection (never a
 /// fresh one). Best-effort: a single edge's failure (or a since-deleted edge)
@@ -1254,7 +1254,7 @@ pub async fn persist_reinforcements(
     plan: &[(String, String, String, f64)],
     epsilon: f64,
 ) -> Result<(), DispatchError> {
-    // §Fase 118.b.3 — §64.C edge reinforcement is a Postgres UPDATE. Without the
+    // v2.81.0 — v2.14.0 edge reinforcement is a Postgres UPDATE. Without the
     // driver there is no edge store to reinforce, so this is a no-op rather than
     // an error: reinforcement is an OPTIONAL enrichment of an adaptive corpus
     // (the caller already ignores its Result), and refusing loudly here would
@@ -1331,22 +1331,22 @@ pub async fn run_mutate(
     } else {
         node.store_name.clone()
     };
-    // §Fase 94.d — the axon-T897 runtime mirror: never write custody.
+    // v2.48.0 — the axon-T897 runtime mirror: never write custody.
     refuse_secrets_store_write(ctx, "mutate", &node.store_name)?;
-    // §Fase 35.j Pillar IV — capability gate (before any side effect).
+    // v1.30.0 Pillar IV — capability gate (before any side effect).
     enforce_store_capability(ctx, &node.store_name)?;
     emit_step_start(ctx, &step_name, step_index, "mutate")?;
 
     let output = match resolve_pg_backend(ctx, &node.store_name) {
         #[cfg(feature = "postgres")]
         Ok(Some((backend, _floor))) => {
-            // §35.p — scope the UPDATE SET to the declared
+            // v1.30.0 — scope the UPDATE SET to the declared
             // `{ col: value }` block when present; else the v1.31.0
             // user-bindings form.
             let row = store_row(&node.fields, ctx);
-            // §Fase 66.1 (Q1.c) — same honest-failure guard as persist.
+            // v2.17.0 (Q1.c) — same honest-failure guard as persist.
             reject_unresolved_row(&node.store_name, "mutate", &row)?;
-            // §Fase 37.x.j (D2, D6.a) — take-pin / lazy-acquire-on-miss
+            // v1.32.0 (D2, D6.a) — take-pin / lazy-acquire-on-miss
             // / dispatch / return-pin; see `run_persist` and
             // `run_retrieve` sites for the full rationale.
             let mut pin: Option<crate::pinned_conn::PinnedConn> = {
@@ -1354,7 +1354,7 @@ pub async fn run_mutate(
             };
             if pin.is_none() {
                 if let Ok(p) = backend.acquire_pin().await {
-                    // §Fase 37.x.j (D4 + D6.c) — emit lazy acquire
+                    // v1.32.0 (D4 + D6.c) — emit lazy acquire
                     // event. `branch_index` is derived from the depth
                     // of `ctx.branch_path` (non-empty ≡ inside a par-
                     // block); the field is `None` for a linear parent
@@ -1390,7 +1390,7 @@ pub async fn run_mutate(
                     .unwrap()
                     .insert(node.store_name.clone(), p);
             }
-            // §Fase 67.c — observable per-run row count.
+            // v2.21.0 — observable per-run row count.
             ctx.record_store_rows(crate::flow_dispatcher::StoreRowKind::Mutated, n as u64);
             format!("mutated {n} row(s) in `{}`", node.store_name)
         }
@@ -1405,7 +1405,7 @@ pub async fn run_mutate(
         Err(e) => return Err(sql_dispatch_error(e)),
     };
 
-    // §Fase 35.h Pillar II — chain the mutation.
+    // v1.30.0 Pillar II — chain the mutation.
     record_store_mutation(ctx, StoreMutationKind::Mutate, &node.store_name, &output);
     emit_step_complete(ctx, &step_name, step_index, &output, 0)?;
 
@@ -1436,23 +1436,23 @@ pub async fn run_purge(
     } else {
         node.store_name.clone()
     };
-    // §Fase 94.d — the axon-T897 runtime mirror: never write custody.
+    // v2.48.0 — the axon-T897 runtime mirror: never write custody.
     refuse_secrets_store_write(ctx, "purge", &node.store_name)?;
-    // §Fase 35.j Pillar IV — capability gate (before any side effect).
+    // v1.30.0 Pillar IV — capability gate (before any side effect).
     enforce_store_capability(ctx, &node.store_name)?;
     emit_step_start(ctx, &step_name, step_index, "purge")?;
 
     let output = match resolve_pg_backend(ctx, &node.store_name) {
         #[cfg(feature = "postgres")]
         Ok(Some((backend, _floor))) => {
-            // §Fase 37.x.j (D2, D6.a) — take-pin / lazy-acquire-on-miss
+            // v1.32.0 (D2, D6.a) — take-pin / lazy-acquire-on-miss
             // / dispatch / return-pin; see other sites for full rationale.
             let mut pin: Option<crate::pinned_conn::PinnedConn> = {
                 ctx.pinned_conns.lock().unwrap().remove(&node.store_name)
             };
             if pin.is_none() {
                 if let Ok(p) = backend.acquire_pin().await {
-                    // §Fase 37.x.j (D4 + D6.c) — emit lazy acquire
+                    // v1.32.0 (D4 + D6.c) — emit lazy acquire
                     // event. `branch_index` is derived from the depth
                     // of `ctx.branch_path` (non-empty ≡ inside a par-
                     // block); the field is `None` for a linear parent
@@ -1488,7 +1488,7 @@ pub async fn run_purge(
                     .unwrap()
                     .insert(node.store_name.clone(), p);
             }
-            // §Fase 67.c — observable per-run row count.
+            // v2.21.0 — observable per-run row count.
             ctx.record_store_rows(crate::flow_dispatcher::StoreRowKind::Purged, n as u64);
             format!("purged {n} row(s) from `{}`", node.store_name)
         }
@@ -1503,7 +1503,7 @@ pub async fn run_purge(
         Err(e) => return Err(sql_dispatch_error(e)),
     };
 
-    // §Fase 35.h Pillar II — chain the mutation.
+    // v1.30.0 Pillar II — chain the mutation.
     record_store_mutation(ctx, StoreMutationKind::Purge, &node.store_name, &output);
     emit_step_complete(ctx, &step_name, step_index, &output, 0)?;
 
@@ -1547,23 +1547,23 @@ pub async fn run_transact(
 }
 
 // ────────────────────────────────────────────────────────────────────
-//  Quant (§Fase 51.a — Hilbert-space projection block, surface only)
+// Quant (v2.4.0 — Hilbert-space projection block, surface only)
 // ────────────────────────────────────────────────────────────────────
 
-/// §Fase 51.a — the `quant` cognitive block. Wire shape: `step_type: "quant"`.
+/// v2.4.0 — the `quant` cognitive block. Wire shape: `step_type: "quant"`.
 ///
 /// SURFACE ONLY: the OSS dispatcher recognizes the block and emits its
 /// canonical start/complete wire shape but does **not** execute the
 /// Hilbert-space body. Real evaluation is wired by:
-///   - §51.d — the `ots:backend:quant_sim` / `qpu_native` effect injection +
+/// - v2.4.0 — the `ots:backend:quant_sim` / `qpu_native` effect injection +
 ///     the `yield` measurement point (one-shot continuation), and
-///   - §51.e — the `QuantBackend` port + the capped (n ≤ 10) CPU reference
+/// - v2.4.0 — the `QuantBackend` port + the capped (n ≤ 10) CPU reference
 ///     simulator,
 /// with hardware acceleration (QuIDD / VRAM / QPU) only in the enterprise
-/// backend (§51.f–i). Mirrors the payload-free completion of `run_transact`.
-/// **§Fase 111.d — MADE REAL.**
+/// backend (v2.4.0–i). Mirrors the payload-free completion of `run_transact`.
+/// **v2.67.0 — MADE REAL.**
 ///
-/// # What this used to be (§111 F12)
+/// # What this used to be (v2.67.0 F12)
 ///
 /// A pure no-op. It inserted `__quant_backend` (a key nothing in the tree read),
 /// returned an empty output, and **silently skipped every step inside
@@ -1586,11 +1586,11 @@ pub async fn run_transact(
 ///
 /// The grammar accepts `depth: L`, declaring an *L*-layer variational circuit
 /// `U(θ)`. But **no `θ` exists anywhere in the language**: `IRQuant` carries no
-/// parameter vector, and `RotationLayer` needs real angles. §51 shipped the
+/// parameter vector, and `RotationLayer` needs real angles. v2.4.0 shipped the
 /// knob and never shipped its parameter source.
 ///
 /// Running `U(0)` and calling it the adopter's circuit would be **fabricating
-/// the physics** — the exact class of defect §111 exists to end. So a declared
+/// the physics** — the exact class of defect v2.67.0 exists to end. So a declared
 /// `depth:` is REFUSED, and the diagnostic names the gap. Omit it and you get a
 /// real, complete computation: encode the carrier, measure the observable.
 pub async fn run_quant(
@@ -1720,11 +1720,11 @@ pub async fn run_quant(
     })
 }
 
-/// §Fase 88.a / **§Fase 111.c — MADE REAL** — the
+/// v2.43.0 / **v2.67.0 — MADE REAL** — the
 /// `warden(<target>) within <Scope> { … }` adversarial security-analysis block.
 /// Wire shape: `step_type: "warden"`.
 ///
-/// # What this used to be (§111 F12)
+/// # What this used to be (v2.67.0 F12)
 ///
 /// A no-op wearing a completed step's clothes. It inserted `__warden_scope` into
 /// the let-bindings — a key **nothing in the tree ever read** — returned an empty
@@ -1746,14 +1746,14 @@ pub async fn run_quant(
 ///
 /// 1. **No engine** ⇒ `MissingDependency { name: "warden_backend" }`.
 /// 2. **Unresolvable `within <Scope>`** ⇒ refusal. A scope that cannot be
-///    resolved authorises nothing (§88's whole point).
+/// resolved authorises nothing (v2.43.0's whole point).
 /// 3. **Unreadable target** ⇒ refusal. The target must resolve to evidence in
 ///    scope of the flow; we do not analyse what we cannot read, and we never
 ///    report "no findings" for a target we never opened.
 /// 4. **Backend refusal** (`TargetNotAuthorized` / `DepthNotSupported` /
 ///    `Unapproved`) ⇒ surfaced verbatim, never swallowed into an empty result.
 /// 5. Findings are filtered through [`crate::warden::verify`] — an un-witnessed
-///    finding is noise and does not cross the boundary (paper §5.3).
+/// finding is noise and does not cross the boundary (paper section 5.3).
 /// 6. **The body runs**, with the verified findings bound, so a flow can act on
 ///    what the analysis actually found.
 pub async fn run_warden(
@@ -1827,7 +1827,7 @@ pub async fn run_warden(
             message: e.to_string(),
         })?;
 
-    // (5) The paraconsistent validator (paper §5.3): an un-witnessed finding is
+    // (5) The paraconsistent validator (paper section 5.3): an un-witnessed finding is
     //     noise. It does not cross the type boundary.
     let verified: Vec<crate::warden::Vulnerability> = findings
         .into_iter()
@@ -1880,10 +1880,10 @@ pub async fn run_warden(
 }
 
 // ────────────────────────────────────────────────────────────────────
-//  Yield (§Fase 51.d.2 — quant measurement point, surface only)
+// Yield (v2.4.0 — quant measurement point, surface only)
 // ────────────────────────────────────────────────────────────────────
 
-/// §Fase 51.d.2 / **§Fase 111.d — MADE REAL** — the `yield <carrier>`
+/// v2.4.0 / **v2.67.0 — MADE REAL** — the `yield <carrier>`
 /// measurement point. Wire shape: `step_type: "yield"`.
 ///
 /// # What this used to be
@@ -2006,18 +2006,18 @@ fn parse_carrier(raw: &str) -> Option<Vec<f64>> {
 }
 
 // ────────────────────────────────────────────────────────────────────
-//  Mint (§Fase 92.c — ephemeral-credential minting)
+// Mint (v2.46.0 — ephemeral-credential minting)
 // ────────────────────────────────────────────────────────────────────
 
-/// §Fase 92.c — `mint <Credential> as <binding>`. Wire shape:
+/// v2.46.0 — `mint <Credential> as <binding>`. Wire shape:
 /// `step_type: "mint"`.
 ///
 /// The attenuation law (`authority_only_attenuates`) is enforced TWICE,
 /// fail-closed: here at the handler when the dispatch carries a capability
-/// context (`ctx.held_capabilities`, the §35.j bearer claims), and again
+/// context (`ctx.held_capabilities`, the v1.30.0 bearer claims), and again
 /// inside the [`crate::credential_minter::CredentialMinter`] port (so an
 /// implementation is safe standalone). No port configured + a reached
-/// `mint` = a loud `MissingDependency` — never a silent stub (§86 lesson).
+/// `mint` = a loud `MissingDependency` — never a silent stub (v2.41.0 lesson).
 ///
 /// The raw bearer goes ONLY into `ctx.let_bindings` under the declared
 /// binding (the flow decides what to return); the wire audit carries a
@@ -2110,10 +2110,10 @@ pub async fn run_mint(
 }
 
 // ────────────────────────────────────────────────────────────────────
-//  Rotate (§Fase 94 — mediated secret renewal)
+// Rotate (v2.48.0 — mediated secret renewal)
 // ────────────────────────────────────────────────────────────────────
 
-/// §Fase 94.b — `rotate <SecretsStore> [where "…"] with <Tool> as
+/// v2.48.0 — `rotate <SecretsStore> [where "…"] with <Tool> as
 /// <binding>`. Wire shape: `step_type: "rotate"`.
 ///
 /// Doctrine `rotation_without_revelation`: the runtime enumerates the
@@ -2144,12 +2144,12 @@ pub async fn run_rotate(
     let step_index = ctx.step_counter;
     ctx.step_counter += 1;
 
-    // §35.j Pillar IV — the store's capability gate, before any effect.
+    // v1.30.0 Pillar IV — the store's capability gate, before any effect.
     enforce_store_capability(ctx, &node.store_ref)?;
     emit_step_start(ctx, &node.store_ref, step_index, "rotate")?;
 
-    // Fail-closed port resolution FIRST (no silent stub — the §86 lesson,
-    // the §92.c posture).
+    // Fail-closed port resolution FIRST (no silent stub — the v2.41.0 lesson,
+    // the v2.46.0 posture).
     let custody = ctx
         .secret_custody
         .clone()
@@ -2197,7 +2197,7 @@ pub async fn run_rotate(
         });
     }
 
-    // Enumerate the class + apply the §67 metadata filter.
+    // Enumerate the class + apply the v2.21.0 metadata filter.
     let class_prefix = format!("{class}.");
     let all = custody
         .list_metadata(&ctx.tenant_id, &class_prefix)
@@ -2285,7 +2285,7 @@ async fn rotate_one(
     let body = crate::secret_custody::rotation_request_body(key, &revealed);
     drop(revealed);
 
-    // The exchange rides the SAME §58 dispatch chokepoint as `use <Tool>`
+    // The exchange rides the SAME v2.8.0 dispatch chokepoint as `use <Tool>`
     // (endpoint resolution, per-tenant base_url, provider routing) — in a
     // blocking task because the HTTP tool client is blocking (the
     // `dispatch_use_tool_real` discipline).
@@ -2430,7 +2430,7 @@ mod tests {
     use crate::ir_nodes::*;
     use tokio::sync::mpsc;
 
-    // ── §Fase 66.1 (Q1.c) — unresolved-reference guard ──────────────────
+    // ── v2.17.0 (Q1.c) — unresolved-reference guard ──────────────────
 
     #[test]
     fn unresolved_reference_flags_a_surviving_dollar_brace_identifier() {
@@ -2460,7 +2460,7 @@ mod tests {
         }
     }
 
-    // ── §Fase 64.B — extract_corpus_rows (store rows → from_rows tuples) ────
+    // ── v2.14.0 — extract_corpus_rows (store rows → from_rows tuples) ────
 
     fn mk_store_row(pairs: &[(&str, serde_json::Value)]) -> crate::store::row::StoreRow {
         crate::store::row::StoreRow {
@@ -2498,7 +2498,7 @@ mod tests {
 
     #[test]
     fn plan_edge_reinforcements_zero_for_one_outcome_nonzero_with_variance() {
-        // §Fase 64.C — Δ = η·(s_o − s̄). A 2-doc graph a→b (cite); from_rows
+        // v2.14.0 — Δ = η·(s_o − s̄). A 2-doc graph a→b (cite); from_rows
         // interns a=0, b=1 ⇒ the edge is (0,1); the path [0,1] traverses it.
         let docs = vec![("id-a".to_string(), "A".to_string()), ("id-b".to_string(), "B".to_string())];
         let edges = vec![("id-a".to_string(), "id-b".to_string(), "cite".to_string(), 0.5)];
@@ -2676,7 +2676,7 @@ mod tests {
 
     #[tokio::test]
     async fn run_emit_routes_to_the_event_bus_when_attached() {
-        // §Fase 74.a — with a shared typed bus attached + the channel
+        // v2.31.0 — with a shared typed bus attached + the channel
         // registered, `emit` DELIVERS to the bus (the producer side of
         // durable event delivery), NOT the legacy per-flow buffer.
         use crate::runtime::channels::{TypedChannelHandle, TypedEventBus, TypedPayload};
@@ -2715,7 +2715,7 @@ mod tests {
 
     #[tokio::test]
     async fn run_emit_appends_to_the_outbox_for_a_persistent_channel() {
-        // §Fase 74.c — a `persistent_axonstore` channel + an attached outbox
+        // v2.31.0 — a `persistent_axonstore` channel + an attached outbox
         // → `emit` APPENDS to the durable outbox (not the ephemeral bus), so
         // the event survives the consumer being down.
         use crate::event_outbox::{EventOutbox, InMemoryEventOutbox};
@@ -2753,7 +2753,7 @@ mod tests {
 
     #[tokio::test]
     async fn run_emit_records_a_replay_token_when_a_log_is_attached() {
-        // §Fase 74.e — the producer's Chan-Output `emit` records an
+        // v2.31.0 — the producer's Chan-Output `emit` records an
         // `emit:<channel>` ReplayToken in the attached replay chain.
         use crate::replay_token::{InMemoryReplayLog, ReplayLog};
         use crate::runtime::channels::{TypedChannelHandle, TypedEventBus};
@@ -2788,7 +2788,7 @@ mod tests {
 
     #[tokio::test]
     async fn run_emit_ephemeral_channel_uses_the_bus_not_the_outbox() {
-        // §Fase 74.c — an `ephemeral` channel goes to the bus even when an
+        // v2.31.0 — an `ephemeral` channel goes to the bus even when an
         // outbox is attached (the outbox is only for `persistent_axonstore`).
         use crate::event_outbox::InMemoryEventOutbox;
         use crate::runtime::channels::{TypedChannelHandle, TypedEventBus};
@@ -2817,9 +2817,9 @@ mod tests {
 
     #[tokio::test]
     async fn run_emit_falls_back_to_buffer_for_an_unregistered_channel() {
-        // §Fase 74.a — a bus is attached but the channel is NOT a registered
+        // v2.31.0 — a bus is attached but the channel is NOT a registered
         // typed `channel` (e.g. a legacy topic string) → the legacy buffer
-        // path applies, byte-identical to pre-§74.
+        // path applies, byte-identical to pre-v2.31.0.
         use crate::runtime::channels::TypedEventBus;
         let bus = std::sync::Arc::new(TypedEventBus::new());
         let (mut ctx, _rx) = fresh_ctx();
@@ -2857,8 +2857,8 @@ mod tests {
             ctx.let_bindings.get("__pub_secure_chan").unwrap(),
             "hipaa"
         );
-        // §77.b — a NON-signing publish records no egress intent
-        // (pre-§77 semantics byte-identical).
+        // v2.34.0 — a NON-signing publish records no egress intent
+        // (pre-v2.34.0 semantics byte-identical).
         assert!(!ctx.let_bindings.contains_key("__egress_secure_chan"));
         let first = rx.try_recv().unwrap();
         match first {
@@ -2869,7 +2869,7 @@ mod tests {
         }
     }
 
-    /// §Fase 77.b — a publish whose IR carries a resolved `sign` (a signing
+    /// v2.34.0 — a publish whose IR carries a resolved `sign` (a signing
     /// shield) records the egress intent the enterprise driver reads.
     #[tokio::test]
     async fn run_publish_records_egress_intent_for_signing_shield() {
@@ -2950,7 +2950,7 @@ mod tests {
         assert_eq!(ctx.let_bindings.get("retrieved_id").unwrap(), "42");
     }
 
-    /// §Fase 67.c — each store op folds its row count into the shared
+    /// v2.21.0 — each store op folds its row count into the shared
     /// per-run counter on the ctx; the counts ACCUMULATE (not overwrite)
     /// and are read by `collect_via_dispatcher` after the walk. Exercised
     /// here on the in-memory path (the postgres path needs a live DB; the
@@ -2983,7 +2983,7 @@ mod tests {
         assert_eq!((c.retrieved, c.mutated, c.purged), (0, 0, 0));
     }
 
-    /// §Fase 35.o — `store_row` with a declared `{ col: value }`
+    /// v1.30.0 — `store_row` with a declared `{ col: value }`
     /// block builds the SQL row from EXACTLY those columns, value
     /// expressions interpolated against `let_bindings`. No other
     /// context binding leaks in — the gap-report blocker, closed.
@@ -3021,7 +3021,7 @@ mod tests {
             .any(|(c, _)| c == "channel_kind" || c == "message"));
     }
 
-    /// §Fase 35.o — `store_row` with no declared block falls back to
+    /// v1.30.0 — `store_row` with no declared block falls back to
     /// the v1.31.0 user-bindings form, byte-for-byte (backward-compat).
     #[test]
     fn store_row_without_a_block_falls_back_to_user_bindings() {
@@ -3038,7 +3038,7 @@ mod tests {
         assert_eq!(store_row(&node.fields, &ctx), sql_row_from_bindings(&ctx));
     }
 
-    /// §Fase 35.p — an `IRMutateStep`'s `{ col: value }` SET block
+    /// v1.30.0 — an `IRMutateStep`'s `{ col: value }` SET block
     /// flows through the SAME `store_row` the dispatcher's `run_mutate`
     /// uses; the `UPDATE SET` is scoped to exactly those columns.
     #[test]
@@ -3316,7 +3316,7 @@ mod tests {
         assert!(matches!(run_consensus(&consensus, &mut ctx).await, Err(DispatchError::UpstreamCancelled)));
     }
 
-    // ── §Fase 35.f — axonstore SQL routing ──────────────────────────
+    // ── v1.30.0 — axonstore SQL routing ──────────────────────────
 
     fn axonstore(name: &str, backend: &str, connection: &str) -> IRAxonStore {
         IRAxonStore {
@@ -3450,7 +3450,7 @@ mod tests {
 
     #[tokio::test]
     async fn run_persist_below_confidence_floor_is_blocked() {
-        // §35.g Pillar I — the epistemic gate is wired into the
+        // v1.30.0 Pillar I — the epistemic gate is wired into the
         // dispatcher's persist handler: an un-elevated write (no
         // `_confidence`) into a confidence-floored store is a typed
         // BackendError, before any row is written.
@@ -3472,7 +3472,7 @@ mod tests {
         ));
     }
 
-    // ── §Fase 35.j — Pillar IV capability-gated store access ────────
+    // ── v1.30.0 — Pillar IV capability-gated store access ────────
 
     fn gated_kv(name: &str, capability: &str) -> IRAxonStore {
         let mut s = axonstore(name, "in_memory", "");
@@ -3570,7 +3570,7 @@ mod tests {
         assert!(run_retrieve(&retrieve_node("tenants"), &mut ctx).await.is_ok());
     }
 
-    // ── §Fase 35.h — Pillar II audit-chained mutations ──────────────
+    // ── v1.30.0 — Pillar II audit-chained mutations ──────────────
 
     #[tokio::test]
     async fn persist_appends_a_delta_to_the_audit_chain() {

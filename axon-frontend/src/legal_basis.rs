@@ -1,4 +1,4 @@
-//! Legal-basis catalogue — §λ-L-E Fase 11.c.
+//! Legal-basis catalogue — v1.4.0.
 //!
 //! A sensitive effect (one that reads or writes regulated data:
 //! personal data under GDPR, ePHI under HIPAA, payment card data
@@ -18,12 +18,12 @@
 //!   task, legitimate interests.
 //! - **GDPR Art. 9** — ten derogations for special-category data
 //!   (health, ethnicity, biometrics, …).
-//! - **CCPA § 1798.100** — right-to-know acknowledgement.
-//! - **SOX § 404** — internal-controls attestation (financial
+//! - **CCPA section 1798.100** — right-to-know acknowledgement.
+//! - **SOX section 404** — internal-controls attestation (financial
 //!   reporting).
-//! - **HIPAA § 164.502** — permitted uses + disclosures of protected
+//! - **HIPAA section 164.502** — permitted uses + disclosures of protected
 //!   health information (PHI).
-//! - **GLBA § 501(b)** — safeguards rule (financial non-public
+//! - **GLBA section 501(b)** — safeguards rule (financial non-public
 //!   personal information).
 //! - **PCI-DSS v4.0 req 3** — stored cardholder data protection.
 //!

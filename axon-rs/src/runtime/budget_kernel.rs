@@ -1,18 +1,18 @@
-//! §Fase 72.b — the RateLease budget kernel.
+//! v2.28.0 — the RateLease budget kernel.
 //!
-//! The runtime for `budget { rate/max … on Tool(X) }` (§72.a). A [`RateLease`] is
+//! The runtime for `budget { rate/max … on Tool(X) }` (v2.28.0). A [`RateLease`] is
 //! the **refilling generalization** of the [`lease_kernel`](crate::runtime::lease_kernel)'s
 //! τ-decay affine `LeaseToken`: where a `LeaseToken` is single-use and DECAYS to
 //! nothing, a `RateLease` is N-use and REFILLS — but the linearity invariant is
 //! the same, *a consumed token is gone until it is refilled*. This is what makes
 //! "no more than N external effects per period" a real linear contract rather
-//! than an advisory counter (the §72 doctrine `effects_are_linear`).
+//! than an advisory counter (the v2.28.0 doctrine `effects_are_linear`).
 //!
 //! Two quota kinds, both PURE functions of `(lease state, now)`:
 //!
 //!   * `rate:` → a **token bucket** of capacity `limit`, refilling continuously
 //!     at `limit / period` tokens per second (so it permits a burst up to
-//!     `limit`, then a steady rate). The §72.a default daemon starts full.
+//! `limit`, then a steady rate). The v2.28.0 default daemon starts full.
 //!   * `max:`  → a **fixed tumbling window**: at most `limit` consumptions per
 //!     `period`; the window rolls (counter resets) once `period` has elapsed
 //!     since it opened. No intra-window refill — a hard cap.
@@ -231,10 +231,10 @@ impl RateLease {
         probe.try_acquire(now)
     }
 
-    /// §Fase 72.e — capture this lease's live STATE as a serializable snapshot
+    /// v2.28.0 — capture this lease's live STATE as a serializable snapshot
     /// (epoch-millis, no chrono in the wire form). The enterprise daemon
     /// supervisor persists it so a `max` window / `rate` bucket is cumulative
-    /// ACROSS ticks (a daily cap spans the day's ticks). The §52 fire-once claim
+    /// ACROSS ticks (a daily cap spans the day's ticks). The v2.4.0 fire-once claim
     /// serializes a daemon's ticks, so load → run → save needs no lock.
     pub fn snapshot(&self) -> RateLeaseSnapshot {
         match &self.state {
@@ -255,7 +255,7 @@ impl RateLease {
         }
     }
 
-    /// §Fase 72.e — restore this lease's STATE from a snapshot (the inverse of
+    /// v2.28.0 — restore this lease's STATE from a snapshot (the inverse of
     /// [`snapshot`](Self::snapshot)). A kind mismatch (a `rate` lease restored
     /// from a `max` snapshot — e.g. the budget grammar changed between ticks) is
     /// IGNORED, leaving the freshly-built state (fail-safe: a re-budgeted daemon
@@ -279,7 +279,7 @@ impl RateLease {
     }
 }
 
-/// §Fase 72.e — a [`RateLease`]'s persistable state (epoch-millis wire form). The
+/// v2.28.0 — a [`RateLease`]'s persistable state (epoch-millis wire form). The
 /// enterprise supervisor stores one per quota subject key so budgets are
 /// cumulative across a daemon's ticks. `kind` discriminates which fields are
 /// live (`rate` ⇒ `tokens`/`last_refill_ms`; `max` ⇒ `window_start_ms`/`consumed`).
@@ -308,9 +308,9 @@ fn secs_to_duration(secs: f64) -> Duration {
 // ═══════════════════════════════════════════════════════════════════
 
 /// An in-process registry of [`RateLease`]s, keyed by an opaque subject string
-/// (the §72.c dispatch gate composes the key from the budget's scope + the
+/// (the v2.28.0 dispatch gate composes the key from the budget's scope + the
 /// effect + the quota kind, e.g. `"daemon:Outbound:Tool(TelnyxCall):rate"`). This
-/// is the OSS single-replica reference; the §72.e enterprise layer binds the
+/// is the OSS single-replica reference; the v2.28.0 enterprise layer binds the
 /// per-tenant Redis `RateLimiter` for multi-replica enforcement.
 #[derive(Default)]
 pub struct RateLeaseKernel {
@@ -388,7 +388,7 @@ impl RateLeaseKernel {
         }
     }
 
-    /// §Fase 72.e — snapshot every lease's state as `(key, snapshot)` pairs for
+    /// v2.28.0 — snapshot every lease's state as `(key, snapshot)` pairs for
     /// persistence. Deterministic order (sorted by key).
     pub fn snapshot(&self) -> Vec<(String, RateLeaseSnapshot)> {
         let mut out: Vec<(String, RateLeaseSnapshot)> =
@@ -397,7 +397,7 @@ impl RateLeaseKernel {
         out
     }
 
-    /// §Fase 72.e — restore lease states from `(key, snapshot)` pairs. Keys with
+    /// v2.28.0 — restore lease states from `(key, snapshot)` pairs. Keys with
     /// no registered lease are skipped (a quota dropped from a re-budgeted daemon).
     pub fn restore(&mut self, snaps: &[(String, RateLeaseSnapshot)]) {
         for (key, snap) in snaps {
@@ -409,7 +409,7 @@ impl RateLeaseKernel {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-//  BUDGET GATE — the §72.c dispatch-site decision over a daemon's budget
+// BUDGET GATE — the v2.28.0 dispatch-site decision over a daemon's budget
 // ═══════════════════════════════════════════════════════════════════
 
 /// The dispatch gate's verdict for one budgeted effect emission.
@@ -418,19 +418,19 @@ pub enum GateDecision {
     /// A token was consumed from every quota on the effect — the call proceeds.
     Allow,
     /// At least one quota is exhausted. The caller applies `on_exhausted`:
-    /// `block` (fail the step), `defer` (reschedule to `retry_at`, §72.d), or
-    /// `shed` (skip the call, §72.d).
+    /// `block` (fail the step), `defer` (reschedule to `retry_at`, v2.28.0), or
+    /// `shed` (skip the call, v2.28.0).
     Deny {
         retry_at: DateTime<Utc>,
         on_exhausted: String,
     },
 }
 
-/// §Fase 72.c — a daemon's compiled `budget { … }` as a runnable gate. Holds one
+/// v2.28.0 — a daemon's compiled `budget { … }` as a runnable gate. Holds one
 /// [`RateLease`] per quota (keyed by effect + kind), the `on_exhausted` policy,
 /// and an effect→keys index so the dispatch site can gate a tool emission by
 /// name. Built once when a budgeted daemon starts running its flow; the OSS
-/// reference is single-process (the §72.e enterprise layer swaps the in-process
+/// reference is single-process (the v2.28.0 enterprise layer swaps the in-process
 /// kernel for the per-tenant Redis `RateLimiter` behind the same `gate` shape).
 pub struct BudgetGate {
     kernel: RateLeaseKernel,
@@ -465,7 +465,7 @@ impl BudgetGate {
         }
     }
 
-    /// §Fase 114.a — fold another gate into this one.
+    /// v2.69.0 — fold another gate into this one.
     ///
     /// A program may declare several top-level `budget`s. They compose into one
     /// gate, and the composition **may only ever tighten**:
@@ -527,14 +527,14 @@ impl BudgetGate {
         self.by_effect.contains_key(effect)
     }
 
-    /// §Fase 72.e — snapshot the gate's cumulative state for persistence (the
+    /// v2.28.0 — snapshot the gate's cumulative state for persistence (the
     /// enterprise supervisor saves this after a tick + restores it before the
     /// next, so a `max: 50 per day` spans the day's ticks).
     pub fn snapshot(&self) -> Vec<(String, RateLeaseSnapshot)> {
         self.kernel.snapshot()
     }
 
-    /// §Fase 72.e — restore the gate's state from a prior [`snapshot`](Self::snapshot).
+    /// v2.28.0 — restore the gate's state from a prior [`snapshot`](Self::snapshot).
     pub fn restore(&mut self, snaps: &[(String, RateLeaseSnapshot)]) {
         self.kernel.restore(snaps);
     }
@@ -801,7 +801,7 @@ mod tests {
         assert_eq!(gate.on_exhausted(), "block");
     }
 
-    // ── §Fase 72.e — snapshot / restore (cumulative across ticks) ─────────
+    // ── v2.28.0 — snapshot / restore (cumulative across ticks) ─────────
 
     #[test]
     fn snapshot_restore_carries_max_window_across_ticks() {

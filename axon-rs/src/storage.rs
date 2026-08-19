@@ -313,7 +313,7 @@ impl StorageBackend for InMemoryBackend {
 /// with async return types.
 pub enum StorageDispatcher {
     InMemory(InMemoryBackend),
-    // §Fase 118.b.3 — the SQL variant, behind `postgres`. The PORT
+    // v2.81.0 — the SQL variant, behind `postgres`. The PORT
     // (`StorageBackend`) and the in-memory implementation stay in every build, so
     // a lean binary still has a working storage plane — it just cannot be pointed
     // at Postgres.
@@ -326,11 +326,11 @@ impl StorageDispatcher {
         StorageDispatcher::InMemory(InMemoryBackend::new())
     }
 
-    /// §Fase 118.a / D118.2 — the pool type is named through [`crate::db_pool`],
+    /// v2.81.0 / the design decision — the pool type is named through [`crate::db_pool`],
     /// the module that owns pool construction, rather than reached for directly
     /// in `sqlx`. Same type, one fewer module that has to know which driver the
     /// project uses. This is the `auth_scope` / `auth_middleware` treatment of
-    /// §118.b.2 applied to the storage seam: a module that turns out not to need
+    /// v2.81.0 applied to the storage seam: a module that turns out not to need
     /// a dependency is worth more than a module that is gated.
     #[cfg(feature = "postgres")]
     pub fn postgres(pool: crate::db_pool::PgPool) -> Self {

@@ -3,7 +3,7 @@ name: channel
 summary: A typed π-calculus channel — message type, qos, lifetime, persistence, and shield gate for in-process delivery and signed external egress.
 category: wire
 top_level: true
-since: Fase 13
+since: v1.6.0
 grammar: |
   channel <Name> {
       message: <TypeRef>                          # required — the typed payload
@@ -71,7 +71,7 @@ consumption (use-after-consume is a typed runtime error).
 
 `ephemeral` — in-process delivery only; events die with the
 process. `persistent_axonstore` — every `emit` is appended to
-the **durable event outbox** (§74): claimed with SKIP-LOCKED,
+the **durable event outbox** (v2.31.0): claimed with SKIP-LOCKED,
 redelivered until acked (at-least-once), it survives restarts
 and is replayable. **Signed egress requires it** (`axon-T848`).
 
@@ -79,7 +79,7 @@ and is replayable. **Signed egress requires it** (`axon-T848`).
 
 The shield gating `publish`/`discover` capability extrusion.
 When the shield declares `sign:`, a `publish` of this channel
-marks it for **signed external egress** (§77): the enterprise
+marks it for **signed external egress** (v2.34.0): the enterprise
 runtime delivers each durable event as an HTTP POST to every
 registered subscription, signed `X-Axon-Signature:
 sha256=<hex(HMAC-SHA256(secret, body))>`.
@@ -88,7 +88,7 @@ sha256=<hex(HMAC-SHA256(secret, body))>`.
 
 1. `emit Channel(value)` — routes by persistence: durable →
    outbox append; ephemeral → in-process typed bus.
-2. `daemon … { listen Channel as ev { … } }` — the §74 receive
+2. `daemon … { listen Channel as ev { … } }` — the v2.31.0 receive
    driver claims outbox events and runs the listener body,
    acking on success.
 3. `publish Channel within Shield` — capability extrusion; with

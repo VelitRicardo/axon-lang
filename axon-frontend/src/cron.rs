@@ -1,24 +1,24 @@
-//! §Fase 52.b — POSIX 5-field cron schedule parser + validator.
+//! v2.4.0 — POSIX 5-field cron schedule parser + validator.
 //!
 //! The static half of the `daemon` scheduling surface. A `listen` whose channel
-//! is `"cron:<expr>"` is a **time-based** trigger: a `TimerSource` (§52.c) fires
+//! is `"cron:<expr>"` is a **time-based** trigger: a `TimerSource` (v2.4.0) fires
 //! the handler on the cron cadence. This module parses + validates the 5-field
 //! expression `minute hour day-of-month month day-of-week` (with `*`, ranges
 //! `a-b`, lists `a,b`, and steps `*/n` / `a-b/n`) and EXPANDS each field to its
-//! sorted set of matching values — the same representation the §52.c scheduler
+//! sorted set of matching values — the same representation the v2.4.0 scheduler
 //! uses to compute the next fire time (membership test per field). Validation
 //! and scheduling share one source of truth, so a schedule that type-checks is
 //! exactly a schedule the runtime can fire.
 //!
 //! Day-of-week accepts both `0` and `7` for Sunday (POSIX); `7` is normalised to
 //! `0`. Field order is the standard 5-field cron (no seconds field, no
-//! `@`-nicknames — deferred; named in the §Fase 52 plan).
+//! `@`-nicknames — deferred; named in the v2.4.0 plan).
 
 use std::collections::BTreeSet;
 use std::fmt;
 
 /// A parsed, validated cron schedule: each field expanded to its sorted set of
-/// matching values. Cheap to test membership against a wall-clock field (§52.c).
+/// matching values. Cheap to test membership against a wall-clock field (v2.4.0).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CronSchedule {
     /// Matching minutes (0–59).
@@ -78,7 +78,7 @@ const FIELD_BOUNDS: [(&str, u32, u32); 5] = [
 ];
 
 impl CronSchedule {
-    /// Parse + validate a 5-field cron expression. `Ok` ⇒ the §52.c scheduler
+    /// Parse + validate a 5-field cron expression. `Ok` ⇒ the v2.4.0 scheduler
     /// can fire it; `Err` ⇒ a precise `CronError`.
     pub fn parse(expr: &str) -> Result<CronSchedule, CronError> {
         let fields: Vec<&str> = expr.split_whitespace().collect();
@@ -180,8 +180,8 @@ fn parse_field(
 }
 
 /// If `channel` is a cron channel (`"cron:<expr>"`), return the trimmed `<expr>`;
-/// otherwise `None`. The single recogniser shared by the type-checker (§52.b
-/// validation) and the runtime (§52.c scheduling) so the prefix is defined once.
+/// otherwise `None`. The single recogniser shared by the type-checker (v2.4.0
+/// validation) and the runtime (v2.4.0 scheduling) so the prefix is defined once.
 pub fn cron_expr(channel: &str) -> Option<&str> {
     channel.strip_prefix("cron:").map(str::trim)
 }

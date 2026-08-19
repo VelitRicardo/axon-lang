@@ -1,4 +1,4 @@
-//! §Fase 121 — **a declared `type` lowered into a constraint set**, so
+//! v2.88.0 — **a declared `type` lowered into a constraint set**, so
 //! `validate X against: T` produces a CSR instead of prose.
 //!
 //! # The problem this solves
@@ -7,7 +7,7 @@
 //! Measured before this landed, `run_validate` asked the model for *"a
 //! structured verdict (pass/fail) with the reasoning that supports it"* and
 //! returned the answer as **opaque text**. The prompt requested a structure and
-//! the runtime threw it away — §111's shape inside a primitive attested `Real`.
+//! the runtime threw it away — v2.67.0's shape inside a primitive attested `Real`.
 //!
 //! And three of those four blocks follow the validation with
 //! `if confidence < 0.8 -> refine(max_attempts: 2)`. There was no confidence.
@@ -16,7 +16,7 @@
 //!
 //! A `type` is a claim about STRUCTURE. `pem::semantic_validator` already
 //! computes the ratio this needs — `CSR = |{c ∈ C : r ⊨ c}| / |C|`, shipped in
-//! §119.b and driving `mandate` — so the only question is which `C` a type
+//! v2.83.0 and driving `mandate` — so the only question is which `C` a type
 //! denotes. The answer:
 //!
 //! ```text
@@ -27,7 +27,7 @@
 //! lowering — one `Contains { needle: "\"amount\"" }` per field — is a substring
 //! test over prose. It passes on *"I could not determine the amount"*. So each
 //! field becomes a [`Predicate::JsonField`]: parse, require an object, look up
-//! the key. That predicate is the one member §121 added to the closed catalog,
+//! the key. That predicate is the one member v2.88.0 added to the closed catalog,
 //! deliberately, because none of the six that existed can express a structural
 //! obligation without lying about what it measured.
 //!
@@ -48,7 +48,7 @@
 //! carry a non-null `amount`"*, not *"…whose value is a number"*. Type
 //! conformance of a JSON value against a declared column type is
 //! `store_column_proof`'s job (`axon-T802`), and duplicating that classification
-//! here would make a second catalog of one concept — the §119.m.2 defect. When
+//! here would make a second catalog of one concept — the v2.83.0 defect. When
 //! `validate` needs it, it should CALL that engine, not re-derive it.
 
 use crate::ir_nodes::IRType;

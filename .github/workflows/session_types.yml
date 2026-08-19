@@ -1,0 +1,186 @@
+# v2.3.0 — Dedicated CI workflow for the v2.3.0 cycle.
+#
+# Runs every v2.3.0 deliverable on every push/PR so the
+# session-types-as-cognitive-primitive contract (D1 session-types-
+# not-schemas + D2 credit-refined backpressure + D3 SSE-as-fragment +
+# D4 π-channels+tokio + D5 typed reconnection + D6 multiparty
+# projection + D7 shield+audit + D8 backwards-compat) stays
+# observable across the cycle's deliverables.
+#
+# Layout: one job per architectural layer, plus dedicated fuzz +
+# E2E lanes so a failure points to exactly one surface.
+#
+# # What this workflow runs
+#
+# Algebra (axon-frontend lib):
+#   - 41.a/b/c — session type duality + credit-refined backpressure
+#   - 41.e     — SSE-polarity predicate
+#   - 41.g     — sealed-runtime envelope (serde + schema-equiv)
+#   - 41.h     — multiparty projection + safe-realizability gate
+#
+# Runtime (axon-rs lib + integration):
+#   - 41.d — SessionRuntime + Frame + ws driver (lib unit tests)
+#   - 41.e — SSE driver + fragment unification (lib unit tests)
+#   - 41.d E2E — typed-WS dialogue against a real axum server
+#   - 41.e E2E — SSE-as-fragment against a real reqwest client
+#
+# Fuzz (deterministic LCG-driven property tests, 50-seed corpus):
+#   - axon-frontend — duality involutivity, connection-law symmetry,
+#     credit-analyse totality, polarity dual-symmetry, multiparty
+#     projection totality, two-role HYC soundness.
+#   - axon-rs       — sealed-runtime round-trip, schema-mismatch
+#     rejection.
+#
+# # What this workflow does NOT run
+#
+# - The v2.3.0 enterprise WS surface + v2.3.0 typed
+#   reconnection integration tests — those live in axon-enterprise
+#   (private repo) and run there.
+# - Real-provider lanes for the runtime — opt-in, gated separately.
+
+name: v2.3.0 — WebSocket as a Cognitive Primitive
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'axon-frontend/**'
+      - 'axon-rs/**'
+      - '.github/workflows/session_types.yml'
+  pull_request:
+    branches: [master]
+    paths:
+      - 'axon-frontend/**'
+      - 'axon-rs/**'
+      - '.github/workflows/session_types.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # ── Layer 1: the algebra (axon-frontend) ───────────────────────────────
+  algebra-session-types:
+    name: 41.a/b/c/e/g/h — session-type algebra + multiparty
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: axon-frontend
+      - name: Algebra + projection lib tests
+        run: |
+          cd axon-frontend
+          cargo test --lib session:: -- --nocapture
+          cargo test --lib multiparty:: -- --nocapture
+      - name: v2.3.0 — socket declaration + grammar
+        run: |
+          cd axon-frontend
+          cargo test --lib -- session_lowering_tests socket_tests choice_tests --nocapture
+      - name: v2.3.0 — credit-refined backpressure (Presburger gate)
+        run: |
+          cd axon-frontend
+          cargo test --lib -- credit_tests --nocapture
+
+  # ── Layer 2: the runtime (axon-rs lib) ──────────────────────────────────
+  runtime-ws-and-sse:
+    name: 41.d/e — session_runtime (cursor + WS + SSE drivers)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: axon-rs
+      - name: session_runtime lib tests
+        run: |
+          cd axon-rs
+          cargo test --lib session_runtime -- --nocapture
+
+  # ── Layer 3: E2E carriers (real axum + tungstenite / reqwest) ──────────
+  e2e-ws-typed-dialogue:
+    name: 41.d E2E — typed WebSocket dialogue (real axum + tungstenite)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: axon-rs
+      - name: 41.d WS E2E
+        run: |
+          cd axon-rs
+          cargo test --test session_ws_e2e -- --nocapture
+
+  e2e-sse-fragment:
+    name: 41.e E2E — SSE-as-fragment unification (real reqwest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: axon-rs
+      - name: 41.e SSE E2E
+        run: |
+          cd axon-rs
+          cargo test --test sse_fragment_e2e -- --nocapture
+
+  # ── Layer 4: deterministic fuzz lane (50-seed corpus per surface) ──────
+  fuzz-algebra:
+    name: 41.i fuzz — algebra layer (duality / projection / credit / polarity)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: axon-frontend
+      - name: axon-frontend v2.3.0 fuzz (6 surfaces × ~50×20 iters)
+        run: |
+          cd axon-frontend
+          cargo test --test session_type_fuzz -- --nocapture
+
+  fuzz-runtime:
+    name: 41.i fuzz — runtime layer (sealed-runtime round-trip)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: axon-rs
+      - name: axon-rs v2.3.0 fuzz (2 surfaces × ~50×10 iters)
+        run: |
+          cd axon-rs
+          cargo test --test session_runtime_fuzz -- --nocapture
+
+  # ── Layer 5: backwards-compat (D8) sanity ──────────────────────────────
+  backwards-compat:
+    name: 41.i D8 — v1.21.0/31/32/33 SSE tests still green
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: axon-rs
+      - name: v1.24.0 SSE family must NOT regress (v2.3.0 byte-compat)
+        run: |
+          cd axon-rs
+          cargo test --test live_event_forwarding \
+                     --test native_backend_streaming \
+                     --test stream_effect_layer \
+                     -- --nocapture

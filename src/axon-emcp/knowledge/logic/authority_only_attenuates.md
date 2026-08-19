@@ -1,14 +1,14 @@
 ---
 name: authority_only_attenuates
-title: "Delegation is attenuation — authority flows down, never up (§Fase 92)"
-summary: "The law governing ephemeral-credential minting (`credential` + `mint`, §92): a principal may mint a bearer carrying ONLY capabilities it itself holds (`grants ⊆ capabilities(minter)`), only for less time than its own horizon (TTL ≤ the 24h ephemeral ceiling, axon-T894), and the minted bearer cannot mint further (depth-1, structural). Enforced at three layers, all fail-closed: compile (axon-T893/T894/T895 + the never-persisted law axon-T896), verify/deploy (the CredentialAttenuation proof re-derives every contract + mint site from the IR; the enterprise gate additionally requires every grant be GRANTABLE — the §90 composition), and mint time (the dispatch handler AND the CredentialMinter port both check the subset law against the request's bearer claims; no capability context ⇒ refuse). The completion of the authority story: §89 proved every boundary is guarded, §90 proved every guard is satisfiable, §92 proves handed-down authority is only ever a SUBSET, briefly."
+title: "Delegation is attenuation — authority flows down, never up (v2.46.0)"
+summary: "The law governing ephemeral-credential minting (`credential` + `mint`, v2.46.0): a principal may mint a bearer carrying ONLY capabilities it itself holds (`grants ⊆ capabilities(minter)`), only for less time than its own horizon (TTL ≤ the 24h ephemeral ceiling, axon-T894), and the minted bearer cannot mint further (depth-1, structural). Enforced at three layers, all fail-closed: compile (axon-T893/T894/T895 + the never-persisted law axon-T896), verify/deploy (the CredentialAttenuation proof re-derives every contract + mint site from the IR; the enterprise gate additionally requires every grant be GRANTABLE — the v2.45.0 composition), and mint time (the dispatch handler AND the CredentialMinter port both check the subset law against the request's bearer claims; no capability context ⇒ refuse). The completion of the authority story: v2.44.0 proved every boundary is guarded, v2.45.0 proved every guard is satisfiable, v2.46.0 proves handed-down authority is only ever a SUBSET, briefly."
 ---
 
 # Delegation is attenuation
 
 The canonical adopter scenario: a SaaS embeds a chat widget on any
 third-party origin. The widget needs identity — but every existing
-bearer is wrong for a browser: a service account (§81) is long-lived
+bearer is wrong for a browser: a service account (v2.46.0) is long-lived
 and broad; a user JWT belongs to a person. What the widget needs is
 a **slice** of the backend's authority: `[chat.invoke]`, for fifteen
 minutes, and nothing else.
@@ -31,7 +31,7 @@ minutes, and nothing else.
    every contract + mint site from the compiled IR — a stale or
    hand-edited artifact that smuggles a ghost mint or a
    week-long "ephemeral" credential is REFUTED before it mounts.
-   The enterprise deploy gate composes with §90: every declared
+   The enterprise deploy gate composes with v2.45.0: every declared
    grant must be *grantable* (`⊆ π(authority catalog)`) — you
    cannot deploy a flow that mints dead capabilities.
 3. **Mint time.** The dispatch handler checks
@@ -48,8 +48,8 @@ An issuance API ("create a token with scopes X") is an amplification
 hazard: whoever reaches it mints arbitrary authority. Attenuation
 inverts the posture — the mint site can only ever hand down a subset
 of what it provably holds, so the worst a compromised bootstrap flow
-can leak is its own authority, time-boxed. Combined with the §72
-budget (per-visitor cost attribution) and §83 `cors` (the
+can leak is its own authority, time-boxed. Combined with the v2.28.0
+budget (per-visitor cost attribution) and v2.38.0 `cors` (the
 browser-origin half), the widget scenario is expressible end-to-end
 in typed, PCC-attested source.
 
@@ -57,18 +57,18 @@ in typed, PCC-attested source.
 
 - **The third act of the authority story**:
   [`every_boundary_is_guarded`](axon://logic/every_boundary_is_guarded)
-  (§89 — every boundary declares a guard) →
+  (v2.44.0 — every boundary declares a guard) →
   [`every_requirement_is_grantable`](axon://logic/every_requirement_is_grantable)
-  (§90 — every guard is satisfiable) → **this law** (§92 — authority
+  (v2.45.0 — every guard is satisfiable) → **this law** (v2.46.0 — authority
   can be handed down, but only attenuated, only briefly, only
   provably).
-- The §81 service account is the long-lived dual: admin-minted
+- The v2.46.0 service account is the long-lived dual: admin-minted
   machine identity with catalog grants. `credential` deliberately
   cannot reach that shape (the 24h ceiling) — a credential that
   outlives a day is a service account wearing a costume.
 - **The inbound dual**:
   [`rotation_without_revelation`](axon://logic/rotation_without_revelation)
-  (§94) governs authority a third party lends US — a borrowed
+  (v2.48.0) governs authority a third party lends US — a borrowed
   credential is custodied, renewed in custody (`rotate`), and never
   readable, exactly as a minted bearer is never persisted
   (`axon-T896`). Together the two laws close the perimeter: no

@@ -1,4 +1,4 @@
-//! §Fase 118.b.2 — tenant IDENTITY, separated from tenant EXTRACTION.
+//! v2.81.0 — tenant IDENTITY, separated from tenant EXTRACTION.
 //!
 //! **The smell, a fourth time — and this one reached the storage layer.** The
 //! task-local that carries the active tenant across a future tree, and the two
@@ -61,7 +61,7 @@ pub fn current_tenant_id() -> String {
 /// plumbing**: scope once at the request boundary and every downstream query is
 /// tenant-bound by construction.
 ///
-/// §Fase 118.b.2 — and, since the primitive no longer lives in the same module as
+/// v2.81.0 — and, since the primitive no longer lives in the same module as
 /// the HTTP extractor, "resolve the tenant yourself" no longer means "compile a
 /// web framework to do it".
 ///
@@ -82,7 +82,7 @@ where
     CURRENT_TENANT_ID.scope(tenant_id, fut).await
 }
 
-/// §Fase 122.e — the SYNCHRONOUS twin of [`scope_tenant`], for the far side of a
+/// v2.89.0 — the SYNCHRONOUS twin of [`scope_tenant`], for the far side of a
 /// `spawn_blocking`.
 ///
 /// # Why the twin was missing, and what its absence cost
@@ -101,7 +101,7 @@ where
 ///
 /// The `"default"` fallback is what makes this expensive: nothing errors,
 /// nothing panics, and every downstream reader carries on under an identity
-/// that is *plausible*. §95.f threaded the tenant to the executor explicitly and
+/// that is *plausible*. v2.49.0 threaded the tenant to the executor explicitly and
 /// still shipped two doors that lost it, because the bridge was written on the
 /// wrong side of the boundary and no test compared the two sides.
 ///

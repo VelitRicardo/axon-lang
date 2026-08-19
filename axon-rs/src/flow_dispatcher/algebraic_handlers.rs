@@ -1,18 +1,18 @@
-//! §Fase 33.y.g — Algebraic-effect handler nodes.
+//! v1.24.0 — Algebraic-effect handler nodes.
 //!
 //! Six variants graduated in 33.y.g:
 //!
-//! - **`ShieldApply`** (Fase 20) — apply a registered shield to a
+//! - **`ShieldApply`** (v1.13.1) — apply a registered shield to a
 //!   target. Per-chunk scrubbing semantics when target is a stream
 //!   (foundation for the enterprise PHI scrubber R&D track).
-//! - **`OtsApply`** (Fase 14) — apply a One-True-Source transform.
-//! - **`MandateApply`** (Fase 16-related) — apply a mandate (a
+//! - **`OtsApply`** (v1.5.2) — apply a One-True-Source transform.
+//! - **`MandateApply`** (v1.11.0-related) — apply a mandate (a
 //!   compliance-bound transformation declared at the language level).
-//! - **`ComputeApply`** (Fase 11.f) — invoke a compute capability
+//! - **`ComputeApply`** (v1.4.0) — invoke a compute capability
 //!   with positional arguments; binds result under `output_name`.
-//! - **`Listen`** (Fase 13 π-calc) — wait on a typed channel for
+//! - **`Listen`** (v1.6.0 π-calc) — wait on a typed channel for
 //!   an event; binds event payload under `event_alias`.
-//! - **`DaemonStep`** (Fase 16 supervisor) — invoke a daemon by
+//! - **`DaemonStep`** (v1.11.0 supervisor) — invoke a daemon by
 //!   reference (the daemon's per-invocation execution is its own
 //!   subsystem).
 //!
@@ -22,7 +22,7 @@
 //! OTS / mandate / compute capability *implementations* live in
 //! `axon_enterprise.shield` (the scanner registry) + `axon_enterprise.
 //! ots` (the OTS transformers) + `axon_enterprise.cognitive_states`
-//! (the daemon supervisor + Fase 13 channel layer). 33.y.g ships the
+//! (the daemon supervisor + v1.6.0 channel layer). 33.y.g ships the
 //! OSS **framework** — the wire shape + the public `apply_*` helpers
 //! that enterprise overrides via future hooks.
 //!
@@ -56,7 +56,7 @@
 //! - **D10** — sync-runner parity: shield/OTS/mandate/compute
 //!   capabilities apply identically (identity in OSS); Listen
 //!   binds a structured placeholder until the typed-channel layer
-//!   wires into the dispatcher in a future sub-fase.
+//! wires into the dispatcher in a future step.
 
 use crate::flow_dispatcher::{DispatchCtx, DispatchError, NodeOutcome};
 use crate::flow_execution_event::{now_ms, FlowExecutionEvent};
@@ -71,7 +71,7 @@ use crate::ir_nodes::{
 
 /// Apply a named shield to `target`. OSS default: identity
 /// passthrough. This helper is the **no-scanner fallback**: as of
-/// §Fase 40.b, [`run_shield_apply`] first consults
+/// v2.0.0, [`run_shield_apply`] first consults
 /// [`crate::shield_registry`]; this function only runs when no scanner
 /// is registered for the shield name. Enterprise vertical crates
 /// register HIPAA / legal / fintech scanners via
@@ -92,9 +92,9 @@ pub fn apply_shield_to_target(shield_name: &str, target: &str, _ctx: &DispatchCt
     target.to_string()
 }
 
-// §Fase 119.c — `apply_ots_to_target` was DELETED here.
+// v2.83.0 — `apply_ots_to_target` was DELETED here.
 //
-// It was `target.to_string()` with the name discarded (§111 F18): a
+// It was `target.to_string()` with the name discarded (v2.67.0 F18): a
 // transformation that transformed nothing under a declared teleology, and
 // the "enterprise override" its doc promised had no hook to exist through.
 // `run_ots_apply` now consults `crate::ots_registry` (the shield_registry
@@ -104,11 +104,11 @@ pub fn apply_shield_to_target(shield_name: &str, target: &str, _ctx: &DispatchCt
 // output CLAIMS to be the transformed input, and identity under that claim
 // fabricates a result.
 
-// §Fase 119.b — `apply_mandate_to_target` was DELETED here.
+// v2.83.0 — `apply_mandate_to_target` was DELETED here.
 //
 // It was `target.to_string()` with `let _ = mandate_name;` — the mandate's
 // name discarded on the first line, documented as an "enterprise override
-// hook" that nothing could override into existence (§111 F18, the same
+// hook" that nothing could override into existence (v2.67.0 F18, the same
 // factory-of-the-lie shape as `invoke_compute_capability`, deleted above).
 // `run_mandate_apply` now drives `crate::mandate_engine::MandateRuntime`:
 // the target is validated for free, refined in a buffered closed loop when
@@ -116,7 +116,7 @@ pub fn apply_shield_to_target(shield_name: &str, target: &str, _ctx: &DispatchCt
 // or the declared `on_violation: coerce` policy visibly released the best
 // attempt. There is nothing left for a placeholder to stand in for.
 
-// §Fase 111.f — `invoke_compute_capability` was DELETED here.
+// v2.67.0 — `invoke_compute_capability` was DELETED here.
 //
 // It was the factory of the lie. It resolved the arguments and returned
 // `format!("compute:{name}({args})")` — a STRING, which `run_compute_apply` bound
@@ -125,14 +125,14 @@ pub fn apply_shield_to_target(shield_name: &str, target: &str, _ctx: &DispatchCt
 // string … Enterprise overrides hook into the real compute runtime". No such hook
 // existed, and no override could have helped: `IRCompute` carried no body to run.
 //
-// `run_compute_apply` now evaluates the declared §70 expression natively via
+// `run_compute_apply` now evaluates the declared v2.26.0 expression natively via
 // `eval_expr`. There is nothing left for a placeholder to stand in for.
 
-/// Listen on a Fase 13 typed channel for an event. OSS default:
+/// Listen on a v1.6.0 typed channel for an event. OSS default:
 /// returns a canonical placeholder `"(awaiting <channel>)"` so
 /// adopters observe the wait + bind under `event_alias` until
 /// the typed-channel runtime layer wires in (axon_enterprise.
-/// channels + future Fase 13 runtime). The placeholder is wire-
+/// channels + future v1.6.0 runtime). The placeholder is wire-
 /// stable + adopter-diagnostic.
 pub fn listen_on_channel(channel: &str, _channel_is_ref: bool, _ctx: &DispatchCtx) -> String {
     format!("(awaiting {channel})")
@@ -182,7 +182,7 @@ pub async fn run_shield_apply(
         .cloned()
         .unwrap_or_else(|| node.target.clone());
 
-    // §Fase 40.b — consult the shield-scanner registry. A registered
+    // v2.0.0 — consult the shield-scanner registry. A registered
     // scanner (enterprise HIPAA/legal/AML, etc.) returns a verdict:
     // `Pass` binds the (possibly redacted) content; `Reject` surfaces a
     // structured `DispatchError::BackendError` so the SSE/HTTP layer can
@@ -194,7 +194,7 @@ pub async fn run_shield_apply(
             let scan_ctx = crate::shield_registry::ShieldScanContext::new(node.shield_name.clone());
             match scanner.scan(&resolved_target, &scan_ctx) {
                 crate::shield_registry::ShieldVerdict::Pass(content) => content,
-                // §Fase 114.w — a Reject runs the shield's DECLARED `on_breach:`
+                // v2.69.0 — a Reject runs the shield's DECLARED `on_breach:`
                 // policy (it used to always halt). The policy rides the node
                 // (`IRBreachPolicy`, resolved at lowering), so this site and
                 // `run_emit`'s σ-gate honor it identically. `Proceed` continues
@@ -220,7 +220,7 @@ pub async fn run_shield_apply(
                 }
             }
         }
-        // §Fase 122.a — a declared `scan:` with nothing to run it REFUSES.
+        // v2.89.0 — a declared `scan:` with nothing to run it REFUSES.
         crate::shield_registry::ScanDisposition::UnhonouredScan { message } => {
             return Err(DispatchError::BackendError {
                 name: format!("shield:{}", node.shield_name),
@@ -256,13 +256,13 @@ pub async fn run_shield_apply(
 //  OtsApply
 // ────────────────────────────────────────────────────────────────────
 
-/// §Fase 119.c — `ots <Name> on <target>`: registry-dispatched transform.
+/// v2.83.0 — `ots <Name> on <target>`: registry-dispatched transform.
 ///
 /// Resolution order, every fork fail-closed:
 /// 1. the declaration must exist in `ctx.ots_specs` (unknown ⇒ refusal);
 /// 2. a transformer must be registered for the name in
 ///    [`crate::ots_registry`] (unregistered ⇒ refusal — identity under a
-///    transformation's name fabricates a result, §111 F18);
+/// transformation's name fabricates a result, v2.67.0 F18);
 /// 3. the transformer's own verdict: `Transformed` binds, `Refused` fails
 ///    the flow naming the ots and the transformer's reason.
 pub async fn run_ots_apply(
@@ -310,7 +310,7 @@ pub async fn run_ots_apply(
     })
 }
 
-/// §Fase 119.c — the shared ots transform: declaration → registry → verdict.
+/// v2.83.0 — the shared ots transform: declaration → registry → verdict.
 /// Used by the flow-level node above and by the step-scoped `ots` guard.
 pub(crate) fn transform_ots(
     ots_name: &str,
@@ -425,7 +425,7 @@ pub(crate) enum MandateTask {
     Generate { prompt: String },
 }
 
-/// §Fase 119.b — the shared enforcement driver: resolve the declaration,
+/// v2.83.0 — the shared enforcement driver: resolve the declaration,
 /// build the runtime (refusing vacuity), drive the buffered loop against the
 /// resolved backend, apply the declared `on_violation` policy. Used by the
 /// flow-level node above and by the step-guard path in `pure_shape`.
@@ -469,7 +469,7 @@ pub(crate) async fn enforce_mandate_over(
     // warning, not silently counted as enforced.
     // (Not `ctx.runtime_warnings`: that is the CLOSED axon-W002 catalog for
     // streaming fallbacks, and a free-string push there would distort it —
-    // the §108/§113 lesson. Structured tracing is the honest channel until a
+    // the v2.63.0/v2.67.0 lesson. Structured tracing is the honest channel until a
     // mandate-specific wire surface earns its own catalog entry.)
     let unchecked = runtime.unchecked_clauses().to_vec();
     if !unchecked.is_empty() {
@@ -669,13 +669,13 @@ pub async fn run_compute_apply(
     //     the compute and shadow the caller's own binding.
     let mut saved: Vec<(String, Option<String>)> = Vec::new();
     for (param, arg) in spec.parameters.iter().zip(&node.arguments) {
-        // §Fase 119.f.10 — a QUOTED argument is a literal, not a name to look
-        // up. §119.f.10 let `compute X on a.b, "USD"` parse; the parser keeps
+        // v2.83.0 — a QUOTED argument is a literal, not a name to look
+        // up. v2.83.0 let `compute X on a.b, "USD"` parse; the parser keeps
         // the quotes so this distinction survives to dispatch, because
         // `resolve_value_reference` would otherwise treat `USD` as a binding
         // name and silently return whatever a binding of that name held. That
-        // is the §60 literal/reference classification, and flattening it here
-        // would reintroduce exactly the ambiguity §60 exists to remove.
+        // is the v2.10.0 literal/reference classification, and flattening it here
+        // would reintroduce exactly the ambiguity v2.10.0 exists to remove.
         let value = match arg.strip_prefix('"').and_then(|s| s.strip_suffix('"')) {
             Some(literal) => literal.to_string(),
             None => crate::exec_context::resolve_value_reference(arg, &ctx.let_bindings),
@@ -705,7 +705,7 @@ pub async fn run_compute_apply(
         Some(EVal::Float(f)) => f.to_string(),
         Some(EVal::Bool(b)) => b.to_string(),
         Some(EVal::Str(s)) => s,
-        // The §70 evaluator fails CLOSED on division by zero, an unresolvable
+        // The v2.26.0 evaluator fails CLOSED on division by zero, an unresolvable
         // reference, a type mismatch — every one of which the old handler would
         // have papered over with a plausible-looking string.
         _ => {
@@ -742,8 +742,8 @@ pub async fn run_compute_apply(
 
 /// Listen on a typed channel. Wire shape: `step_type: "listen"`.
 /// The placeholder `"(awaiting <channel>)"` binds under
-/// `event_alias` until the Fase 13 typed-channel runtime wires
-/// into the dispatcher in a future sub-fase.
+/// `event_alias` until the v1.6.0 typed-channel runtime wires
+/// into the dispatcher in a future step.
 pub async fn run_listen(
     node: &IRListenStep,
     ctx: &mut DispatchCtx,
@@ -776,15 +776,15 @@ pub async fn run_listen(
     })
 }
 
-/// §Fase 52.c — `run <Flow>(args)` flow-step: invoke a declared flow from a
+/// v2.4.0 — `run <Flow>(args)` flow-step: invoke a declared flow from a
 /// body (a daemon `listen` handler — the brief #32 Q3). The LANGUAGE surface
 /// (parse / type-check / IR / this dispatcher arm) lands here; the REAL
 /// recursive flow dispatch — looking up `flow_name` in the program and
-/// executing its steps under the daemon's identity — is wired by the §52.c
+/// executing its steps under the daemon's identity — is wired by the v2.4.0
 /// daemon executor (it needs the flow registry + the recursion guard, which
 /// this leaf dispatcher does not own). Until then this binds the invocation
 /// outcome under `output_to` (if any) so downstream steps resolve, mirroring
-/// the surface-handler pattern §51 used for `quant`/`yield`.
+/// the surface-handler pattern v2.4.0 used for `quant`/`yield`.
 pub async fn run_run(
     node: &axon_frontend::ir_nodes::IRRun,
     ctx: &mut DispatchCtx,
@@ -816,9 +816,9 @@ pub async fn run_run(
 
 /// Invoke a daemon by reference. Wire shape:
 /// `step_type: "daemon_step"`. The placeholder `"daemon:<ref>"`
-/// binds under `<daemon_ref>_invoked` until the Fase 16
+/// binds under `<daemon_ref>_invoked` until the v1.11.0
 /// supervisor invocation surface wires into the dispatcher in a
-/// future sub-fase.
+/// future step.
 pub async fn run_daemon_step(
     node: &IRDaemonStepNode,
     ctx: &mut DispatchCtx,
@@ -994,7 +994,7 @@ mod tests {
         assert_eq!(ctx.let_bindings.get("doc_shielded").unwrap(), "content");
     }
 
-    // ── ShieldApply × §Fase 40.b registry hook ───────────────────────
+    // ── ShieldApply × v2.0.0 registry hook ───────────────────────
     // Unique shield names + cleanup so these don't collide with the
     // "hipaa" identity tests above under parallel execution.
 
@@ -1106,7 +1106,7 @@ mod tests {
 
     // ── OtsApply ─────────────────────────────────────────────────────
 
-    /// §Fase 119.c — **this test used to BE the §111 F18 bug for ots.**
+    /// v2.83.0 — **this test used to BE the v2.67.0 F18 bug for ots.**
     ///
     /// It asserted, in green, that `ots g711_mulaw on raw_audio` binds
     /// `"samples"` UNCHANGED under `pcm` — a µ-law transcoder whose transform
@@ -1150,7 +1150,7 @@ mod tests {
 
     // ── MandateApply ─────────────────────────────────────────────────
 
-    /// §Fase 119.b — **this test used to BE the §111 F18 bug.**
+    /// v2.83.0 — **this test used to BE the v2.67.0 F18 bug.**
     ///
     /// It asserted, in green, that `mandate gdpr_erasure on user_record`
     /// binds `"user_record"` UNCHANGED under `erased` — a mandate named
@@ -1195,7 +1195,7 @@ mod tests {
 
     // ── ComputeApply ─────────────────────────────────────────────────
 
-    /// §Fase 111.f — **this test used to BE the bug.**
+    /// v2.67.0 — **this test used to BE the bug.**
     ///
     /// It asserted, in green, for years:
     ///
@@ -1462,7 +1462,7 @@ mod tests {
         ));
     }
 
-    // ── §Fase 119.b — MandateApply: the loop, through real dispatch ──
+    // ── v2.83.0 — MandateApply: the loop, through real dispatch ──
 
     fn mandate_spec(
         name: &str,
@@ -1626,7 +1626,7 @@ mod tests {
 
     #[tokio::test]
     async fn an_unresolved_mandate_name_fails_closed_never_identity() {
-        // THE §111 F18 regression test: this exact call used to bind the
+        // THE v2.67.0 F18 regression test: this exact call used to bind the
         // target unchanged. An empty catalog must now refuse.
         let (mut ctx, _rx) = fresh_ctx();
         ctx.let_bindings.insert("draft".into(), "user record".into());
@@ -1643,7 +1643,7 @@ mod tests {
         }
     }
 
-    // ── §Fase 119.b (D119.4) — the step-scoped guard ─────────────────
+    // ── v2.83.0 — the step-scoped guard ─────────────────
 
     fn guarded_step(guard_name: &str) -> crate::ir_nodes::IRStep {
         crate::ir_nodes::IRStep {
@@ -1749,7 +1749,7 @@ mod tests {
         }
     }
 
-    // ── §Fase 119.c — OtsApply: registry or refusal ──────────────────
+    // ── v2.83.0 — OtsApply: registry or refusal ──────────────────
 
     fn ots_spec(name: &str) -> crate::ir_nodes::IROts {
         crate::ir_nodes::IROts {
@@ -1826,7 +1826,7 @@ mod tests {
 
     #[tokio::test]
     async fn an_unregistered_ots_refuses_never_identity() {
-        // THE §111 F18 regression test for ots: this exact call used to bind
+        // THE v2.67.0 F18 regression test for ots: this exact call used to bind
         // the target unchanged.
         let (mut ctx, _rx) = fresh_ctx();
         ctx.ots_specs = std::sync::Arc::new(vec![ots_spec("NoTransformer119c")]);

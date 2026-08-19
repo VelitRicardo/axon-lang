@@ -1,4 +1,4 @@
-//! §Fase 38.d (D2 — first half) — the `StoreColumnProof` axon-check
+//! v1.31.0 (D2 — first half) — the `StoreColumnProof` axon-check
 //! pass for `where:` clauses.
 //!
 //! For every store operation in every flow, given a declared
@@ -6,7 +6,7 @@
 //! entry (forms b/c via 38.c's manifest layer), this pass proves:
 //!
 //!  - **`axon-T801`** — every `where:` column reference exists in the
-//!    declared schema. Unknown columns surface a Fase 28 Levenshtein
+//! declared schema. Unknown columns surface a v1.20.0 Levenshtein
 //!    "Did you mean X?" hint within edit-distance 2 (the standard cap).
 //!  - **`axon-T802`** — every `where:` value (a bound `${param}` OR a
 //!    literal) is type-compatible with the column's declared type per
@@ -45,7 +45,7 @@
 //! `schema: env:VAR` (form c), the column set lives in a
 //! `.axon-schema.json` manifest. [`load_columns_for_form`] resolves
 //! the right [`ManifestStore`] entry using the discovery layer from
-//! §Fase 38.c. Form (c) at check time uses a first-match heuristic:
+//! v1.31.0. Form (c) at check time uses a first-match heuristic:
 //! look up `<env_var_name>.<store_name>` first; on miss, scan every
 //! manifest entry whose key ends in `.<store_name>` and use the first
 //! match (the assumption — typically true at deploy — is that
@@ -68,10 +68,10 @@ use crate::store_schema_manifest::{
 };
 
 // ════════════════════════════════════════════════════════════════════
-//  Error catalog (axon-T80x family — Fase 28 source-context blocks)
+// Error catalog (axon-T80x family — v1.20.0 source-context blocks)
 // ════════════════════════════════════════════════════════════════════
 
-/// The closed axon-T80x error-code family Fase 38 introduces.
+/// The closed axon-T80x error-code family v1.31.0 introduces.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProofErrorCode {
     /// `axon-T801` — a `where:` column reference doesn't exist in the
@@ -91,36 +91,36 @@ pub enum ProofErrorCode {
     /// `axon-T805` — propagated from the manifest layer when its
     /// `content_hash` mismatches the canonical content.
     T805ManifestHashMismatch,
-    /// `axon-T806` — §Fase 67.a.2 — a malformed `now() ± interval
+    /// `axon-T806` — v2.21.0 — a malformed `now() ± interval
     /// '<n> <unit>'` time value in a `where:` clause (a bad `now()`
     /// shape, a non-`u32` amount, an unknown unit, or `LIKE` against a
     /// time value), OR a time comparison against a non-temporal column.
-    /// The runtime `parse_filter` rejects the SAME shape (§Fase 67.a);
+    /// The runtime `parse_filter` rejects the SAME shape (v2.21.0);
     /// 67.a.2 moves that failure from the daemon run to `axon check`.
     T806BadTimeValue,
-    /// `axon-T807` — §Fase 67.b — a malformed `order_by:` clause: an
+    /// `axon-T807` — v2.21.0 — a malformed `order_by:` clause: an
     /// empty sort term, a direction that is not `asc`/`desc`, or a
     /// column that does not exist in the declared schema. Mirror of the
     /// runtime `FilterError::BadOrderBy`.
     T807BadOrderBy,
-    /// `axon-T808` — §Fase 67.b — a malformed `limit:` clause: a literal
+    /// `axon-T808` — v2.21.0 — a malformed `limit:` clause: a literal
     /// that is not a non-negative `u32`, or a `${param}` whose declared
     /// flow-parameter type is not integer-compatible. Mirror of the
     /// runtime `FilterError::BadLimit`.
     T808BadLimit,
-    /// `axon-T843` — §Fase 76.d — a malformed `aggregate:`/`group_by:`
+    /// `axon-T843` — v2.33.0 — a malformed `aggregate:`/`group_by:`
     /// clause: a function outside the CLOSED catalog (`count` /
     /// `sum(col)` / `avg(col)` / `min(col)` / `max(col)`), a bad column
     /// identifier, a `count` with a column, a column-less `sum`/`avg`/
     /// `min`/`max`, or a malformed group term. Mirror of the runtime
     /// `FilterError::BadAggregate`/`BadGroupBy` grammar rules.
     T843BadAggregate,
-    /// `axon-T844` — §Fase 76.d — an aggregate/group column proven
+    /// `axon-T844` — v2.33.0 — an aggregate/group column proven
     /// against the declared schema: the column does not exist, or
     /// `sum`/`avg` targets a non-numeric column. Only fires when an
     /// inline schema is declared (the `run_38d_where_proof` scope rule).
     T844AggregateColumn,
-    /// `axon-T845` — §Fase 76.d — a structurally invalid aggregate
+    /// `axon-T845` — v2.33.0 — a structurally invalid aggregate
     /// combination: `group_by:` without an `aggregate:`, an `aggregate:`
     /// combined with `order_by:`/`limit:` (v1 closed scope — ordering
     /// grouped rows is named deferred scope), or an aggregate column
@@ -150,7 +150,7 @@ impl ProofErrorCode {
 }
 
 /// One proof failure. Carries the error code, the source location
-/// (where in the `.axon` to anchor the Fase 28 source-context block),
+/// (where in the `.axon` to anchor the v1.20.0 source-context block),
 /// and a human-readable message.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProofError {
@@ -176,7 +176,7 @@ impl ProofError {
 // ════════════════════════════════════════════════════════════════════
 
 /// One declared column — type + nullable flag + whether it carries a
-/// default (so the §38.e `axon-T803` NOT-NULL-omission check knows
+/// default (so the v1.31.0 `axon-T803` NOT-NULL-omission check knows
 /// whether the column can be safely omitted from a `persist` block).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DeclaredColumn {
@@ -187,7 +187,7 @@ pub struct DeclaredColumn {
     pub not_null: bool,
     /// `true` iff a `default <value>` constraint was declared OR the
     /// column is `auto_increment` (legacy SERIAL via `nextval(...)`
-    /// default) OR the column is `identity` (Fase 38.x.c — `GENERATED
+    /// default) OR the column is `identity` (v1.31.0 — `GENERATED
     /// ALWAYS/BY DEFAULT AS IDENTITY`; Postgres auto-fills it). A
     /// NOT-NULL column with `has_default = true` is safe to omit from
     /// a `persist`.
@@ -196,7 +196,7 @@ pub struct DeclaredColumn {
     /// not USE this for T803/T804 (the `not_null` derivation already
     /// covers it), but adopter-facing diagnostics name it.
     pub primary_key: bool,
-    /// §Fase 38.x.c (D2) — `true` iff the column is declared with
+    /// v1.31.0 (D2) — `true` iff the column is declared with
     /// `GENERATED ALWAYS AS IDENTITY` or `GENERATED BY DEFAULT AS
     /// IDENTITY`. Folded into `has_default` for T803 (omittable from
     /// `persist`); also surfaced separately so future T802 arms can
@@ -230,7 +230,7 @@ impl ColumnSet {
     pub fn from_inline_columns(columns: &[StoreColumn]) -> ColumnSet {
         let mut out = BTreeMap::new();
         for col in columns {
-            // §Fase 38.x.c (D3) — `identity: true` columns are
+            // v1.31.0 (D3) — `identity: true` columns are
             // safe-to-omit from a `persist` because Postgres auto-fills
             // them. Fold into `has_default` so T803 treats them
             // identically to SERIAL / explicit-default columns.
@@ -255,7 +255,7 @@ impl ColumnSet {
     pub fn from_manifest_store(store: &ManifestStore) -> ColumnSet {
         let mut out = BTreeMap::new();
         for (name, mc) in &store.columns {
-            // §Fase 38.x.c (D3) — see `from_inline_columns` for rationale.
+            // v1.31.0 (D3) — see `from_inline_columns` for rationale.
             let has_default =
                 !mc.default_value.is_empty() || mc.auto_increment || mc.identity;
             out.insert(
@@ -372,21 +372,21 @@ pub enum WhereValue {
     },
     /// `NULL` keyword (only valid with `IS [NOT] NULL`).
     NullKeyword,
-    /// §Fase 67.a.2 — a structural time-relative value: `now()`,
+    /// v2.21.0 — a structural time-relative value: `now()`,
     /// optionally offset by `± interval '<n> <unit>'`. The PROOF mirror
     /// of the runtime `filter::TimeValue` (`axon-rs/src/store/filter.rs`,
-    /// §Fase 67.a). `None` = bare `now()`; the offset's amount is a
+    /// v2.21.0). `None` = bare `now()`; the offset's amount is a
     /// validated `u32` + a closed-catalog [`TimeUnit`] — exactly the
     /// shape the runtime renders inline. The proof checks the COLUMN is
     /// a temporal type (a time comparison against e.g. a `Text` column
-    /// is the §T806 error); the value itself carries no adopter string,
+    /// is the T806 error); the value itself carries no adopter string,
     /// so there is no T802 literal-compatibility concern here.
     TimeNow {
         offset: Option<(TimeSign, u32, TimeUnit)>,
     },
 }
 
-/// §Fase 67.a.2 — `+` / `-` in `now() ± interval '…'`. Proof mirror of
+/// v2.21.0 — `+` / `-` in `now() ± interval '…'`. Proof mirror of
 /// the runtime `filter::TimeSign`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TimeSign {
@@ -394,9 +394,9 @@ pub enum TimeSign {
     Minus,
 }
 
-/// §Fase 67.a.2 — the closed catalog of interval units. Proof mirror of
+/// v2.21.0 — the closed catalog of interval units. Proof mirror of
 /// the runtime `filter::TimeUnit`; the cross-crate parity test
-/// (`axon-rs/tests/fase67_a2_where_time_parity.rs`) pins the two in
+/// (`axon-rs/tests/where_time_parity.rs`) pins the two in
 /// lockstep so the dual scanner cannot silently drift.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TimeUnit {
@@ -411,7 +411,7 @@ pub enum TimeUnit {
 
 impl TimeUnit {
     /// Resolve a unit word (singular or plural, case-insensitive). The
-    /// whitelist IS the catalog — an un-listed unit is a §T806 error.
+    /// whitelist IS the catalog — an un-listed unit is a T806 error.
     fn from_word(w: &str) -> Option<TimeUnit> {
         Some(match w.to_ascii_lowercase().as_str() {
             "second" | "seconds" => TimeUnit::Second,
@@ -453,13 +453,13 @@ pub enum ScanError {
     /// [`check_filter`] swallows this silently (the runtime parser owns
     /// the canonical syntactic diagnostic).
     Malformed { detail: String },
-    /// §Fase 67.a.2 — a malformed `now() ± interval '<n> <unit>'` time
+    /// v2.21.0 — a malformed `now() ± interval '<n> <unit>'` time
     /// value. UNLIKE [`ScanError::Malformed`], this is surfaced as a
     /// HARD `axon-T806` compile error by [`check_filter`]: once a value
     /// position opens with `now`, the form is UNAMBIGUOUSLY a time value
     /// (no other grammar production starts with `now`), so a malformed
     /// continuation is a definite adopter error worth catching at
-    /// `axon check` rather than deferring to the daemon run (the §Fase
+    /// `axon check` rather than deferring to the daemon run (the cycle
     /// 67 / brief #34 failure mode). Backward-compatible: a non-`now`
     /// malformed `where:` still yields [`ScanError::Malformed`].
     BadTimeValue { detail: String },
@@ -646,8 +646,8 @@ fn tokenize(src: &str) -> Result<Vec<ScanToken>, ScanError> {
             i += 1;
             continue;
         }
-        // §Fase 67.a.2 — parens + interval sign for the `now() ± interval
-        // '…'` time-value form (mirror of the §67.a filter tokenizer). A
+        // v2.21.0 — parens + interval sign for the `now() ± interval
+        // '…'` time-value form (mirror of the v2.21.0 filter tokenizer). A
         // `-` followed by a digit was already consumed as a negative
         // number above; a standalone `( ) + -` becomes a bare symbol the
         // predicate parser interprets ONLY inside the time-value form —
@@ -763,7 +763,7 @@ fn parse_predicate(
     let value_token = tokens.get(*cursor).ok_or_else(|| ScanError::Malformed {
         detail: format!("missing value after `{column} {op:?}`"),
     })?;
-    // §Fase 67.a.2 — a `now`-led value is the structural time form
+    // v2.21.0 — a `now`-led value is the structural time form
     // (`now()` / `now() ± interval '<n> <unit>'`). `now` is not a valid
     // bare literal otherwise (it would fall through to the catch-all
     // below), so routing it here does not shadow any pre-67.a value. The
@@ -813,13 +813,13 @@ fn parse_predicate(
     })
 }
 
-/// §Fase 67.a.2 — parse `now` `(` `)` `[ (+|-) interval '<n> <unit>' ]`
+/// v2.21.0 — parse `now` `(` `)` `[ (+|-) interval '<n> <unit>' ]`
 /// at `*cursor` (the caller verified `tokens[*cursor]` is the `now`
 /// word). Advances `*cursor` past every consumed token and returns the
 /// offset (`None` = bare `now()`).
 ///
 /// This is the PROOF mirror of the runtime `filter::parse_time_value` +
-/// `parse_interval` (`axon-rs/src/store/filter.rs`, §Fase 67.a) — it
+/// `parse_interval` (`axon-rs/src/store/filter.rs`, v2.21.0) — it
 /// accepts EXACTLY the same shapes and rejects EXACTLY the same
 /// malformed forms, with [`ScanError::BadTimeValue`] standing in for the
 /// runtime's `FilterError::{BadTimeValue,LikeWithTime}`. The cross-crate
@@ -879,7 +879,7 @@ fn parse_scan_time_value(
     Ok(Some((sign, amount, unit)))
 }
 
-/// §Fase 67.a.2 — parse + validate the `'<n> <unit>'` interval body into
+/// v2.21.0 — parse + validate the `'<n> <unit>'` interval body into
 /// a typed `(u32, TimeUnit)`. Proof mirror of the runtime
 /// `filter::parse_interval`.
 fn parse_scan_interval(raw: &str) -> Result<(u32, TimeUnit), ScanError> {
@@ -973,7 +973,7 @@ pub fn axon_param_compatible_with_column(
 }
 
 fn strip_optional_wrap(name: &str) -> &str {
-    // Pre-Fase 38 the optional flag is a separate AST flag. But some
+    // Pre-v1.31.0 the optional flag is a separate AST flag. But some
     // adopters write `Optional<T>` literally; strip that for compat
     // purposes.
     if let Some(inner) = name
@@ -993,9 +993,9 @@ fn strip_optional_wrap(name: &str) -> &str {
 // ════════════════════════════════════════════════════════════════════
 
 // ════════════════════════════════════════════════════════════════════
-//  §Fase 38.g (D6) — composite Levenshtein suggestion helpers
+// v1.31.0 (D6) — composite Levenshtein suggestion helpers
 //
-//  The Fase 28 `smart_suggest::suggest_for` infrastructure returns
+// The v1.20.0 `smart_suggest::suggest_for` infrastructure returns
 //  bare candidate names. 38.g lifts the suggestion to include the
 //  column's DECLARED TYPE in the rendered output — adopters reading
 //  the error see both the spelling fix AND the type context in one
@@ -1004,12 +1004,12 @@ fn strip_optional_wrap(name: &str) -> &str {
 //    Before 38.g: `Did you mean \`tenant_id\`?`
 //    After  38.g: `Did you mean column \`tenant_id\` (Uuid)?`
 //
-//  Vertical-aware dictionary integration (the Fase 29 enterprise
+// Vertical-aware dictionary integration (the v1.21.0 enterprise
 //  hook) layers ON TOP without changes here: an enterprise tenant
 //  that registers `medical_record_number` as a synonym for `mrn`
 //  passes the AUGMENTED column-name list to `suggest_columns_composite`
 //  — the underlying `smart_suggest::suggest` already accepts any
-//  candidate slice (Fase 28 D3). Documented for extensibility.
+// candidate slice (v1.20.0 D3). Documented for extensibility.
 // ════════════════════════════════════════════════════════════════════
 
 /// Render the declared columns as `{name: Type, name: Type, …}` for
@@ -1025,13 +1025,13 @@ pub fn format_column_list(columns: &ColumnSet) -> String {
     parts.join(", ")
 }
 
-/// §Fase 38.g — produce a composite "Did you mean column `X` (Type)?"
+/// v1.31.0 — produce a composite "Did you mean column `X` (Type)?"
 /// hint for an unknown-column situation. Uses the same `MAX_DISTANCE = 2`
-/// and `MAX_RESULTS = 3` defaults as Fase 28 (`suggest_for`) but
+/// and `MAX_RESULTS = 3` defaults as v1.20.0 (`suggest_for`) but
 /// rewrites the rendering to include the column type.
 ///
 /// Returns the empty string when no candidate is within edit-distance
-/// 2 — adopters see no guess-laden hint (mirrors Fase 28's discipline:
+/// 2 — adopters see no guess-laden hint (mirrors v1.20.0's discipline:
 /// a confidently-close suggestion is more useful than a noisy one).
 ///
 /// Examples (with declared columns `tenant_id: Uuid`, `tier: Text`):
@@ -1082,7 +1082,7 @@ pub fn suggest_columns_composite(unknown: &str, columns: &ColumnSet) -> String {
     }
 }
 
-/// §Fase 38.g — produce a "compatible columns in this schema"
+/// v1.31.0 — produce a "compatible columns in this schema"
 /// suggestion for an axon-T802 type-mismatch.
 ///
 /// When a literal-shape (or bound-param-type) doesn't match its
@@ -1110,7 +1110,7 @@ pub fn suggest_type_compatible_columns_for_literal(
     render_compat_suggestions(&compat, format!("{lit:?}-class"))
 }
 
-/// §Fase 38.g — twin of the literal helper for the bound-param side.
+/// v1.31.0 — twin of the literal helper for the bound-param side.
 pub fn suggest_type_compatible_columns_for_param(
     param_axon_type: &str,
     columns: &ColumnSet,
@@ -1147,7 +1147,7 @@ fn render_compat_suggestions(compat: &[&DeclaredColumn], class_label: String) ->
 
 /// Run the D2 proof against `where_expr` given a declared column set
 /// and the flow parameters in scope. Returns every proof failure
-/// (`axon-T801` / `axon-T802`) anchored at `where_loc` for Fase 28
+/// (`axon-T801` / `axon-T802`) anchored at `where_loc` for v1.20.0
 /// source-context rendering.
 ///
 /// Empty `where:` clauses skip silently (no predicates → nothing to
@@ -1162,7 +1162,7 @@ pub fn check_filter(
 ) -> Vec<ProofError> {
     let predicates = match scan_where(where_expr) {
         Ok(ps) => ps,
-        // §Fase 67.a.2 — a malformed time value is a HARD compile error
+        // v2.21.0 — a malformed time value is a HARD compile error
         // (the runtime `parse_filter` rejects the same shape; 67.a.2
         // moves that failure to `axon check`).
         Err(ScanError::BadTimeValue { detail }) => {
@@ -1197,7 +1197,7 @@ fn check_predicate(
     where_loc: (u32, u32),
     out: &mut Vec<ProofError>,
 ) {
-    // — T801 unknown column (§Fase 38.g — composite suggestion) —
+    // T801 unknown column (v1.31.0 — composite suggestion) —
     let Some(col) = columns.get(&pred.column) else {
         let suggestion = suggest_columns_composite(&pred.column, columns);
         let suggest_suffix = if suggestion.is_empty() {
@@ -1249,7 +1249,7 @@ fn check_predicate(
         }
     }
 
-    // — Value type compatibility (T802, with §Fase 38.g composite hint) —
+    // Value type compatibility (T802, with v1.31.0 composite hint) —
     match &pred.value {
         WhereValue::Literal { kind, .. } => {
             if !literal_compatible_with_column(*kind, col.col_type) {
@@ -1281,7 +1281,7 @@ fn check_predicate(
         }
         WhereValue::BoundParam(name) => {
             // If the parameter is declared in the flow, prove
-            // compatibility. If not declared, that's the Fase 37 D2
+            // compatibility. If not declared, that's the v1.32.0 D2
             // binding-totality concern — silently ignore here.
             if let Some(axon_type) = flow_params.get(name) {
                 if !axon_param_compatible_with_column(axon_type, col.col_type) {
@@ -1319,7 +1319,7 @@ fn check_predicate(
             // proof-irrelevant syntactic anomaly.
         }
         WhereValue::TimeNow { .. } => {
-            // §Fase 67.a.2 — a `now()` time value renders inline against
+            // v2.21.0 — a `now()` time value renders inline against
             // a timestamp expression. The column MUST be a temporal type
             // (the runtime emits `"col" {op} now() …`, which Postgres
             // rejects against a non-temporal column). Catching it here
@@ -1353,10 +1353,10 @@ fn check_predicate(
 }
 
 // ════════════════════════════════════════════════════════════════════
-//  §Fase 67.b — bounded + ordered retrieve proof (`order_by:` / `limit:`)
+// v2.21.0 — bounded + ordered retrieve proof (`order_by:` / `limit:`)
 // ════════════════════════════════════════════════════════════════════
 
-/// §Fase 67.b — validate a bounded/ordered `retrieve`'s `order_by:` +
+/// v2.21.0 — validate a bounded/ordered `retrieve`'s `order_by:` +
 /// `limit:` clauses at `axon check`, the compile-time mirror of the
 /// runtime `filter::{parse_order_by, parse_limit}` (the cross-crate
 /// parity test pins them in lockstep).
@@ -1378,7 +1378,7 @@ pub fn check_bounds(
     out
 }
 
-/// §Fase 76.d — the compile-time aggregate proof: the `aggregate:` /
+/// v2.33.0 — the compile-time aggregate proof: the `aggregate:` /
 /// `group_by:` clauses proven BEFORE the daemon tick / request ever runs.
 /// The exact mirror of the runtime `filter::parse_aggregate_clause`
 /// grammar + cross-rules (axon-T843 / axon-T845), plus the schema-backed
@@ -1736,7 +1736,7 @@ fn check_limit(
         return;
     }
     // — a `${param}` / `$param` reference — prove its declared type is
-    //   integer-compatible (an undeclared param is the §37 D2 binding-
+    // integer-compatible (an undeclared param is the v1.32.0 D2 binding-
     //   totality concern; silently ignored here, mirroring 38.d). —
     if let Some(name) = bound_param_name(raw) {
         if let Some(axon_type) = flow_params.get(name) {
@@ -1808,7 +1808,7 @@ fn param_is_integer(axon_type: &str) -> bool {
 }
 
 // ════════════════════════════════════════════════════════════════════
-//  §Fase 38.e (D2 — second half) — field-block proof for
+// v1.31.0 (D2 — second half) — field-block proof for
 //  `persist into <store> { col: value … }` and
 //  `mutate <store> { where: … col: value … }` SET assignments
 // ════════════════════════════════════════════════════════════════════
@@ -1901,7 +1901,7 @@ pub fn classify_field_value(raw: &str) -> WhereValue {
     }
 }
 
-/// §Fase 38.e — run the D2 proof against a `persist` field block.
+/// v1.31.0 — run the D2 proof against a `persist` field block.
 ///
 /// Three error code surfaces:
 ///   - `axon-T803` for every NOT-NULL column without a default that
@@ -1961,7 +1961,7 @@ pub fn check_persist_fields(
     out
 }
 
-/// §Fase 38.e — run the D2 proof against a `mutate` SET field block.
+/// v1.31.0 — run the D2 proof against a `mutate` SET field block.
 ///
 /// `mutate` SETs are an UPDATE, not an INSERT — so NOT-NULL omission
 /// (T803) does NOT apply (the existing row's NOT-NULL columns stay
@@ -1997,7 +1997,7 @@ fn check_field_block_columns(
 ) {
     for (col_name, raw_value) in fields {
         let Some(col) = columns.get(col_name) else {
-            // §Fase 38.g — composite suggestion includes the type.
+            // v1.31.0 — composite suggestion includes the type.
             let suggestion = suggest_columns_composite(col_name, columns);
             let suggest_suffix = if suggestion.is_empty() {
                 String::new()
@@ -2021,7 +2021,7 @@ fn check_field_block_columns(
         match &value {
             WhereValue::Literal { kind, .. } => {
                 if !literal_compatible_with_column(*kind, col.col_type) {
-                    // §Fase 38.g — append compatible-columns hint.
+                    // v1.31.0 — append compatible-columns hint.
                     let compat = suggest_type_compatible_columns_for_literal(
                         *kind, columns, col_name,
                     );
@@ -2072,7 +2072,7 @@ fn check_field_block_columns(
                         ));
                     }
                 }
-                // Undeclared param → silently pass (Fase 37 D2 concern,
+                // Undeclared param → silently pass (v1.32.0 D2 concern,
                 // mirroring 38.d's policy).
             }
             WhereValue::NullKeyword => {
@@ -2090,10 +2090,10 @@ fn check_field_block_columns(
                     ));
                 }
             }
-            // §Fase 67.a.2 — the `now()` time form is a `where:`-only
+            // v2.21.0 — the `now()` time form is a `where:`-only
             // surface; `classify_field_value` never produces `TimeNow`,
             // so this arm is unreachable (a persist/mutate SET-block
-            // `now()` is out of §67.a scope). Present for exhaustiveness.
+            // `now()` is out of v2.21.0 scope). Present for exhaustiveness.
             WhereValue::TimeNow { .. } => {}
         }
     }
@@ -2111,7 +2111,7 @@ fn check_field_block_columns(
 ///
 /// Honest scope: form (c) `env:VAR` uses a first-match heuristic
 /// (look up `<env_var>.<store_name>`, then any `*.<store_name>`
-/// manifest entry) — at deploy, D8 (Fase 38.f) does the canonical
+/// manifest entry) — at deploy, D8 (v1.31.0) does the canonical
 /// per-tenant resolution.
 pub fn load_columns_for_schema(
     schema: &StoreColumnSchema,
@@ -2495,7 +2495,7 @@ mod tests {
     #[test]
     fn bound_param_undeclared_in_flow_silently_passes() {
         // A bound param NOT declared as a flow parameter is the
-        // Fase 37 D2 binding-totality concern — 38.d does not
+        // v1.32.0 D2 binding-totality concern — 38.d does not
         // duplicate that check.
         let cs = columns_for(&[("id", StoreColumnType::Uuid, true)]);
         let errs = check_filter("id = ${not_a_param}", &cs, &params(&[]), (1, 1));
@@ -2715,7 +2715,7 @@ mod tests {
     }
 
     // ════════════════════════════════════════════════════════════════
-    //  §Fase 38.e — `persist` / `mutate` field-block proof
+    // v1.31.0 — `persist` / `mutate` field-block proof
     // ════════════════════════════════════════════════════════════════
 
     fn col_full(
@@ -3210,7 +3210,7 @@ mod tests {
 
     #[test]
     fn persist_string_param_accepted_against_every_catalog_type() {
-        // Mirror of the §38.d catalog smoke — at the field-block side
+        // Mirror of the v1.31.0 catalog smoke — at the field-block side
         // a String param maps to every column type via the D4
         // fallback.
         let fp = params(&[("p", "String")]);
@@ -3231,12 +3231,12 @@ mod tests {
     }
 
     // ════════════════════════════════════════════════════════════════
-    //  §Fase 38.g — composite Levenshtein suggestion shape
+    // v1.31.0 — composite Levenshtein suggestion shape
     // ════════════════════════════════════════════════════════════════
 
     #[test]
     fn format_column_list_renders_name_colon_type_alphabetically() {
-        // §Fase 38.g — adopters reading a T801/T804 error see the
+        // v1.31.0 — adopters reading a T801/T804 error see the
         // declared schema with EACH column's type, not bare names.
         let cs = columns_for(&[
             ("tier", StoreColumnType::Text, false),
@@ -3325,7 +3325,7 @@ mod tests {
         assert_eq!(matches, smart_suggest::MAX_RESULTS, "got: {hint}");
     }
 
-    // ── §Fase 38.g — T801 composite messages in flight ───────────────
+    // ── v1.31.0 — T801 composite messages in flight ───────────────
 
     #[test]
     fn t801_message_renders_columns_with_types_and_composite_suggestion() {
@@ -3378,7 +3378,7 @@ mod tests {
         assert!(t804.message.contains("tier: Text"));
     }
 
-    // ── §Fase 38.g — T802 compatible-columns suggestion ──────────────
+    // ── v1.31.0 — T802 compatible-columns suggestion ──────────────
 
     #[test]
     fn t802_literal_mismatch_surfaces_a_compatible_columns_hint() {
@@ -3510,14 +3510,14 @@ mod tests {
         // intentional (LIKE wants a Text column, not a String value).
     }
 
-    // ─── §Fase 67.a.2 — compile-time `now() ± interval` validation ───────
+    // ─── v2.21.0 — compile-time `now() ± interval` validation ───────
     //
-    // The proof scanner mirrors the §67.a runtime time grammar. A VALID
+    // The proof scanner mirrors the v2.21.0 runtime time grammar. A VALID
     // time form against a temporal column proves clean; a MALFORMED time
     // form is the hard `axon-T806` compile error that moves the brief #34
     // failure (daemon `retrieve` silently 0 rows) from the run to
     // `axon check`. The cross-crate parity test
-    // (`axon-rs/tests/fase67_a2_where_time_parity.rs`) pins this scanner
+    // (`axon-rs/tests/where_time_parity.rs`) pins this scanner
     // to the runtime `parse_filter` so the two cannot drift.
 
     #[test]
@@ -3579,7 +3579,7 @@ mod tests {
     fn malformed_time_forms_are_hard_t806_errors() {
         // Every malformed time form is now a compile error — not a silent
         // pass that fails at the daemon run. Mirrors the runtime
-        // `parse_filter` rejection corpus (§67.a).
+        // `parse_filter` rejection corpus (v2.21.0).
         let cs = columns_for(&[("t", StoreColumnType::Timestamptz, false)]);
         for bad in [
             "t < now( - interval '5 minutes'",      // missing `)`
@@ -3647,12 +3647,12 @@ mod tests {
         assert_eq!(p[0].value, WhereValue::TimeNow { offset: None });
     }
 
-    // ─── §Fase 67.b — bounded + ordered retrieve (`order_by:` / `limit:`) ──
+    // ─── v2.21.0 — bounded + ordered retrieve (`order_by:` / `limit:`) ──
     //
     // `check_bounds` is the compile-time mirror of the runtime
     // `filter::render_bounds`. A valid clause proves clean; a malformed
     // one is a hard `axon-T807` (order_by) / `axon-T808` (limit). Pinned
-    // to the runtime by `axon-rs/tests/fase67_b_bounds_parity.rs`.
+    // to the runtime by `axon-rs/tests/bounds_parity.rs`.
 
     fn no_params() -> FlowParamTypes {
         params(&[])
@@ -3721,7 +3721,7 @@ mod tests {
         let errs = check_bounds("", "${label}", None, &fp, (1, 1));
         assert_eq!(errs.len(), 1);
         assert_eq!(errs[0].code, ProofErrorCode::T808BadLimit);
-        // Undeclared param — silent (the §37 D2 binding-totality concern).
+        // Undeclared param — silent (the v1.32.0 D2 binding-totality concern).
         assert!(check_bounds("", "${unknown}", None, &fp, (1, 1)).is_empty());
     }
 
@@ -3735,7 +3735,7 @@ mod tests {
         assert!(errs.iter().any(|e| e.code == ProofErrorCode::T808BadLimit));
     }
 
-    // ── §Fase 76.d — check_aggregate (axon-T843/T844/T845) ────────────
+    // ── v2.33.0 — check_aggregate (axon-T843/T844/T845) ────────────
 
     #[test]
     fn aggregate_happy_paths_yield_no_errors() {

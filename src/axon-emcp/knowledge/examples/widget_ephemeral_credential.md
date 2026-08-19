@@ -1,7 +1,7 @@
 ---
 name: widget_ephemeral_credential
 title: Ephemeral widget credential — mint an attenuated, TTL-bounded bearer
-summary: "`credential` + `mint` (§92): the chat-widget-on-any-origin shape. The bootstrap flow mints a 15-minute bearer carrying exactly [chat.invoke] (grants ⊆ minter, `authority_only_attenuates`); the widget presents it against a `requires:`-gated endpoint behind a wildcard-origin `cors` policy. The token is shown once — persisting it is a compile error (axon-T896)."
+summary: "`credential` + `mint` (v2.46.0): the chat-widget-on-any-origin shape. The bootstrap flow mints a 15-minute bearer carrying exactly [chat.invoke] (grants ⊆ minter, `authority_only_attenuates`); the widget presents it against a `requires:`-gated endpoint behind a wildcard-origin `cors` policy. The token is shown once — persisting it is a compile error (axon-T896)."
 topic: endpoints
 primitives:
   - credential

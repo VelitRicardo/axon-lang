@@ -1,4 +1,4 @@
-//! §Fase 25.j — BPE encoder benchmark vs `tiktoken-rs`.
+//! v1.19.0 — BPE encoder benchmark vs `tiktoken-rs`.
 //!
 //! Measures encode throughput of `axon_csys::cl100k_base().encode_ordinary`
 //! against `tiktoken_rs::cl100k_base().encode_ordinary` on inputs of

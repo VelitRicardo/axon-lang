@@ -1,4 +1,4 @@
-//! Moonshot Kimi backend — Fase 24.f.
+//! Moonshot Kimi backend — v1.18.0.
 //!
 //! Thin factory + capability override on top of [`OpenAICompatibleBackend`].
 //! Moonshot's Kimi family speaks OpenAI-compat wire shape verbatim
@@ -75,7 +75,7 @@ impl KimiBackend {
         }
     }
 
-    /// §Fase 24.g.2 — construct with a per-tenant key + optional explicit
+    /// v1.18.0 — construct with a per-tenant key + optional explicit
     /// base-URL / chat-path overrides (precedence: explicit > env >
     /// default). `api_key = None` falls back to `KIMI_API_KEY`.
     pub fn with_api_key_and_endpoint(
@@ -348,7 +348,7 @@ mod tests {
 
     #[tokio::test]
     async fn stream_delegates_to_base_real_sse_implementation() {
-        // §Fase 33.d — base OpenAI-compat now implements SSE streaming
+        // v1.24.0 — base OpenAI-compat now implements SSE streaming
         // natively; this delegate path inherits it. Without a reachable
         // server the test exercises the transport-error path.
         let b = KimiBackend::with_api_key(Some("k".into()))

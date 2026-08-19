@@ -6,11 +6,11 @@
 //! publishing — with zero human input at execution time, as one step inside a larger multi-tool
 //! task.
 //!
-//! This crate is the **OSS protocol layer** (§Fase 116, decision D116.5): the single source of
+//! This crate is the **OSS protocol layer** (v2.77.0, decision the design decision): the single source of
 //! truth that both the `agora.*` module surface (`.axon` files) and the axon-frontend governance
 //! laws (`axon-T956`/`T957`/`T958`/`W018`) consume. It contains no network I/O and no
 //! credentials — per-tenant token custody, the refresh daemon, webhook ingress, and audit sinks
-//! live in the enterprise layer (§116.b+). What it does contain:
+//! live in the enterprise layer (v2.77.0+). What it does contain:
 //!
 //! - [`scope`] — the capability×scope matrix (which OAuth scope each operation requires).
 //! - [`protocol`] — the session-typed publishing protocols (Instagram's `create → poll →
@@ -21,7 +21,7 @@
 //! - [`connector`] — the uniform [`SocialConnector`] seam every platform's native core
 //!   implements, reached in production as a tool provider.
 //!
-//! Every platform fact encoded here is sourced to `docs/papers/paper_axon_agora.md` §II, itself
+//! Every platform fact encoded here is sourced to `docs/papers/paper_axon_agora.md` II, itself
 //! confirmed against primary platform documentation (2026-07).
 
 pub mod connector;

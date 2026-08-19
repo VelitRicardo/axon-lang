@@ -12,12 +12,12 @@
 //! Designed for production SaaS workloads where LLM availability is critical.
 //! All state transitions and retry attempts are logged via `tracing`.
 //!
-//! # §Fase 33.x.i — `crate::backend` deprecation
+//! # v1.24.0 — `crate::backend` deprecation
 //!
 //! This file wraps the deprecated synchronous `crate::backend`
 //! surface with resilience patterns. The `#![allow(deprecated)]`
 //! below silences the deprecation warnings while the deeper async
-//! migration progresses under followup sub-fase Fase 33.x.i.2.
+//! migration progresses under followup step v1.24.0.
 //! The async equivalent (`backends::Backend::complete()` with
 //! retry/circuit-breaker layers) is the migration target.
 
@@ -98,7 +98,7 @@ impl ResilientBackend {
 
     /// Make a resilient LLM call with retry, per-tenant circuit breaker, and fallback.
     ///
-    /// # §Fase 122.e — `tenant_id` is a parameter, and used to be ambient
+    /// # v2.89.0 — `tenant_id` is a parameter, and used to be ambient
     ///
     /// This doc used to read *"Tenant is derived automatically from
     /// `current_tenant_id()` — the active Axum request's task-local"*. That
@@ -115,7 +115,7 @@ impl ResilientBackend {
     /// — collapsing precisely the per-`(tenant, provider)` isolation this type
     /// exists for — and nothing would say so.
     ///
-    /// §122.e's census found `call` has ZERO production callers today: the
+    /// v2.89.0's census found `call` has ZERO production callers today: the
     /// field is built on `ServerState` and never read. So this is not a defect
     /// being fixed, it is a defect being **disarmed before it is reachable** —
     /// the alternative was leaving a doc comment that instructs the next author

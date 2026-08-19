@@ -1,6 +1,6 @@
 ---
 name: effects_are_linear
-title: "An effect under a budget is a linear resource — no unbudgeted emission (§Fase 72)"
+title: "An effect under a budget is a linear resource — no unbudgeted emission (v2.28.0)"
 summary: "The law that an external effect declared under a `budget { rate/max … on Tool(X) }` is a LINEAR resource: the runtime may not emit it without consuming a token from a renewable bucket (a `rate:` quota) or a fixed window (a `max:` quota), and over-emission is impossible by construction. A token present ⇒ the call proceeds and the token is consumed; a token absent ⇒ the call is blocked, deferred, or shed per the declared `on_exhausted` policy — but it is NEVER emitted over budget. The bucket decision is a pure function of `(bucket state, now)`; refill is a pure function of elapsed time; every acquire/deny is auditable. This generalizes the lease kernel's affine `LeaseToken` (single-use, decays) into a refilling `RateLease` (N-use, refills) while preserving the linearity invariant — a consumed token is gone until refill. It is the executable form, for external effects, of what the lease/reconcile kernel already enforced for intra-flow resource handles: the Logic pillar's affine discipline made real at the boundary where a program touches the world."
 ---
 
@@ -10,7 +10,7 @@ A rate limiter bolted on beside a program — a Redis token bucket in
 middleware, a Sidekiq throttle, an Airflow pool — is invisible to the
 type system and to the program's own reasoning. The program *believes*
 it can call a tool; an external counter, somewhere else, sometimes says
-no. §Fase 72 moves that contract INTO the language: an effect under a
+no. v2.28.0 moves that contract INTO the language: an effect under a
 `budget` is a linear resource the compiler sees and the runtime
 co-enforces.
 
@@ -25,7 +25,7 @@ co-enforces.
 
 The lease/reconcile kernel already implements affine resources for
 *intra-flow* handles: a `LeaseToken` is single-use and decays over τ —
-acquire it, and it is yours until it expires, then it is gone. §72
+acquire it, and it is yours until it expires, then it is gone. v2.28.0
 generalizes that token into a **`RateLease`** for *external effects*:
 
 - A **`rate:` quota** is a token bucket of capacity `limit` that refills
@@ -63,7 +63,7 @@ closed catalog:
 - **`block`** (the fail-closed default) — the step fails with the typed
   `EffectQuotaExhausted` (`axon-E0810`). The call is not emitted.
 - **`defer`** — the tick reschedules to the next instant a token frees up
-  (`EffectDeferred`, `axon-E0811`), reusing the §71 coalesced defer
+  (`EffectDeferred`, `axon-E0811`), reusing the v2.27.0 coalesced defer
   ledger. The work is preserved, not dropped, and not over-emitted.
 - **`shed`** — best-effort: the call is skipped, the flow continues, and
   the skip is audited (`effect:shed`) — never silent.
@@ -98,7 +98,7 @@ None of these emits over budget. They differ only in what happens to the
 - Carries the spirit of
   [`no_unwitnessed_advantage`](axon://logic/no_unwitnessed_advantage):
   there, no claim without a machine-checkable witness; here, no emission
-  without a consumed token — and the §72.f `EffectBudgeted` proof makes
+  without a consumed token — and the v2.28.0 `EffectBudgeted` proof makes
   the budget's soundness an independently-verifiable object.
 
 The honest test: if your rate limit lives beside the program and the

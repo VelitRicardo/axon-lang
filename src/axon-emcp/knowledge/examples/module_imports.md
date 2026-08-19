@@ -1,6 +1,6 @@
 ---
 name: module_imports
-title: Multi-file project with the Epistemic Module System (§115)
+title: Multi-file project with the Epistemic Module System (v2.76.0)
 summary: Splits a program across two files — a know-level security module and a consulting entry that imports it — resolved, epistemically checked (ECC) and linked by the EMS into one deployable artifact.
 topic: composition
 primitives:
@@ -10,7 +10,7 @@ primitives:
   - run
 ---
 
-// The Epistemic Module System (EMS, §Fase 115): `import` resolves for
+// The Epistemic Module System (EMS, v2.76.0): `import` resolves for
 // real. `axon check consultation.axon` discovers the DAG, generates
 // `.axi` interfaces, runs the Epistemic Compatibility Check (a
 // know-level module importing speculate-level definitions is

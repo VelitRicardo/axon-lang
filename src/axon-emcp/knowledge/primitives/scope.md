@@ -3,7 +3,7 @@ name: scope
 summary: "A named authorization scope — the signed envelope (targets allowlist + depth ceiling + approver) a `warden` adversarial analysis MUST run `within`. The load-bearing safety construct that makes security analysis a governed, auditable, fail-closed capability."
 category: operators
 top_level: true
-since: Fase 88
+since: v2.43.0
 grammar: |
   scope <Name> {
       targets: [ "<resource>", … ]          # REQUIRED — the analysis allowlist
@@ -15,7 +15,7 @@ grammar: |
 # `scope`
 
 `scope` declares **the authorization envelope a `warden` analysis runs
-within**. It is the load-bearing safety construct of §Fase 88: a
+within**. It is the load-bearing safety construct of v2.43.0: a
 security-analysis primitive that reads evidence and reasons about
 exploits is, without governance, indistinguishable from an offensive
 kit. `scope` makes the authorization **part of the type** — a `warden`

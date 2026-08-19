@@ -1,4 +1,4 @@
-//! Locked-parameter dispatch for reasoning models — Fase 24.b.
+//! Locked-parameter dispatch for reasoning models — v1.18.0.
 //!
 //! Direct port of the v1.16.2 Python registry
 //! (`axon.server.model_clients::_LOCKED_PARAMETER_MODELS`). Several
@@ -8,7 +8,7 @@
 //!
 //! The pattern → locked-set mapping below MUST stay in lockstep with
 //! the Python registry — drift is detected by
-//! `tests/test_fase24_locked_model_parity.py` (Fase 24.j).
+//! `tests/test_fase24_locked_model_parity.py` (v1.18.0).
 //!
 //! # Use
 //!
@@ -182,7 +182,7 @@ pub fn apply_sampling_params(body: &mut Value, model_name: &str) -> Vec<(String,
 }
 
 /// Iterate the (pattern, locked-set) pairs for parity testing — used by
-/// the Fase 24.j drift gate against the Python registry.
+/// the v1.18.0 drift gate against the Python registry.
 pub fn registered_patterns() -> Vec<(String, Vec<&'static str>)> {
     registry()
         .iter()

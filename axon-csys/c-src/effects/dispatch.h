@@ -1,7 +1,7 @@
 /*
- * §Fase 25.e — Algebraic effects FSM dispatcher (public ABI).
+ * v1.19.0 — Algebraic effects FSM dispatcher (public ABI).
  *
- * Direct port of `axon-rs/src/effects/runtime.rs` delivering paper §5
+ * Direct port of `axon-rs/src/effects/runtime.rs` delivering paper section 5
  * — "operaciones atómicas de salto en la pila de CPU sin objetos de
  * control opacos". The Rust impl already removed opaque continuations
  * (the captured continuation IS the remaining instruction array at

@@ -1,4 +1,4 @@
-# §Fase 25.i — axon-csys cross-platform C23 CI matrix.
+# v1.19.0 — axon-csys cross-platform C23 CI matrix.
 #
 # Production-grade matrix exercising the axon-csys C23 metal-bound
 # kernels across every realistic adopter toolchain. Three tiers run
@@ -174,7 +174,7 @@ jobs:
     name: sanitizer (${{ matrix.kind }})
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    # §Fase 122.d — BOTH sanitizers are hard gates again.
+    # v2.89.0 — BOTH sanitizers are hard gates again.
     #
     # TSan carried `continue-on-error: ${{ matrix.kind == 'thread' }}` since
     # 2026-05-09, for a stated and reasonable cause: a post-test ABI-mismatch
@@ -255,7 +255,7 @@ jobs:
           CFLAGS: "-fsanitize=${{ matrix.kind }} -fno-omit-frame-pointer -O1 -g"
           LDFLAGS: "-fsanitize=${{ matrix.kind }}"
           RUSTFLAGS: "-Zsanitizer=${{ matrix.kind }} -Cunsafe-allow-abi-mismatch=sanitizer -Cforce-frame-pointers=yes -Cdebuginfo=2"
-        # §Fase 122.d — `--all-targets` (lib + bins + tests + benches, and
+        # v2.89.0 — `--all-targets` (lib + bins + tests + benches, and
         # notably NOT doctests).
         #
         # The doctest phase was aborting with 24 errors under ThreadSanitizer
@@ -306,7 +306,7 @@ jobs:
       - name: cargo test with C-side UBSan
         working-directory: axon-csys
         env:
-          # §124.b — the sanitizer is NOT injected via global CFLAGS any
+          # v4.0.0 — the sanitizer is NOT injected via global CFLAGS any
           # more: cc applies env CFLAGS last, so it reached the VENDORED
           # archive too, and upstream reference crypto trips shift-base by
           # idiom (constant-time selects left-shift negative values —
@@ -442,7 +442,7 @@ jobs:
           #   • `assignBoolToPointer:dispatch.c` — labels-as-values
           #     are GCC extensions that cppcheck mis-parses (see
           #     extended comment above).
-          # §124.b / D124.6 — `-i c-src/vendor` excludes the VENDORED
+          # v4.0.0 / the design decision — `-i c-src/vendor` excludes the VENDORED
           # reference implementations (PQClean ML-DSA-65, orlp/ed25519).
           # They are provenance-pinned byte-identical to upstream
           # (c-src/vendor/PROVENANCE.toml), so they are not patched to our
@@ -519,7 +519,7 @@ jobs:
           # (length-tracked + capacity-checked); the check is
           # signal-poor on cross-platform C.
           checks+=',-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling'
-          # §124.b / D124.6 — vendor/ excluded for the same reason as the
+          # v4.0.0 / the design decision — vendor/ excluded for the same reason as the
           # cppcheck lane: provenance-pinned upstream code is not patched
           # to house style, and its correctness is held by KATs + interop.
           for f in $(find c-src -name '*.c' -not -path '*/vendor/*' | sort); do

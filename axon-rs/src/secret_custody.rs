@@ -1,6 +1,6 @@
-//! §Fase 94.d — the `SecretCustody` port: the runtime seam behind the
-//! `backend: secrets` metadata store (§94.a), the `rotate … with <Tool>`
-//! flow verb (§94.b) and the `tool { secret: }` dispatch injection (§94.c).
+//! v2.48.0 — the `SecretCustody` port: the runtime seam behind the
+//! `backend: secrets` metadata store (v2.48.0), the `rotate … with <Tool>`
+//! flow verb (v2.48.0) and the `tool { secret: }` dispatch injection (v2.48.0).
 //!
 //! The doctrine (`axon://logic/rotation_without_revelation`): a secret's
 //! whole lifecycle — seed, use, enumerate, rotate, expire — completes
@@ -20,9 +20,9 @@
 //!
 //! There is deliberately **no default production custody in OSS**: a
 //! `rotate` (or a secret-bearing tool dispatch) reached with no port
-//! configured is a loud `MissingDependency` (the §86 no-silent-stub
-//! lesson, the §92.c posture). The enterprise executor injects its
-//! envelope-encrypted Postgres custody (§94.h); tests and single-process
+//! configured is a loud `MissingDependency` (the v2.41.0 no-silent-stub
+//! lesson, the v2.46.0 posture). The enterprise executor injects its
+//! envelope-encrypted Postgres custody (v2.48.0); tests and single-process
 //! adopters use [`InMemoryCustody`] — which enforces the same CAS and
 //! class semantics but does NOT encrypt at rest (process memory only;
 //! encrypted custody is the enterprise layer, documented honestly).
@@ -39,7 +39,7 @@ use crate::store::filter::{Connector, Filter, Operator, Rhs, SqlValue, TimeSign,
 // ════════════════════════════════════════════════════════════════════
 
 /// The metadata view of one custody entry — EXACTLY the four synthesized
-/// columns of a `backend: secrets` store (§94.a). No value field exists
+/// columns of a `backend: secrets` store (v2.48.0). No value field exists
 /// on this type by design.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SecretMetadata {
@@ -111,7 +111,7 @@ impl std::fmt::Display for CustodyError {
     }
 }
 
-/// The port. Every method takes the tenant EXPLICITLY (the §93 posture —
+/// The port. Every method takes the tenant EXPLICITLY (the v2.47.0 posture —
 /// custody runs under the caller's verified tenant, never ambient state).
 ///
 /// Class discipline: `class_prefix` is the store's declared `class:` plus
@@ -145,7 +145,7 @@ pub trait SecretCustody: Send + Sync {
         expected_version: i64,
     ) -> Result<SecretMetadata, CustodyError>;
 
-    /// Reveal a value for a `use <Tool>` dispatch injection (§94.c).
+    /// Reveal a value for a `use <Tool>` dispatch injection (v2.48.0).
     async fn reveal_for_dispatch(
         &self,
         tenant: &str,
@@ -154,11 +154,11 @@ pub trait SecretCustody: Send + Sync {
 }
 
 // ════════════════════════════════════════════════════════════════════
-//  Metadata filter evaluation (§67 grammar over the synthesized schema)
+// Metadata filter evaluation (v2.21.0 grammar over the synthesized schema)
 // ════════════════════════════════════════════════════════════════════
 
-/// Evaluate a parsed §67 `where:` [`Filter`] over metadata rows, at the
-/// captured instant `now_ms`. The compile-time §38.d proof already
+/// Evaluate a parsed v2.21.0 `where:` [`Filter`] over metadata rows, at the
+/// captured instant `now_ms`. The compile-time v1.31.0 proof already
 /// guaranteed every column is one of the four synthesized ones and every
 /// value type-checks; this evaluator is the runtime mirror over in-memory
 /// rows (the custody path has no SQL to render). An expression the
@@ -186,7 +186,7 @@ pub fn filter_metadata(
 }
 
 fn row_matches(row: &SecretMetadata, filter: &Filter, now_ms: i64) -> Result<bool, String> {
-    // The §35.b filter grammar is a flat AND/OR chain; evaluate left to
+    // The v1.30.0 filter grammar is a flat AND/OR chain; evaluate left to
     // right with SQL's precedence flattened the same way the SQL renderer
     // emits it (no parentheses exist in the grammar).
     let mut acc = cond_matches(row, &filter.conditions[0], now_ms)?;
@@ -282,7 +282,7 @@ fn ts_cmp(
     int_cmp(lhs, cond.op, rhs_ms)
 }
 
-/// Resolve a §67.a structural time value to Unix ms at the captured
+/// Resolve a v2.21.0 structural time value to Unix ms at the captured
 /// instant. Month/year use the same civil-approximation the store backend
 /// documents (30-day months, 365-day years) — declared, not hidden.
 pub fn time_value_ms(tv: crate::store::filter::TimeValue, now_ms: i64) -> i64 {
@@ -328,7 +328,7 @@ fn like_matches(text: &str, pattern: &str) -> bool {
 
 // ════════════════════════════════════════════════════════════════════
 //  Shared retrieve surface (ONE implementation for both executors —
-//  the §36.i no-path-divergence lesson)
+// the v1.31.0 no-path-divergence lesson)
 // ════════════════════════════════════════════════════════════════════
 
 /// Serialize metadata rows to the retrieve envelope both execution paths
@@ -362,12 +362,12 @@ fn rfc3339_utc(ms: i64) -> String {
 }
 
 /// The complete `retrieve` over a `backend: secrets` store: enumerate the
-/// class → apply the §67 filter → order → limit → envelope. ONE function
+/// class → apply the v2.21.0 filter → order → limit → envelope. ONE function
 /// used by every execution path. Errors are strings the caller wraps in
 /// its own typed error (dispatcher `BackendError` / runner `StoreError`).
 ///
 /// v1 honest scope: `aggregate:` / `group_by:` over custody metadata are
-/// refused loudly (documented in the plan vivo §7) — count-style
+/// refused loudly (documented in the plan vivo section 7) — count-style
 /// questions read `count` off the envelope.
 pub async fn retrieve_metadata(
     custody: &dyn SecretCustody,
@@ -400,7 +400,7 @@ pub async fn retrieve_metadata(
         rows = filter_metadata(rows, &filter, now_unix_ms())?;
     }
 
-    // §67.b `order_by:` — the four metadata columns only, `col [asc|desc]`
+    // v2.21.0 `order_by:` — the four metadata columns only, `col [asc|desc]`
     // terms, comma-separated (the same surface the SQL path renders).
     for term in order_by
         .split(',')
@@ -512,7 +512,7 @@ struct Entry {
 }
 
 /// The reference in-process custody: full class/CAS/NULL semantics,
-/// process-memory storage. NOT encrypted at rest (the enterprise §94.h
+/// process-memory storage. NOT encrypted at rest (the enterprise v2.48.0
 /// custody is the production surface — envelope AES-256-GCM over
 /// Postgres); this exists so tests and single-process adopters exercise
 /// the exact port contract.
@@ -527,7 +527,7 @@ impl InMemoryCustody {
     }
 
     /// Seed an entry (the in-process mirror of `POST /tenant/secrets`).
-    /// A re-seed of a live key bumps the version — the §94.g upsert law.
+    /// A re-seed of a live key bumps the version — the v2.48.0 upsert law.
     pub fn seed(&self, tenant: &str, key: &str, value: &str, expires_at_ms: Option<i64>) {
         let now_ms = now_unix_ms();
         let mut entries = self.entries.lock().unwrap();

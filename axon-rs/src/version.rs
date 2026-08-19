@@ -1,4 +1,4 @@
-//! §Fase 118.a — the version string, and nothing else.
+//! v2.81.0 — the version string, and nothing else.
 //!
 //! **Why this module exists at all.** `AXON_VERSION` used to live in
 //! `runner.rs`. That was itself a fix: the constant had been redeclared as a
@@ -20,7 +20,7 @@
 //!
 //! This module has no dependencies and must acquire none. Anything that needs the
 //! version string imports it from here; `runner` re-exports it so existing call
-//! sites (including `axon::runner::AXON_VERSION` in the §39.f CLI parity test)
+//! sites (including `axon::runner::AXON_VERSION` in the v2.0.0 CLI parity test)
 //! keep resolving unchanged.
 
 /// Single source of truth for the AXON version string.

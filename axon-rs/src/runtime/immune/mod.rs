@@ -1,4 +1,4 @@
-//! AXON Runtime — Cognitive Immune System kernels (§λ-L-E Fase 5).
+//! AXON Runtime — Cognitive Immune System kernels (v1.1.0).
 //!
 //! Direct port of `axon/runtime/immune/`. Formal spec:
 //! [`docs/paper_immune_v2.md`](../../../../docs/paper_immune_v2.md).

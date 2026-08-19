@@ -1,24 +1,24 @@
-//! §Fase 51.e — the `QuantBackend` port + the OSS reference simulator.
+//! v2.4.0 — the `QuantBackend` port + the OSS reference simulator.
 //!
 //! This is the OSS half of the `quant` cognitive primitive's RUNTIME (the type
-//! discipline shipped in §51.a–d.2 on the frontend). It defines:
+//! discipline shipped in v2.4.0–d.2 on the frontend). It defines:
 //!
 //!   - [`QuantBackend`] — the **port** (D1). Enterprise mounts the production
-//!     QuIDD / VRAM / QPU engine behind this same trait (§51.f–i); the OSS crate
+//! QuIDD / VRAM / QPU engine behind this same trait (v2.4.0–i); the OSS crate
 //!     ships only the reference implementation below.
 //!   - [`ReferenceSimulator`] — a **genuinely usable** dense-statevector
 //!     simulator over `f64` complex amplitudes, hard-capped at **n ≤ 10 qubits**
 //!     (D = 2¹⁰ = 1024 amplitudes — the paper's `DensityMatrix[1024]` boundary).
 //!     It actually executes small `quant` blocks on the CPU and serves as the
-//!     differential-test ORACLE for the §51.f enterprise engine. Above the cap
+//! differential-test ORACLE for the v2.4.0 enterprise engine. Above the cap
 //!     it returns [`QuantError::CapacityExceeded`] (`axon-E0783`) — never a
 //!     silent OOM or a degraded result (D1, Option A).
 //!
 //! The reference simulator uses exact `f64` (NOT the enterprise Q32.32 /
-//! purification arithmetic — that is §51.f). It is the oracle, not the
+//! purification arithmetic — that is v2.4.0). It is the oracle, not the
 //! production path.
 //!
-//! **Norm invariant (D2, deferred from §51.b/c.3):** amplitude encoding asserts
+//! **Norm invariant (D2, deferred from v2.4.0):** amplitude encoding asserts
 //! the input carrier has unit L2 norm `‖x‖₂ = 1` ([`QuantError::NotNormalized`])
 //! — the numeric realization the type system could not prove statically.
 
@@ -80,7 +80,7 @@ impl std::ops::Neg for C {
 // ── Public surface types ────────────────────────────────────────────────────
 
 /// The encoding scheme that maps a classical real vector into a Hilbert-space
-/// state (paper §3.1; plan D2).
+/// state (paper section 3.1; plan D2).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EncodingScheme {
     /// d features → n = ⌈log₂ d⌉ qubits (exponential compression); requires a
@@ -105,7 +105,7 @@ impl StateVector {
     }
 }
 
-/// One layer of the hardware-efficient variational ansatz (paper §3.2):
+/// One layer of the hardware-efficient variational ansatz (paper section 3.2):
 /// a single-qubit `Ry(θ)·Rz(φ)` rotation per qubit, followed by a linear CNOT
 /// entanglement chain (`U_ent`). `ry`/`rz` carry one angle per qubit.
 #[derive(Debug, Clone)]
@@ -114,7 +114,7 @@ pub struct RotationLayer {
     pub rz: Vec<f64>,
 }
 
-/// A parametric circuit `U(θ) = ∏ₗ (⊗ₖ Ry·Rz) · U_ent` (paper §3.2).
+/// A parametric circuit `U(θ) = ∏ₗ (⊗ₖ Ry·Rz) · U_ent` (paper section 3.2).
 #[derive(Debug, Clone, Default)]
 pub struct VariationalCircuit {
     pub layers: Vec<RotationLayer>,
@@ -180,29 +180,29 @@ impl std::fmt::Display for QuantError {
 
 // ── The port ────────────────────────────────────────────────────────────────
 
-/// §Fase 51.e — the algebraic-backend **port** (D1). The OSS crate ships the
+/// v2.4.0 — the algebraic-backend **port** (D1). The OSS crate ships the
 /// [`ReferenceSimulator`]; the enterprise QuIDD / VRAM / QPU engine implements
-/// the same trait (§51.f–i). A `quant` block's pipeline is `encode → evolve →
+/// the same trait (v2.4.0–i). A `quant` block's pipeline is `encode → evolve →
 /// {measure | kernel}`.
 pub trait QuantBackend {
     /// Maximum register width (qubits) this backend can realise.
     fn capacity(&self) -> usize;
-    /// Project a classical real vector into a Hilbert-space state (§3.1).
+    /// Project a classical real vector into a Hilbert-space state (section 3.1).
     fn encode(&self, x: &[f64], scheme: EncodingScheme) -> Result<StateVector, QuantError>;
-    /// Evolve a state under a parametric circuit `U(θ)` (§3.2).
+    /// Evolve a state under a parametric circuit `U(θ)` (section 3.2).
     fn evolve(&self, state: StateVector, circuit: &VariationalCircuit) -> Result<StateVector, QuantError>;
     /// Expectation `E(θ) = ⟨ψ| M |ψ⟩` of a Pauli-sum observable (real, since M is
     /// Hermitian).
     fn measure(&self, state: &StateVector, observable: &PauliSum) -> Result<f64, QuantError>;
-    /// Quantum-kernel overlap `K = |⟨ψ_a|ψ_b⟩|²` (§3.4, fidelity kernel).
+    /// Quantum-kernel overlap `K = |⟨ψ_a|ψ_b⟩|²` (section 3.4, fidelity kernel).
     fn kernel(&self, a: &StateVector, b: &StateVector) -> Result<f64, QuantError>;
 }
 
-/// §Fase 122.c — **the deploy gate.** Which declared observables this backend
+/// v2.89.0 — **the deploy gate.** Which declared observables this backend
 /// cannot realise.
 ///
 /// The sibling of [`crate::warden::unsupported_scope_depths`], and it exists
-/// for the same reason: §111.d already refuses an over-capacity register with
+/// for the same reason: v2.67.0 already refuses an over-capacity register with
 /// `axon-E0783` rather than truncating it silently — but it refuses at the
 /// `yield`, after the block's body and every step before it has run.
 ///
@@ -247,7 +247,7 @@ pub const OSS_QUBIT_CAP: usize = 10;
 /// Tolerance for the unit-norm assertion on amplitude-encoding input.
 const NORM_TOL: f64 = 1e-9;
 
-/// §Fase 51.e — a usable dense-statevector simulator over `f64` complex
+/// v2.4.0 — a usable dense-statevector simulator over `f64` complex
 /// amplitudes, capped at [`OSS_QUBIT_CAP`].
 #[derive(Debug, Clone)]
 pub struct ReferenceSimulator {
@@ -288,14 +288,14 @@ impl ReferenceSimulator {
         }
     }
 
-    /// §Fase 69.c — **data re-uploading**: interleave an angle-encoding of `x`
+    /// v2.23.0 — **data re-uploading**: interleave an angle-encoding of `x`
     /// with a fixed entangling layer, `layers` times. For `layers ≥ 2` the data
     /// `x` re-enters the circuit, so `⟨ψ(x)|ψ(y)⟩` is NO LONGER a quadratic form in
     /// `x` (it becomes a Fourier series in the data — Schuld 2021,
     /// `arXiv:2008.08605`). This is the ONLY provable escape from the amplitude+Pauli
-    /// quadratic bound (§69.b / the Havlíček route). `layers = 1` reduces to a
+    /// quadratic bound (v2.23.0 / the Havlíček route). `layers = 1` reduces to a
     /// single angle layer (no re-uploading). HONEST: escaping the bound does NOT
-    /// guarantee advantage on classical text — the §69.a/b Advantage Witness still
+    /// guarantee advantage on classical text — the v2.23.0 Advantage Witness still
     /// gates it.
     pub fn reupload_encode(&self, x: &[f64], layers: usize) -> Result<StateVector, QuantError> {
         let n = x.len();
@@ -498,11 +498,11 @@ impl QuantBackend for ReferenceSimulator {
 }
 
 impl ReferenceSimulator {
-    /// §Fase 69.d — multi-copy **polynomial kernel** `(xᵀy)^d`. Loading `d` copies
+    /// v2.23.0 — multi-copy **polynomial kernel** `(xᵀy)^d`. Loading `d` copies
     /// of the state gives `⟨ψ(x)|ψ(y)⟩^d = (xᵀy)^d` for amplitude encoding (Schuld
     /// & Killoran). It reaches *beyond* cosine (degree 1) — but it is still a
     /// CLASSICAL polynomial kernel (no quantum advantage), so like every fixed
-    /// amplitude map it is gated by the §69.a/b Advantage Witness. `degree = 0` is
+    /// amplitude map it is gated by the v2.23.0 Advantage Witness. `degree = 0` is
     /// the constant kernel `1`; `degree = 1` is the linear/cosine kernel `xᵀy`.
     pub fn polynomial_kernel(a: &StateVector, b: &StateVector, degree: u32) -> Result<f64, QuantError> {
         if a.n != b.n {
@@ -638,7 +638,7 @@ mod tests {
 
     #[test]
     fn reupload_changes_the_feature_map_and_stays_a_valid_kernel() {
-        // §Fase 69.c — data re-uploading escapes the single-layer (quadratic)
+        // v2.23.0 — data re-uploading escapes the single-layer (quadratic)
         // feature map: L=2 produces a DIFFERENT, higher-frequency kernel than L=1
         // (the Fourier-feature gain). Both remain valid fidelity kernels.
         let sim = ReferenceSimulator::new();
@@ -668,7 +668,7 @@ mod tests {
 
     #[test]
     fn polynomial_kernel_is_dot_to_the_degree() {
-        // §Fase 69.d — `(xᵀy)^d`. x=[0.6,0.8], y=[1,0] ⇒ xᵀy = 0.6.
+        // v2.23.0 — `(xᵀy)^d`. x=[0.6,0.8], y=[1,0] ⇒ xᵀy = 0.6.
         let sim = ReferenceSimulator::new();
         let a = sim.encode(&[0.6, 0.8], EncodingScheme::Amplitude).unwrap();
         let b = sim.encode(&[1.0, 0.0], EncodingScheme::Amplitude).unwrap();

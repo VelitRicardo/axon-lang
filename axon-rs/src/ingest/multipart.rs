@@ -259,7 +259,7 @@ impl MultipartParser {
             return Ok(false);
         };
 
-        // §Fase 12.c — also enforce `max_header_bytes` when the
+        // v1.4.2 — also enforce `max_header_bytes` when the
         // terminator arrives in the same feed as the (oversized)
         // header. Without this, a caller that fills the buffer with
         // one big call bypasses the limit because the "buffer larger
@@ -349,13 +349,13 @@ impl MultipartParser {
             // No boundary in buffer yet. Flush everything EXCEPT the
             // trailing tail that might still become either:
             //   · a boundary marker (up to `close_marker.len()` bytes), or
-            //   · the mandatory `\r\n` that RFC 7578 §4.1 requires
+            // · the mandatory `\r\n` that RFC 7578 section 4.1 requires
             //     immediately before the boundary (body_end = idx - 2
             //     trims those two bytes from the body, but only if
             //     they are still in the buffer when the marker is
             //     recognised).
             //
-            // §Fase 12.c fix — the previous heuristic kept only
+            // v1.4.2 fix — the previous heuristic kept only
             // `close_marker.len()` (or `open_marker.len()` when the
             // buffer was smaller). In a byte-at-a-time feed that lost
             // the `\r\n` preceding the boundary, emitting it as part
@@ -382,7 +382,7 @@ impl MultipartParser {
         };
 
         // The body ends at `idx - 2` to trim the trailing `\r\n` that
-        // precedes every boundary (RFC 7578 §4.1).
+        // precedes every boundary (RFC 7578 section 4.1).
         let body_end = idx.saturating_sub(2);
         {
             let body = self

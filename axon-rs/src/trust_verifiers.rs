@@ -1,7 +1,7 @@
 //! Runtime implementations of the closed [`crate::refinement::TrustProof`]
 //! catalogue.
 //!
-//! §λ-L-E Fase 11.a — these are the ONLY functions the compiler
+//! v1.4.0 — these are the ONLY functions the compiler
 //! recognises as converting `Untrusted<T>` → `Trusted<T>`. All four
 //! share a uniform shape:
 //!
@@ -16,7 +16,7 @@
 //!   `subtle` crate's `ConstantTimeEq` — byte-by-byte comparisons
 //!   inside the MAC would leak timing; the catalogue entry documents
 //!   this property so reviewers don't have to re-check every crate.
-//! - JWT delegates to [`crate::jwt_verifier`] from Fase 10.e; we
+//! - JWT delegates to [`crate::jwt_verifier`] from v1.4.0; we
 //!   re-expose it here so the catalogue is the single source of truth.
 //! - OAuth2 PKCE S256 performs a real HTTP exchange via `reqwest` and
 //!   validates that the returned access token is minted for the
@@ -195,7 +195,7 @@ pub fn verify_ed25519(
     })
 }
 
-// ── JWT signature (delegates to Fase 10.e) ───────────────────────────
+// ── JWT signature (delegates to v1.4.0) ───────────────────────────
 
 /// Thin wrapper exposing [`crate::jwt_verifier`] under the uniform
 /// verifier shape. Callers receive a `VerifiedPayload` tagged with
@@ -247,7 +247,7 @@ pub struct OAuthCodeExchangeRequest<'a> {
 }
 
 /// The access-token response body, returned to callers after
-/// verification. Fields follow RFC 6749 §5.1.
+/// verification. Fields follow RFC 6749 section 5.1.
 #[derive(Debug, Clone, serde::Deserialize)]
 pub struct OAuthTokenResponse {
     pub access_token: String,
@@ -368,7 +368,7 @@ mod tests {
     #[test]
     fn ed25519_roundtrip() {
         use ed25519_dalek::{Signer, SigningKey};
-        // §Fase 12.c — `SigningKey::generate(&mut csprng)` failed to
+        // v1.4.2 — `SigningKey::generate(&mut csprng)` failed to
         // compile under `rand 0.9` because `rand::rngs::OsRng`
         // implements `rand_core 0.9::CryptoRng`, but `ed25519-dalek 2`
         // expects `rand_core 0.6::CryptoRngCore`. Seeding from raw
@@ -394,7 +394,7 @@ mod tests {
     #[test]
     fn ed25519_rejects_tampered_payload() {
         use ed25519_dalek::{Signer, SigningKey};
-        // §Fase 12.c — same rand_core version skew fix as
+        // v1.4.2 — same rand_core version skew fix as
         // `ed25519_roundtrip` above.
         let seed: [u8; 32] = rand::random();
         let sk = SigningKey::from_bytes(&seed);

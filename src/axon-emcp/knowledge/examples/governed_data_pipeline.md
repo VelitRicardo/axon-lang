@@ -1,14 +1,14 @@
 ---
 name: governed_data_pipeline
-title: "A governed data pipeline — ingest → σ → γ, every number COMPUTED (§108)"
-summary: "The deterministic data plane end-to-end (§108): a typed `dataspace` (axon-T928), a governed `ingest` (axon-T929 — declared format, bounds BEFORE parse §100, refusal-not-coercion, batches born Untrusted §98), then `focus` (σ∘π) and `aggregate` (γ over the closed catalog) with the shared data-plane `where:` grammar (§35). Every result is a deterministic envelope {rows, taint, stats} — the aggregate the flow returns was COMPUTED over columnar batches with sound zone-map pruning, never narrated by a model. Add one more `column` typo or one ghost column to this program and it stops compiling (T928/T930); hand-edit the IR and the PCC class `DataspaceSchemaSoundness` refutes it at deploy."
+title: "A governed data pipeline — ingest → σ → γ, every number COMPUTED (v2.63.0)"
+summary: "The deterministic data plane end-to-end (v2.63.0): a typed `dataspace` (axon-T928), a governed `ingest` (axon-T929 — declared format, bounds BEFORE parse v2.54.0, refusal-not-coercion, batches born Untrusted v2.52.0), then `focus` (σ∘π) and `aggregate` (γ over the closed catalog) with the shared data-plane `where:` grammar (v1.30.0). Every result is a deterministic envelope {rows, taint, stats} — the aggregate the flow returns was COMPUTED over columnar batches with sound zone-map pruning, never narrated by a model. Add one more `column` typo or one ghost column to this program and it stops compiling (T928/T930); hand-edit the IR and the PCC class `DataspaceSchemaSoundness` refutes it at deploy."
 topic: data
 primitives:
   - dataspace
   - flow
 ---
 
-// The deterministic data plane (§108), end to end. The number this flow
+// The deterministic data plane (v2.63.0), end to end. The number this flow
 // returns was COMPUTED — scanned, filtered, grouped over typed columnar
 // batches — not narrated by a language model.
 
@@ -24,13 +24,13 @@ dataspace Sales {
 //     request body — or from a prior tool/scrape step in a larger flow).
 flow RegionReport(raw: Text) -> Text {
     // Governed load (axon-T929): declared format, bounds enforced on the
-    // RAW stream before any parsing (§100). A value that does not fit its
+    // RAW stream before any parsing (v2.54.0). A value that does not fit its
     // column refuses the whole batch, naming row + column — refusal, not
     // coercion. The batch lands stamped source + sha256 + born-Untrusted.
     ingest raw into Sales { format: csv, limits { max_bytes: 1048576, max_rows: 100000 } }
 
     // σ∘π (axon-T930): the `where:` is the ONE data-plane filter grammar
-    // (§35, shared with retrieve/navigate — closed, injection-safe).
+    // (v1.30.0, shared with retrieve/navigate — closed, injection-safe).
     // Batches whose zone maps PROVABLY exclude the predicate are pruned;
     // the pruning is observable in the result's `stats`.
     focus Sales { where: "amount >= 100.0", select: [region, amount], as: big_sales }

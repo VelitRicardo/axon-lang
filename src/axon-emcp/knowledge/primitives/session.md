@@ -1,9 +1,9 @@
 ---
 name: session
-summary: Declares the typed bidirectional dialogue protocol a socket carries — §41 algebra (send/receive/select/branch/loop/end).
+summary: Declares the typed bidirectional dialogue protocol a socket carries — v2.3.0 algebra (send/receive/select/branch/loop/end).
 category: session_types
 top_level: true
-since: Fase 41.a (v2.3.0)
+since: v2.3.0
 grammar: |
   session <Name> {
       <role1>: [<SessionStep>, <SessionStep>, ...]
@@ -26,9 +26,9 @@ a `socket` carries. Where `socket` is the transport (RFC 6455
 WebSocket), `session` is **the type of the connection** — the
 ordered, polarised algebra of utterances the two endpoints
 exchange. The compiler verifies the two roles are algebraic
-duals at parse time (the §41.a connection law: `peer ≡ self⊥`).
+duals at parse time (the v2.3.0 connection law: `peer ≡ self⊥`).
 
-This is the formal heart of Fase 41. A `session` is a closed
+This is the formal heart of v2.3.0. A `session` is a closed
 algebraic surface — `send`, `receive`, `select`, `branch`,
 `loop`, `end` — grounded in Caires-Pfenning session types
 (intuitionistic linear propositions). A session declaration is
@@ -79,7 +79,7 @@ protocol: <Name>` references resolve here.
 Each role is a **named, ordered list of session steps**. The
 canonical 2-role shape is `{ client: [...], server: [...] }`
 but the grammar accepts arbitrary role names. Multiparty
-sessions (3+ roles) trigger the §41.h Honda-Yoshida-Carbone
+sessions (3+ roles) trigger the v2.3.0 Honda-Yoshida-Carbone
 projection rules; the compiler emits per-role local types and
 verifies safe realizability automatically.
 
@@ -100,7 +100,7 @@ The grammar accepts exactly six step kinds:
 operator `(·)⊥` swaps them (just as it swaps `send` ↔
 `receive`).
 
-## Duality — the §41.a connection law
+## Duality — the v2.3.0 connection law
 
 For every `session S { role_a: A, role_b: B }`, the compiler
 enforces:
@@ -122,7 +122,7 @@ unfoldings** coincide — α-equivalent recursion variables are
 accepted. Violations emit a typed
 `Session 'X' duality violation: …` diagnostic.
 
-## Multiparty (§41.h)
+## Multiparty (v2.3.0)
 
 A session with 3+ roles triggers the Honda-Yoshida-Carbone
 projection: the global protocol is projected onto each role's
@@ -155,7 +155,7 @@ restores the exact cursor position.
   type-checker reasons about it as a typed term, not a graph.
 - **Not subtyped.** Two sessions are either equal-modulo-α or
   distinct. AXON v2.x has no session subtyping rule (no
-  width / depth / variance — out of scope for the Fase 41
+  width / depth / variance — out of scope for the v2.3.0
   algebra; tracked for a future research line).
 - **Not for one-shot RPC.** For request/response with no
   conversation, use `axonendpoint` (HTTP REST). `session` is
@@ -164,9 +164,9 @@ restores the exact cursor position.
 ## See also
 
 - `axon://primitives/socket` — the carrier that binds a session.
-- `axon://logic/session_duality` — the §41 algebra rules + the
+- `axon://logic/session_duality` — the v2.3.0 algebra rules + the
   four pillars + practical agent recipes.
 - `axon://primitives/axonendpoint` — REST endpoint primitive
   for non-dialogue request/response.
 - [`docs/papers/paper_websocket_cognitive_primitive.md`](https://github.com/VelitRicardo/axon-lang/blob/master/docs/papers/paper_websocket_cognitive_primitive.md)
-  — the four-pillar paper underpinning Fase 41.
+  — the four-pillar paper underpinning v2.3.0.

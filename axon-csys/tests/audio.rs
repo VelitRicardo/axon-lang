@@ -1,4 +1,4 @@
-//! §Fase 25.c — Audio kernel test suite.
+//! v1.19.0 — Audio kernel test suite.
 //!
 //! Exercises both the μ-law transcoders and the linear PCM16 resampler.
 //! The drift gate against Rust reference impls is enforced by mirroring

@@ -43,7 +43,7 @@ BOTH a covering discipline and `public: true`, and `axon check` fails:
 ## What the compiler proves vs what the deploy gate enforces
 
 - **`axon check` proves coverage at the source** (`axon-T890`): every dispatching
-  endpoint is covered or explicitly public. This generalises the §6.1 shield
+  endpoint is covered or explicitly public. This generalises the section 6.1 shield
   κ-coverage rule from *regulated types* to *every boundary*.
 - **The deploy gate re-derives it independently** (`PropertyClass::AuthorizationCoverage`,
   a PCC proof): the enterprise runtime refutes a pre-compiled IR whose endpoint is

@@ -3,7 +3,7 @@ name: window
 summary: A timezone-aware temporal execution guard — gates a scheduled daemon's ticks to allowed day/hour spans (minus holiday dates) with a skip/warn/defer policy.
 category: operators
 top_level: true
-since: Fase 71
+since: v2.27.0
 grammar: |
   window <Name> {
       timezone:   "<IANA-tz>"                                 # required (e.g. "America/Bogota", "UTC")
@@ -144,7 +144,7 @@ is **replayable** even across a tz-database upgrade.
 - **Not a `shield`.** `shield` is a per-emission content transform;
   `window` is a scheduling guard. A daemon can declare both.
 - **Not a rate limit.** A window is about *calendar time*, not
-  *throughput*. For "at most N per period" use a budget (§Fase 72).
+  *throughput*. For "at most N per period" use a budget (v2.28.0).
 - **Not a holiday database.** It holds the exact dates you declare;
   it does not know that the 4th Thursday of November is
   Thanksgiving.

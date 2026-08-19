@@ -1,4 +1,4 @@
-//! §Fase 34.d (v1.29.0) — Bridge between [`ToolEntry`] (the registry
+//! v1.29.0 — Bridge between [`ToolEntry`] (the registry
 //! shape) and [`Tool`] trait impls (the dispatcher's streaming
 //! surface).
 //!
@@ -25,7 +25,7 @@
 //!   `tool MyStream { provider: "stub_stream" effects:
 //!   <stream:drop_oldest> ... }`. Same impl as `stub` but the
 //!   declaration documents the streaming intent.
-//! - **`http`** → [`crate::http_tool::HttpStreamingTool`] (Fase 34.e).
+//! - **`http`** → [`crate::http_tool::HttpStreamingTool`] (v1.29.0).
 //!   Async reqwest::Client + `bytes_stream()` drain with framing
 //!   classified by Content-Type: `text/event-stream` →
 //!   per-SSE-event ToolChunks; `application/x-ndjson` /
@@ -34,7 +34,7 @@
 //!   terminator on every failure surface. Falls back to
 //!   [`SyncFallbackTool`] when the registry entry has an
 //!   invalid/missing URL (parser would already reject, defensive).
-//! - **`mcp`** → [`crate::emcp::McpStreamingTool`] (Fase 34.f). Async
+//! - **`mcp`** → [`crate::emcp::McpStreamingTool`] (v1.29.0). Async
 //!   reqwest::Client + JSON-RPC 2.0 over HTTP. Streaming MCP servers
 //!   (Content-Type `application/x-ndjson` / `application/jsonl`)
 //!   emit per-`notifications/message` ToolChunks; the final `result`
@@ -48,7 +48,7 @@
 //!
 //! Python's `axon.runtime.tools.streaming.Tool` ABC + provider-
 //! dispatch surface in `axon.runtime.tools.dispatcher` mirror this
-//! Rust bridge. Drift gate alignment lives in Fase 34.j fuzz.
+//! Rust bridge. Drift gate alignment lives in v1.29.0 fuzz.
 
 use crate::cancel_token::CancellationFlag;
 use crate::tool_executor::{self, ToolResult};
@@ -71,24 +71,24 @@ use futures::stream;
 ///
 /// | Provider | Impl | Behavior |
 /// |---|---|---|
-/// | _(empty)_ | [`StubStreamingTool`] | §Fase 36.x.e — an unspecified `provider:` resolves to the deterministic stub stream |
+/// | _(empty)_ | [`StubStreamingTool`] | v1.31.0 — an unspecified `provider:` resolves to the deterministic stub stream |
 /// | `stub` | [`StubStreamingTool`] | Deterministic 3-chunk stream |
 /// | `stub_stream` | [`StubStreamingTool`] | Alias for adopter clarity |
 /// | `native` | [`NativeWrappedTool`] | Wraps `tool_executor::dispatch` as 1-chunk |
-/// | `http` | [`crate::http_tool::HttpStreamingTool`] | Async reqwest + framing-aware drain (Fase 34.e) |
-/// | `mcp` | [`crate::emcp::McpStreamingTool`] | JSON-RPC 2.0 + notifications stream (Fase 34.f) |
+/// | `http` | [`crate::http_tool::HttpStreamingTool`] | Async reqwest + framing-aware drain (v1.29.0) |
+/// | `mcp` | [`crate::emcp::McpStreamingTool`] | JSON-RPC 2.0 + notifications stream (v1.29.0) |
 /// | _other_ | [`SyncFallbackTool`] | Synchronous fallback (unknown provider) |
 ///
-/// §Fase 36.x.e — a `tool` declaring `effects: <stream:…>` but NO
+/// v1.31.0 — a `tool` declaring `effects: <stream:…>` but NO
 /// `provider:` is under-specified, not erroneous: it resolves to the
 /// deterministic stub stream (no external dependency) so the flow
 /// runs gracefully — the adopter adds a concrete `provider:` when
 /// ready. An unspecified streaming provider that hard-errored the
 /// flow (via the `SyncFallbackTool` `_other_` arm) was the masked
-/// regression the Fase 36.x.c terminator fix surfaced.
+/// regression the v1.31.0 terminator fix surfaced.
 pub fn resolve_streaming_tool(entry: &ToolEntry) -> Box<dyn Tool> {
     match entry.provider.trim() {
-        // §Fase 114.b — an EMPTY provider stays here, and that is correct.
+        // v2.69.0 — an EMPTY provider stays here, and that is correct.
         //
         // The census framed empty→stub as "a fabricated answer", and I nearly
         // split it out. But an empty provider is an **LLM-routed** tool, and on
@@ -96,7 +96,7 @@ pub fn resolve_streaming_tool(entry: &ToolEntry) -> Box<dyn Tool> {
         // backend** — which in a test is the stub backend, and in production is
         // the real model. It is routing, not invention.
         //
-        // The actual §112-shaped defect here was the **typo** — a *non-empty*
+        // The actual v2.67.0-shaped defect here was the **typo** — a *non-empty*
         // unknown provider that silently reached a fallthrough and let the model
         // fabricate. `axon-T948` now refuses that at COMPILE, so it can no longer
         // reach any runtime arm. The empty case that remains is a declared intent
@@ -129,7 +129,7 @@ pub fn resolve_streaming_tool(entry: &ToolEntry) -> Box<dyn Tool> {
                 "mcp".to_string(),
             )),
         },
-        // §Fase 98.e — the streaming crawl provider. A bounded, checkpointed
+        // v2.52.0 — the streaming crawl provider. A bounded, checkpointed
         // BFS spider emitting each fetched RawPage as a chunk. `scrape_http` /
         // `scrape_dom` are synchronous (registry `dispatch`), so only
         // `scrape_crawl` needs the streaming surface here.
@@ -274,14 +274,14 @@ impl Tool for NativeWrappedTool {
 /// Fallback impl for providers without a dedicated streaming adapter
 /// in 34.d's scope (http / mcp / unknown). The `stream()` method
 /// emits a single error-terminator chunk indicating that the
-/// provider's streaming surface lands in a later sub-fase
-/// (Fase 34.e for HTTP, Fase 34.f for MCP).
+/// provider's streaming surface lands in a later step
+/// (v1.29.0 for HTTP, v1.29.0 for MCP).
 ///
 /// This is a HONEST fallback — it does NOT silently coerce a
 /// streaming declaration into a synchronous call. Adopters who
 /// declare a stream effect on an HTTP/MCP tool today see a clear
 /// `ToolFinishReason::Error { message: "streaming adapter not
-/// yet implemented for provider 'http' — pending Fase 34.e" }`
+/// yet implemented for provider 'http' — pending v1.29.0" }`
 /// terminator chunk. After 34.e/f, the bridge's `match` arms
 /// route these providers to their dedicated streaming impls.
 pub struct SyncFallbackTool {
@@ -314,7 +314,7 @@ impl Tool for SyncFallbackTool {
     async fn stream(&self, args: String, ctx: ToolContext) -> ToolStream {
         let provider = self.provider.clone();
         let result = self.execute(args, ctx).await;
-        // Post-Fase 34.e, the `http` arm of the bridge resolves to
+        // Post-v1.29.0, the `http` arm of the bridge resolves to
         // [`crate::http_tool::HttpStreamingTool`] for entries with a
         // valid `runtime:` URL. SyncFallbackTool is only reached for
         // http when [`crate::http_tool::HttpStreamingTool::from_entry`]
@@ -456,7 +456,7 @@ mod tests {
 
     #[test]
     fn resolve_http_provider_with_valid_url_returns_http_streaming_tool() {
-        // §Fase 34.e — `http` arm now resolves to HttpStreamingTool
+        // v1.29.0 — `http` arm now resolves to HttpStreamingTool
         // (when the runtime URL is valid). The HttpStreamingTool
         // reports `is_streaming() = true` (first-class streaming
         // surface).
@@ -489,7 +489,7 @@ mod tests {
 
     #[test]
     fn resolve_mcp_provider_with_valid_url_returns_mcp_streaming_tool() {
-        // §Fase 34.f — `mcp` arm now resolves to McpStreamingTool
+        // v1.29.0 — `mcp` arm now resolves to McpStreamingTool
         // (when the runtime URL is valid). McpStreamingTool reports
         // `is_streaming() = true` (first-class streaming surface).
         let mut e = entry("McpTool", "mcp", vec!["stream:fail".into()]);
@@ -591,7 +591,7 @@ mod tests {
         // Post-34.e: SyncFallbackTool for `http` is only reached
         // when [`HttpStreamingTool::from_entry`] fails (invalid
         // URL). The error hint MUST point at URL validation rather
-        // than the (now-shipped) Fase 34.e itself.
+        // than the (now-shipped) v1.29.0 itself.
         let tool = SyncFallbackTool::new("HttpTool".to_string(), "http".to_string());
         let cancel = CancellationFlag::new();
         let ctx = ToolContext::new(cancel, 0);
@@ -616,7 +616,7 @@ mod tests {
         // Post-34.f: SyncFallbackTool for `mcp` is only reached
         // when [`McpStreamingTool::from_entry`] fails (invalid URL).
         // The error hint MUST point at URL validation rather than
-        // the (now-shipped) Fase 34.f itself.
+        // the (now-shipped) v1.29.0 itself.
         let tool = SyncFallbackTool::new("McpTool".to_string(), "mcp".to_string());
         let cancel = CancellationFlag::new();
         let ctx = ToolContext::new(cancel, 0);

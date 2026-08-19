@@ -1,8 +1,8 @@
-//! §Fase 35.g (v1.30.0) — Pillar I: the epistemic data plane.
+//! v1.30.0 — Pillar I: the epistemic data plane.
 //!
 //! An `axonstore` is not an opaque byte store — it is a participant in
 //! axon's epistemic discipline. This module joins the `axonstore` to
-//! the ESK trust model (Fase 6 / ℰMCP):
+//! the ESK trust model (v1.2.0 / ℰMCP):
 //!
 //! 1. **Every retrieved tuple is born `Untrusted` (⊥).** A row from
 //!    `retrieve from S` is not a fact — it is a *claim*. It enters the
@@ -36,7 +36,7 @@
 //! `_confidence` value is treated as confidence ⊥ (0.0) — below any
 //! positive floor.
 //!
-//! # OSS / ENTERPRISE seam (§6 — 35.g is SPLIT)
+//! # OSS / ENTERPRISE seam (section 6 — 35.g is SPLIT)
 //!
 //! This module is the **OSS mechanism**: rows born `Untrusted`, a
 //! numeric `confidence_floor` enforced by a total `≥` comparison. The

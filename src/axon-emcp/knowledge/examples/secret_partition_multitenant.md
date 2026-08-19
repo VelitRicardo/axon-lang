@@ -1,7 +1,7 @@
 ---
 name: secret_partition_multitenant
 title: Parametric secret injection — one tool, N sub-tenants, one axon-tenant
-summary: "`tool { secret: <class>  secret_partition: <param> }` (§95): the multi-sub-tenant consumption shape. A SaaS runs as ONE axon-tenant while N business customers each connect their own CRM; each customer's OAuth bundle is custodied under `crm.hubspot.<tenant_id>`. The action tool names one of its own `String` parameters as the partition, so `use CrmCrearContacto(tenant_id = …)` resolves the per-customer custody key and injects that value at dispatch. The class prefix is a compile-time literal and the segment is charset-bounded, so the resolved key can never leave the tool's class — `selection_without_revelation`."
+summary: "`tool { secret: <class> secret_partition: <param> }` (v2.49.0): the multi-sub-tenant consumption shape. A SaaS runs as ONE axon-tenant while N business customers each connect their own CRM; each customer's OAuth bundle is custodied under `crm.hubspot.<tenant_id>`. The action tool names one of its own `String` parameters as the partition, so `use CrmCrearContacto(tenant_id = …)` resolves the per-customer custody key and injects that value at dispatch. The class prefix is a compile-time literal and the segment is charset-bounded, so the resolved key can never leave the tool's class — `selection_without_revelation`."
 topic: data
 primitives:
   - tool
@@ -12,8 +12,8 @@ primitives:
 // customers, each with their OWN connected CRM. Their OAuth
 // bundles are custodied under keys `crm.hubspot.<tenant_id>` (seeded by
 // the adopter's OAuth callback via POST /tenant/secrets, one row per
-// customer). §94 lets a daemon enumerate + rotate the whole `crm.*`
-// class; §95 lets a single tool CONSUME the right customer's credential.
+// customer). v2.48.0 lets a daemon enumerate + rotate the whole `crm.*`
+// class; v2.49.0 lets a single tool CONSUME the right customer's credential.
 
 // A vendor ACTION tool. `secret: crm.hubspot` is the class key (a
 // compile-time literal); `secret_partition: tenant_id` names one of this

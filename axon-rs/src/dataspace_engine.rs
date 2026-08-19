@@ -1,16 +1,16 @@
-//! §Fase 108.b — the deterministic columnar engine behind `dataspace`.
+//! v2.63.0 — the deterministic columnar engine behind `dataspace`.
 //!
-//! The physical store the data-plane verbs operate on (`ingest` §108.c;
-//! `focus`/`aggregate`/`associate`/`explore` §108.d). First-party by
-//! decision (D108.6-adjacent): the Arrow-class memory *layout* is what
+//! The physical store the data-plane verbs operate on (`ingest` v2.63.0;
+//! `focus`/`aggregate`/`associate`/`explore` v2.63.0). First-party by
+//! decision (the design decision-adjacent): the Arrow-class memory *layout* is what
 //! buys correctness + scan performance, not the Arrow ecosystem — the
-//! same posture as `ooxml.rs` (§99) and `idpe.rs` (§101).
+//! same posture as `ooxml.rs` (v2.53.0) and `idpe.rs` (v2.54.0).
 //!
-//! # The model (plan §5.1)
+//! # The model (plan section 5.1)
 //!
 //! A dataspace with schema `S = ⟨(name₁,T₁), …, (nameₖ,Tₖ)⟩` holds an
 //! ordered sequence of **immutable record batches** (append-only,
-//! D108.2 — the analytical dual of `axonstore`'s transactional rows).
+//! the design decision — the analytical dual of `axonstore`'s transactional rows).
 //! A batch is `B = ⟨S, {A₁, …, Aₖ}, N, π_B⟩` with `N` the common
 //! logical length, `π_B` the provenance stamp, and each column array:
 //!
@@ -24,18 +24,18 @@
 //! Every invariant is checked ONCE, at construction — a constructed
 //! batch is immutable and never re-validated on read.
 //!
-//! # Zone maps (plan §5.3)
+//! # Zone maps (plan section 5.3)
 //!
 //! Each column of each batch carries `[min, max]` + null-count,
-//! computed at construction. §108.d's interval abstraction `φ̂` prunes
+//! computed at construction. v2.63.0's interval abstraction `φ̂` prunes
 //! a batch only when the predicate is provably false over the zone —
 //! sound by construction (a skipped batch contains no matching row);
 //! completeness is not claimed.
 //!
-//! # Provenance (plan §5.4)
+//! # Provenance (plan section 5.4)
 //!
 //! Every batch is stamped at ingest: source + sha256 + declared-time +
-//! [`crate::emcp::EpistemicTaint`] (born `Untrusted`, §98 — external
+//! [`crate::emcp::EpistemicTaint`] (born `Untrusted`, v2.52.0 — external
 //! data never enters trusted). Query results take the MEET over the
 //! batches they touched; no data-plane operation can raise a status.
 
@@ -44,11 +44,11 @@ use std::collections::HashMap;
 use crate::emcp::EpistemicTaint;
 
 // ─────────────────────────────────────────────────────────────────────
-//  Column types (the D108.1 closed catalog, canonical spellings)
+// Column types (the the design decision closed catalog, canonical spellings)
 // ─────────────────────────────────────────────────────────────────────
 
 /// The engine-side mirror of the frontend's closed catalog
-/// (`DataspaceColumnType`, D108.1). Constructed from the CANONICAL
+/// (`DataspaceColumnType`, the design decision). Constructed from the CANONICAL
 /// names the IR carries (`visit_dataspace` resolves aliases at IR
 /// generation) — an unknown spelling here means a stale or hand-edited
 /// artifact, and fails CLOSED.
@@ -139,7 +139,7 @@ impl ColumnData {
 }
 
 /// One immutable column array: validity bitmap + typed buffers.
-/// Constructed only through [`ColumnBuilder`] (which enforces the §5.1
+/// Constructed only through [`ColumnBuilder`] (which enforces the section 5.1
 /// invariants) or [`ColumnArray::validated`] (which re-checks them).
 #[derive(Debug, Clone)]
 pub struct ColumnArray {
@@ -149,7 +149,7 @@ pub struct ColumnArray {
 }
 
 impl ColumnArray {
-    /// Construct from raw parts, RE-CHECKING every §5.1 invariant.
+    /// Construct from raw parts, RE-CHECKING every section 5.1 invariant.
     /// The engine's constructors go through [`ColumnBuilder`]; this
     /// exists for deserialization paths (108.e persistence) where the
     /// parts arrive from outside the process boundary.
@@ -289,10 +289,10 @@ impl ColumnArray {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-//  Column builder (ingest-side, §108.c)
+// Column builder (ingest-side, v2.63.0)
 // ─────────────────────────────────────────────────────────────────────
 
-/// Append-only builder for one column. Type mismatches REFUSE (D108.7 —
+/// Append-only builder for one column. Type mismatches REFUSE (the design decision —
 /// silent coercion is data laundering); nullability via [`push_null`]
 /// is the only flexibility.
 ///
@@ -459,11 +459,11 @@ impl ColumnBuilder {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-//  Zone maps (plan §5.3)
+// Zone maps (plan section 5.3)
 // ─────────────────────────────────────────────────────────────────────
 
 /// Per-column, per-batch statistics — computed once at construction,
-/// immutable thereafter. §108.d's interval abstraction reads these to
+/// immutable thereafter. v2.63.0's interval abstraction reads these to
 /// prune batches soundly (skip ⟹ provably no matching row).
 #[derive(Debug, Clone, PartialEq)]
 pub enum ZoneStats {
@@ -537,12 +537,12 @@ fn compute_zone_map(col: &ColumnArray) -> ZoneMap {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-//  Provenance (plan §5.4)
+// Provenance (plan section 5.4)
 // ─────────────────────────────────────────────────────────────────────
 
 /// The stamp every batch carries from ingest. `ingested_at` is the
-/// flow's DECLARED time (§91 — one instant per run), not a wall-clock
-/// read. `taint` is born [`EpistemicTaint::Untrusted`] (§98) and no
+/// flow's DECLARED time (v2.46.0 — one instant per run), not a wall-clock
+/// read. `taint` is born [`EpistemicTaint::Untrusted`] (v2.52.0) and no
 /// data-plane operation can raise it — query results take the meet.
 #[derive(Debug, Clone)]
 pub struct BatchProvenance {
@@ -552,7 +552,7 @@ pub struct BatchProvenance {
     pub taint: EpistemicTaint,
 }
 
-/// The §5.4 meet (⊓) on the taint lattice:
+/// The section 5.4 meet (⊓) on the taint lattice:
 /// `Untrusted < SchemaValidated < Elevated`. An aggregate over any
 /// untrusted batch is born untrusted — taint survives the algebra.
 pub fn taint_meet(a: EpistemicTaint, b: EpistemicTaint) -> EpistemicTaint {
@@ -666,7 +666,7 @@ impl DataspaceStore {
         self.schema.iter().position(|(n, _)| n == name)
     }
 
-    /// Append an ingested batch (§108.c). Schema conformance was
+    /// Append an ingested batch (v2.63.0). Schema conformance was
     /// checked at batch construction against THIS schema; re-checked
     /// here because `RecordBatch::new` and `append` may be fed from
     /// different call sites.
@@ -697,8 +697,8 @@ impl DataspaceStore {
         &self.batches
     }
 
-    /// §108.x — drop ALL ingested batches (whole-dataspace granularity,
-    /// D108.2); the declaration + schema persist. Returns the count.
+    /// v2.63.0 — drop ALL ingested batches (whole-dataspace granularity,
+    /// the design decision); the declaration + schema persist. Returns the count.
     pub fn clear_batches(&mut self) -> usize {
         let n = self.batches.len();
         self.batches.clear();
@@ -710,7 +710,7 @@ impl DataspaceStore {
     }
 
     /// Total resident bytes across all buffers — the quota signal for
-    /// the §108.e per-tenant byte budget (refusal, not eviction).
+    /// the v2.63.0 per-tenant byte budget (refusal, not eviction).
     pub fn resident_bytes(&self) -> usize {
         self.batches
             .iter()
@@ -730,8 +730,8 @@ impl DataspaceStore {
 }
 
 /// The engine: every declared dataspace, instantiated at deploy from
-/// the IR (`dataspace_specs`, un-skipped in §108.b). Shared behind
-/// `Arc<RwLock<…>>` as the dispatcher port — absent port ⇒ the §108.a
+/// the IR (`dataspace_specs`, un-skipped in v2.63.0). Shared behind
+/// `Arc<RwLock<…>>` as the dispatcher port — absent port ⇒ the v2.63.0
 /// handlers fail CLOSED.
 #[derive(Debug, Default)]
 pub struct DataspaceEngine {
@@ -776,7 +776,7 @@ impl DataspaceEngine {
     /// (the OSS server hosts several programs). A NEW name creates an
     /// empty store; a RE-declared name **replaces** its store (the schema
     /// may have changed, and the OSS engine is in-memory — redeploy has
-    /// restart-equivalent semantics for that dataspace, D108.8). Names
+    /// restart-equivalent semantics for that dataspace, the design decision). Names
     /// not in `specs` are untouched. Validation is all-or-nothing: an
     /// unknown canonical type refuses the whole merge, mutating nothing.
     pub fn merge_from_ir(
@@ -814,13 +814,13 @@ impl DataspaceEngine {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-//  Wire format — durable batch snapshots (§108.x, D108.8)
+// Wire format — durable batch snapshots (v2.63.0, the design decision)
 // ─────────────────────────────────────────────────────────────────────
 //
 // A batch is IMMUTABLE, so persistence is trivially incremental: a
 // batch, once written, never changes. The wire form is deliberately
 // dumb JSON (deterministic, diffable, no format-versioning games in
-// v1); the DESERIALIZATION path re-runs every §5.1 invariant through
+// v1); the DESERIALIZATION path re-runs every section 5.1 invariant through
 // [`ColumnArray::validated`] — the single choke point — so a tampered
 // or truncated snapshot is REFUSED, never half-loaded.
 
@@ -894,7 +894,7 @@ fn b64_decode(s: &str) -> Result<Vec<u8>, String> {
 }
 
 impl RecordBatch {
-    /// Serialize for durable snapshotting (§108.x). Loss-free: the wire
+    /// Serialize for durable snapshotting (v2.63.0). Loss-free: the wire
     /// form carries the exact buffers + the provenance stamp.
     pub fn to_wire(&self) -> WireBatch {
         let columns = self
@@ -934,7 +934,7 @@ impl RecordBatch {
     }
 
     /// Rebuild from the wire AGAINST the declared schema, re-running
-    /// every §5.1 invariant ([`ColumnArray::validated`]) + the batch
+    /// every section 5.1 invariant ([`ColumnArray::validated`]) + the batch
     /// schema/length checks. A tampered, truncated or schema-drifted
     /// snapshot is REFUSED whole — never half-loaded.
     pub fn from_wire(
@@ -1004,11 +1004,11 @@ impl RecordBatch {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-//  Governed ingest — deterministic loaders (§108.c)
+// Governed ingest — deterministic loaders (v2.63.0)
 // ─────────────────────────────────────────────────────────────────────
 
 /// The closed loader catalog (axon-T929). Deterministic + first-party
-/// — the §100 posture. Parquet / Arrow-IPC are deferred §108.x surface.
+/// the v2.54.0 posture. Parquet / Arrow-IPC are deferred v2.63.0 surface.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IngestFormat {
     Csv,
@@ -1025,7 +1025,7 @@ impl IngestFormat {
     }
 }
 
-/// Bounds enforced on the RAW byte stream BEFORE any parsing (§100 —
+/// Bounds enforced on the RAW byte stream BEFORE any parsing (v2.54.0 —
 /// bounds-BEFORE-parse). The defaults are deliberately conservative:
 /// an ingest is bounded BY DEFAULT, never unbounded.
 #[derive(Debug, Clone, Copy)]
@@ -1046,16 +1046,16 @@ impl Default for IngestLimits {
 /// Parse + type raw source bytes into ONE immutable [`RecordBatch`]
 /// against the declared schema.
 ///
-/// The §108.c laws, in order:
-/// 1. **Bounds BEFORE parse** (§100): the byte bound is checked against
+/// The v2.63.0 laws, in order:
+/// 1. **Bounds BEFORE parse** (v2.54.0): the byte bound is checked against
 ///    the raw stream before a single byte is interpreted; the row bound
 ///    during parsing, before typing each excess row.
-/// 2. **Type refusal, not coercion** (D108.7): a value that does not
+/// 2. **Type refusal, not coercion**: a value that does not
 ///    fit its column type refuses the WHOLE batch, naming row + column.
 ///    A missing value (empty CSV field / absent JSON key / JSON null)
 ///    is a structural null in the validity bitmap — the only
 ///    flexibility.
-/// 3. The batch is stamped with `provenance` (born-Untrusted, §98) —
+/// 3. The batch is stamped with `provenance` (born-Untrusted, v2.52.0) —
 ///    stamping happens HERE so no unstamped batch can exist.
 pub fn ingest_bytes(
     schema: &[(String, ColumnType)],
@@ -1311,21 +1311,21 @@ fn push_json_field(
 }
 
 // ─────────────────────────────────────────────────────────────────────
-//  The lazy relational query engine (§108.d)
+// The lazy relational query engine (v2.63.0)
 // ─────────────────────────────────────────────────────────────────────
 //
 // σ (focus) · γ (aggregate) · equi-⋈ (associate) · profile (explore),
 // with predicates drawn from the ONE data-plane `where:` grammar the
-// product already ships — `crate::store::filter` (§35.b: closed,
+// product already ships — `crate::store::filter` (v1.30.0: closed,
 // whitelisted operators, `${name}` bindings resolved inside tokenized
-// string literals, fuzzed §35.k). D108.9: `retrieve`, `navigate` and
-// the dataspace verbs share a single `where:` surface; the §70 `Expr`
+// string literals, fuzzed v1.30.0). the design decision: `retrieve`, `navigate` and
+// the dataspace verbs share a single `where:` surface; the v2.26.0 `Expr`
 // engine stays the CONTROL-PLANE expression language (`if` / `let`).
 //
 // Evaluation is in-memory over the columnar batches, with SQL
 // precedence (AND binds tighter than OR) and SQL null semantics
 // (`= NULL` ⇒ is-null; ordering/LIKE against NULL ⇒ no match).
-// Batches are pruned through the zone-map abstraction (§5.3): a batch
+// Batches are pruned through the zone-map abstraction (section 5.3): a batch
 // is skipped ONLY when the predicate is PROVABLY false over its
 // per-column `[min, max]` — sound by construction, completeness not
 // claimed (a `maybe` batch is scanned).
@@ -1384,7 +1384,7 @@ fn cell_to_json(c: &CellValue) -> serde_json::Value {
 }
 
 /// Minimal deterministic SQL `LIKE` (`%` any-run, `_` any-one), the
-/// §35.b surface. Case-sensitive (documented; ILIKE is deferred).
+/// v1.30.0 surface. Case-sensitive (documented; ILIKE is deferred).
 fn like_match(text: &str, pattern: &str) -> bool {
     fn rec(t: &[char], p: &[char]) -> bool {
         match p.first() {
@@ -1525,7 +1525,7 @@ fn eval_filter_on_row(
     Ok(any_group || group)
 }
 
-/// §5.3 — the interval abstraction φ̂ for ONE condition over a batch's
+/// section 5.3 — the interval abstraction φ̂ for ONE condition over a batch's
 /// zone map. `true` = maybe (scan), `false` = PROVABLY no row in the
 /// batch satisfies it. Conservative by construction: anything without
 /// a precise abstraction answers `maybe`.
@@ -1671,7 +1671,7 @@ pub struct QueryOutput {
     pub stats: QueryStats,
 }
 
-/// The §5.4 meet over a store — conservative: the result's status is
+/// The section 5.4 meet over a store — conservative: the result's status is
 /// the meet over ALL of the store's batches (a strictly-lower-or-equal
 /// bound vs. touched-only; the conservative direction is always sound).
 /// An empty store yields the floor (`Untrusted`).
@@ -1722,7 +1722,7 @@ fn parse_where(
     Ok(filter)
 }
 
-/// σ_φ ∘ π_v — `focus` (§108.d). Scans batches the zone maps cannot
+/// σ_φ ∘ π_v — `focus` (v2.63.0). Scans batches the zone maps cannot
 /// refute, evaluates φ per row, projects `select` (empty ⇒ all columns,
 /// in declaration order).
 pub fn focus_query(
@@ -1786,7 +1786,7 @@ pub fn focus_query(
     })
 }
 
-/// The closed aggregate catalog (§108.d).
+/// The closed aggregate catalog (v2.63.0).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AggFunc {
     Count,
@@ -1863,7 +1863,7 @@ struct AggState {
     max_s: Option<String>,
 }
 
-/// γ — `aggregate` (§108.d). Groups by `group_by` (empty ⇒ one global
+/// γ — `aggregate` (v2.63.0). Groups by `group_by` (empty ⇒ one global
 /// group) and computes the closed catalog. Nulls are skipped by every
 /// column-aggregate (`count` with no column counts ROWS). Output rows
 /// are sorted by group key — DETERMINISTIC output, always.
@@ -2035,7 +2035,7 @@ pub fn aggregate_query(
     })
 }
 
-/// Equi-⋈ — `associate` (§108.d, D108.5). Hash join on ONE shared
+/// Equi-⋈ — `associate` (v2.63.0, the design decision). Hash join on ONE shared
 /// column (`using`), equality keys only. Output rows are flat: left
 /// columns by name; right columns by name, prefixed `<right>_` on
 /// collision (the join key appears once, from the left). NULL keys
@@ -2125,7 +2125,7 @@ pub fn associate_query(
     })
 }
 
-/// Deterministic profile — `explore` (§108.d). Schema + row/null counts
+/// Deterministic profile — `explore` (v2.63.0). Schema + row/null counts
 /// + per-column zone ranges. NO row data: a profile describes shape,
 /// it never samples content.
 pub fn explore_profile(store: &DataspaceStore) -> QueryOutput {
@@ -2153,7 +2153,7 @@ pub fn explore_profile(store: &DataspaceStore) -> QueryOutput {
                         maxs.push(serde_json::json!(max));
                     }
                     // A Text zone boundary IS row content (an email, a
-                    // name — §104's no-PII discipline): a profile
+                    // name — v2.58.0's no-PII discipline): a profile
                     // describes shape, so Text ranges are SUPPRESSED.
                     ZoneStats::Text { .. } => {}
                     ZoneStats::Bool { .. } | ZoneStats::None => {}
@@ -2262,7 +2262,7 @@ mod tests {
 
     #[test]
     fn builder_refuses_a_type_mismatch() {
-        // D108.7 — silent coercion is data laundering.
+        // the design decision — silent coercion is data laundering.
         let mut b = ColumnBuilder::new(ColumnType::Int);
         let err = b.push_text("42").unwrap_err();
         assert!(err.contains("type mismatch"), "{err}");
@@ -2456,7 +2456,7 @@ mod tests {
         assert_eq!(store.row_count(), 2);
         assert!(store.resident_bytes() > 0);
 
-        // Append-only (D108.2): a second batch accumulates; nothing mutates.
+        // Append-only: a second batch accumulates; nothing mutates.
         let mut k = ColumnBuilder::new(ColumnType::Text);
         k.push_text("c").unwrap();
         let mut v = ColumnBuilder::new(ColumnType::Int);
@@ -2467,7 +2467,7 @@ mod tests {
         assert_eq!(store.row_count(), 3);
     }
 
-    // ── §108.c — the governed loaders ────────────────────────────────
+    // ── v2.63.0 — the governed loaders ────────────────────────────────
 
     fn lead_schema() -> Vec<(String, ColumnType)> {
         vec![
@@ -2502,7 +2502,7 @@ mod tests {
 
     #[test]
     fn ingest_refuses_bytes_bound_before_any_parse() {
-        // §100 — the refusal must be the BOUNDS error, not a parse error,
+        // v2.54.0 — the refusal must be the BOUNDS error, not a parse error,
         // even though the payload is also malformed CSV.
         let garbage = vec![b'"'; 4096]; // unclosed quote AND oversized
         let err = ingest_bytes(
@@ -2544,7 +2544,7 @@ mod tests {
 
     #[test]
     fn ingest_type_mismatch_refuses_naming_row_and_column() {
-        // D108.7 — refusal, not coercion; the error is actionable.
+        // the design decision — refusal, not coercion; the error is actionable.
         let csv = "email,score,visits\na@x.com,not_a_number,3\n";
         let err = ingest_bytes(
             &lead_schema(),
@@ -2653,7 +2653,7 @@ mod tests {
         assert!(err.contains("ARRAY"), "{err}");
     }
 
-    // ── §108.d — the lazy relational query engine ────────────────────
+    // ── v2.63.0 — the lazy relational query engine ────────────────────
 
     fn populated_store() -> DataspaceStore {
         let mut engine = DataspaceEngine::from_ir(&[ir_spec(
@@ -2869,7 +2869,7 @@ mod tests {
         assert!(!out.rows.to_string().contains("a@x.com"), "shape, never content");
     }
 
-    // ── §108.x — the wire format (durable snapshots, D108.8) ─────────
+    // ── v2.63.0 — the wire format (durable snapshots, the design decision) ─────────
 
     #[test]
     fn wire_roundtrip_is_lossless_across_all_types() {
@@ -2901,7 +2901,7 @@ mod tests {
         let store = populated_store();
         let schema = store.schema().to_vec();
         let mut wire = store.batches()[0].to_wire();
-        // Truncated buffer → the §5.1 invariants refuse it whole.
+        // Truncated buffer → the section 5.1 invariants refuse it whole.
         wire.columns[1].data_b64 = b64_encode(&[0u8; 4]); // score: 4 bytes ≠ n×8
         assert!(RecordBatch::from_wire(&schema, &wire).is_err());
         // Schema drift → refused.

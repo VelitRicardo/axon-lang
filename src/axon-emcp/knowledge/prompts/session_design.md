@@ -1,19 +1,19 @@
 ---
 name: session_design
 title: Design an AXON session
-summary: Guided walkthrough — turn a dialogue intent (chat, RPC, multiparty coordination) into a §41 duality-correct `session` + `socket` pair, honouring linearity, credit-refined backpressure, and multiparty projection where relevant.
+summary: Guided walkthrough — turn a dialogue intent (chat, RPC, multiparty coordination) into a v2.3.0 duality-correct `session` + `socket` pair, honouring linearity, credit-refined backpressure, and multiparty projection where relevant.
 arguments:
   - name: intent
     description: One-sentence description of the dialogue (e.g. "turn-taking chat with cancellation", "request/response RPC with streaming reply", "client/server/auditor 3-party coordination").
     required: true
   - name: parties
-    description: Number of parties — `2` for client/server dialogue (default), `3+` for multiparty (triggers the §41.h projection rules).
+    description: Number of parties — `2` for client/server dialogue (default), `3+` for multiparty (triggers the v2.3.0 projection rules).
     required: false
   - name: backpressure
     description: "Credit window for the streaming side. Recommended values: `1` (turn-taking), `4`–`8` (typical SSE-like streaming), `≥ 16` (bulk transfer). Omit for unbounded fragment."
     required: false
   - name: reconnect
-    description: "Set to `yes` to enable typed reconnection via `cognitive_state` (Fase 41.g). The session-type cursor + credit window will be sealed into an AAD-bound snapshot on disconnect."
+    description: "Set to `yes` to enable typed reconnection via `cognitive_state` (v2.3.0). The session-type cursor + credit window will be sealed into an AAD-bound snapshot on disconnect."
     required: false
 ---
 
@@ -25,13 +25,13 @@ Parties: **{{parties}}**. Credit window: **{{backpressure}}**.
 Reconnect-on-disconnect: **{{reconnect}}**.
 
 A `session` declares the *type of the connection*. A `socket` binds
-that type to a WebSocket transport. The four §Fase 41 pillars apply
+that type to a WebSocket transport. The four v2.3.0 pillars apply
 unconditionally:
 
-1. **Duality** (§41.a) — the server role must be `client⊥`.
+1. **Duality** (v2.3.0) — the server role must be `client⊥`.
 2. **Linearity** — every channel is used exactly once on every path.
-3. **Credit-refined backpressure** (§41.c) — Presburger-decidable.
-4. **Multiparty projection** (§41.h) — only for `parties ≥ 3`.
+3. **Credit-refined backpressure** (v2.3.0) — Presburger-decidable.
+4. **Multiparty projection** (v2.3.0) — only for `parties ≥ 3`.
 
 Follow this loop.
 
@@ -81,13 +81,13 @@ Examples by intent shape:
   ```
 
 - **3-party coordination** (parties = 3) — declare the global type
-  inside a multiparty `session` and let the §41.h projector emit
+  inside a multiparty `session` and let the v2.3.0 projector emit
   each role's local view automatically. See the
   `axon-frontend::multiparty::project_all` reference.
 
 ### 3. Pick the credit window
 
-The value of **{{backpressure}}** governs the §41.c discipline:
+The value of **{{backpressure}}** governs the v2.3.0 discipline:
 
 - `1` → strict turn-taking, ack-per-message. Safest.
 - `4`–`8` → typical SSE-like LLM-streaming. Buffers bursts.
@@ -119,7 +119,7 @@ pillars 1 + 3 at the exact same point.
 If the bound session's server role is **single-polarity** (only
 `send`/`select`/`loop`/`end`), the same socket ALSO speaks W3C
 Server-Sent Events on the same path with `Accept:
-text/event-stream` — the §41.e SSE-as-fragment unification fires
+text/event-stream` — the v2.3.0 SSE-as-fragment unification fires
 automatically.
 
 ### 5. Validate
@@ -142,7 +142,7 @@ Never declare the design finished until `axon.check` returns
 ### 6. Surface the deliverable
 
 Quote the final `session` + `socket` pair as a fenced ```axon
-block. Quote the `axon.check` verdict. State which §41 pillars
+block. Quote the `axon.check` verdict. State which v2.3.0 pillars
 the design exercises (duality always; backpressure if a credit
 window was declared; multiparty projection if `parties ≥ 3`;
 reconnection if `cognitive_state` is wired). Point the user at

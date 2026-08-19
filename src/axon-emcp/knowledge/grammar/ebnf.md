@@ -97,7 +97,7 @@ flow_step         = step_node
                   | (* …complete list in parser.rs::parse_flow_step *) ;
 
 deliberate_step   = "deliberate" , "{" , { flow_step } , "}" ;
-(* §Fase 62/63 — cognitive retrieval over a `pix` tree OR a `corpus`
+(* v2.12.0/63 — cognitive retrieval over a `pix` tree OR a `corpus`
    graph (a corpus WITH `relations:` is an MDN graph). Dispatch is by
    the referenced declaration, not by keyword. *)
 navigate_step     = "navigate" , identifier
@@ -138,7 +138,7 @@ type_field        = identifier , ":" , type_expr ;
 ```
 
 Recursive generics like `FlowEnvelope<List<TenantRecord>>` are
-accepted since Fase 39.a.
+accepted since v2.0.0.
 
 ## Anchor
 
@@ -173,7 +173,7 @@ effect_name       = "io" | "network" | "pure" | "random" | "storage"
 qualifier_value   = dotted_slug ;
 ```
 
-## Session types (§Fase 41)
+## Session types (v2.3.0)
 
 ```ebnf
 session_def       = "session" , identifier , "{"
@@ -216,7 +216,7 @@ omitted (covered in dedicated resources or in the paper):
 - Compliance-annotation dotted-slug grammar (covered under each
   `axon://compliance/<framework>` resource).
 - The Honda-Yoshida-Carbone multiparty projection rules (covered
-  under `axon://logic/session_duality` and the §Fase 41 paper).
+  under `axon://logic/session_duality` and the v2.3.0 paper).
 
 For those productions, consult the linked sources or the
 per-primitive resources via `axon.primitives` + `axon.primitive_doc`.

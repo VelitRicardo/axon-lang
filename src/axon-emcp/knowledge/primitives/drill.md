@@ -1,9 +1,9 @@
 ---
 name: drill
-summary: "Subtree descent under a prior navigate — real navigation when a source is in scope; degrades to a placeholder otherwise (§111)."
+summary: "Subtree descent under a prior navigate — real navigation when a source is in scope; degrades to a placeholder otherwise (v2.67.0)."
 category: data_plane
 top_level: false
-since: Fases 62–65 (PIX·MDN program)
+since: v2.12.0–v2.15.0 (PIX·MDN program)
 grammar: |
   drill <target>
 ---
@@ -12,7 +12,7 @@ grammar: |
 
 `drill` descends into a subtree surfaced by a prior `navigate`.
 
-## Honest scope (§111)
+## Honest scope (v2.67.0)
 
 Real subtree navigation **when a source is in scope**; degrades to a
 placeholder string otherwise. Same discipline as `navigate`: the

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# §Fase 25.g — Merges-table generator for axon-csys BPE kernel.
+# v1.19.0 — Merges-table generator for axon-csys BPE kernel.
 #
 # Produces deterministic, little-endian binary serialisations of the
 # `cl100k_base` and `o200k_base` merge tables drawn directly from the

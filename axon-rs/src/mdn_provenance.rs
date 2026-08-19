@@ -1,4 +1,4 @@
-//! §Fase 62.C — MDN provenance logic (paper `paper_multi_document.md` §3.2).
+//! v2.12.0 — MDN provenance logic (paper `paper_multi_document.md` section 3.2).
 //!
 //! A faithful implementation of the **provenance calculus**: every derived claim
 //! carries the corpus path(s) that justify it. A *provenance-annotated formula*
@@ -10,13 +10,13 @@
 //! - **P-EXTEND** — `φ@π₁, (Dₖ,D_{k+1},t)∈R ⊢ φ@(π₁·t·D_{k+1})`, acyclicity preserved.
 //! - **P-CORROBORATE** — `φ@{π₁}, φ@{π₂}` sharing only the origin `⊢ φ@{π₁,π₂}`
 //!   (independent lines of evidence; the confidence boost is a separate
-//!   quantitative concern handled by EPR §2.3 — the rule is purely logical).
+//! quantitative concern handled by EPR section 2.3 — the rule is purely logical).
 //!
 //! **Theorem 5 (Provenance Soundness):** every `π ∈ Π` of a derived annotation is
 //! a valid acyclic path in the corpus. [`is_sound`] is the independent checker.
 //!
-//! The S4_MDN modal logic (§3.1) and its soundness/completeness are meta-logical
-//! and land as a PCC property class in §62.E; this module is the concrete,
+//! The S4_MDN modal logic (section 3.1) and its soundness/completeness are meta-logical
+//! and land as a PCC property class in v2.12.0; this module is the concrete,
 //! runtime-relevant calculus over corpus paths.
 
 use crate::mdn::{Corpus, DocId, EdgeType};
@@ -93,7 +93,7 @@ fn edge_type_between(corpus: &Corpus, from: DocId, to: DocId) -> Option<EdgeType
         .map(|e| e.etype)
 }
 
-/// **P-CITE** (paper §3.2). From `φ@(D₀)`, `ψ@(D₁)`, and a citation `D₀ → D₁`,
+/// **P-CITE** (paper section 3.2). From `φ@(D₀)`, `ψ@(D₁)`, and a citation `D₀ → D₁`,
 /// derive `(φ → ψ)@(D₀, cite, D₁)`. Both premises must be atomic single-document
 /// annotations. Returns `None` if either premise is non-atomic or no cite edge
 /// joins them.
@@ -111,7 +111,7 @@ pub fn p_cite(corpus: &Corpus, phi_at_d0: &Annotated, psi_at_d1: &Annotated) -> 
     })
 }
 
-/// **P-EXTEND** (paper §3.2). Extend `φ@π₁` along an edge `(Dₖ, D_{k+1}, t) ∈ R`
+/// **P-EXTEND** (paper section 3.2). Extend `φ@π₁` along an edge `(Dₖ, D_{k+1}, t) ∈ R`
 /// to `φ@(π₁ · t · D_{k+1})`, where `Dₖ` is the endpoint of `π₁`. The extension
 /// requires `D_{k+1} ∉ nodes(π₁)` (acyclicity preserved). `φ` is unchanged. The
 /// premise must carry a single path.
@@ -132,10 +132,10 @@ pub fn p_extend(corpus: &Corpus, phi: &Annotated, next: DocId) -> Option<Annotat
     Some(Annotated { phi: phi.phi.clone(), provenance: vec![Path { nodes, edges }] })
 }
 
-/// **P-CORROBORATE** (paper §3.2). Combine `φ@{π₁}` and `φ@{π₂}` — same `φ`,
+/// **P-CORROBORATE** (paper section 3.2). Combine `φ@{π₁}` and `φ@{π₂}` — same `φ`,
 /// paths sharing **only the origin** `D₀` — into `φ@{π₁, π₂}`. This is a purely
 /// logical combination of independent evidence chains; the confidence boost is
-/// handled separately by the EPR scoring (§2.3), not here. Returns `None` if the
+/// handled separately by the EPR scoring (section 2.3), not here. Returns `None` if the
 /// formulas differ, the premises are non-singleton, the origins differ, or the
 /// paths share an intermediate node (not independent).
 pub fn p_corroborate(phi_a: &Annotated, phi_b: &Annotated) -> Option<Annotated> {

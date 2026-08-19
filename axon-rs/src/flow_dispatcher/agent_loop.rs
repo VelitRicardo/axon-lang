@@ -1,4 +1,4 @@
-//! §Fase 119.m.1 — **the `agent` executor**: `strategy:` as a CONTROL policy.
+//! v2.83.0 — **the `agent` executor**: `strategy:` as a CONTROL policy.
 //!
 //! # What was wrong
 //!
@@ -8,7 +8,7 @@
 //! Measured 2026-08-08: no reader of `ir.agents` outside attestation and PCC,
 //! no reader of `IRAgent::strategy` / `max_iterations` / `on_stuck` /
 //! `max_cost` anywhere in the dispatcher. `advertised.rs` carried it as
-//! `Unaudited` — §111 never checked it, and it turns out there was nothing to
+//! `Unaudited` — v2.67.0 never checked it, and it turns out there was nothing to
 //! check.
 //!
 //! The README publishes a promise about it in plain words:
@@ -27,12 +27,12 @@
 //!
 //! | need | existing, attested machinery |
 //! |---|---|
-//! | one deliberation | `pure_shape::run_pure_shape` (§33.y.c) |
-//! | a tool call | `lambda_tools::run_use_tool` (§58), already budget-gated (§114.a) |
-//! | epistemic ceiling | `FlowEnvelope::seal` — Theorem 5.1, moved into the C23 kernel by §39.c |
-//! | cancellation | the `ctx.cancel` discipline honoured at every `.await` (§33.x.e) |
-//! | audit trail | the per-step `StepAuditRecord` chain (§11.c) |
-//! | creative recovery | `cognitive::run_forge` (§86) |
+//! | one deliberation | `pure_shape::run_pure_shape` (v1.24.0) |
+//! | a tool call | `lambda_tools::run_use_tool` (v2.8.0), already budget-gated (v2.69.0) |
+//! | epistemic ceiling | `FlowEnvelope::seal` — Theorem 5.1, moved into the C23 kernel by v2.0.0 |
+//! | cancellation | the `ctx.cancel` discipline honoured at every `.await` (v1.24.0) |
+//! | audit trail | the per-step `StepAuditRecord` chain (v1.4.0) |
+//! | creative recovery | `cognitive::run_forge` (v2.41.0) |
 //!
 //! Building it any other way would have meant a second implementation of each,
 //! free to drift from the one under test.
@@ -41,7 +41,7 @@
 //!
 //! Every strategy terminates, and each terminates for a DIFFERENT reason —
 //! which is the whole content of `strategy:` being a control policy rather
-//! than a prompt flavour (D119.5, ratified 2026-08-08):
+//! than a prompt flavour (ratified 2026-08-08):
 //!
 //! - `react` — interleaved think/act. Bounded by a strictly increasing
 //!   iteration counter against `max_iterations`.
@@ -194,7 +194,7 @@ impl Spend {
             iterations: 0,
             tokens: 0,
             started: std::time::Instant::now(),
-            // The §101 doctrine applies: this is the OSS reference price, used
+            // The v2.54.0 doctrine applies: this is the OSS reference price, used
             // to enforce a ceiling the adopter declared, never to advertise a
             // cost. Enterprise resolves the real per-tenant model.
             pricing: crate::cost_estimator::PricingModel::default_sonnet(),
@@ -209,7 +209,7 @@ impl Spend {
     }
 
     /// May another iteration be afforded? Checked BEFORE the call, because a
-    /// bound enforced after the spend bounds nothing — the §114.a lesson, and
+    /// bound enforced after the spend bounds nothing — the v2.69.0 lesson, and
     /// the reason `budget_gate::charge` also runs before its dispatch.
     fn affords(&self, b: &AgentBounds) -> Option<&'static str> {
         if self.iterations >= b.max_iterations {
@@ -234,22 +234,22 @@ impl Spend {
     }
 }
 
-/// §Fase 119.m.3 — dispatch an `<Agent>(arg, …)` call.
+/// v2.83.0 — dispatch an `<Agent>(arg, …)` call.
 ///
 /// Resolves the declaration from `ctx.agent_specs` and FAILS CLOSED when it is
 /// absent. That is not politeness: the declaration is where `max_iterations`
 /// lives, so an unresolved agent is an unbounded one, and a runtime that ran it
 /// anyway would spend against a ceiling nobody wrote.
 ///
-/// The arguments are §119.f.10 subjects, resolved against the flow bindings —
+/// The arguments are v2.83.0 subjects, resolved against the flow bindings —
 /// `TrendAnalyzer(Gather.output)` hands the agent the prior step's VALUE, not
-/// the string `"Gather.output"`. Quoted literals keep §60's classification.
+/// the string `"Gather.output"`. Quoted literals keep v2.10.0's classification.
 pub async fn run_agent_call(
     node: &crate::ir_nodes::IRAgentCall,
     ctx: &mut DispatchCtx,
 ) -> Result<NodeOutcome, DispatchError> {
     // D3 — cancel is checked at handler ENTRY, before anything else including
-    // catalog resolution. Caught by §33.y.n's cancel-propagation fuzz, which
+    // catalog resolution. Caught by v1.24.0's cancel-propagation fuzz, which
     // drives every variant pre-cancelled and demands `UpstreamCancelled`
     // uniformly: resolving first meant a cancelled run reported a MISSING AGENT
     // instead of a cancellation, which is a wrong diagnosis for the operator
@@ -279,8 +279,8 @@ pub async fn run_agent_call(
         .arguments
         .iter()
         .map(|a| match a.strip_prefix('"').and_then(|s| s.strip_suffix('"')) {
-            // A quoted argument is a literal, not a name to look up — §60's
-            // classification, preserved by §119.f.10's parser.
+            // A quoted argument is a literal, not a name to look up — v2.10.0's
+            // classification, preserved by v2.83.0's parser.
             Some(literal) => literal.to_string(),
             None => crate::exec_context::resolve_value_reference(a, &ctx.let_bindings),
         })
@@ -307,7 +307,7 @@ pub async fn run_agent(
     let mut spend = Spend::new();
 
     let (end, output) = match agent.strategy.as_str() {
-        // The empty strategy is the pre-§119.m.1 shape (`strategy:` omitted).
+        // The empty strategy is the pre-v2.83.0 shape (`strategy:` omitted).
         // ReAct is the README's own default in four of its six agents and the
         // only policy that needs no extra declaration to be meaningful.
         "react" | "" => run_react(agent, input, &bounds, &mut spend, ctx).await?,
@@ -533,7 +533,7 @@ fn tool_catalog(agent: &IRAgent) -> String {
     }
 }
 
-/// §Fase 119.m.1 — the containment check.
+/// v2.83.0 — the containment check.
 ///
 /// A model may name any string it likes. The agent may only reach the tools
 /// its DECLARATION granted. This is the one place where the loop's output is
@@ -549,7 +549,7 @@ pub fn granted_tool<'a>(agent: &'a IRAgent, named: &str) -> Option<&'a String> {
     agent.tools.iter().find(|t| t.eq_ignore_ascii_case(named))
 }
 
-/// §Fase 119.m.1 — the ReAct move a deliberation encodes. Public for the same
+/// v2.83.0 — the ReAct move a deliberation encodes. Public for the same
 /// reason as [`granted_tool`]: the protocol parse is where untrusted model
 /// output becomes a control decision, and it must be testable on its own.
 #[derive(Debug, PartialEq)]
@@ -632,8 +632,8 @@ async fn run_react(
                     argument: input.to_string(),
                     named_args: Vec::new(),
                 };
-                // The real §58 dispatch — which means the §114.a budget gate
-                // and the §114.f channel lease charge apply to an agent's tool
+                // The real v2.8.0 dispatch — which means the v2.69.0 budget gate
+                // and the v2.69.0 channel lease charge apply to an agent's tool
                 // calls exactly as they do to a flow's.
                 let observed = match super::lambda_tools::run_use_tool(&node, ctx).await? {
                     NodeOutcome::Completed { output, .. } => output,
@@ -826,7 +826,7 @@ async fn run_reflexion(
 /// Apply the declared `on_stuck:` policy. The catalog is the frontend's
 /// (`VALID_ON_STUCK_POLICIES`), and every member either DOES something here or
 /// is refused by name — a policy that silently collapses into another is the
-/// §111 defect wearing a field.
+/// v2.67.0 defect wearing a field.
 // ────────────────────────────────────────────────────────────────────
 //  custom — the step sequence written inside the agent block
 // ────────────────────────────────────────────────────────────────────
@@ -924,7 +924,7 @@ async fn apply_on_stuck(
         )
     };
     match agent.on_stuck.as_str() {
-        // README §agent, verbatim: "raises `AgentStuckError` with full context,
+        // README agent, verbatim: "raises `AgentStuckError` with full context,
         // so the human reviews exactly where the agent got stuck".
         "escalate" => Err(DispatchError::BackendError {
             name: format!("agent:{}", agent.name),
@@ -932,7 +932,7 @@ async fn apply_on_stuck(
                 "AgentStuckError — {context}. Last partial state:\n{partial}"
             ),
         }),
-        // §Fase 86 — the real forge, seeded with the stuck context. `forge` is
+        // v2.41.0 — the real forge, seeded with the stuck context. `forge` is
         // attested `Partial` (its `coherence` is hardcoded to 1.0), and that
         // gap is inherited here rather than hidden.
         "forge" => {
@@ -967,7 +967,7 @@ async fn apply_on_stuck(
              state, not a completed answer:\n{partial}"
         )),
         // In the frontend catalog, and genuinely not implementable here yet:
-        // §119.d parks a FLOW WALK's remaining nodes, and an agent loop has no
+        // v2.83.0 parks a FLOW WALK's remaining nodes, and an agent loop has no
         // remaining-node list to park. Refused by name rather than silently
         // degraded to `escalate`.
         "hibernate" => Err(DispatchError::BackendError {

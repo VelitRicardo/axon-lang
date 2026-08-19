@@ -82,14 +82,14 @@ flow ResolveAmbiguity(claim: Claim) -> Verdict {
 | `defeasible` | Default-with-exceptions reasoning. |
 | `propose_critique_refine` | Propose, self-critique, refine. |
 
-The catalog grows by Fase; the type checker rejects unknown
+The catalog grows by cycle; the type checker rejects unknown
 identifiers at parse time only at strict-policy modules (in
 permissive modules it forwards the value as an opaque slug).
 
 ### `reason <Strategy> { ... }` (block form)
 
 A braced block may follow the strategy; the body is reserved for
-future **epistemic clauses** (paper §6 — confidence tracking,
+future **epistemic clauses** (paper section 6 — confidence tracking,
 provenance chains). Today the parser skips the body
 structurally; the runtime exposes the strategy identifier only.
 
@@ -122,7 +122,7 @@ to the step. Use the flow-level form when reasoning is a
 ReasonStep {
     strategy: String,    // closed-catalog identifier (left empty by
                          // parse_flow_step_simple, populated when a
-                         // braced epistemic block lands in a later Fase)
+                         // braced epistemic block lands in a later cycle)
     target: String,      // the strategy identifier captured by the parser
     loc: Loc,
 }
@@ -162,5 +162,5 @@ draft mistake the type checker catches).
   (`reason` produces a derivation; `probe` produces an
   observation).
 - `axon://primitives/weave` — multi-thread reasoning braid.
-- `axon://compliance/epistemic_levels` — the §11.e level catalog
+- `axon://compliance/epistemic_levels` — the v1.4.0 level catalog
   the audit row decorates `reason` invocations with.

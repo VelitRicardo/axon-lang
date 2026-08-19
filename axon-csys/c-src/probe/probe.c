@@ -1,9 +1,9 @@
 /*
- * §Fase 25.b — axon-csys build-infrastructure probe kernel.
+ * v1.19.0 — axon-csys build-infrastructure probe kernel.
  *
  * The probe is the canary that proves the entire C build pipeline works
  * end-to-end (cc-rs orchestration → C23 compilation → static link → FFI
- * invocation from Rust). Subsequent sub-fases (25.c onward) reuse the same
+ * invocation from Rust). Subsequent steps (25.c onward) reuse the same
  * plumbing for real kernels. The probe reports compile-time C-standard
  * realisation + feature availability so tests + downstream kernels can
  * degrade gracefully on toolchains that pre-date individual C23 features.
@@ -51,7 +51,7 @@
 #  define AXON_CSYS_HAS_C23 0
 #endif
 
-/* C23 §6.10.3.5 mandates __STDC_EMBED_NOT_FOUND__ / __STDC_EMBED_FOUND__ /
+/* C23 section 6.10.3.5 mandates __STDC_EMBED_NOT_FOUND__ / __STDC_EMBED_FOUND__ /
  * __STDC_EMBED_EMPTY__ predefined macros once the implementation supports
  * #embed. Their presence is the standard-blessed way to detect support. */
 #if defined(__STDC_EMBED_NOT_FOUND__)

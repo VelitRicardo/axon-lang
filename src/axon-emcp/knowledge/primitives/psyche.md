@@ -3,7 +3,7 @@ name: psyche
 summary: Declares the psychological model a persona enacts — beliefs, desires, traits, behavioural disposition.
 category: operators
 top_level: true
-since: Fase 14
+since: v1.5.2
 grammar: |
   psyche <Name> {
       dimensions: [<dim1>, <dim2>, ...]          # optional — belief/desire/trait dimensions
@@ -25,7 +25,7 @@ identity (domain, tone, refusal posture), `psyche` declares
 the **cognitive disposition** that drives the persona's
 trajectory through a problem space.
 
-This is AXON's deepest cognitive surface. The Fase 14 §λ-L-E
+This is AXON's deepest cognitive surface. The v1.5.2 λ-L-E
 psyche layer introduced manifold-based reasoning trajectories:
 the persona's choice at every step is shaped by a typed
 manifold over its dimensions, with declared noise + momentum
@@ -81,13 +81,13 @@ A **bracketed list of identifiers** — **hard safety
 boundaries** the psyche must not violate regardless of
 manifold position.
 
-**`non_diagnostic` is required** — the Fase 14 Dependent
-Type Safety §4 rule enforces that every declared psyche
+**`non_diagnostic` is required** — the v1.5.2 Dependent
+Type Safety section 4 rule enforces that every declared psyche
 includes `non_diagnostic` in this list (the runtime relies
 on it to detect adversarial diagnostic-mode invocations).
 Omitting it surfaces an `axon-E118 Psyche '<X>' must
 include 'non_diagnostic' in safety_constraints (dependent
-type safety §4)` diagnostic.
+type safety section 4)` diagnostic.
 
 Other common slugs (open catalogue at the parser layer; the
 runtime validates against its registered safety registry):
@@ -118,7 +118,7 @@ layer, not at the parser layer.
 
 ## Runtime behaviour
 
-`psyche` lowers to a `PsycheDefinition` IR node. The Fase 14
+`psyche` lowers to a `PsycheDefinition` IR node. The v1.5.2
 runtime threads the psyche's manifold parameters into every
 reasoning step bound to the parent persona:
 

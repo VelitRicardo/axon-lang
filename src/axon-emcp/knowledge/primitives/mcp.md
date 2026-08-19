@@ -3,7 +3,7 @@ name: mcp
 summary: Declares an outbound MCP server binding — turns axon into an MCP client of another server.
 category: wire
 top_level: true
-since: Fase 33+
+since: v1.24.0+
 grammar: |
   # The current `mcp` parser is the generic-declaration form
   # (parser.rs::parse_generic_declaration). Permissive grammar:
@@ -29,7 +29,7 @@ and have its primitives appear as if declared locally.
 another primitive. The current parser uses the **permissive
 generic-declaration form** (`parser.rs::parse_generic_declaration`)
 — the syntax accepts a name, optional parens, and an optional
-braced block; field constraints are deferred to the §40 D11
+braced block; field constraints are deferred to the v2.0.0 D11
 deploy-time validation.
 
 ```axon
@@ -63,7 +63,7 @@ fields (validated at deploy time, not at parse time) include:
 | `prompts:` | bracketed identifiers | Prompt subset to import (default: all). |
 | `transport:` | identifier | `stdio` (subprocess) or `sse` (network). |
 
-A future Fase will tighten the grammar to a typed `MCPDefinition`
+A future cycle will tighten the grammar to a typed `MCPDefinition`
 AST node; until then, the runtime does the validation.
 
 ## Runtime behaviour
@@ -78,7 +78,7 @@ Audit rows: every outbound MCP call emits
 `mcp:<binding>:<method>:<outcome>` carrying `(remote_server,
 remote_uri, latency, cost_credits_estimated)`. The audit chain
 treats outbound MCP calls as **external dependencies** — they
-appear in the dependency graph the §40 supply-chain check
+appear in the dependency graph the v2.0.0 supply-chain check
 walks.
 
 ## What this primitive is NOT
@@ -94,7 +94,7 @@ walks.
 - **Not free of compliance gating.** Outbound MCP calls cross
   a trust boundary. A `mcp` binding inside a HIPAA-tagged
   manifest requires the remote server to attest the same
-  framework; the §40 deploy-time check enforces this.
+  framework; the v2.0.0 deploy-time check enforces this.
 
 ## See also
 

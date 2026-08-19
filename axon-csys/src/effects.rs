@@ -1,4 +1,4 @@
-//! §Fase 25.e — Algebraic effects FSM dispatcher (Rust shim).
+//! v1.19.0 — Algebraic effects FSM dispatcher (Rust shim).
 //!
 //! Safe Rust wrapper around the C23 dispatcher in
 //! `c-src/effects/dispatch.c`. The boundary follows the founder

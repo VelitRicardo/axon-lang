@@ -1,20 +1,20 @@
-//! Capability×scope matrix (paper §II). The OAuth scope each operation requires, per platform.
+//! Capability×scope matrix (paper II). The OAuth scope each operation requires, per platform.
 //!
 //! This is the substrate for **axon-T956** (scope coverage): the frontend's authorization-
-//! coverage law (§89/§90) refuses a connector op whose required scope the importing program has
+//! coverage law (v2.44.0/v2.45.0) refuses a connector op whose required scope the importing program has
 //! not been granted. The matrix is exhaustive over `Platform × Operation` — adding an operation
 //! forces every platform to declare its scope (the compiler enforces coverage, no wildcard).
 
 use crate::platform::{Operation, Platform};
 
 /// The OAuth scope(s) required to perform `op` on `platform`, per each platform's official API
-/// documentation (paper §II, source-confirmed 2026-07). All scopes in the returned slice are
+/// documentation (paper II, source-confirmed 2026-07). All scopes in the returned slice are
 /// required together (conjunction).
 pub fn required_scopes(platform: Platform, op: Operation) -> &'static [&'static str] {
     use Operation::*;
     use Platform::*;
     match (platform, op) {
-        // ── LinkedIn — organization pages via Community Management (paper §2.1). ──
+        // ── LinkedIn — organization pages via Community Management (paper section 2.1). ──
         // Member-level social reading (`r_member_social`) is CLOSED; org-level scopes only.
         (LinkedIn, Publish) | (LinkedIn, Edit) | (LinkedIn, Delete) | (LinkedIn, Reply)
         | (LinkedIn, Moderate) => &["w_organization_social"],
@@ -22,7 +22,7 @@ pub fn required_scopes(platform: Platform, op: Operation) -> &'static [&'static 
             &["r_organization_social"]
         }
 
-        // ── Facebook Pages — permissions map 1:1 onto operations (paper §2.2). ──
+        // ── Facebook Pages — permissions map 1:1 onto operations (paper section 2.2). ──
         (FacebookPages, Publish) | (FacebookPages, Edit) => &["pages_manage_posts"],
         (FacebookPages, Reply) | (FacebookPages, Moderate) | (FacebookPages, Delete) => {
             &["pages_manage_engagement"]
@@ -30,7 +30,7 @@ pub fn required_scopes(platform: Platform, op: Operation) -> &'static [&'static 
         (FacebookPages, ReadComments) | (FacebookPages, ReadReactions)
         | (FacebookPages, ReadMetrics) => &["pages_read_engagement"],
 
-        // ── Instagram — professional accounts, Instagram Login path (paper §2.3). ──
+        // ── Instagram — professional accounts, Instagram Login path (paper section 2.3). ──
         (Instagram, Publish) | (Instagram, Edit) => {
             &["instagram_business_basic", "instagram_business_content_publish"]
         }
@@ -41,7 +41,7 @@ pub fn required_scopes(platform: Platform, op: Operation) -> &'static [&'static 
             &["instagram_business_basic"]
         }
 
-        // ── TikTok — Content Posting API + Display/Research read (paper §2.4). ──
+        // ── TikTok — Content Posting API + Display/Research read (paper section 2.4). ──
         (TikTok, Publish) | (TikTok, Edit) | (TikTok, Delete) => &["video.publish"],
         (TikTok, ReadMetrics) => &["video.list"],
         (TikTok, ReadComments) | (TikTok, ReadReactions) | (TikTok, Reply)
@@ -89,7 +89,7 @@ mod tests {
 
     #[test]
     fn linkedin_never_requires_a_member_social_scope() {
-        // `r_member_social` is a CLOSED permission (paper §2.1) — the matrix must never demand it.
+        // `r_member_social` is a CLOSED permission (paper section 2.1) — the matrix must never demand it.
         for op in Operation::ALL {
             for scope in required_scopes(Platform::LinkedIn, op) {
                 assert_ne!(*scope, "r_member_social");

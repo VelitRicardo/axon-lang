@@ -1,5 +1,5 @@
 /*
- * §Fase 25.g — BPE merge engine (public ABI).
+ * v1.19.0 — BPE merge engine (public ABI).
  *
  * Pure byte-level Byte-Pair-Encoding kernel that consumes a deterministic
  * binary blob produced by `tools/gen_merges.py` (or any compatible

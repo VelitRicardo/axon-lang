@@ -197,7 +197,7 @@ impl TraceStore {
         id
     }
 
-    /// §Fase 33.c — Reserve a trace ID without recording the entry yet.
+    /// v1.24.0 — Reserve a trace ID without recording the entry yet.
     ///
     /// Wire-streaming sites (`execute_sse_handler`) need a trace ID up
     /// front so the first `axon.token` event can carry it on the wire
@@ -216,7 +216,7 @@ impl TraceStore {
         id
     }
 
-    /// §Fase 33.c — Persist a trace entry under a previously reserved id.
+    /// v1.24.0 — Persist a trace entry under a previously reserved id.
     ///
     /// Pairs with `reserve_id`: callers reserve early to plumb the id
     /// into wire events, then call here once execution has completed
@@ -988,7 +988,7 @@ mod tests {
         assert_eq!(store.total_recorded(), 0);
     }
 
-    // §Fase 33.c — reserve_id / record_with_id
+    // v1.24.0 — reserve_id / record_with_id
 
     #[test]
     fn reserve_id_monotonic_and_consumes_next_id() {

@@ -1,5 +1,5 @@
 /*
- * §Fase 25.c — axon-csys public audio kernel header.
+ * v1.19.0 — axon-csys public audio kernel header.
  *
  * Two transformer families live here:
  *
@@ -12,7 +12,7 @@
  * kernels is identical (byte-identical for integer kernels, ≤1 LSB for
  * floating-point kernels) to applying the equivalent Rust-side morphism.
  *
- * Linear-logic discipline (OTS §3.2): inputs are `const`-correct and
+ * Linear-logic discipline (OTS section 3.2): inputs are `const`-correct and
  * never mutated; outputs are written exactly once; functions are pure
  * (referentially transparent). Caller owns all storage; the kernel
  * never allocates.

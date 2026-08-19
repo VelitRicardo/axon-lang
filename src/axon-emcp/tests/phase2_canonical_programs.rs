@@ -1,4 +1,4 @@
-//! §Phase 2 — every primitive doc shipped under
+//! Phase 2 — every primitive doc shipped under
 //! `src/knowledge/primitives/` must be backed by a real `.axon` example
 //! that compiles end-to-end through the same `axon-frontend` pipeline
 //! the `axon` CLI uses (lex → parse → type-check → IR-generate).

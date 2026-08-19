@@ -1,4 +1,4 @@
-//! AXON Runtime — Lambda Data (ΛD) Apply (Fase 15.c — Rust mirror).
+//! AXON Runtime — Lambda Data (ΛD) Apply (v1.10.0 — Rust mirror).
 //!
 //! Runtime types and helpers for the `lambda apply X to Y` flow-body
 //! statement. Mirror of `axon/runtime/lambda_runtime.py` — same

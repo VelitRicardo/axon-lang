@@ -1,4 +1,4 @@
-//! §Fase 112.a — **the `Handler` that actually looks at something.**
+//! v2.67.0 — **the `Handler` that actually looks at something.**
 //!
 //! # What this replaces
 //!
@@ -11,7 +11,7 @@
 //!
 //! **Certainty `1.0`. Always. Without going anywhere.** It records what it *would*
 //! have looked at and returns a perfect-confidence envelope. It has **zero
-//! production instantiations** (§111 F14) — which, it turns out, was the only thing
+//! production instantiations** (v2.67.0 F14) — which, it turns out, was the only thing
 //! protecting anyone: a supervisor wired to the only available `Handler` would have
 //! reported **perfect health for every system, forever**, without opening a single
 //! socket.
@@ -37,7 +37,7 @@
 //! trustworthy member.
 //!
 //! `provision` — materialising declared resources — **refuses**. It is the
-//! infrastructure half, and it belongs to §113 (the fase that makes `resource`
+//! infrastructure half, and it belongs to v2.67.0 (the cycle that makes `resource`
 //! govern anything at all). Pretending to provision would be the same lie in the
 //! other direction.
 
@@ -106,11 +106,11 @@ impl Handler for LiveHandler {
         &self.name
     }
 
-    /// §112.a — **refused.** Materialising a declared `resource` is the
+    /// v2.67.0 — **refused.** Materialising a declared `resource` is the
     /// infrastructure half of the λ-L-E block, and today a `resource` governs
-    /// nothing that runs (§111's islands finding: `resource.endpoint` and
+    /// nothing that runs (v2.67.0's islands finding: `resource.endpoint` and
     /// `axonstore.connection` are the same fact declared twice, and the discipline
-    /// hangs off the copy nothing runs on). **§113** makes `resource` the single
+    /// hangs off the copy nothing runs on). **v2.67.0** makes `resource` the single
     /// source of truth; provisioning belongs there.
     ///
     /// Refusing is the honest move. A `provision` that reported success without
@@ -242,7 +242,7 @@ impl Handler for LiveHandler {
             }
         }
 
-        // §Fase 112.e — **the EVIDENCE.** These are the manifest's declared resources
+        // v2.67.0 — **the EVIDENCE.** These are the manifest's declared resources
         // that we actually REACHED — established, not assumed.
         //
         // `reconcile` computes its Jaccard drift as
@@ -381,14 +381,14 @@ mod tests {
 
     // ── The flagship: it actually connects ─────────────────────────────────
 
-    /// **The line that separates §112.a from everything before it.** The handler
+    /// **The line that separates v2.67.0 from everything before it.** The handler
     /// opens a real socket to a real listener and reports certainty because it
     /// *established* reachability — not because it assumed it.
     #[test]
     fn observe_reaches_a_real_endpoint_and_reports_what_it_established() {
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let addr = listener.local_addr().unwrap();
-        // §Fase 113 — the resource names a config KEY (`axon-T944`); the resolver
+        // v2.67.0 — the resource names a config KEY (`axon-T944`); the resolver
         // turns it into the address. The probe still opens a real socket to a
         // real listener: what is observed is still what was actually reached.
         register_source_adapter(

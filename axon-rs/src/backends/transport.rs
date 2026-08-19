@@ -1,4 +1,4 @@
-//! Shared HTTP transport with retry — Fase 24.b/24.d.
+//! Shared HTTP transport with retry — v1.18.0.
 //!
 //! Single source of truth for the `complete()` HTTP loop every native
 //! Rust backend uses. Mirrors `_call_with_retry` from the Python

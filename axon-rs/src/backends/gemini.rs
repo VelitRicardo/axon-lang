@@ -1,4 +1,4 @@
-//! Google Gemini generateContent backend — Fase 24.e.
+//! Google Gemini generateContent backend — v1.18.0.
 //!
 //! Async port of `axon::backend::call_gemini` (legacy blocking) and the
 //! Python transport for the `"gemini"` provider in
@@ -271,7 +271,7 @@ impl Backend for GeminiBackend {
         &self,
         request: ChatRequest,
     ) -> Result<ChatStream, BackendError> {
-        // §Fase 33.d — Real Gemini SSE streaming.
+        // v1.24.0 — Real Gemini SSE streaming.
         //
         // Wire: POST <base>/v1beta/models/<model>:streamGenerateContent?alt=sse&key=…
         // Response: SSE with `data:` lines carrying a Candidate-shape
@@ -351,7 +351,7 @@ impl Backend for GeminiBackend {
                 }
             }
         });
-        // §Fase 33.x.e — Cancel-aware wrap (≤100ms p95 abort).
+        // v1.24.0 — Cancel-aware wrap (≤100ms p95 abort).
         let inner: ChatStream = Box::pin(chunks);
         Ok(super::sse_streaming::cancel_aware(inner, request.cancel.clone()))
     }
@@ -617,7 +617,7 @@ type GeminiChatStream =
     Pin<Box<dyn Stream<Item = Result<ChatChunk, BackendError>> + Send>>;
 
 // ────────────────────────────────────────────────────────────────────
-//  §Fase 33.d — SSE chunk parsing
+// v1.24.0 — SSE chunk parsing
 // ────────────────────────────────────────────────────────────────────
 
 /// Parse one Gemini SSE event into an optional `ChatChunk`.
@@ -1160,7 +1160,7 @@ mod tests {
 
     #[tokio::test]
     async fn stream_real_gemini_sse_implementation_transport_path() {
-        // §Fase 33.d — Gemini now ships a real SSE streamer.
+        // v1.24.0 — Gemini now ships a real SSE streamer.
         // Unreachable port exercises the transport-error path.
         let b = GeminiBackend::with_api_key(Some("k".into()))
             .with_base_url("http://127.0.0.1:1");
@@ -1187,7 +1187,7 @@ mod tests {
         }
     }
 
-    // ── §Fase 33.d — Gemini SSE chunk parsing (pure-unit) ───────────
+    // ── v1.24.0 — Gemini SSE chunk parsing (pure-unit) ───────────
 
     use super::parse_gemini_chunk;
     use super::super::sse_streaming::SseEvent;

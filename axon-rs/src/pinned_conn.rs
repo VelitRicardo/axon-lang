@@ -1,8 +1,8 @@
-//! §Fase 118.a / D118.2 — the pinned-connection PORT.
+//! v2.81.0 / the design decision — the pinned-connection PORT.
 //!
 //! # What this fixes
 //!
-//! The §37.x.j Connection-Pinned Flow Execution Contract pins ONE physical
+//! The v1.32.0 Connection-Pinned Flow Execution Contract pins ONE physical
 //! Postgres connection per `axonstore` for a flow's lifetime, so a
 //! transaction-mode pooler (Supavisor, PgBouncer `pool_mode=transaction`, Neon,
 //! RDS Proxy) cannot swap the backend between two queries that must observe each
@@ -16,12 +16,12 @@
 //! `streaming_via_dispatcher` — **the cognition path** — which means a concrete
 //! database type was embedded in the signatures of a language that speaks
 //! through ports for everything else it touches (`StorageBackend`,
-//! `QuantBackend`, `BreachSink`, `SynthBackend`). §118 made that urgent; it did
+//! `QuantBackend`, `BreachSink`, `SynthBackend`). v2.81.0 made that urgent; it did
 //! not make it wrong. It was already wrong.
 //!
 //! # Why a newtype and not a trait
 //!
-//! D118.2 offered three ways out. The measurement that picked this one is that
+//! the design decision offered three ways out. The measurement that picked this one is that
 //! **the executor never calls a method on a pinned connection.** Its entire
 //! relationship to a pin is custodial:
 //!
@@ -40,13 +40,13 @@
 //! # Why it lives at the crate root and not in `store/`
 //!
 //! Because it is the PORT, and a port must be nameable without its
-//! implementation. §118 has now found four cases of a general concept parked in
+//! implementation. v2.81.0 has now found four cases of a general concept parked in
 //! the specific module that first needed it (`AXON_VERSION` in the flow
 //! executor, `IngestProvenance` in the OOXML reader, `ServerExecutionResult` in
 //! the HTTP server, the tenant task-local next to an axum middleware). Putting
 //! the pin port inside `store/` would be the fifth.
 //!
-//! # §118.b.3 — what changes here when `postgres` becomes a feature
+//! # v2.81.0 — what changes here when `postgres` becomes a feature
 //!
 //! This module is the seam that makes the gate a small diff instead of a
 //! refactor. The intended shape:
@@ -69,14 +69,14 @@
 use crate::store::store_conn::StoreConn;
 
 /// A Postgres connection pinned for the lifetime of one flow's use of one
-/// `axonstore` (§Fase 37.x.j D1).
+/// `axonstore` (v1.32.0 D1).
 ///
 /// Opaque by construction: the inner handle is private, so the executor can
 /// carry a pin without naming — or linking — a database driver. The only way to
 /// *use* one is [`PinnedConn::as_store_conn`], which hands the borrow to the
 /// store layer where the sqlx types legitimately live.
 ///
-/// §Fase 96 — a pin is not always granted. Under a SESSION-mode pooler or a
+/// v2.51.0 — a pin is not always granted. Under a SESSION-mode pooler or a
 /// direct connection every pooled connection is already a coherent session, so
 /// `acquire_pin` REFUSES and callers fall through to their per-op
 /// `StoreConn::Pool` path. That is the `connections_release_across_cognition`
@@ -86,14 +86,14 @@ use crate::store::store_conn::StoreConn;
 #[cfg(feature = "postgres")]
 pub struct PinnedConn(sqlx::pool::PoolConnection<sqlx::Postgres>);
 
-/// §Fase 118.b.3 — the shape this module was built for, now real.
+/// v2.81.0 — the shape this module was built for, now real.
 ///
 /// Without a driver there can be no pinned connection, and this says exactly
 /// that. `PinnedConn` is **uninhabited**, so `HashMap<String, PinnedConn>` is a
 /// perfectly good type that is *provably always empty*. Every executor signature
 /// — `runner`, `flow_dispatcher`, `streaming_via_dispatcher` — stays
 /// byte-identical across both profiles, and **not one `#[cfg]` enters the
-/// cognition path**. That is the property D118.2's option (ii) could never have
+/// cognition path**. That is the property the design decision's option (ii) could never have
 /// had, and the whole reason the port was built before the gate.
 #[cfg(not(feature = "postgres"))]
 pub enum PinnedConn {}
@@ -103,7 +103,7 @@ impl PinnedConn {
     /// Wrap a freshly-acquired pooled connection.
     ///
     /// Called only by `store::postgres_backend::acquire_pin`, which owns the
-    /// §96 decision about whether a pin should exist at all.
+    /// v2.51.0 decision about whether a pin should exist at all.
     pub fn new(conn: sqlx::pool::PoolConnection<sqlx::Postgres>) -> Self {
         PinnedConn(conn)
     }
@@ -125,7 +125,7 @@ impl std::fmt::Debug for PinnedConn {
     /// Deliberately says nothing about the connection.
     ///
     /// A pin's `Debug` reaching a log line is how a DSN — credentials included —
-    /// escapes into an audit trail that §Fase 106 promises is safe to hand a
+    /// escapes into an audit trail that v2.62.0 promises is safe to hand a
     /// regulator. The executor logs store names, never handles.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("PinnedConn(<postgres connection>)")
@@ -143,9 +143,9 @@ mod tests {
     /// array the test iterates, so `include_str!` handed the assertion its own
     /// source and it reported a leak that does not exist.
     ///
-    /// That is exactly the §118.a analyser defect — where a doc comment naming
+    /// That is exactly the v2.81.0 analyser defect — where a doc comment naming
     /// `crate::runner::AXON_VERSION` while *explaining the fix* manufactured the
-    /// dependency edge it was describing — and §118.b.2 hit the same shape a
+    /// dependency edge it was describing — and v2.81.0 hit the same shape a
     /// third time, in test classification, when seven files were miscounted
     /// because a grep matched `axum` inside comments. A source-scanning gate
     /// must exclude the region where it names its own patterns, or it measures

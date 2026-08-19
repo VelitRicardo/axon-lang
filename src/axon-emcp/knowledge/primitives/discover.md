@@ -3,7 +3,7 @@ name: discover
 summary: The dual of publish — imports a previously published channel capability under a local alias.
 category: wire
 top_level: false
-since: Fase 13
+since: v1.6.0
 grammar: |
   # Flow-body form (dual of Publish-Ext):
   discover <ChannelRef> as <alias>

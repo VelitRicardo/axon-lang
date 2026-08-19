@@ -39,12 +39,12 @@ pub struct GapAnalysis {
     pub pending_external: usize,
     pub assessments: Vec<ControlAssessment>,
     pub missing_features: Vec<String>,
-    /// §Fase 111 F8 — controls this catalog claims are held by a
+    /// v2.67.0 F8 — controls this catalog claims are held by a
     /// `RuntimeInvariant` whose kernel is orphaned (no production caller) or
     /// absent (the cited symbol does not exist). **These are OUR defect, not
     /// the adopter's.** They can never be `ready` until the kernel is wired.
     pub unbacked_runtime_claims: Vec<String>,
-    /// §Fase 111 F8 — features the program legitimately DECLARES and that
+    /// v2.67.0 F8 — features the program legitimately DECLARES and that
     /// AXON does not enforce. **This is the sentence an adopter most needs to
     /// read**: you wrote `lease`, and we do not run it.
     pub declared_but_unenforced: Vec<String>,
@@ -75,7 +75,7 @@ impl GapAnalysis {
                 self.missing_features.iter().cloned().map(Value::String).collect(),
             ),
         );
-        // §111 F8 — both lists ride the wire so a consumer (CLI, evidence
+        // v2.67.0 F8 — both lists ride the wire so a consumer (CLI, evidence
         // package, adopter dashboard) cannot render a readiness percentage
         // without also being able to render what we do not back.
         m.insert(
@@ -119,7 +119,7 @@ impl GapAnalysis {
 
 /// Features the program **declares in source**.
 ///
-/// §Fase 111 F8 — declaring is not enforcing. This set answers "what is
+/// v2.67.0 F8 — declaring is not enforcing. This set answers "what is
 /// written in the program", NOT "what actually runs". Control requirements are
 /// checked against [`enforced_features`]; this set exists only so the analyzer
 /// can tell an auditor the difference between *you did not declare it* and
@@ -139,12 +139,12 @@ fn declared_features(program: &IRProgram) -> HashSet<String> {
     if !program.topologies.is_empty()   { features.insert("has_topology".into()); }
     if !program.endpoints.is_empty()    { features.insert("has_endpoint".into()); }
 
-    // §124.c — was `has_compliance_annotation`, granted on the mere PRESENCE
+    // v4.0.0 — was `has_compliance_annotation`, granted on the mere PRESENCE
     // of a label anywhere; C1.1 / P1.1 / P6.1 / A.5.34 counted as satisfied
     // by a κ-annotated type flowing through a shield that covered nothing.
     // The feature now means the coverage rule HOLDS: every regulated
     // boundary names a shield whose κ covers the data's κ. One definition,
-    // `coverage.rs`, shared with the risk register (§120.e).
+    // `coverage.rs`, shared with the risk register (v2.87.0).
     if super::coverage::compliance_coverage_holds(program) {
         features.insert("compliance_coverage_holds".into());
     }
@@ -153,7 +153,7 @@ fn declared_features(program: &IRProgram) -> HashSet<String> {
 
 /// Features the program declares AND that AXON actually enforces at runtime.
 ///
-/// §Fase 111 F8. The Cognitive-I/O family (`observe`/`reconcile`/`lease`/
+/// v2.67.0 F8. The Cognitive-I/O family (`observe`/`reconcile`/`lease`/
 /// `ensemble`/`immune`/`reflex`/`heal`/`resource`) parses, type-checks and
 /// reaches the IR — and then nothing dispatches it (there is no `IRFlowNode`
 /// arm for any of them, and no runtime path reads
@@ -218,9 +218,9 @@ fn is_external_kind(kind: EvidenceKind) -> bool {
 
 /// Assess one control against the program.
 ///
-/// # §Fase 111 F8 — the unsoundness this function used to carry
+/// # v2.67.0 F8 — the unsoundness this function used to carry
 ///
-/// Before §111 the final arm read `("ready", "enforced by {primitive}")` as
+/// Before v2.67.0 the final arm read `("ready", "enforced by {primitive}")` as
 /// soon as the program *declared* the required primitive. That made the audit
 /// engine assert a `RuntimeInvariant` — "a kernel enforces this while the
 /// program runs" — on the strength of a declaration alone. For the whole
@@ -264,7 +264,7 @@ fn assess_control(
     not_declared.sort();
     declared_but_unenforced.sort();
 
-    // §111 F8 — a runtime claim is only as good as its wire.
+    // v2.67.0 F8 — a runtime claim is only as good as its wire.
     let wiring = super::runtime_wiring::wiring_or_absent(locator);
     let runtime_claim_unbacked =
         control.evidence_kind == EvidenceKind::RuntimeInvariant && !wiring.is_enforced();
@@ -340,7 +340,7 @@ pub fn analyze_gaps(program: &IRProgram, framework: FrameworkId) -> GapAnalysis 
     };
     let reqs = feature_requirements();
 
-    // §111 F8 — surface the defect LOUDLY. A control that silently drops out
+    // v2.67.0 F8 — surface the defect LOUDLY. A control that silently drops out
     // of `ready` is an improvement over a false `ready`, but it still leaves
     // the reader guessing. These two lists say the quiet part out loud:
     // which of OUR runtime claims are unbacked, and which of THEIR
@@ -423,13 +423,13 @@ mod tests {
     /// **The F8 loop, closing.** This test has now been the record of three
     /// different truths, and that history is the point.
     ///
-    /// - **Before §111** it asserted this program made **≥25 SOC2 controls
+    /// - **Before v2.67.0** it asserted this program made **≥25 SOC2 controls
     ///   `ready`** — and *that assertion was the bug*, written down and pinned by a
     ///   passing test. None of the stack ran. A compliance posture built on it was
     ///   a certificate we could not back.
-    /// - **§111 (F8)** inverted it: declaring an **unenforced** primitive must never
+    /// - **v2.67.0 (F8)** inverted it: declaring an **unenforced** primitive must never
     ///   buy a `ready`. The engine stopped lying.
-    /// - **§112** built the supervisor that actually drives six of them. So now the
+    /// - **v2.67.0** built the supervisor that actually drives six of them. So now the
     ///   engine can also **say yes** — *for exactly the six that run, and not one
     ///   more.*
     ///
@@ -460,7 +460,7 @@ mod tests {
         let without = analyze_gaps(&compile(base), FrameworkId::Soc2TypeII);
         let with = analyze_gaps(&compile(&format!("{base}{stack}")), FrameworkId::Soc2TypeII);
 
-        // §112 — the six primitives the CognitiveIoSupervisor drives are ENFORCED, so
+        // v2.67.0 — the six primitives the CognitiveIoSupervisor drives are ENFORCED, so
         // declaring them legitimately raises the posture. The engine can say yes.
         assert!(
             with.ready > without.ready,
@@ -469,17 +469,17 @@ mod tests {
             with.ready
         );
 
-        // §113 — and now `lease` and `resource` buy credit too, because they finally
+        // v2.67.0 — and now `lease` and `resource` buy credit too, because they finally
         // govern something. An `axonstore { resource: Db }` derives its DSN and its
         // POOL SIZE from the resource, and `lease`'s CT-2 Anchor Breach fires on the
         // store operation, which IS the use of the resource.
         //
-        // The §111 version of this block asserted the exact OPPOSITE, and was right
+        // The v2.67.0 version of this block asserted the exact OPPOSITE, and was right
         // to: back then the guarantee was structurally impossible, not merely
         // unwired — and an impossible guarantee cannot be KEPT, not merely broken.
         //
         // NOTHING declared here is unenforced any more. That sentence is the whole
-        // arc of §111 → §112 → §113.
+        // arc of v2.67.0 → v2.67.0 → v2.67.0.
         assert!(
             with.declared_but_unenforced.is_empty(),
             "as of v2.67.0 every primitive in this stack is on a production path; the analysis              must report NOTHING as declared-but-unenforced. Got: {:?}",
@@ -507,8 +507,8 @@ mod tests {
         }
     }
 
-    /// 🎯 §124.c — C1.1 (confidentiality commitments) is satisfied by the
-    /// coverage rule HOLDING, not by a label being present. Pre-§124.c both
+    /// 🎯 v4.0.0 — C1.1 (confidentiality commitments) is satisfied by the
+    /// coverage rule HOLDING, not by a label being present. Pre-v4.0.0 both
     /// programs below scored identically on every control that named
     /// `has_compliance_annotation`.
     #[test]

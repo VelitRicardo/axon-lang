@@ -1,16 +1,16 @@
-//! AXON Runtime — HealKernel (§λ-L-E Fase 5, paper_immune_v2.md §6-7)
+//! AXON Runtime — HealKernel (v1.1.0, paper_immune_v2.md section 6-7)
 //!
 //! Direct port of `axon/runtime/immune/heal.py`.
 //!
 //! Linear-Logic one-shot patch kernel. Each patch has type
-//! `P : !Synthesized ⊸ Applied ⊸ Collapsed` (paper §6.2) — each transition
+//! `P: !Synthesized ⊸ Applied ⊸ Collapsed` (paper section 6.2) — each transition
 //! consumes its predecessor, yielding four hard guarantees:
 //!   1. Single application (Synthesized consumed at Apply).
 //!   2. Forced collapse (Applied MUST transition to Collapsed).
 //!   3. No revival post-collapse.
 //!   4. Full audit (every transition emits a signed trace).
 //!
-//! Compliance modes (paper §7):
+//! Compliance modes (paper section 7):
 //!   * `audit_only`    — synthesised but never applied.
 //!   * `human_in_loop` — synthesised; waits for explicit approve/reject.
 //!   * `adversarial`   — applied autonomously with post-hoc review.

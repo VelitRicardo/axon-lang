@@ -1,0 +1,102 @@
+name: v2.15.0 — navigate tenant isolation (real Postgres)
+
+# v2.15.0/B — the LOAD-BEARING safeguard for the structural `navigate`
+# bridge. The non-streaming server executor routes `navigate <corpus from
+# axonstore>` through the dispatcher's real MDN handler, which reads the backing
+# stores with an EMPTY `where` clause and relies ENTIRELY on RLS (the v2.0.0 GUC
+# `axon.current_tenant` on the flow's pinned connection) to scope the rows.
+#
+# This workflow spins a real `postgres:16` service container and runs the
+# integration suite end-to-end against real rows + real RLS policies:
+#
+#   * navigate returns the REAL documents (no fabrication);
+#   * navigate scoped to tenant A returns ONLY A's rows (RLS over a full scan);
+# * two tenants navigating CONCURRENTLY never leak (the v2.15.0 risk-matrix
+#     severity-HIGH cross-tenant test).
+#
+# The fixture FORCES row-level security and reads under a NON-superuser,
+# NOBYPASSRLS role (the default postgres-image login role is a superuser, which
+# would silently bypass RLS) — so the isolation claim is genuinely exercised.
+
+on:
+  push:
+    branches: [master]
+    tags: ["v*"]
+  pull_request:
+    branches: [master]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  navigate-tenant-isolation:
+    name: v2.15.0/B — navigate tenant isolation (D-load-bearing)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: axon
+          POSTGRES_PASSWORD: axon
+          POSTGRES_DB: axon_store_test
+        ports:
+          - 5432:5432
+        # Hold the job until Postgres is accepting connections.
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      AXON_TEST_DATABASE_URL: postgres://axon:axon@localhost:5432/axon_store_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: axon-rs
+
+      - name: v2.15.0/B — navigate real-rows + cross-tenant isolation vs a real database
+        working-directory: axon-rs
+        # `--test-threads=1`: the suite shares fixture tables + the RLS role by
+        # design (the tests model the SAME corpus seen by DIFFERENT tenants), so
+        # the DROP/CREATE fixtures must not race across parallel tests.
+        run: cargo test --test navigate_pg_integration -- --nocapture --test-threads=1
+
+      - name: v2.15.0 — non-streaming persist COMMITS the row (data-plane write parity)
+        working-directory: axon-rs
+        # The authoritative v2.4.0 write signal for the kivi 2026-06-24 gap report:
+        # a NON-streaming `persist` actually writes to Postgres (count 0→1), not
+        # just emits provenance. Owns its own table (`ltm_summaries`,
+        # distinct from the navigate fixtures), so it is safe to run here against
+        # the same service container.
+        run: cargo test --test nonstreaming_persist_pg_integration -- --nocapture
+
+      - name: v2.17.0 (Q2) — navigate where-scope isolates a sub-tenant column
+        working-directory: axon-rs
+        # The data-leak guard for kivi brief #27 C: a `navigate { where:
+        # "tenant_id == '${tenant_id}'" }` over a `corpus from axonstore` must
+        # source ONLY the bound sub-tenant's rows (and the no-where control must
+        # leak both, proving the filter). Owns its own tables,
+        # distinct from the other lanes' fixtures.
+        run: cargo test --test navigate_where_pg_integration -- --nocapture
+
+      - name: v2.17.0 (Q1) — for e in Step.output persists RESOLVED field values
+        working-directory: axon-rs
+        # The kivi brief #28 repro end-to-end: a `for e in ClassifyEdges.output {
+        # persist into edges { to_id: "${e.to_id}" } }` writes the real uuid, not
+        # the literal `${e.to_id}`. Owns its own table (`gate_66_1_edges`).
+        run: cargo test --test loop_persist_pg_integration -- --nocapture
+
+      - name: v2.21.0 — for s in <retrieve result> persists RESOLVED row columns
+        working-directory: axon-rs
+        # The kivi brief #35 repro end-to-end: a `retrieve … as: to_hibernate`
+        # then `for s in to_hibernate { persist into ltm { tenant_id:
+        # "${s.tenant_id}" } }` writes the real uuid, not the literal — proving
+        # the loop unwraps a retrieve ENVELOPE's rows, not just a step array.
+        # Owns its own tables.
+        run: cargo test --test retrieve_loop_persist_pg_integration -- --nocapture

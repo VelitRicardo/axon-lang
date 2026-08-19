@@ -1,5 +1,5 @@
 /*
- * §Fase 25.c — Linear-interpolation PCM16 resampler (scalar baseline).
+ * v1.19.0 — Linear-interpolation PCM16 resampler (scalar baseline).
  *
  * Direct port of `axon-rs/src/ots/native/resample.rs`. The drift gate
  * in `axon-csys/tests/audio.rs` asserts the C output matches the Rust

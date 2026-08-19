@@ -1,7 +1,7 @@
 ---
 name: attention_is_a_governed_resource
-title: "Attention is a governed resource — governed human notification (§Fase 110)"
-summary: "The law governing `notify` (§110), the third egress dual: `deliver` (§105) writes into systems of record, `document` (§106) produces artifacts, `notify` SPENDS HUMAN ATTENTION — and all three carry their lineage or refuse. A notification is axon's most dangerous egress: it interrupts a person and asks for action NOW (a false 'stock crítico' causes a real purchase order). Three laws, all compile-time + re-proven at deploy (PCC `NotificationProvenanceSoundness`): **axon-T933** (the evidence barrier, T920's human-egress sibling with harder consequence) — a `provenance: cleared` notify binding `${ref}` flow values is REFUSED unless vouched by `epistemic { believe|know }`; under `attached` (the default) every bound value arrives WITH its epistemic label, and a §108 query-envelope ref auto-appends its evidence line ('computed over 1,204 rows, taint: untrusted') — the notification that explains its own evidence. **axon-T934** (structure) — closed channel catalog {sms, whatsapp, telegram}; the recipient MUST be a §94 secret-class ref (`to: secret(ops.oncall_phone)`) — a literal phone/chat-id in source is refused: PII never rides source, IR, prompts or audit, and the value resolves at DISPATCH, tenant-scoped; `effects: <web>` declared. **axon-T935** (attention) — `window:` is MANDATORY: an unbounded interruption channel is a bug, refused, not defaulted; at-most-once-per-window per recipient is enforced by a DURABLE ledger across replicas, and every suppression (window/rate/quiet-hours) is a WITNESSED audit row — governed silence is still accountable. The trigger needs NO new machinery: a `daemon` (§52) runs a flow whose `aggregate` (§108) COMPUTES the signal; the flow's own `if` gates the binding; `notify` fires post-run only when its `${ref}` resolves (fire-on-resolution, D110.1) — an unresolved ref is a witnessed no-op. Honest perimeter: axon proves content discipline, recipient hygiene and attention governance; it does NOT prove vendor delivery (an accepted API call is not a read message), and recipient-level consent management is the adopter's legal obligation in v1 (per-tenant `notify.enabled` OFF by default)."
+title: "Attention is a governed resource — governed human notification (v2.66.0)"
+summary: "The law governing `notify` (v2.66.0), the third egress dual: `deliver` (v2.60.0) writes into systems of record, `document` (v2.62.0) produces artifacts, `notify` SPENDS HUMAN ATTENTION — and all three carry their lineage or refuse. A notification is axon's most dangerous egress: it interrupts a person and asks for action NOW (a false 'stock crítico' causes a real purchase order). Three laws, all compile-time + re-proven at deploy (PCC `NotificationProvenanceSoundness`): **axon-T933** (the evidence barrier, T920's human-egress sibling with harder consequence) — a `provenance: cleared` notify binding `${ref}` flow values is REFUSED unless vouched by `epistemic { believe|know }`; under `attached` (the default) every bound value arrives WITH its epistemic label, and a v2.63.0 query-envelope ref auto-appends its evidence line ('computed over 1,204 rows, taint: untrusted') — the notification that explains its own evidence. **axon-T934** (structure) — closed channel catalog {sms, whatsapp, telegram}; the recipient MUST be a v2.48.0 secret-class ref (`to: secret(ops.oncall_phone)`) — a literal phone/chat-id in source is refused: PII never rides source, IR, prompts or audit, and the value resolves at DISPATCH, tenant-scoped; `effects: <web>` declared. **axon-T935** (attention) — `window:` is MANDATORY: an unbounded interruption channel is a bug, refused, not defaulted; at-most-once-per-window per recipient is enforced by a DURABLE ledger across replicas, and every suppression (window/rate/quiet-hours) is a WITNESSED audit row — governed silence is still accountable. The trigger needs NO new machinery: a `daemon` (v2.4.0) runs a flow whose `aggregate` (v2.63.0) COMPUTES the signal; the flow's own `if` gates the binding; `notify` fires post-run only when its `${ref}` resolves (fire-on-resolution, the design decision) — an unresolved ref is a witnessed no-op. Honest perimeter: axon proves content discipline, recipient hygiene and attention governance; it does NOT prove vendor delivery (an accepted API call is not a read message), and recipient-level consent management is the adopter's legal obligation in v1 (per-tenant `notify.enabled` OFF by default)."
 ---
 
 # Attention is a governed resource
@@ -13,7 +13,7 @@ destroyed before sending. The human reads *"ventas bajando"* and **acts**.
 
 axon treats a notification as what it is: **the most dangerous egress in
 the system** — the only one that interrupts a person and asks for action
-now. §110 makes it the third egress dual:
+now. v2.66.0 makes it the third egress dual:
 
 > `deliver` writes into systems of record · `document` produces
 > artifacts · **`notify` spends human attention** — and all three carry
@@ -35,7 +35,7 @@ notify LowSales {
 **T933 — the evidence barrier.** A guess reaching a person's pocket
 labeled as fact is assertion-laundering at its fastest (T920's sibling,
 harder consequence). `cleared` + flow values ⇒ refusal unless vouched.
-Under `attached`, every bound value crosses WITH its label — and a §108
+Under `attached`, every bound value crosses WITH its label — and a v2.63.0
 envelope ref appends its evidence line:
 
 > *Ventas 7d: $12.4k [computed: 7/1204 rows, taint: untrusted]*
@@ -43,7 +43,7 @@ envelope ref appends its evidence line:
 The notification that explains its own evidence. Nobody else has this,
 because nobody else still HAS the evidence at send time.
 
-**T934 — recipient custody.** `to:` accepts only a §94 secret-class
+**T934 — recipient custody.** `to:` accepts only a v2.48.0 secret-class
 ref. A literal phone number in source is a compile refusal that TEACHES
 the custody form. The value resolves at dispatch, tenant-scoped, inside
 the enterprise transducer — it never rides source, IR, prompts, or
@@ -58,9 +58,9 @@ silence is still accountable**.
 ## The trigger needs no new machinery
 
 The founder's case — *"notificar baja en las ventas"* — is a `daemon`
-(§52) running a flow whose `aggregate` (§108) **computes** the signal
+(v2.4.0) running a flow whose `aggregate` (v2.63.0) **computes** the signal
 (scan stats and all), an `if` that binds `resumen` only when the
-declared threshold holds, and fire-on-resolution (D110.1): the `notify`
+declared threshold holds, and fire-on-resolution: the `notify`
 fires post-run only when its `${ref}` resolved. An unresolved ref is a
 witnessed no-op. The alert's evidence is a computation, never a model's
 opinion.
@@ -85,8 +85,8 @@ channels, text templates — the boundary is the product, not the catalog.
 
 ## See also
 
-- `delivery_is_assertion_egress` (§105) — the system-of-record dual.
-- `analysis_is_algebra_not_conversation` (§108) — where the evidence
+- `delivery_is_assertion_egress` (v2.60.0) — the system-of-record dual.
+- `analysis_is_algebra_not_conversation` (v2.63.0) — where the evidence
   in the notification comes from.
-- `rotation_without_revelation` (§94) — the custody discipline the
+- `rotation_without_revelation` (v2.48.0) — the custody discipline the
   recipient ref rides on.

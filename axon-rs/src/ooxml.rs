@@ -1,25 +1,25 @@
-//! §Fase 99.e/99.f — the deterministic OOXML writer: the expensive, bespoke
+//! v2.53.0 — the deterministic OOXML writer: the expensive, bespoke
 //! core that makes Native Document Synthesis real. A pure, byte-deterministic
-//! serializer for a BOUNDED subset of DOCX / PPTX / XLSX (D99.9), reusing the
+//! serializer for a BOUNDED subset of DOCX / PPTX / XLSX, reusing the
 //! same deterministic-ZIP discipline the evidence packager already ships
 //! (`esk::audit_engine::evidence_packager` — fixed `DateTime`, `Deflated`,
 //! `BTreeMap` part ordering), so the SAME document IR + values produce a
-//! BYTE-IDENTICAL file with a stable `sha256` (D99.3). That is the property
+//! BYTE-IDENTICAL file with a stable `sha256`. That is the property
 //! that makes a document an *attestable artifact* rather than a blob — and the
 //! property that dies the moment you wrap a third-party crate.
 //!
-//! **Why bespoke (D99.8):** the three formats share ~70% of their machinery
+//! **Why bespoke:** the three formats share ~70% of their machinery
 //! (`[Content_Types].xml`, `_rels`, package parts) — one module unifies it;
 //! three crates would triplicate it with three object models, none of which
-//! lets you control the ZIP writer or XML attribute order (which kills D99.3).
+//! lets you control the ZIP writer or XML attribute order (which kills the design decision).
 //!
-//! **Provenance (D99.2, §99.f):** when `provenance != none`, a
+//! **Provenance (the design decision, v2.53.0):** when `provenance != none`, a
 //! `/customXml/provenance.xml` part + the OOXML core properties record the
 //! document name, target, effect row, epistemic mode, per-field level, and the
 //! IR hash — so an auditor holding only the file, off any axon system, can ask
 //! "which flow made this, from which model, and did the author believe it?".
 //!
-//! **Bounded (D99.11):** page/row/slide caps + a total-bytes cap. An agent in a
+//! **Bounded:** page/row/slide caps + a total-bytes cap. An agent in a
 //! loop cannot emit a 4 GB spreadsheet.
 
 use std::collections::BTreeMap;
@@ -109,14 +109,14 @@ impl FieldSpec {
 //  Output
 // ════════════════════════════════════════════════════════════════════════════
 
-/// A rendered document — the typed artifact value (D99.14: bytes, not a path).
+/// A rendered document — the typed artifact value (the design decision: bytes, not a path).
 #[derive(Debug, Clone)]
 pub struct RenderedDocument {
     /// The OOXML MIME type.
     pub content_type: String,
     /// The document bytes (a valid, deterministic OOXML ZIP).
     pub bytes: Vec<u8>,
-    /// The content hash — the attestation key (D99.3).
+    /// The content hash — the attestation key.
     pub sha256_hex: String,
     /// The file extension (`docx`/`pptx`/`xlsx`).
     pub extension: String,
@@ -145,7 +145,7 @@ impl std::error::Error for OoxmlError {}
 //  Entry point
 // ════════════════════════════════════════════════════════════════════════════
 
-/// §Fase 99.e — render a `DocumentSpec` + resolved `values` into a deterministic
+/// v2.53.0 — render a `DocumentSpec` + resolved `values` into a deterministic
 /// OOXML artifact. `values` maps a `ref`-field's name to its resolved text.
 pub fn render(spec: &DocumentSpec, values: &BTreeMap<String, String>) -> Result<RenderedDocument, OoxmlError> {
     let mut parts: BTreeMap<String, Vec<u8>> = BTreeMap::new();
@@ -174,7 +174,7 @@ pub fn render(spec: &DocumentSpec, values: &BTreeMap<String, String>) -> Result<
         other => return Err(OoxmlError::UnknownTarget(other.to_string())),
     };
 
-    // §99.f — the provenance part (embedded/signed both embed; `signed` adds
+    // v2.53.0 — the provenance part (embedded/signed both embed; `signed` adds
     // the signature enterprise-side).
     if spec.provenance != "none" && !spec.provenance.is_empty() {
         parts.insert("customXml/provenance.xml".to_string(), provenance_xml(spec).into_bytes());
@@ -194,7 +194,7 @@ pub fn render(spec: &DocumentSpec, values: &BTreeMap<String, String>) -> Result<
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-//  Deterministic ZIP package (reuses the evidence_packager discipline, D99.3)
+// Deterministic ZIP package (reuses the evidence_packager discipline, the design decision)
 // ════════════════════════════════════════════════════════════════════════════
 
 fn zip_parts(parts: &BTreeMap<String, Vec<u8>>) -> Vec<u8> {
@@ -202,7 +202,7 @@ fn zip_parts(parts: &BTreeMap<String, Vec<u8>>) -> Vec<u8> {
     {
         let cursor = Cursor::new(&mut buf);
         let mut zip = zip::ZipWriter::new(cursor);
-        // Fixed epoch — reproducible archive (D99.3/D99.10).
+        // Fixed epoch — reproducible archive.
         let fixed = zip::DateTime::from_date_and_time(2026, 1, 1, 0, 0, 0)
             .expect("valid DateTime constants");
         let options = zip::write::SimpleFileOptions::default()
@@ -315,7 +315,7 @@ fn docx_document(spec: &DocumentSpec, values: &BTreeMap<String, String>) -> Stri
         "page_break" => s.push_str("<w:p><w:r><w:br w:type=\"page\"/></w:r></w:p>"),
         "chart" => {
             // Bounded subset: charts render as a labelled placeholder paragraph
-            // in the reference writer (a real DrawingML chart part is §99.f's
+            // in the reference writer (a real DrawingML chart part is v2.53.0's
             // enterprise-fidelity tail). Honest, never a corrupt part.
             let kind = b.field("kind").map(|f| f.value.clone()).unwrap_or_default();
             s.push_str(&docx_para(&format!("[chart: {kind}]"), b.attr_label().as_deref()));
@@ -656,7 +656,7 @@ fn core_props(spec: &DocumentSpec) -> String {
     )
 }
 
-/// §Fase 99.f — the provenance custom XML part (D99.2). Records the document's
+/// v2.53.0 — the provenance custom XML part. Records the document's
 /// name, target, effect row, epistemic mode, and each assertive-slot field's
 /// name + kind (`ref`/`text`) so an auditor can see which fields were flow
 /// values and which were author-written. Deterministic order.
@@ -750,7 +750,7 @@ mod tests {
 
     #[test]
     fn is_byte_deterministic() {
-        // D99.3 — same spec + values → byte-identical file → stable sha256.
+        // the design decision — same spec + values → byte-identical file → stable sha256.
         let a = render(&docx_spec(), &values()).unwrap();
         let b = render(&docx_spec(), &values()).unwrap();
         assert_eq!(a.bytes, b.bytes, "same input must produce byte-identical output");

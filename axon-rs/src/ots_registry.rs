@@ -1,15 +1,15 @@
-//! §Fase 119.c — the name-keyed `ots` transformer registry.
+//! v2.83.0 — the name-keyed `ots` transformer registry.
 //!
 //! # Why this exists
 //!
-//! §111 F18: *"`apply_ots_to_target` is literally `target.to_string()`; no
+//! v2.67.0 F18: *"`apply_ots_to_target` is literally `target.to_string()`; no
 //! ots_registry exists anywhere, so the documented 'enterprise override' has
 //! no hook to override."* An `ots` whose application is the identity function
 //! is the same defect as the mandate that transformed nothing: a primitive
 //! that promises transformation, applies nothing, and can never fail.
 //!
 //! This registry is that hook, made real — the exact shape of
-//! [`crate::shield_registry`] (§40.b), which is the proven pattern for
+//! [`crate::shield_registry`] (v2.0.0), which is the proven pattern for
 //! "OSS framework + registered implementation": a name-keyed table of
 //! transformers, consulted at dispatch, with a verdict type that can REFUSE.
 //!
@@ -23,13 +23,13 @@
 //! An unregistered `ots` REFUSES (`run_ots_apply` fails the flow). An `ots`
 //! is a *transformation*: its declaration promises that the output IS the
 //! transformed input, and passing the input through unchanged under a
-//! transformation's name fabricates a result — the §111 F18 lie, which this
-//! fase exists to end. Absence of a transformer is not a weaker transform;
+//! transformation's name fabricates a result — the v2.67.0 F18 lie, which this
+//! cycle exists to end. Absence of a transformer is not a weaker transform;
 //! it is the inability to honor the declaration, and it is said out loud.
 //!
 //! # What registers here
 //!
-//! - The in-tree media pipeline (`crate::ots::TransformerRegistry`, §51-era)
+//! - The in-tree media pipeline (`crate::ots::TransformerRegistry`, v2.4.0-era)
 //!   remains the buffer-typed engine for audio/voice paths; a name-keyed
 //!   entry here may delegate into it.
 //! - Enterprise verticals register their transformers exactly as they

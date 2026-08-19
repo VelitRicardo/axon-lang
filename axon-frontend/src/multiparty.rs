@@ -1,12 +1,12 @@
 //! Multiparty session types — the global view + projection.
 //!
-//! §Fase 41.h (D6 of the plan vivo, paper §5). Where the binary algebra
+//! v2.3.0 (D6 of the plan vivo, paper section 5). Where the binary algebra
 //! [`crate::session`] describes **one endpoint's** view of a two-party
 //! dialogue, this module ascends to the **global view**: a [`GlobalType`]
 //! `G` declaratively names every message + choice in an n-party protocol
 //! (Honda–Yoshida–Carbone, POPL'08), and the [`GlobalType::project`]
 //! operator extracts each role's local [`SessionType`] from it. Together
-//! they realise the §41.a/b/c algebra at scale: one declaration, n
+//! they realise the v2.3.0 algebra at scale: one declaration, n
 //! cursor-driven runtimes, lock-step by construction.
 //!
 //! The **safe-realizability gate** ([`GlobalType::project_all`]) is the
@@ -15,10 +15,10 @@
 //! the gate refuses choices a non-participating role couldn't observe
 //! (the **merge condition**), self-messages (`p → p`), and free
 //! recursion variables. A passing gate is the structural certificate
-//! the §41.f enterprise WS surface needs to mount one binding per role
+//! the v2.3.0 enterprise WS surface needs to mount one binding per role
 //! and have them stay in lock-step without any cross-role coordination.
 //!
-//! ### Grammar (paper §5.1)
+//! ### Grammar (paper section 5.1)
 //!
 //! ```text
 //!   G  ::=  end                          — terminated protocol
@@ -28,7 +28,7 @@
 //!         | X                            — recursion variable
 //! ```
 //!
-//! ### Projection rules (paper §5.2)
+//! ### Projection rules (paper section 5.2)
 //!
 //! For each role `r`:
 //!
@@ -59,7 +59,7 @@ use crate::session::{Payload, SessionType};
 /// A participant in a multiparty protocol — an opaque, comparable name.
 ///
 /// `Role("Client")` and `Role("client")` are distinct (case-sensitive,
-/// the same discipline §41.b's `socket` declaration uses). The wire
+/// the same discipline v2.3.0's `socket` declaration uses). The wire
 /// encoding is the bare string (`#[serde(transparent)]`).
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
@@ -82,7 +82,7 @@ impl fmt::Display for Role {
 ///
 /// Serialisable so a global type can travel between deployment stages
 /// (declaration in source → IR → an enterprise registry that drives the
-/// §41.f WS surface). Hashable so a deployment can fingerprint the
+/// v2.3.0 WS surface). Hashable so a deployment can fingerprint the
 /// declared protocol before issuing snapshots that bind to it.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum GlobalType {
@@ -161,11 +161,11 @@ impl GlobalType {
         out
     }
 
-    // ── Projection (the §5.2 operator) ────────────────────────────────────
+    // ── Projection (the section 5.2 operator) ────────────────────────────────────
 
     /// Project `self` to the local session type role `r` is expected to
-    /// run. Returns the binary [`SessionType`] the §41.a algebra +
-    /// §41.d runtime consume.
+    /// run. Returns the binary [`SessionType`] the v2.3.0 algebra +
+    /// v2.3.0 runtime consume.
     ///
     /// Total over closed, contractive global types; rejects only if the
     /// gate fires:
@@ -205,7 +205,7 @@ impl GlobalType {
 pub enum ProjectionError {
     /// `from == to` for some message or choice — protocols at the
     /// global layer don't model self-talk (it would have no observable
-    /// effect; the §41.a algebra has no operational rule for it).
+    /// effect; the v2.3.0 algebra has no operational rule for it).
     SelfMessage { role: Role },
     /// `Choice { arms: {} }` — a choice with no arms has no projection
     /// for the chooser (no internal-choice arm to select).
@@ -400,7 +400,7 @@ fn contains_var(t: &SessionType, var: &str) -> bool {
         SessionType::Rec(y, b) if y == var => false, // shadowed
         SessionType::Rec(_, b) => contains_var(b, var),
         SessionType::Var(x) => x == var,
-        // §Fase 79 — a free var may occur in either interrupt sub-protocol.
+        // v2.36.0 — a free var may occur in either interrupt sub-protocol.
         SessionType::Interrupt { body, handler, .. } => {
             contains_var(body, var) || contains_var(handler, var)
         }
@@ -707,7 +707,7 @@ mod tests {
 
     #[test]
     fn kivi_three_role_recursive_chat_projects_per_role() {
-        // The §41.h motivating example — orchestrator + skill + user, a
+        // The v2.3.0 motivating example — orchestrator + skill + user, a
         // genuinely safely-realizable three-role loop (every participant
         // observes every iteration, no hidden choice):
         //

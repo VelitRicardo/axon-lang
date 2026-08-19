@@ -1,9 +1,9 @@
 ---
 name: explore
-summary: "The dataspace profiling verb — zone-map statistics over declared columns (§108.d)."
+summary: "The dataspace profiling verb — zone-map statistics over declared columns (v2.63.0)."
 category: data_plane
 top_level: false
-since: Fase 108.d (v2.63.0)
+since: v2.63.0
 grammar: |
   explore <Dataspace> ...
 ---
@@ -11,7 +11,7 @@ grammar: |
 # `explore`
 
 `explore` is one of the four **relational query verbs** over a declared
-`dataspace` (§108.d), executed by the first-party columnar engine — no
+`dataspace` (v2.63.0), executed by the first-party columnar engine — no
 LLM in the loop, deterministic by construction.
 
 ## What the runtime actually does
@@ -20,7 +20,7 @@ zone-map statistics: profiling: per-column stats from the columnar engine's zone
 
 ## Proof
 
-`dataspace_engine::explore_profile` — the §111 audit verdict: Real.
+`dataspace_engine::explore_profile` — the v2.67.0 audit verdict: Real.
 
 ## See also
 

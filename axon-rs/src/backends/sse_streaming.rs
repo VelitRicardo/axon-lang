@@ -1,4 +1,4 @@
-//! §Fase 33.d — Shared SSE / JSONL streaming infrastructure.
+//! v1.24.0 — Shared SSE / JSONL streaming infrastructure.
 //!
 //! Every native backend that produces a `Backend::stream()` consumes a
 //! `reqwest::Response::bytes_stream()` of `Bytes` and decodes it into a
@@ -32,11 +32,11 @@
 //!
 //! - **D3** (33.d) — Every native backend implements `Backend::stream()`
 //!   natively, sharing this byte-level infrastructure.
-//! - **D9** (Fase 33) — Each impl produces `ChatChunk` instances whose
+//! - **D9** (v1.24.0) — Each impl produces `ChatChunk` instances whose
 //!   serialized `delta` content is byte-identical with the network
 //!   bytes the provider sent (modulo UTF-8 boundaries the buffer
 //!   stitches back together).
-//! - **D10** (cancel-safety, Fase 33.f) — Both [`LineBuffer`] and
+//! - **D10** (cancel-safety, v1.24.0) — Both [`LineBuffer`] and
 //!   [`SseEventParser`] are non-blocking value types; dropping the
 //!   stream consumer drops the buffers without leaking state.
 
@@ -51,7 +51,7 @@ use super::error::BackendError;
 use crate::cancel_token::CancellationFlag;
 
 // ────────────────────────────────────────────────────────────────────
-//  §Fase 33.x.e — Cancel-aware stream adapter
+// v1.24.0 — Cancel-aware stream adapter
 // ────────────────────────────────────────────────────────────────────
 
 /// Wrap any `Stream` so it terminates promptly when the supplied
@@ -74,7 +74,7 @@ use crate::cancel_token::CancellationFlag;
 /// p95 latency from `flag.cancel()` to consumer's next `None`
 /// observation MUST be ≤ 100ms under a local-loopback HTTP server
 /// emitting one SSE chunk every 1 second. Enforced by
-/// `axon-rs/tests/fase33x_e_cancel_inside_body.rs`.
+/// `axon-rs/tests/cancel_inside_body.rs`.
 ///
 /// # Pure async — no busy-poll
 ///
@@ -194,7 +194,7 @@ impl LineBuffer {
 //  Server-Sent Events
 // ────────────────────────────────────────────────────────────────────
 
-/// One parsed SSE event per W3C spec §"event stream interpretation".
+/// One parsed SSE event per W3C spec "event stream interpretation".
 ///
 /// All four fields are optional because the spec allows any subset —
 /// a `retry:` directive on its own carries neither data nor event.
@@ -225,7 +225,7 @@ impl SseEvent {
 #[derive(Debug, Default)]
 pub struct SseEventParser {
     current: SseEvent,
-    /// `data:` lines accumulate via newline-join per W3C §"data field".
+    /// `data:` lines accumulate via newline-join per W3C "data field".
     data_acc: Vec<String>,
 }
 
@@ -238,7 +238,7 @@ impl SseEventParser {
     /// terminated an event (blank line); `None` while still
     /// accumulating fields.
     ///
-    /// Per W3C §"event stream interpretation":
+    /// Per W3C "event stream interpretation":
     ///   - `event: <name>`     → set event name
     ///   - `id: <id>`          → set last event id
     ///   - `data: <line>`      → append (with newline) to data buffer

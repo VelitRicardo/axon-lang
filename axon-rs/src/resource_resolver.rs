@@ -1,4 +1,4 @@
-//! §Fase 113 — **resolving a `resource.endpoint` config key to a real address.**
+//! v2.67.0 — **resolving a `resource.endpoint` config key to a real address.**
 //!
 //! # Why this port has to exist
 //!
@@ -15,7 +15,7 @@
 //!
 //! # Deny by default
 //!
-//! An unresolved key is an **error**, never a fallback. This is the §112 lesson,
+//! An unresolved key is an **error**, never a fallback. This is the v2.67.0 lesson,
 //! which cost three kernel bugs to learn: *when the evidence is missing,
 //! substitute the belief and report agreement* was the shape of every one of
 //! them. A resolver that quietly returns `localhost` when a key is unset is that
@@ -171,7 +171,7 @@ mod tests {
 
     /// **An unset key REFUSES.** It does not default, and it does not guess.
     ///
-    /// §112 cost three kernel bugs to learn this, and all three were the same
+    /// v2.67.0 cost three kernel bugs to learn this, and all three were the same
     /// bug: *when the evidence is missing, substitute the belief and report
     /// agreement*. A resolver that returns `localhost` for an unset key is that
     /// bug wearing a helpful expression.

@@ -7,7 +7,7 @@ summary: AXON annotations covering FISMA's statutory requirement for federal inf
 # FISMA — Federal Information Security Modernization Act (2014)
 
 **Scope:** US federal information and information systems.
-Statute (44 U.S.C. §§3551–3558) that requires every federal
+Statute (44 U.S.C. section 3551–3558) that requires every federal
 agency to implement an information-security program.
 
 FISMA itself does not enumerate controls — it delegates to
@@ -52,13 +52,13 @@ axonendpoint AgencyRecordsAPI {
 
 | FISMA element | AXON enforcement |
 |---|---|
-| §3551(a) — purpose statement | Out of scope. |
-| §3553(a) — categorisation per FIPS 199 | A FISMA-tagged `type`'s field `category: FipsCategory` is enforced as one of `{low, moderate, high}` (closed catalogue); the type checker rejects unknown values. |
-| §3554(b)(1) — security risk-based program | The static check requires a paired `[NIST_800_53]` tag — the AXON catalogue assumes 800-53 as the implementing control catalogue. |
-| §3554(b)(2) — policies & procedures | Out of scope. |
-| §3554(b)(3) — protective controls | Delegated to NIST 800-53 — see the FedRAMP / NIST_800_53 resources. |
-| §3554(b)(7) — periodic testing | Out of scope. |
-| §3556 — Federal Information Security Incident Center | A FISMA-tagged deployment routes incident records to a §40 incident channel that is consumable by US-CERT-equivalent tooling. |
+| section 3551(a) — purpose statement | Out of scope. |
+| section 3553(a) — categorisation per FIPS 199 | A FISMA-tagged `type`'s field `category: FipsCategory` is enforced as one of `{low, moderate, high}` (closed catalogue); the type checker rejects unknown values. |
+| section 3554(b)(1) — security risk-based program | The static check requires a paired `[NIST_800_53]` tag — the AXON catalogue assumes 800-53 as the implementing control catalogue. |
+| section 3554(b)(2) — policies & procedures | Out of scope. |
+| section 3554(b)(3) — protective controls | Delegated to NIST 800-53 — see the FedRAMP / NIST_800_53 resources. |
+| section 3554(b)(7) — periodic testing | Out of scope. |
+| section 3556 — Federal Information Security Incident Center | A FISMA-tagged deployment routes incident records to a v2.0.0 incident channel that is consumable by US-CERT-equivalent tooling. |
 
 ## What the runtime enforces
 
@@ -75,10 +75,10 @@ distinct runtime check.
 
 ## What you still attest manually
 
-- **System inventory** under §3554(c) — annual.
-- **Independent assessment** (§3555) — annually, by the IG or
+- **System inventory** under section 3554(c) — annual.
+- **Independent assessment** (section 3555) — annually, by the IG or
   an independent external auditor.
-- **Annual report to OMB** + Congress per §3555.
+- **Annual report to OMB** + Congress per section 3555.
 - **Categorisation determination** per FIPS 199 — operator's
   decision, documented in the SSP.
 - **Authorization to Operate (ATO)** — the agency's AO signs,
@@ -149,7 +149,7 @@ flow GenerateFISMAAnnualEvidence(year: Int) -> EvidencePackage {
 - **Non-federal customers.** Even an agency vendor that does not
   store federal data may not be FISMA-scoped — check with the AO.
 - **Federal contractor systems** that don't process federal
-  information directly. The §52.204-21 NIST 800-171 floor applies
+  information directly. The v2.4.0–v1.13.1 NIST 800-171 floor applies
   instead — see `axon://compliance/nist_800_171` (not yet
   shipped).
 

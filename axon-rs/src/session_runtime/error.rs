@@ -1,8 +1,8 @@
-//! Operational protocol errors raised by the §Fase 41.d session-typed
+//! Operational protocol errors raised by the v2.3.0 session-typed
 //! WebSocket runtime — every variant is a runtime witness of a static
 //! discipline that the connection must respect on every transition.
 //!
-//! When the static type checker (`axon-frontend`, §41.b/c) has already
+//! When the static type checker (`axon-frontend`, v2.3.0) has already
 //! validated the bound `session` + `socket { credit }`, a [`ProtocolError`]
 //! at runtime can only fire because the **peer** sent a frame that diverges
 //! from the conformant trace (or because a malformed frame entered the
@@ -34,8 +34,8 @@ pub enum ProtocolError {
     /// not in the type's arm set. Lists the declared labels so the peer can
     /// recover.
     UnknownLabel { label: String, expected: Vec<String> },
-    /// A `send` was attempted at zero available credit — the §Fase 41.c
-    /// "no rule at `n = 0`" axiom (paper §4.2) projected onto the runtime.
+    /// A `send` was attempted at zero available credit — the v2.3.0
+    /// "no rule at `n = 0`" axiom (paper section 4.2) projected onto the runtime.
     /// Static analysis (`credit_analyse`) catches this at compile time
     /// when the declared protocol demands more than `k` sends in a burst;
     /// at runtime it is the dynamic-safety net for an off-spec peer.
@@ -50,19 +50,19 @@ pub enum ProtocolError {
     /// The transport (WebSocket) returned an I/O error or was closed
     /// abruptly mid-dialogue.
     Transport(String),
-    /// §Fase 79.d — a `signal` fired but no interruptible region is armed
+    /// v2.36.0 — a `signal` fired but no interruptible region is armed
     /// (the cursor is not inside an `interrupt { … }` body).
     NoInterruptArmed,
-    /// §Fase 79.d — the fired signal's cause does not match the armed
+    /// v2.36.0 — the fired signal's cause does not match the armed
     /// region's declared `on <Signal>`.
     SignalMismatch { expected: Payload, got: Payload },
-    /// §Fase 79.d — the fail-closed WCET watchdog (D79.5): the reaction path
+    /// v2.36.0 — the fail-closed WCET watchdog: the reaction path
     /// (signal → cancellation-acknowledged) took more transitions than the
     /// statically-declared bound. A breach never silently degrades — it trips
     /// this fault, which the carrier audits.
     WatchdogBreach { bound: u32, actual: u32 },
-    /// §Fase 79.d — `resume` invoked on an already-consumed (or never
-    /// captured) one-shot continuation — the linear-type violation of D79.1,
+    /// v2.36.0 — `resume` invoked on an already-consumed (or never
+    /// captured) one-shot continuation — the linear-type violation of the design decision,
     /// caught at runtime even if it somehow slipped the static check.
     DoubleResume,
 }
@@ -123,7 +123,7 @@ impl std::error::Error for ProtocolError {}
 
 impl ProtocolError {
     /// A compact identifier suitable for the WebSocket close-frame reason
-    /// payload (RFC 6455 §5.5.1 caps the reason at 123 bytes UTF-8 — keep
+    /// payload (RFC 6455 section 5.5.1 caps the reason at 123 bytes UTF-8 — keep
     /// these stable, short and machine-readable).
     pub fn code(&self) -> &'static str {
         match self {

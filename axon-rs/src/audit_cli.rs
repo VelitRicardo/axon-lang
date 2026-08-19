@@ -1,7 +1,7 @@
-//! AXON CLI — ESK audit commands (§Fase 8.6 CLI parity).
+//! AXON CLI — ESK audit commands (v1.3.0 CLI parity).
 //!
 //! Implements `dossier`, `sbom`, `audit`, `evidence-package`. Outputs
-//! byte-identical JSON to the Python reference (§8.2.h parity contract).
+//! byte-identical JSON to the Python reference (section 8.2.h parity contract).
 
 #![allow(dead_code)]
 
@@ -13,7 +13,7 @@ use serde_json::Value;
 use crate::ast::Program;
 use crate::esk::attestation::{generate_dossier, generate_sbom};
 use crate::esk::audit_engine::{FrameworkId, analyze_all, analyze_gaps};
-// §Fase 118.b — the evidence packager writes a deterministic `.evidence.zip`,
+// v2.81.0 — the evidence packager writes a deterministic `.evidence.zip`,
 // so it is the one part of the governance CLI that needs `zip`.
 #[cfg(feature = "documents")]
 use crate::esk::audit_engine::build_evidence_package;
@@ -242,11 +242,11 @@ pub fn run_audit(file: &str, framework: &str, output: Option<&str>) -> i32 {
 //  axon evidence-package
 // ═══════════════════════════════════════════════════════════════════
 
-// §Fase 118.b — `axon evidence-package` stays in `--help` under every profile
-// and refuses in writing when the feature is absent. The §111 doctrine applied
+// v2.81.0 — `axon evidence-package` stays in `--help` under every profile
+// and refuses in writing when the feature is absent. The v2.67.0 doctrine applied
 // to packaging: the advertised surface stays advertised, and the refusal names
 // the exact command that fixes it. A subcommand that quietly disappears from a
-// build is the same defect §111 spent a fase removing.
+// build is the same defect v2.67.0 spent a cycle removing.
 #[cfg(not(feature = "documents"))]
 pub fn run_evidence_package(_file: &str, _output: Option<&str>, _note: &str) -> i32 {
     eprintln!(
@@ -299,7 +299,7 @@ pub fn run_evidence_package(file: &str, output: Option<&str>, note: &str) -> i32
         bytes.len()
     );
 
-    // ── §Fase 124.b — the DETACHED hybrid signature ──────────────────────
+    // ── v4.0.0 — the DETACHED hybrid signature ──────────────────────
     //
     // `Ed25519(H) ‖ ML-DSA-65(H)` over the exact ZIP bytes just written.
     //
@@ -312,9 +312,9 @@ pub fn run_evidence_package(file: &str, output: Option<&str>, note: &str) -> i32
     //
     // The keys are generated per package and their PUBLIC halves ship in the
     // sig file: this signature proves the package is intact SINCE PACKAGING,
-    // not who packaged it. A durable signer identity needs key custody (§94)
-    // and is named follow-up work in the §124 plan — claiming identity from
-    // an ephemeral key would be the overclaim this fase exists to remove.
+    // not who packaged it. A durable signer identity needs key custody (v2.48.0)
+    // and is named follow-up work in the v4.0.0 plan — claiming identity from
+    // an ephemeral key would be the overclaim this cycle exists to remove.
     #[cfg(feature = "csys-native")]
     {
         use crate::esk::hybrid_signer::{HybridSigner, HYBRID_SIGNATURE_BYTES};
@@ -392,12 +392,12 @@ mod tests {
         assert!(y_pos < z_pos);
     }
 
-    /// §Fase 124.b — **the production door of the hybrid signature.**
+    /// v4.0.0 — **the production door of the hybrid signature.**
     ///
     /// The `HybridSigner`'s own unit tests prove the construction; this proves
     /// the WIRING — that `axon evidence-package` actually emits a detached
     /// signature an external party can verify against the ZIP bytes it sits
-    /// beside, using only what the sig file itself carries. The whole §122
+    /// beside, using only what the sig file itself carries. The whole v2.89.0
     /// line exists because engines pass their own tests while no production
     /// path reaches them; this is the path.
     #[cfg(all(feature = "documents", feature = "csys-native"))]

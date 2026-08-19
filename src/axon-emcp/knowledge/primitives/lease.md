@@ -3,7 +3,7 @@ name: lease
 summary: Time-bounded resource acquisition with typed expiry, renewal, and revocation semantics.
 category: cognitive_io
 top_level: true
-since: Fase 6
+since: v1.2.0
 grammar: |
   lease <Name> {
       resource: <ResourceRef>                          # required — leased resource
@@ -20,7 +20,7 @@ Where a `resource` is the typed handle, a `lease` is the
 **typed acquisition contract**: when the handle is acquired, how
 long it's held, and what happens when the lease window expires.
 
-Leases are how the linearity discipline of the §λ-L-E layer
+Leases are how the linearity discipline of the λ-L-E layer
 meets wall-clock time. A linear resource handle can be
 acquired-released within one flow; a leased resource carries
 an explicit duration the runtime enforces against the system
@@ -99,7 +99,7 @@ declared at tenant T cannot be acquired by tenant T'.
 
 - **Not a `resource`.** A resource is the handle's
   *declaration*; a lease is its *acquisition contract*.
-- **Not a session.** A `session` is the §41 dialogue protocol
+- **Not a session.** A `session` is the v2.3.0 dialogue protocol
   with duality + linearity; a lease is wall-clock time-bounded
   resource access with no protocol shape.
 - **Not a transaction.** For atomic multi-resource acquisitions

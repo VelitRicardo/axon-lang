@@ -1,9 +1,9 @@
-// AXON §Fase 80 voice-agent scaffold — the vendor is a DECLARATION,
+// AXON v2.37.0 voice-agent scaffold — the vendor is a DECLARATION,
 // not a dependency (voice_integration_is_a_declaration_not_a_rewrite).
 //
 // This is the whole program: a barge-in-capable phone agent over blessed
 // vendor presets. It expands (run `axon desugar` on this file to see it)
-// to the ordinary primitives: the mu-law<->PCM16 `ots` codec pair, a §79
+// to the ordinary primitives: the mu-law<->PCM16 `ots` codec pair, a v2.36.0
 // interruptible carrier `session` + `socket` (residual parking governed
 // by the declared legal_basis), and one `upstream` per vendor leg.
 //

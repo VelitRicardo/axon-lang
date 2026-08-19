@@ -1,5 +1,5 @@
 /*
- * §Fase 25.h — Continuity-token wire format implementation.
+ * v1.19.0 — Continuity-token wire format implementation.
  *
  * See continuity.h for spec rationale + pillar split.
  */

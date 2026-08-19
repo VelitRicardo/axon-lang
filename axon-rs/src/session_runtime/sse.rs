@@ -1,28 +1,28 @@
-//! §Fase 41.e — Server-Sent Events carrier for the **single-polarity**
-//! fragment of a session type. The paper's §4.4 identity
+//! v2.3.0 — Server-Sent Events carrier for the **single-polarity**
+//! fragment of a session type. The paper's section 4.4 identity
 //! `S_SSE = Π↓(S_WS)` makes SSE not a *parallel* protocol but the
 //! downstream **projection** of the WebSocket dialogue: when a session
 //! type satisfies [`SessionType::projects_to_sse`] (only `End` / `Send`
 //! / internal-`Select` / `Rec` / `Var` — no client input, no offered
 //! choice), the same [`SessionRuntime`] that runs over a WebSocket can
 //! be driven onto an SSE response stream byte-for-byte compatible with
-//! Fase 33's W3C SSE framing.
+//! v1.24.0's W3C SSE framing.
 //!
 //! The wire shape: one SSE event per operational step. The event names
-//! are namespaced under `axon.` (mirroring Fase 33's `axon.token` /
+//! are namespaced under `axon.` (mirroring v1.24.0's `axon.token` /
 //! `axon.complete` cohort), and the `data:` payload is the same JSON
 //! envelope `Frame` uses on a WebSocket (minus the `v` key, which is
 //! redundant inside an SSE event whose `Content-Type` already names the
 //! protocol). The W3C SSE framing rules (`event:` line, `data:` line,
 //! `\n\n` event-terminator) are honoured exactly — any compliant SSE
-//! consumer (browsers' `EventSource`, `curl --no-buffer`, the Fase 33
+//! consumer (browsers' `EventSource`, `curl --no-buffer`, the v1.24.0
 //! `bytes_stream_to_sse_events` parser) decodes the wire without any
 //! axon-specific knowledge.
 //!
 //! The driver is **lazy**: a `Stream<Item = Result<Event, Infallible>>`
 //! is built once and yields one event per `poll_next` — back-pressure
 //! flows through the tokio runtime onto the underlying TCP socket
-//! exactly as Fase 33's SSE handlers already do.
+//! exactly as v1.24.0's SSE handlers already do.
 
 use std::convert::Infallible;
 
@@ -38,7 +38,7 @@ use super::ws::{apply_outgoing, next_outgoing_frame, PeerRole};
 // ─── Closed catalog of SSE event names — namespaced under `axon.` ─────────
 //
 // Stable identifiers so SSE consumers can filter / dispatch without
-// re-parsing JSON. Mirror the §4.4 mapping `Π↓(send)` / `Π↓(select)` /
+// re-parsing JSON. Mirror the section 4.4 mapping `Π↓(send)` / `Π↓(select)` /
 // `Π↓(end)` exactly; `axon.error` is the out-of-band carrier for
 // protocol-error close signals (the SSE analogue of WebSocket's
 // `1002 protocol error` close-frame reason).
@@ -81,7 +81,7 @@ pub(super) fn frame_to_sse_event(frame: &Frame) -> Event {
 /// **Output**: a stream of [`Event`]s yielding one event per producer
 /// step (`Send` → `axon.send`, `Select` → `axon.select`, `End` →
 /// `axon.end`) followed by stream closure. On a runtime error
-/// (canonically: credit exhaustion at runtime, §Fase 41.c "no rule at
+/// (canonically: credit exhaustion at runtime, v2.3.0 "no rule at
 /// n=0" axiom) the stream emits one final `axon.error` event carrying
 /// the [`ProtocolError::code`] and then ends.
 ///
@@ -171,7 +171,7 @@ fn preflight_polarity_check(runtime: &SessionRuntime) -> Option<ProtocolError> {
 /// `None` for that cursor (the WS driver handles termination at the
 /// outer loop). For SSE we emit one explicit `axon.end` event so the
 /// consumer sees the dialogue's closure on the wire rather than just
-/// the TCP-level end-of-stream — symmetric with the §41.d WS carrier's
+/// the TCP-level end-of-stream — symmetric with the v2.3.0 WS carrier's
 /// `Frame::End` then close-`1000`.
 fn step_runtime(runtime: &mut SessionRuntime) -> StepOutcome {
     if runtime.is_complete() {
@@ -208,7 +208,7 @@ fn error_event(err: &ProtocolError) -> Event {
 mod tests {
     //! Unit tests cover the stream's **sequence** + **termination**;
     //! the actual W3C SSE wire-byte shape is verified end-to-end in
-    //! `tests/fase41_e_sse_fragment_e2e.rs` against a real axum server
+    //! `tests/sse_fragment_e2e.rs` against a real axum server
     //! (axum's [`Event`] does not expose its inner fields publicly, so
     //! a unit-only "looks like SSE" assertion would have to reach into
     //! private state — the E2E test is the proper place for wire

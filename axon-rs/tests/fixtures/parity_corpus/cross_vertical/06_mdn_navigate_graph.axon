@@ -1,0 +1,42 @@
+// META: flow_name=NavigateGraph, mode=count_only
+
+// v2.15.0 — dual-path coverage for the MDN `navigate` verb (v2.13.0 / v2.14.0):
+// both server paths EXECUTE the navigate flow without erroring (regression
+// guard against a navigate panic/error in either path).
+//
+// Why `count_only` and not output parity: this corpus drives the `stub`
+// backend, and `execute_server_flow` routes the stub backend through a THIRD,
+// test-only executor — `execute_stub` — which (unlike the production
+// `execute_real_async`, fixed in v2.15.0/B) does NOT route structural verbs
+// through the dispatcher. So on stub, sync `navigate` emits "(stub)" while the
+// async dispatcher runs the real traversal ("DocA"). That divergence is a v2.15.0
+// FINDING (execute_stub is a third executor still to unify), NOT a production
+// gap: the production navigate output parity is validated end-to-end against a
+// real database by `tests/navigate_pg_integration.rs`. The v2.15.0
+// `project_events` harness fix (capture StepComplete.full_output) makes the gate
+// ABLE to compare structural-verb outputs once execute_stub is unified — then
+// this fixture can graduate to Strict/Multiset.
+
+type DocA { content: Text }
+type DocB { content: Text }
+
+corpus KnowledgeGraph {
+    documents: [DocA, DocB]
+    relations: [ elaborate(DocA, DocB, 0.9) ]
+}
+
+// `-> Unit` with no explicit `return`: the non-streaming runner counts a
+// `return <binding>` as a separate (LLM-dispatched) step while the dispatcher
+// treats it as pure control flow — a real path divergence (its own v2.15.0
+// finding). Returning Unit keeps the comparison focused on the navigate
+// OUTPUT itself; both paths execute exactly one (navigate) step.
+flow NavigateGraph(q: Text) -> Unit {
+    navigate KnowledgeGraph { query: "${q}", budget: 5, output: hits }
+}
+
+axonendpoint NavigateGraphEndpoint {
+    method: POST
+    path: "/cross/navigate-graph"
+    execute: NavigateGraph
+    transport: sse public: true
+}

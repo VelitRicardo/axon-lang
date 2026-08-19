@@ -1,7 +1,7 @@
 ---
 name: temporal_cognitive_context
 title: Declared cognitive time — `now:` on a step and its context frame
-summary: "`now: \"<IANA-tz>\"` (§91) makes the model time-aware WITHOUT an ambient clock: the source declares WHOSE time each step reasons in, the runtime injects ONE captured instant per run (rendered per zone, DST-correct), and the envelope records (captured_utc, tzdb_version, zones) for byte-exact replay — `time_is_an_explicit_input` applied to cognition. Malformed zone = compile error axon-T892."
+summary: "`now: \"<IANA-tz>\"` (v2.46.0) makes the model time-aware WITHOUT an ambient clock: the source declares WHOSE time each step reasons in, the runtime injects ONE captured instant per run (rendered per zone, DST-correct), and the envelope records (captured_utc, tzdb_version, zones) for byte-exact replay — `time_is_an_explicit_input` applied to cognition. Malformed zone = compile error axon-T892."
 topic: composition
 primitives:
   - context
@@ -12,7 +12,7 @@ primitives:
 
 // A scheduling agent MUST know what time it is — but "the server's local
 // time", string-interpolated by hand into every ask:, is the ambient,
-// unrecorded clock read `time_is_an_explicit_input` forbids. §91 makes the
+// unrecorded clock read `time_is_an_explicit_input` forbids. v2.46.0 makes the
 // need declarative: the frame (or a single step) states its zone, the
 // runtime supplies the instant, the envelope records the replay triple.
 

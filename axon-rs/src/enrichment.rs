@@ -1,6 +1,6 @@
-//! §Fase 104.a — Governed Contact Enrichment runtime: the OSS contract + the
+//! v2.58.0 — Governed Contact Enrichment runtime: the OSS contract + the
 //! `scrape_enrich` provider dispatch, the enterprise-engine injection seam
-//! (D104.2), and the born-**Inferred** epistemic discipline (D104.4).
+//!, and the born-**Inferred** epistemic discipline.
 //!
 //! **What enrichment is.** Given a partial contact (`name` + `company`, or a
 //! `domain`, or a `linkedin` URL), resolve the missing `email` / `phone` /
@@ -8,19 +8,19 @@
 //! (fetch a URL), enrichment is a *structured lookup* → a structured, per-field
 //! result, each field carrying its own confidence + epistemic level.
 //!
-//! **The load-bearing property (D104.4): enrichment is INFERENCE, not fact.** An
+//! **The load-bearing property: enrichment is INFERENCE, not fact.** An
 //! enriched email is a vendor's probabilistic guess, NEVER a verified truth. Every
 //! field is born at a BOUNDED epistemic level — `Speculate` (pattern/heuristic
 //! guess) or `Believe` (the vendor deliverability-verified it), **never `Know`**
-//! (the believe-ceiling, §101). And the value is born epistemically **Untrusted**
+//! (the believe-ceiling, v2.54.0). And the value is born epistemically **Untrusted**
 //! (⊥, reusing [`crate::emcp::EpistemicTaint::Untrusted`] exactly like scraped
 //! content) — a vendor's channel is adversarial; the value is not a belief until
 //! a `shield` scans it and the flow `anchor`'s `confidence_floor` clears it.
 //!
-//! **The engine is enterprise (D104.2).** OSS ships the CONTRACT + a default
+//! **The engine is enterprise.** OSS ships the CONTRACT + a default
 //! [`NoProvider`] that TYPED-REFUSES every call — never a fabricated contact
-//! (D104.6 / the §101 D101.7 honesty). The enterprise generic HTTP provider
-//! (§104.a) registers via [`register_provider`]; the `scrape:enrich` RBAC gate +
+//! (the design decision / the v2.54.0 the design decision honesty). The enterprise generic HTTP provider
+//! (v2.58.0) registers via [`register_provider`]; the `scrape:enrich` RBAC gate +
 //! the per-tenant legal flag + the credential resolution + the audit all live in
 //! enterprise. With no engine wired, `scrape_enrich` is an honest refusal.
 
@@ -63,12 +63,12 @@ impl ContactQuery {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-//  The bounded epistemic level (the believe-ceiling, D104.4)
+// The bounded epistemic level (the believe-ceiling, the design decision)
 // ════════════════════════════════════════════════════════════════════════════
 
-/// How much an enriched field may be trusted — the believe-ceiling (D104.4).
+/// How much an enriched field may be trusted — the believe-ceiling.
 /// A provider MAY return `Speculate` or `Believe`; it can NEVER mint `Know`. The
-/// serialised form is the lattice name so `§55` epistemic wiring + the flow
+/// serialised form is the lattice name so `v2.7.0` epistemic wiring + the flow
 /// `anchor` can read it directly.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -105,7 +105,7 @@ pub struct EnrichedField {
 
 impl EnrichedField {
     /// Build a field, enforcing the ceiling: confidence clamped to `[0,1]`, the
-    /// level derived from it so a vendor can never over-assert (D104.4).
+    /// level derived from it so a vendor can never over-assert.
     pub fn new(value: impl Into<String>, confidence: f64) -> Self {
         let c = if confidence.is_nan() { 0.0 } else { confidence.clamp(0.0, 1.0) };
         EnrichedField {
@@ -117,7 +117,7 @@ impl EnrichedField {
 }
 
 /// The enrichment result: the resolved fields (each optional — a miss is `None`,
-/// never a fabricated value, D104.6) + the vendor tag for the audit trail.
+/// never a fabricated value, the design decision) + the vendor tag for the audit trail.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct EnrichmentResult {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -133,7 +133,7 @@ pub struct EnrichmentResult {
 
 impl EnrichmentResult {
     /// The count of fields actually resolved — the audit witnesses this (never
-    /// the values, D104.5).
+    /// the values, the design decision).
     pub fn resolved_count(&self) -> usize {
         self.email.is_some() as usize
             + self.phone.is_some() as usize
@@ -146,7 +146,7 @@ impl EnrichmentResult {
 // ════════════════════════════════════════════════════════════════════════════
 
 /// Everything that can go wrong enriching a contact. A miss is NOT an error (it
-/// is an empty result); an error is a refusal to proceed (D104.6).
+/// is an empty result); an error is a refusal to proceed.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EnrichmentError {
     /// No enterprise provider is registered — the OSS build cannot enrich.
@@ -181,13 +181,13 @@ impl std::fmt::Display for EnrichmentError {
 impl std::error::Error for EnrichmentError {}
 
 // ════════════════════════════════════════════════════════════════════════════
-//  The engine contract + the injection seam (D104.2)
+// The engine contract + the injection seam
 // ════════════════════════════════════════════════════════════════════════════
 
 /// The contract every enrichment engine satisfies: a `ContactQuery` → an
-/// `EnrichmentResult` whose fields are born ≤ `Believe` (D104.4). The enterprise
-/// generic HTTP provider (§104.a) implements this. Failure is a typed
-/// [`EnrichmentError`], never a fabricated contact (D104.6).
+/// `EnrichmentResult` whose fields are born ≤ `Believe`. The enterprise
+/// generic HTTP provider (v2.58.0) implements this. Failure is a typed
+/// [`EnrichmentError`], never a fabricated contact.
 pub trait EnrichmentProvider: Send + Sync {
     /// A stable provider identifier for the audit row (e.g. `"http-generic"`).
     fn name(&self) -> &str;
@@ -197,7 +197,7 @@ pub trait EnrichmentProvider: Send + Sync {
 }
 
 /// The OSS default engine: **none**. It typed-refuses every enrichment — the
-/// honest state of a runtime with no engine wired (the §101 `NoEngine` shape).
+/// honest state of a runtime with no engine wired (the v2.54.0 `NoEngine` shape).
 #[derive(Debug, Clone, Copy, Default)]
 pub struct NoProvider;
 
@@ -215,7 +215,7 @@ fn registry() -> &'static RwLock<Option<Arc<dyn EnrichmentProvider>>> {
     REG.get_or_init(|| RwLock::new(None))
 }
 
-/// §Fase 104.a — register the process-wide enrichment provider. OSS ships none
+/// v2.58.0 — register the process-wide enrichment provider. OSS ships none
 /// (every enrichment typed-refuses); the enterprise host mounts the generic HTTP
 /// provider here at boot. Replaces any prior registration. Exactly the
 /// [`crate::extraction::register_engine`] / [`crate::scrape_tool::register_scrape_fetcher`]
@@ -234,7 +234,7 @@ pub fn active_provider() -> Option<Arc<dyn EnrichmentProvider>> {
     registry().read().expect("enrichment registry poisoned").clone()
 }
 
-/// Run the active provider, or typed-refuse if none is registered (D104.6).
+/// Run the active provider, or typed-refuse if none is registered.
 fn run_active(query: &ContactQuery) -> Result<EnrichmentResult, EnrichmentError> {
     if query.is_empty() {
         return Err(EnrichmentError::MissingQuery);
@@ -250,9 +250,9 @@ fn run_active(query: &ContactQuery) -> Result<EnrichmentResult, EnrichmentError>
 // ════════════════════════════════════════════════════════════════════════════
 
 /// The provenance-tagged outcome. `taint` is ALWAYS [`EpistemicTaint::Untrusted`]
-/// — an enriched value is born ⊥, exactly like scraped content (D104.4). The
+/// an enriched value is born ⊥, exactly like scraped content. The
 /// registry integration flattens this to a [`ToolResult`]; the taint is exposed
-/// here for the §98.f-style IFC + the audit.
+/// here for the v2.52.0-style IFC + the audit.
 #[derive(Debug, Clone)]
 pub struct EnrichmentOutcome {
     pub result: ToolResult,
@@ -304,7 +304,7 @@ mod tests {
 
     /// Serialises the registry-touching tests — the provider registry is
     /// process-global, so `register`/`clear` must not race across parallel test
-    /// threads (the §101 extraction `REG_LOCK` discipline).
+    /// threads (the v2.54.0 extraction `REG_LOCK` discipline).
     static REG_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
     fn entry() -> ToolEntry {

@@ -1,7 +1,7 @@
-//! §Fase 116.b.2 — the agora token-refresh orchestration.
+//! v2.77.0 — the agora token-refresh orchestration.
 //!
-//! The OSS refresh CORE the enterprise §52 daemon drives: it enumerates a
-//! tenant's agora tokens, decides which need refresh (via the §116.b oauth
+//! The OSS refresh CORE the enterprise v2.4.0 daemon drives: it enumerates a
+//! tenant's agora tokens, decides which need refresh (via the v2.77.0 oauth
 //! engine), performs the exchange, and **atomically** persists the result to the
 //! secret vault — closing the rotating-refresh-token trap (a TikTok refresh
 //! token that rotates but is not persisted is a permanent lockout). The
@@ -11,12 +11,12 @@
 //! custody + fixture token endpoints.
 //!
 //! **Key layout** (per tenant): `agora.<platform>.token` is the ACCESS token
-//! (what §94.c injects as the Bearer; its `expires_at` drives the schedule);
+//! (what v2.48.0 injects as the Bearer; its `expires_at` drives the schedule);
 //! `agora.<platform>.refresh` is the refresh token (rotating platforms);
 //! `agora.<platform>.client_secret` is the custodied app secret. The client key
 //! is public config, not custodied.
 //!
-//! **Discipline** (the tenant-sweeper posture, §42.c): per-token failures are
+//! **Discipline** (the tenant-sweeper posture, an earlier release): per-token failures are
 //! recorded in the report and the sweep continues; a CAS conflict means another
 //! rotator won — the loser NEVER retries with the stale revealed value (custody
 //! `VersionConflict`, "never double-spend a refresh credential").
@@ -66,7 +66,7 @@ impl ClientKeys {
 }
 
 /// The outcome of one refresh sweep for a tenant — counts, so a test can assert
-/// the work done without racy log inspection (the §42.c sweeper posture).
+/// the work done without racy log inspection (the an earlier release sweeper posture).
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct RefreshReport {
     /// Access-token entries examined.
@@ -132,7 +132,7 @@ pub async fn refresh_once(
                 report.skipped_never_expires += 1;
             }
             oauth::RefreshMechanism::ReConsent => {
-                // Never auto-refresh member data (LinkedIn ToS §4.3/§5.2). If the
+                // Never auto-refresh member data (LinkedIn ToS section 4.3/section 5.2). If the
                 // token is at/near expiry, SURFACE a re-consent requirement.
                 let due = meta
                     .expires_at_ms

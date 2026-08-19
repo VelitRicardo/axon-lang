@@ -32,64 +32,64 @@ pub struct ToolEntry {
     pub provider: String,
     pub timeout: String,
     pub runtime: String,
-    /// §Fase 114.c/d — the `resource` this tool's channel runs on. When set, the
+    /// v2.69.0 — the `resource` this tool's channel runs on. When set, the
     /// tool's endpoint is DERIVED from `resource.endpoint` (a config key), and its
     /// concurrency is bounded by `resource.capacity`. Empty ⇒ the legacy form
     /// (slug `runtime:` joined onto a base URL).
     pub resource_ref: String,
-    /// §Fase 114.d — the channel's concurrency bound (`resource.capacity`): at most
+    /// v2.69.0 — the channel's concurrency bound (`resource.capacity`): at most
     /// this many calls in flight against the resource. `None` ⇒ unbounded (the
-    /// legacy behaviour, and the state before §114 for every tool). This is the
+    /// legacy behaviour, and the state before v2.69.0 for every tool). This is the
     /// semaphore's permit count; the semaphore itself is held across requests on
     /// `ServerState`, keyed by resource — a per-request semaphore would reset every
     /// time and bound nothing.
     pub capacity: Option<u32>,
-    /// §Fase 119.e — the substrate this tool's channel actually runs on:
+    /// v2.83.0 — the substrate this tool's channel actually runs on:
     /// `(provider, region)` of the `fabric` its `resource` lives `within`.
     ///
-    /// §111's finding on `fabric` was that provider/region were "consumed by
+    /// v2.67.0's finding on `fabric` was that provider/region were "consumed by
     /// NOTHING at runtime". This field is where they arrive at something that
     /// RUNS: resolved once at binding time (`resolve_from_resources`), stamped
     /// on every dispatch through this tool, and carried into the audit row so
     /// cross-jurisdiction data movement is auditable — the knowledge doc's
     /// "compliance propagation", made a fact instead of a sentence.
     ///
-    /// Empty ⇒ the resource declares no `within:` (pre-§113 programs), and the
+    /// Empty ⇒ the resource declares no `within:` (pre-v2.67.0 programs), and the
     /// audit says "unattributed" rather than inventing a substrate.
     pub substrate: Option<(String, String)>,
     pub sandbox: Option<bool>,
     pub max_results: Option<i64>,
     pub output_schema: String,
     pub effect_row: Vec<String>,
-    /// §Fase 58.f.2 — the tool's typed INPUT SCHEMA (D1) as resolved
+    /// v2.8.0 — the tool's typed INPUT SCHEMA (D1) as resolved
     /// `(param_name, type_name)` pairs, populated from
     /// `IRToolSpec.parameters` at [`ToolRegistry::register_from_ir`].
     /// The streaming dispatcher's `run_use_tool` reads this to coerce
     /// each `use Tool(k = v, …)` arg to its declared JSON type — the
     /// SAME `coerce_tool_arg_value` discipline the synchronous server
-    /// path (§58.e/58.f) applies via `CompiledStep.tool_param_types`.
+    /// path (v2.8.0) applies via `CompiledStep.tool_param_types`.
     /// Empty for a schema-less tool (D5) and for the built-ins.
     pub parameters: Vec<(String, String)>,
-    /// §Fase 94.c — the per-tenant secret KEY injected into every dispatch
+    /// v2.48.0 — the per-tenant secret KEY injected into every dispatch
     /// of this tool under the reserved `axon_secret` request field
     /// (`rotation_without_revelation`). Populated from `IRToolSpec.secret`
     /// at [`ToolRegistry::register_from_ir`]. Empty = no injection (every
-    /// pre-§94 tool and the built-ins). The dispatch handlers resolve the
+    /// pre-v2.48.0 tool and the built-ins). The dispatch handlers resolve the
     /// key against the `SecretCustody` port — fail-closed when the key is
     /// set and no custody is attached.
     pub secret: String,
-    /// §Fase 95.a — the `secret_partition:` parameter name
+    /// v2.49.0 — the `secret_partition:` parameter name
     /// (`selection_without_revelation`). Populated from
     /// `IRToolSpec.secret_partition`. When non-empty, the dispatch handlers
     /// read this parameter's resolved value from the structured tool body,
     /// validate it to a single dot-free key segment, and append it to
     /// [`secret`] before the custody lookup — so one tool serves N
     /// sub-tenants while the resolved key never leaves `secret`'s class.
-    /// Empty = the §94 static-key behaviour. Meaningless without `secret`
+    /// Empty = the v2.48.0 static-key behaviour. Meaningless without `secret`
     /// (`axon-T903`); inert for the built-ins.
     pub secret_partition: String,
     pub source: ToolSource,
-    /// §Fase 34.c (v1.29.0) — Whether this tool is a stream
+    /// v1.29.0 — Whether this tool is a stream
     /// producer. Auto-derived at registration time from
     /// `effect_row` via [`derive_is_streaming`] when the tool comes
     /// from the IR (`register_from_ir`). Adopters programmatically
@@ -97,14 +97,14 @@ pub struct ToolEntry {
     /// flag explicitly (or use [`derive_is_streaming`] for the
     /// canonical rule).
     ///
-    /// The dispatcher's `pure_shape::run_step` (Fase 34.d) reads
+    /// The dispatcher's `pure_shape::run_step` (v1.29.0) reads
     /// this flag to decide whether to route through the streaming
     /// path (`tool.stream(args, ctx)`) or the synchronous path
     /// (`tool.execute(args, ctx)`). Built-in tools default to
     /// `false`; tools declaring `effects: <stream:<policy>>` in
     /// their AST get `true` automatically.
     pub is_streaming: bool,
-    /// §Fase 98.b — the resolved web-acquisition config for a tool whose
+    /// v2.52.0 — the resolved web-acquisition config for a tool whose
     /// `provider:` is `scrape_http` / `scrape_dom` / `scrape_crawl`.
     /// Populated from `IRToolSpec.scrape` at
     /// [`ToolRegistry::register_from_ir`]; `None` for every non-scrape tool
@@ -115,7 +115,7 @@ pub struct ToolEntry {
     pub scrape: Option<ScrapeConfig>,
 }
 
-/// §Fase 98.b — the runtime mirror of `ir_nodes::IRScrapeSpec`: the closed
+/// v2.52.0 — the runtime mirror of `ir_nodes::IRScrapeSpec`: the closed
 /// web-acquisition configuration a scrape tool dispatches with. Owned +
 /// `Clone` so a `ToolEntry` stays cheap to clone into a request-scoped
 /// registry. Every field defaults to its inert form so a bare `scrape: {}`
@@ -125,45 +125,45 @@ pub struct ToolEntry {
 pub struct ScrapeConfig {
     /// `impersonate` (HTTP-fingerprint stealth; the OSS fallback is plain
     /// `reqwest`) | `browser` (headless-render sidecar). Empty ⇒ default
-    /// `impersonate` (D98.3).
+    /// `impersonate`.
     pub engine: String,
     /// The declared impersonation fingerprint profile (`chrome`/…). Empty ⇒
-    /// engine default. Consumed by the enterprise engine (§98.g).
+    /// engine default. Consumed by the enterprise engine (v2.52.0).
     pub impersonate: String,
     /// Browser-tier post-navigation settle wait (a Duration string).
     pub render_wait: String,
     /// Per-tenant proxy-pool config KEY (resolved via SecretResolver).
     pub proxy: String,
-    /// §Fase 102 (D102.9) — the dispatching tenant, stamped onto the
+    /// v2.56.0 — the dispatching tenant, stamped onto the
     /// request-scoped registry by [`ToolRegistry::apply_scrape_tenant_context`]
     /// (from `execute_server_flow`'s `tenant_id`). Empty until stamped. It keys
-    /// the per-tenant adaptive-selector memory (§102.d) and is the coordinate the
-    /// enterprise fetcher/store isolate on — the seam that was missing in §98.
+    /// the per-tenant adaptive-selector memory (v2.56.0) and is the coordinate the
+    /// enterprise fetcher/store isolate on — the seam that was missing in v2.52.0.
     pub tenant: String,
-    /// Whether `robots.txt` is honored (default TRUE — D98.6).
+    /// Whether `robots.txt` is honored (default TRUE — the design decision).
     pub respect_robots: bool,
     /// `scrape_dom` extraction FieldSpecs, each `name=selector`.
     pub extract: Vec<String>,
-    /// `scrape_dom` adaptive relocation toggle (heuristic — D98.4).
+    /// `scrape_dom` adaptive relocation toggle (heuristic — the design decision).
     pub adaptive: bool,
     /// `scrape_dom` adaptive similarity threshold ∈ [0,1].
     pub similarity_floor: f64,
     /// `scrape_crawl` link-follow selector.
     pub follow: String,
-    /// `scrape_crawl` maximum link depth (bounded — D98.11).
+    /// `scrape_crawl` maximum link depth (bounded — the design decision).
     pub max_depth: i64,
-    /// `scrape_crawl` maximum total pages (bounded — D98.11).
+    /// `scrape_crawl` maximum total pages (bounded — the design decision).
     pub max_pages: i64,
     /// `scrape_crawl` fetch concurrency.
     pub concurrency: i64,
-    /// `scrape_crawl` politeness budget reference (§72 budget kernel).
+    /// `scrape_crawl` politeness budget reference (v2.28.0 budget kernel).
     pub politeness: String,
     /// `scrape_crawl` checkpoint store reference (resumable crawls).
     pub checkpoint: String,
 }
 
-/// §Fase 102 (D102.9) — per-tenant scrape overrides resolved by the deployed
-/// executor (the `SecretResolver` reveal, §102.b), threaded into
+/// v2.56.0 — per-tenant scrape overrides resolved by the deployed
+/// executor (the `SecretResolver` reveal, v2.56.0), threaded into
 /// `execute_server_flow` and applied via
 /// [`ToolRegistry::apply_scrape_tenant_context`]. `None` fields leave the
 /// source-declared config untouched. The per-tenant browser-sidecar URL rides
@@ -177,7 +177,7 @@ pub struct ScrapeOverrides {
 }
 
 impl ScrapeConfig {
-    /// §Fase 98.b — resolve an `IRScrapeSpec` into the runtime config,
+    /// v2.52.0 — resolve an `IRScrapeSpec` into the runtime config,
     /// applying the documented defaults (engine ⇒ `impersonate`,
     /// `respect_robots` ⇒ true, `concurrency` ⇒ 1).
     pub fn from_ir(spec: &crate::ir_nodes::IRScrapeSpec) -> Self {
@@ -186,7 +186,7 @@ impl ScrapeConfig {
             impersonate: spec.impersonate.clone().unwrap_or_default(),
             render_wait: spec.render_wait.clone().unwrap_or_default(),
             proxy: spec.proxy.clone(),
-            // §Fase 102 — stamped per-request by the executor (empty at IR time).
+            // v2.56.0 — stamped per-request by the executor (empty at IR time).
             tenant: String::new(),
             // Default-secure: robots honored unless explicitly disabled.
             respect_robots: spec.respect_robots.unwrap_or(true),
@@ -217,32 +217,32 @@ impl ScrapeConfig {
     }
 }
 
-/// §Fase 34.c (v1.29.0) — Canonical derivation rule for the
+/// v1.29.0 — Canonical derivation rule for the
 /// [`ToolEntry::is_streaming`] field.
 ///
 /// A tool is a stream producer iff at least one entry in its
 /// `effect_row` begins with the `stream:` slug prefix. This is the
-/// AST-level structural signal the paper §3-§6 defines:
+/// AST-level structural signal the paper section 3-section 6 defines:
 /// `effects: <stream:<policy>>` on a tool declaration means "this
 /// tool is a stream producer with backpressure policy ⟨policy⟩".
 ///
 /// The closed-catalog `<stream:<policy>>` payloads are
 /// `{drop_oldest, degrade_quality, pause_upstream, fail}` per
-/// Fase 33.e; new policies require a deliberate sub-fase. The
+/// v1.24.0; new policies require a deliberate step. The
 /// derivation rule itself is policy-agnostic — any `stream:` slug
 /// flags the tool as a stream producer.
 ///
 /// # Cross-stack contract (D10)
 ///
 /// The Python mirror lives in `axon.runtime.tools.streaming`
-/// (Fase 34.b). Both stacks check the same prefix predicate; the
+/// (v1.29.0). Both stacks check the same prefix predicate; the
 /// drift gate `tests/test_fase34_c_registry_drift_cross_stack.py`
 /// pins the 1-to-1 contract.
 pub fn derive_is_streaming(effect_row: &[String]) -> bool {
     effect_row.iter().any(|e| e.starts_with("stream:"))
 }
 
-/// §Fase 58.g — resolve a tool's declared `runtime` into a concrete
+/// v2.8.0 — resolve a tool's declared `runtime` into a concrete
 /// dispatch URL against a per-tenant / per-server **base URL** (D7).
 ///
 /// The resolution rule (config-driven provider→endpoint, never
@@ -322,13 +322,13 @@ impl ToolRegistry {
                 max_results: None,
                 output_schema: "number".to_string(),
                 effect_row: vec!["compute".to_string()],
-                // §Fase 58.f.2 — built-ins declare no typed input schema;
+                // v2.8.0 — built-ins declare no typed input schema;
                 // they accept the legacy positional `on <arg>` form.
                 parameters: Vec::new(),
                 secret: String::new(),
                 secret_partition: String::new(),
                 source: ToolSource::Builtin,
-                // §Fase 34.c — Calculator declares `compute` effect only.
+                // v1.29.0 — Calculator declares `compute` effect only.
                 // No stream effect → is_streaming = false.
                 is_streaming: false,
                 scrape: None,
@@ -348,12 +348,12 @@ impl ToolRegistry {
                 max_results: None,
                 output_schema: String::new(),
                 effect_row: vec!["read".to_string()],
-                // §Fase 58.f.2 — see Calculator: no typed input schema.
+                // v2.8.0 — see Calculator: no typed input schema.
                 parameters: Vec::new(),
                 secret: String::new(),
                 secret_partition: String::new(),
                 source: ToolSource::Builtin,
-                // §Fase 34.c — DateTimeTool declares `read` effect only.
+                // v1.29.0 — DateTimeTool declares `read` effect only.
                 is_streaming: false,
                 scrape: None,
             },
@@ -362,17 +362,17 @@ impl ToolRegistry {
 
     /// Register tools from the IR program's tool definitions.
     ///
-    /// §Fase 34.c (v1.29.0) — `is_streaming` is auto-derived from
+    /// v1.29.0 — `is_streaming` is auto-derived from
     /// each spec's `effect_row` via [`derive_is_streaming`]. Tools
     /// declaring `effects: <stream:<policy>>` automatically register
-    /// as stream producers; the dispatcher (Fase 34.d) routes them
+    /// as stream producers; the dispatcher (v1.29.0) routes them
     /// through the streaming path.
     pub fn register_from_ir(&mut self, tool_specs: &[IRToolSpec]) {
         for spec in tool_specs {
             let is_streaming = derive_is_streaming(&spec.effect_row);
-            // §Fase 58.f.2 — resolve the typed input schema (D1) into
+            // v2.8.0 — resolve the typed input schema (D1) into
             // `(name, type_name)` pairs, matching the synchronous path's
-            // `CompiledStep.tool_param_types` (runner.rs §58.e) so the
+            // `CompiledStep.tool_param_types` (runner.rs v2.8.0) so the
             // streaming `run_use_tool` coerces args identically.
             let parameters: Vec<(String, String)> = spec
                 .parameters
@@ -386,7 +386,7 @@ impl ToolRegistry {
                     provider: spec.provider.clone(),
                     timeout: spec.timeout.clone(),
                     runtime: spec.runtime.clone(),
-                    // §Fase 114.c — the channel's resource (empty = legacy form).
+                    // v2.69.0 — the channel's resource (empty = legacy form).
                     // Endpoint + capacity are DERIVED from it by
                     // `resolve_from_resources` on the server path.
                     resource_ref: spec.resource_ref.clone(),
@@ -397,14 +397,14 @@ impl ToolRegistry {
                     output_schema: spec.output_schema.clone(),
                     effect_row: spec.effect_row.clone(),
                     parameters,
-                    // §Fase 94.c — the dispatch-injection secret KEY.
+                    // v2.48.0 — the dispatch-injection secret KEY.
                     secret: spec.secret.clone(),
-                    // §Fase 95.a — the partition parameter (empty for every
-                    // pre-§95 tool; the value never rides the registry).
+                    // v2.49.0 — the partition parameter (empty for every
+                    // pre-v2.49.0 tool; the value never rides the registry).
                     secret_partition: spec.secret_partition.clone(),
                     source: ToolSource::Program,
                     is_streaming,
-                    // §Fase 98.b — resolve the web-acquisition config (None
+                    // v2.52.0 — resolve the web-acquisition config (None
                     // for every non-scrape tool; the value never rides the
                     // registry for a non-scrape program).
                     scrape: spec.scrape.as_ref().map(ScrapeConfig::from_ir),
@@ -418,7 +418,7 @@ impl ToolRegistry {
         self.tools.insert(entry.name.clone(), entry);
     }
 
-    /// §Fase 58.g — resolve every URL-dispatched **program** tool's
+    /// v2.8.0 — resolve every URL-dispatched **program** tool's
     /// relative `runtime` against `base_url` (D7, see
     /// [`resolve_tool_endpoint`]). Only `http` / `mcp` providers carry a
     /// dispatch URL, so only those are rewritten; `native` / `stub`
@@ -429,7 +429,7 @@ impl ToolRegistry {
     /// `run_streaming_via_dispatcher`) when the caller supplies a
     /// per-tenant / per-server tool base URL — the request-scoped
     /// registry is rewritten before any dispatch, so resolution is
-    /// per-request with zero cross-tenant leakage (§58 D10).
+    /// per-request with zero cross-tenant leakage (v2.8.0 D10).
     pub fn resolve_relative_endpoints(&mut self, base_url: &str) {
         if base_url.trim().is_empty() {
             return;
@@ -445,9 +445,9 @@ impl ToolRegistry {
         }
     }
 
-    /// §Fase 114.d — **the WIRE. A tool on a `resource` DERIVES its channel from it.**
+    /// v2.69.0 — **the WIRE. A tool on a `resource` DERIVES its channel from it.**
     ///
-    /// This is the sub-fase §114 exists for, and the trap the plan named in
+    /// This is the step v2.69.0 exists for, and the trap the plan named in
     /// advance: `tool { resource: R }` as a *label* — the reference resolving but
     /// the tool still connecting through its own `runtime:` — would leave
     /// `endpoint`, `capacity` and `lifetime` governing nothing. Technically wired,
@@ -458,12 +458,12 @@ impl ToolRegistry {
     /// - its **endpoint** is the resolved `resource.endpoint` (a config key —
     ///   `axon-T944`), with the tool's slug `runtime:` joined on as the path;
     /// - its **capacity** is `resource.capacity` — the concurrency bound the
-    ///   [`ServerState`] semaphore enforces. Before §114 a tool had **no** bound;
+    /// [`ServerState`] semaphore enforces. Before v2.69.0 a tool had **no** bound;
     ///   a `par` over N items opened N connections to a vendor that tolerated ten.
     ///
     /// An unresolvable endpoint REFUSES the tool (the entry is dropped and a
     /// dispatch of it fails honestly), never a silent fallthrough to nowhere —
-    /// the §112/§113 deny-by-default posture.
+    /// the v2.67.0/v2.67.0 deny-by-default posture.
     ///
     /// A tool with no `resource:` is untouched (the legacy `runtime:` path).
     pub fn resolve_from_resources(
@@ -474,7 +474,7 @@ impl ToolRegistry {
         self.resolve_from_resources_within(resources, resolver, &[])
     }
 
-    /// §Fase 119.e — the same binding, with the `fabric` catalog in hand so a
+    /// v2.83.0 — the same binding, with the `fabric` catalog in hand so a
     /// resource's `within:` resolves to the substrate the tool runs on.
     ///
     /// Fails CLOSED on a dangling `within:` — a resource placed in a fabric
@@ -513,7 +513,7 @@ impl ToolRegistry {
                         resolve_tool_endpoint(slug, &entry.name, &addr)
                     };
                     entry.capacity = res.capacity.filter(|c| *c > 0).map(|c| c as u32);
-                    // §Fase 119.e — the substrate reaches the running channel.
+                    // v2.83.0 — the substrate reaches the running channel.
                     if !res.within.is_empty() {
                         match fabrics.iter().find(|f| f.name == res.within) {
                             Some(f) => {
@@ -521,7 +521,7 @@ impl ToolRegistry {
                                     Some((f.provider.clone(), f.region.clone()));
                             }
                             None if fabrics.is_empty() => {
-                                // No catalog threaded (pre-§119.e call sites):
+                                // No catalog threaded (pre-v2.83.0 call sites):
                                 // leave unattributed rather than refuse, so the
                                 // legacy entry point stays byte-identical.
                             }
@@ -547,12 +547,12 @@ impl ToolRegistry {
         refused
     }
 
-    /// §Fase 102 (D102.9) — stamp the dispatching tenant + apply per-tenant
+    /// v2.56.0 — stamp the dispatching tenant + apply per-tenant
     /// scrape overrides onto the request-scoped registry, BEFORE any dispatch.
     /// Mirrors [`Self::resolve_relative_endpoints`]: the registry is per-request,
-    /// so this is zero cross-tenant leakage (§58 D10). The tenant stamp keys the
-    /// §102.d adaptive-selector memory; the overrides (resolved by the deployed
-    /// executor's `SecretResolver`, §102.b) substitute the per-tenant proxy +
+    /// so this is zero cross-tenant leakage (v2.8.0 D10). The tenant stamp keys the
+    /// v2.56.0 adaptive-selector memory; the overrides (resolved by the deployed
+    /// executor's `SecretResolver`, v2.56.0) substitute the per-tenant proxy +
     /// crawl-concurrency ceiling so the flow never sees the proxy credential.
     pub fn apply_scrape_tenant_context(
         &mut self,
@@ -612,38 +612,38 @@ impl ToolRegistry {
             // ℰMCP provider: epistemic MCP transducer (JSON-RPC + blame + taint)
             "mcp" => Some(emcp::dispatch_mcp(entry, argument)),
 
-            // §Fase 98.e — Native Web Acquisition. `scrape_http` (fetch) +
+            // v2.52.0 — Native Web Acquisition. `scrape_http` (fetch) +
             // `scrape_dom` (parse, no I/O). `scrape_crawl` is streaming and
             // routes through `resolve_streaming_tool`; a synchronous dispatch
             // of it degrades to a single seed fetch. Every output is born
-            // Untrusted (D98.1) — the taint rides the internal ScrapeOutcome;
+            // Untrusted — the taint rides the internal ScrapeOutcome;
             // the ToolResult integrates with the registry as usual.
             "scrape_http" | "scrape_dom" | "scrape_crawl" => {
                 Some(crate::scrape_tool::dispatch_scrape(entry, argument))
             }
 
-            // §Fase 104.a — Governed Contact Enrichment. `scrape_enrich` resolves
+            // v2.58.0 — Governed Contact Enrichment. `scrape_enrich` resolves
             // a partial contact's missing email/phone/linkedin via the registered
             // enterprise provider; output is born Inferred (≤ believe) + Untrusted.
             // No provider registered ⇒ a TYPED refusal, never a fabricated contact
-            // (D104.6 — the same honesty as the §101 extraction seam).
+            // (the design decision — the same honesty as the v2.54.0 extraction seam).
             "scrape_enrich" => Some(crate::enrichment::dispatch_enrich(entry, argument)),
 
-            // §Fase 116.a — axon-agora governed social connectors. The provider
+            // v2.77.0 — axon-agora governed social connectors. The provider
             // names the platform; `runtime:` names the operation (read_comments,
             // publish, …). Dispatch routes to the registered per-platform
             // `SocialConnector` core; no core registered ⇒ a TYPED refusal (the
-            // D104.6 honesty), never a fabricated comment, metric, or receipt.
-            // Every output is born Untrusted (§98/T908 — social content is
+            // the design decision honesty), never a fabricated comment, metric, or receipt.
+            // Every output is born Untrusted (v2.52.0/T908 — social content is
             // attacker-controlled; a vendor receipt is a vendor's claim).
             "agora_linkedin" | "agora_facebook" | "agora_instagram" | "agora_tiktok" => {
                 Some(crate::agora_runtime::dispatch_agora(entry, argument))
             }
 
             // Known providers that currently fall through to LLM
-            // Future: "grpc" adapters. §Fase 100.a — but a name DECLARED in
+            // Future: "grpc" adapters. v2.54.0 — but a name DECLARED in
             // `stdlib::TOOLS` with no native executor and no provider must NOT
-            // silently reach the LLM (which would fabricate its output, D100.12);
+            // silently reach the LLM (which would fabricate its output, the design decision);
             // `dispatch_or_reject` turns that into a typed refusal.
             _ => match tool_executor::dispatch_or_reject(tool_name, argument) {
                 Ok(r) => r,
@@ -704,15 +704,15 @@ impl ToolRegistry {
 mod tests {
     use super::*;
 
-    // §Fase 34.c — derive_is_streaming canonical rule pin.
+    // v1.29.0 — derive_is_streaming canonical rule pin.
     //
     // This lib unit test pins the derivation predicate semantics
     // at the language layer: a tool is a stream producer iff at
     // least one entry in its effect_row begins with `stream:`.
-    // The drift gate `axon-rs/tests/fase34_c_registry_drift.rs`
+    // The drift gate `axon-rs/tests/registry_drift.rs`
     // extends this pin across a 30-tool synthetic corpus.
     #[test]
-    fn fase34_c_derive_is_streaming_canonical_rule() {
+    fn derive_is_streaming_canonical_rule() {
         // Empty effect_row → not a stream producer.
         assert!(!derive_is_streaming(&[]));
         // Single non-stream effect → not a stream producer.
@@ -744,13 +744,13 @@ mod tests {
         assert!(!derive_is_streaming(&["upstream-flow".to_string()]));
         // `stream:` with empty policy — still detected as streaming
         // intent. The closed-catalog policy validation lives in the
-        // resolver (Fase 33.e); the derive_is_streaming rule is the
+        // resolver (v1.24.0); the derive_is_streaming rule is the
         // CHEAPER predicate (used at registration time only).
         assert!(derive_is_streaming(&["stream:".to_string()]));
     }
 
     #[test]
-    fn fase34_c_register_from_ir_auto_derives_is_streaming() {
+    fn register_from_ir_auto_derives_is_streaming() {
         let mut reg = ToolRegistry::new();
         let specs = vec![
             IRToolSpec {
@@ -822,7 +822,7 @@ mod tests {
     }
 
     #[test]
-    fn fase34_c_builtins_are_not_streaming() {
+    fn builtins_are_not_streaming() {
         let reg = ToolRegistry::new();
         // Built-in Calculator + DateTimeTool have no stream effect.
         assert!(!reg.get("Calculator").unwrap().is_streaming);
@@ -987,7 +987,7 @@ mod tests {
         let mut reg = ToolRegistry::new();
         reg.register(ToolEntry {
             name: "WebSearch".to_string(),
-            // §114.b — a genuinely unknown provider, registered PROGRAMMATICALLY
+            // v2.69.0 — a genuinely unknown provider, registered PROGRAMMATICALLY
             // (bypassing the type-checker). `axon-T948` now refuses an unknown
             // provider at compile, so this path is no longer reachable from a
             // compiled program — but the runtime keeps the defensive fallthrough
@@ -1011,7 +1011,7 @@ mod tests {
             scrape: None,
         });
 
-        // §114.b — `http` provider (was `brave`, an invented slug; the closed catalog now refuses non-catalog providers at compile).
+        // v2.69.0 — `http` provider (was `brave`, an invented slug; the closed catalog now refuses non-catalog providers at compile).
         assert!(reg.dispatch("WebSearch", "query").is_none());
     }
 
@@ -1054,7 +1054,7 @@ mod tests {
         assert_eq!(result.output, "[stub] Calculator(2+3)");
     }
 
-    // §Fase 58.g — endpoint resolution (D7).
+    // v2.8.0 — endpoint resolution (D7).
 
     #[test]
     fn resolve_tool_endpoint_absolute_passthrough() {

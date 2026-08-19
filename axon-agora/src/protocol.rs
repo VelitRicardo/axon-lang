@@ -1,4 +1,4 @@
-//! Session-typed publishing protocols (paper §2.3, §2.4).
+//! Session-typed publishing protocols (paper section 2.3, section 2.4).
 //!
 //! Substrate for **axon-T957** (protocol typestate): the multi-step publish flows must be driven
 //! in the platform's mandated order, so calling a step out of order — e.g. Instagram
@@ -12,9 +12,9 @@ use crate::platform::Platform;
 /// multi-element protocol (Instagram, TikTok) must be driven in order.
 pub fn publish_protocol(platform: Platform) -> &'static [&'static str] {
     match platform {
-        // Instagram: create container → poll status (until FINISHED) → publish (paper §2.3).
+        // Instagram: create container → poll status (until FINISHED) → publish (paper section 2.3).
         Platform::Instagram => &["create_container", "poll_status", "publish"],
-        // TikTok Direct Post: query creator info → init → upload → poll status (paper §2.4).
+        // TikTok Direct Post: query creator info → init → upload → poll status (paper section 2.4).
         Platform::TikTok => &["query_creator_info", "init", "upload", "poll_status"],
         // LinkedIn / Facebook Pages: single-call publish.
         Platform::LinkedIn | Platform::FacebookPages => &["publish"],

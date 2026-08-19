@@ -40,7 +40,7 @@ axonendpoint UpdateProfile {
 }
 ```
 
-## Lawful basis — the §40 legal-basis catalogue
+## Lawful basis — the v2.0.0 legal-basis catalogue
 
 GDPR Art. 6 requires every processing of personal data to rest on
 one of six lawful bases. AXON's `legal_basis:` field draws from a
@@ -77,7 +77,7 @@ public_data, legal_claim, public_interest_health, scientific_research}`.
 | GDPR control | AXON runtime enforcement |
 |---|---|
 | Art. 5(2) — accountability | The audit hash-chain records every access to GDPR-tagged data with `(actor, action, legal_basis, purpose, timestamp)`. |
-| Art. 15 — right of access | The §40 `cognitive_states` API answers data-subject access requests with the union of every audit row referencing the subject. |
+| Art. 15 — right of access | The section 40 `cognitive_states` API answers data-subject access requests with the union of every audit row referencing the subject. |
 | Art. 17 — right to erasure | `mutate` and `purge` steps respect the per-store `on_breach:` policy; a successful purge emits a `session:erasure_complete` audit row with cryptographic evidence. |
 | Art. 30 — record of processing | The audit chain *is* the Art. 30 record; it can be exported via `axon-enterprise diagnostics gate --export gdpr-art30`. |
 | Art. 32(1)(b) — encryption | The runtime selects FIPS-validated (or OpenSSL-FIPS-validated) modules for at-rest and in-transit encryption when the data is GDPR-tagged. |
@@ -136,7 +136,7 @@ flow ExerciseErasure(subject_id: SubjectId) {
         step Erase {
             given: row
             mutate: row.store
-            ask: "Erase or pseudonymise per the §17 verdict"
+            ask: "Erase or pseudonymise per the v1.12.0 verdict"
         }
     }
 }

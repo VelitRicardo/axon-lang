@@ -1,10 +1,10 @@
-//! AXON Runtime — Regulatory Compliance Registry (§Fase 6.1)
+//! AXON Runtime — Regulatory Compliance Registry (v1.2.0)
 //!
 //! Direct port of `axon/runtime/esk/compliance.py`.
 //!
 //! Canonical vocabulary for the ESK κ (regulatory class) annotation.
 //! Every class corresponds to a real-world regulation; typos are
-//! compile-time errors (§6.1 enforcement).
+//! compile-time errors (section 6.1 enforcement).
 
 #![allow(dead_code)]
 
@@ -126,7 +126,7 @@ pub fn registry() -> HashMap<String, RegulatoryClass> {
             "government",
             "Security and privacy controls catalog for US federal systems.",
         ),
-        // §Fase 124 (D124.1) — the four LATAM jurisdictions.
+        // v4.0.0 — the four LATAM jurisdictions.
         //
         // Each row exists because the frontend's Κ accepts the label and
         // `registry_matches_the_frontend_vocabulary` refuses to let the two
@@ -170,7 +170,7 @@ pub fn registry() -> HashMap<String, RegulatoryClass> {
     entries.into_iter().map(|c| (c.name.clone(), c)).collect()
 }
 
-/// §Fase 123 — membership now DELEGATES to the frontend's Κ.
+/// v4.0.0 — membership now DELEGATES to the frontend's Κ.
 ///
 /// The registry below still owns what each class MEANS — title, jurisdiction,
 /// sector, description — because that metadata exists to build audit dossiers,
@@ -228,7 +228,7 @@ where
 mod tests {
     use super::*;
 
-    /// §Fase 123 — the two halves describe the SAME eleven classes.
+    /// v4.0.0 — the two halves describe the SAME eleven classes.
     ///
     /// Membership lives in the frontend (a compiler needs it); meaning lives
     /// here (a dossier needs it). That split is only safe while the sets are
@@ -237,7 +237,7 @@ mod tests {
     /// described here but rejected upstream could never be written by any
     /// program.
     ///
-    /// §122.e is why this test exists rather than a comment: a compatibility
+    /// v2.89.0 is why this test exists rather than a comment: a compatibility
     /// window written in three places had two of them updated and the third
     /// missed, and only the suite caught it. Two places is better than three,
     /// and two places compared is better than two places trusted.

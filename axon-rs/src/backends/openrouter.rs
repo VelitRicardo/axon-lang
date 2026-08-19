@@ -1,4 +1,4 @@
-//! OpenRouter (multi-provider gateway) backend — Fase 24.i.
+//! OpenRouter (multi-provider gateway) backend — v1.18.0.
 //!
 //! Thin factory + slug-aware capability override on top of
 //! [`OpenAICompatibleBackend`]. OpenRouter speaks OpenAI-compat verbatim
@@ -89,7 +89,7 @@ impl OpenRouterBackend {
         }
     }
 
-    /// §Fase 24.g.2 — construct with a per-tenant key + optional explicit
+    /// v1.18.0 — construct with a per-tenant key + optional explicit
     /// base-URL / chat-path overrides (precedence: explicit > env >
     /// default). `api_key = None` falls back to `OPENROUTER_API_KEY`.
     pub fn with_api_key_and_endpoint(
@@ -502,7 +502,7 @@ mod tests {
 
     #[tokio::test]
     async fn stream_delegates_to_base_real_sse_implementation() {
-        // §Fase 33.d — OpenRouter delegates to OpenAI-compat which now
+        // v1.24.0 — OpenRouter delegates to OpenAI-compat which now
         // ships a real SSE streamer; unreachable-port test exercises
         // the transport-error path.
         let b = OpenRouterBackend::with_api_key(Some("k".into()))

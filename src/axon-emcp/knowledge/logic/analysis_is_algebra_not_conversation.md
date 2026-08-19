@@ -1,7 +1,7 @@
 ---
 name: analysis_is_algebra_not_conversation
-title: "Analysis is algebra, not conversation — the deterministic data plane (§Fase 108)"
-summary: "The law governing the five data-plane verbs (§108). In every other agent stack, 'data analysis' is a prompt: the model NARRATES an aggregate, and the narration is unfalsifiable — a number that was never computed, over data that was never loaded. In axon the data plane is DETERMINISTIC: `dataspace` declares a typed columnar schema (axon-T928 — the closed 6-type catalog, one type per physical buffer layout), `ingest` loads through governed first-party parsers (axon-T929: declared dataspace + declared format; bounds enforced on the raw stream BEFORE parsing, §100; a value that does not fit its column REFUSES the batch, naming row + column — refusal, not coercion; every batch stamped source + sha256 + born-Untrusted, §98), and `focus`/`aggregate`/`associate`/`explore` are relational algebra — σ∘π, γ over the closed catalog {count, sum, avg, min, max}, hash equi-⋈, and a shape-only profile (axon-T930: declared targets, declared columns, typed join keys). Predicates share the ONE data-plane `where:` grammar with `retrieve`/`navigate` (§35: closed, whitelisted, injection-safe). Batches are pruned through zone maps ONLY when the predicate is PROVABLY false over [min, max] — sound by construction — and every result is a deterministic envelope {rows, taint, stats}: pruning observable, epistemic taint explicit (the meet over batches — an aggregate over untrusted data is born untrusted; no algebra step can raise trust). PCC `DataspaceSchemaSoundness` re-derives T928/T930 from the stored IR, refuting a hand-edited artifact that queries a ghost column. Without the engine port the verbs FAIL CLOSED (`MissingDependency: dataspace_engine`) — the same posture as `mint`/`rotate`: an LLM fallthrough would HALLUCINATE data. A number an agent reports from a dataspace was COMPUTED, and its lineage is a fact."
+title: "Analysis is algebra, not conversation — the deterministic data plane (v2.63.0)"
+summary: "The law governing the five data-plane verbs (v2.63.0). In every other agent stack, 'data analysis' is a prompt: the model NARRATES an aggregate, and the narration is unfalsifiable — a number that was never computed, over data that was never loaded. In axon the data plane is DETERMINISTIC: `dataspace` declares a typed columnar schema (axon-T928 — the closed 6-type catalog, one type per physical buffer layout), `ingest` loads through governed first-party parsers (axon-T929: declared dataspace + declared format; bounds enforced on the raw stream BEFORE parsing, v2.54.0; a value that does not fit its column REFUSES the batch, naming row + column — refusal, not coercion; every batch stamped source + sha256 + born-Untrusted, v2.52.0), and `focus`/`aggregate`/`associate`/`explore` are relational algebra — σ∘π, γ over the closed catalog {count, sum, avg, min, max}, hash equi-⋈, and a shape-only profile (axon-T930: declared targets, declared columns, typed join keys). Predicates share the ONE data-plane `where:` grammar with `retrieve`/`navigate` (v1.30.0: closed, whitelisted, injection-safe). Batches are pruned through zone maps ONLY when the predicate is PROVABLY false over [min, max] — sound by construction — and every result is a deterministic envelope {rows, taint, stats}: pruning observable, epistemic taint explicit (the meet over batches — an aggregate over untrusted data is born untrusted; no algebra step can raise trust). PCC `DataspaceSchemaSoundness` re-derives T928/T930 from the stored IR, refuting a hand-edited artifact that queries a ghost column. Without the engine port the verbs FAIL CLOSED (`MissingDependency: dataspace_engine`) — the same posture as `mint`/`rotate`: an LLM fallthrough would HALLUCINATE data. A number an agent reports from a dataspace was COMPUTED, and its lineage is a fact."
 ---
 
 # Analysis is algebra, not conversation
@@ -11,9 +11,9 @@ happens: the rows are pasted into a prompt (or worse, *described* to the
 model), and a language model **narrates** a number. The narration is
 unfalsifiable. Nobody scanned the rows; nobody can re-derive the figure; the
 "analysis" is a claim in prose. That is the assertion-laundering failure
-(§99/T916) wearing a spreadsheet costume.
+(v2.53.0/T916) wearing a spreadsheet costume.
 
-axon's data plane refuses the costume. **§108** makes the five data-plane
+axon's data plane refuses the costume. **v2.63.0** makes the five data-plane
 verbs relational algebra over a deterministic columnar engine:
 
 ## The store — `dataspace` (axon-T928)
@@ -33,20 +33,20 @@ unknown type is a compile-time refusal. At deploy, the declaration is
 INSTANTIATED in the engine. Batches are immutable and append-only — the
 analytical dual of `axonstore`'s transactional rows.
 
-## The load — `ingest` (axon-T929, §100, §98)
+## The load — `ingest` (axon-T929, v2.54.0, v2.52.0)
 
 ```
 ingest raw_csv into Sales { format: csv, limits { max_bytes: 1048576, max_rows: 100000 } }
 ```
 
-- **Bounds BEFORE parse** (§100): the byte bound is checked against the raw
+- **Bounds BEFORE parse** (v2.54.0): the byte bound is checked against the raw
   stream before a single byte is interpreted.
-- **Refusal, not coercion** (D108.7): `"not_a_number"` in a `Float` column
+- **Refusal, not coercion**: `"not_a_number"` in a `Float` column
   refuses the WHOLE batch, naming row and column. A missing value is a
   structural null — the only flexibility.
-- **Born Untrusted** (§98): every batch is stamped `source + sha256 +
+- **Born Untrusted** (v2.52.0): every batch is stamped `source + sha256 +
   ingested_at + Untrusted` at construction. No unstamped batch can exist.
-- **An ingest is a declared WRITE** (D108.4): a `method: QUERY` endpoint
+- **An ingest is a declared WRITE**: a `method: QUERY` endpoint
   whose flow ingests is refused (axon-T927) — a safe method cannot append
   server state.
 
@@ -65,7 +65,7 @@ that describes **shape, never content** (Text zone boundaries are row
 content — an email, a name — so they are suppressed).
 
 The `where:` clause is the ONE data-plane filter grammar the product already
-ships for `retrieve`/`navigate` (§35): closed, whitelisted operators,
+ships for `retrieve`/`navigate` (v1.30.0): closed, whitelisted operators,
 `${name}` bindings resolved inside tokenized literals, injection-safe by
 construction. SQL semantics hold: `AND` binds tighter than `OR`; `= NULL` is
 is-null; an ordering against NULL matches nothing.
@@ -84,7 +84,7 @@ deterministic envelope
 
 and the `taint` is the epistemic meet over the store's batches — an
 aggregate over untrusted data is **born untrusted**; no operation in the
-algebra can raise trust (raising trust is §98/§102's governed territory).
+algebra can raise trust (raising trust is v2.52.0/v2.56.0's governed territory).
 
 ## The fail-closed floor
 
@@ -104,6 +104,6 @@ catalog is refuted BEFORE deploy.
 
 ## See also
 
-- `a_safe_method_is_proven_safe` (§107) — why an `ingest` behind QUERY refuses.
-- `delivery_is_assertion_egress` (§105) — the egress dual: what leaves the lattice.
+- `a_safe_method_is_proven_safe` (v2.62.0) — why an `ingest` behind QUERY refuses.
+- `delivery_is_assertion_egress` (v2.60.0) — the egress dual: what leaves the lattice.
 - `effects_are_linear` / `dispatch_vs_cognition` — the effect discipline this plane rests on.

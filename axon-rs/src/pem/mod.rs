@@ -1,4 +1,4 @@
-//! Persistent Epistemic Modeling (PEM) — §λ-L-E Fase 11.d.
+//! Persistent Epistemic Modeling (PEM) — v1.4.0.
 //!
 //! When a WebSocket connection drops mid-conversation, the agent's
 //! cognitive state (density matrix, belief state, short-term
@@ -29,15 +29,15 @@
 
 pub mod backend;
 pub mod continuity_token;
-/// §Fase 119.b — the `mandate` PID controller. `paper_mandate.md` names this
+/// v2.83.0 — the `mandate` PID controller. `paper_mandate.md` names this
 /// component `density_matrix` and places it in the PEM engine; the name is part
 /// of the specification.
 pub mod density_matrix;
-/// §Fase 119.b — `e(t)` for `mandate`. The paper places the semantic validator
+/// v2.83.0 — `e(t)` for `mandate`. The paper places the semantic validator
 /// inside the PEM engine (`docs/papers/paper_mandate.md`), so it lives here.
 pub mod semantic_validator;
-/// §Fase 121 — a declared `type` lowered into the constraint set that
-/// `validate … against:` scores a response with. Reuses the §119.b CSR rather
+/// v2.88.0 — a declared `type` lowered into the constraint set that
+/// `validate … against:` scores a response with. Reuses the v2.83.0 CSR rather
 /// than introducing a second notion of conformance.
 pub mod schema_constraints;
 pub mod state;

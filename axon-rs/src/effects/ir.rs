@@ -1,6 +1,6 @@
 //! IR deserialization for AXON algebraic effects.
 //!
-//! Mirrors the 8 IR nodes emitted by the Python frontend (Fase 23.d):
+//! Mirrors the 8 IR nodes emitted by the Python frontend (v1.17.0):
 //! `IREffectDeclaration`, `IREffectOperation`, `IRPerform`,
 //! `IRHandlerFrame`, `IRHandlerClause`, `IRResume`, `IRAbort`,
 //! `IRForward`. Field shapes match the JSON output of

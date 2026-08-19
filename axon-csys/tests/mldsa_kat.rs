@@ -1,4 +1,4 @@
-//! §Fase 124.b — **known-answer and interop tests for the vendored ML-DSA-65.**
+//! v4.0.0 — **known-answer and interop tests for the vendored ML-DSA-65.**
 //!
 //! # Why fixed vectors are not enough here, and what replaces them
 //!
@@ -10,7 +10,7 @@
 //!
 //! And a sign→verify roundtrip alone proves only SELF-consistency. A kernel
 //! wrong in the same way on both sides passes its own roundtrip forever — the
-//! §122.b lesson (a green check that never leaves the instrument proves the
+//! v2.89.0 lesson (a green check that never leaves the instrument proves the
 //! instrument) applied to cryptography.
 //!
 //! So the load-bearing proof is **cross-implementation interop** against
@@ -34,7 +34,7 @@ use axon_csys::mldsa::{
     MLDSA65_SIGNATURE_BYTES,
 };
 
-/// The FIPS 204 §4 table sizes for ML-DSA-65, pinned as numbers rather than as
+/// The FIPS 204 section 4 table sizes for ML-DSA-65, pinned as numbers rather than as
 /// references to the constants — asserting `CONST == CONST` proves nothing when
 /// both sides are the same wrong edit.
 #[test]

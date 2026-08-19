@@ -1,13 +1,13 @@
 ---
 name: grad_proof_carrying
-title: "`grad` — the proof-carrying derivative (§109)"
-summary: "Symbolic differentiation at COMPILE TIME over the closed `Expr` (§70): `grad <let> wrt [vars] as <name>` differentiates the expression a prior rich `let` bound, simplifies deterministically, and stores the result IN THE IR — inspectable, re-proven at deploy (PCC `GradientSoundness` re-derives and refutes a hand-edited gradient), evaluated at runtime by the same total evaluator `let` uses. No tape, no finite differences, no narration. A non-differentiable construct is a compile refusal naming construct + position (axon-T931 — never a silent zero); the target must be a PRIOR rich `let` (axon-T932). Change `y * y` to `y % 2` and this program stops compiling."
+title: "`grad` — the proof-carrying derivative (v2.65.0)"
+summary: "Symbolic differentiation at COMPILE TIME over the closed `Expr` (v2.26.0): `grad <let> wrt [vars] as <name>` differentiates the expression a prior rich `let` bound, simplifies deterministically, and stores the result IN THE IR — inspectable, re-proven at deploy (PCC `GradientSoundness` re-derives and refutes a hand-edited gradient), evaluated at runtime by the same total evaluator `let` uses. No tape, no finite differences, no narration. A non-differentiable construct is a compile refusal naming construct + position (axon-T931 — never a silent zero); the target must be a PRIOR rich `let` (axon-T932). Change `y * y` to `y % 2` and this program stops compiling."
 topic: composition
 primitives:
   - flow
 ---
 
-// The proof-carrying derivative (§109). The gradient this flow returns
+// The proof-carrying derivative (v2.65.0). The gradient this flow returns
 // was DERIVED at compile time — symbolically, over the closed Expr —
 // and only EVALUATED at runtime. No tape, no finite differences.
 

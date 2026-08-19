@@ -176,10 +176,10 @@ fn fips_140_3_controls() -> Vec<Control> {
         ctl!(Fips140_3, "FIPS.FSM", "Finite State Model", "POWER-OFF → INITIALIZED → OPERATIONAL", ManualPolicy, "docs/compliance/fips_140_3_submission_template.md, section 6"),
         ctl!(Fips140_3, "FIPS.KAT_HMAC", "HMAC-SHA256 Known Answer Test", "Test with fixed key/message → known tag", TestSuite, "tests/test_phase6_runtime.py"),
         ctl!(Fips140_3, "FIPS.KAT_SHA", "SHA-256 Known Answer Test", "SHA-256('abc') verification", TestSuite, "tests/test_phase6_runtime.py"),
-        // §Fase 124.b — this control carried the literal locator "PENDING"
+        // v4.0.0 — this control carried the literal locator "PENDING"
         // since the matrix was written: a control that documented its own
         // absence. The KATs exist now, and they are stronger than the ask —
-        // RFC 8032 §7.1 vectors asserted byte-exactly (seed→pk AND signature,
+        // RFC 8032 section 7.1 vectors asserted byte-exactly (seed→pk AND signature,
         // three keypairs) plus byte-identity against an independent
         // implementation, which determinism makes possible for Ed25519.
         ctl!(Fips140_3, "FIPS.KAT_ED25519", "Ed25519 KAT (RFC 8032 vectors)", "RFC 8032 section 7.1 byte-exact + cross-impl byte-identity", TestSuite, "axon-csys/tests/ed25519_kat.rs"),

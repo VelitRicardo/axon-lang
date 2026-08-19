@@ -350,9 +350,9 @@ pub fn compose(
     Ok(composed)
 }
 
-/// §Fase 53.d.2 — tainted-overriding (founder refinement A). A
+/// v2.5.0 — tainted-overriding (founder refinement A). A
 /// PROVENANCE member's declared `default_confidence` — an `extension`
-/// member's ceiling (§53), or the built-in `epistemic:<level>` axis — is
+/// member's ceiling (v2.5.0), or the built-in `epistemic:<level>` axis — is
 /// a CEILING on the announced certainty, never a floor. When a value
 /// with certainty `input_c` is annotated with such a member, the
 /// announced certainty degrades to `min(ceiling, input_c)`.
@@ -597,7 +597,7 @@ fn run_ld_inspect(file: &str) -> i32 {
 mod tests {
     use super::apply_provenance_ceiling;
 
-    /// §Fase 53.d.2 — tainted-overriding: the ceiling is a CEILING.
+    /// v2.5.0 — tainted-overriding: the ceiling is a CEILING.
     #[test]
     fn provenance_ceiling_is_a_ceiling_not_a_floor() {
         // input BELOW the ceiling → input wins (no laundering up).

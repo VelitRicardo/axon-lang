@@ -1,4 +1,4 @@
-//! §Fase 69.b — quant as the FIRST Advantage-Witness instance.
+//! v2.23.0 — quant as the FIRST Advantage-Witness instance.
 //!
 //! The adopter deep-research verdict, made executable in our own code: for the
 //! amplitude-encoding + fixed-Pauli path, the quantum kernel is *classically
@@ -16,8 +16,8 @@
 //! Gram it provably equals. For amplitude+Pauli it is **0** — the witness FAILS,
 //! and the honest verdict recommends the classical baseline (`axon-W007`). This is
 //! the small-`n` OSS reference; the enterprise evaluates the full Huang et al. `g`
-//! at real-embedding scale (`crates/saas-quant`, shipped §51.g.2). The escape that
-//! *can* make the witness pass — data re-uploading — is §69.c.
+//! at real-embedding scale (`crates/saas-quant`, shipped v2.4.0). The escape that
+//! *can* make the witness pass — data re-uploading — is v2.23.0.
 
 use crate::advantage_witness::{AdvantageMetric, AdvantageWitness, Baseline};
 use crate::quant::{EncodingScheme, QuantBackend, ReferenceSimulator};

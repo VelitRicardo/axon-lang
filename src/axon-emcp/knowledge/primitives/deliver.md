@@ -1,14 +1,14 @@
 ---
 name: deliver
-summary: "Governed CRM Delivery — the egress-dual of acquisition. A declarative, compile-time-validated write of assertions into a system of record (a CRM): idempotent operations (`upsert_contact`/`create_deal`/`add_note`), per-tenant credentials via §94 custody, `web` effect. The provenance-stripping barrier (T920) refuses a `provenance: cleared` delivery of an unshielded flow value — a vendor guess must arrive in the CRM labeled as a guess, not laundered into a fact."
+summary: "Governed CRM Delivery — the egress-dual of acquisition. A declarative, compile-time-validated write of assertions into a system of record (a CRM): idempotent operations (`upsert_contact`/`create_deal`/`add_note`), per-tenant credentials via v2.48.0 custody, `web` effect. The provenance-stripping barrier (T920) refuses a `provenance: cleared` delivery of an unshielded flow value — a vendor guess must arrive in the CRM labeled as a guess, not laundered into a fact."
 category: operators
 top_level: true
-since: Fase 105 (v2.60.0)
+since: v2.60.0
 grammar: |
   deliver <Name> {
       target:     crm                     # required — the system-of-record class (T921)
       provenance: attached | cleared      # optional — how field origin crosses (default attached, T922)
-      secret:     <credential_key>        # required — per-tenant key, §94 custody (T923)
+      secret: <credential_key> # required — per-tenant key, v2.48.0 custody (T923)
       effects:    <web, sensitive:<cat>, legal:<basis>>   # must include web (T924)
 
       # ── operations (closed catalog per target) ──
@@ -27,19 +27,19 @@ grammar: |
 
 `deliver` declares **a write of assertions into a system of record**
 (a CRM) as a declarative, compile-time-validated structure. It is the
-**dual of `scrape` (§98)**: where a scraped value ENTERS the program
+**dual of `scrape` (v2.52.0)**: where a scraped value ENTERS the program
 born adversarial and Untrusted, a delivered value LEAVES the epistemic
 lattice into a machine system that downstream humans — a sales rep, an
 account manager, an auditor — will read *as fact*
 (`delivery_is_assertion_egress`).
 
 A contact row *in a CRM reads as verified* — the system of record itself
-confers an authority the value never earned. A §104-enriched email is a
+confers an authority the value never earned. A v2.58.0-enriched email is a
 vendor's probabilistic guess (born `speculate`/`believe`, never `know`);
 landing it in HubSpot as a bare string **launders the guess into a
 fact**. The **provenance-stripping barrier** makes that impossible by
 construction: a flow value delivered with `provenance: cleared` and no
-epistemic vouch is `axon-T920`. It is the exact egress-form of §99's
+epistemic vouch is `axon-T920`. It is the exact egress-form of v2.53.0's
 assertion-laundering barrier (`document`, T916).
 
 ## Surface
@@ -47,7 +47,7 @@ assertion-laundering barrier (`document`, T916).
 `deliver` is a **top-level declaration**. `target:` selects a
 system-of-record *class*, not a vendor — the concrete CRM (HubSpot,
 Salesforce, Pipedrive, …) is the enterprise transducer's per-tenant
-configuration, so the language binds no vendor (D105.1).
+configuration, so the language binds no vendor.
 
 ```axon
 deliver push_lead {
@@ -111,17 +111,17 @@ gated by `axon-T920`.
 
 ### `secret:` (required)
 
-The per-tenant credential key (`axon-T923`). Resolved via §94 secret
+The per-tenant credential key (`axon-T923`). Resolved via v2.48.0 secret
 custody at dispatch — the value crosses only at the transducer boundary,
 never into cognition (`rotation_without_revelation`). For an OAuth CRM,
-token refresh is a §94 `rotate` (CAS), not a bespoke flow.
+token refresh is a v2.48.0 `rotate` (CAS), not a bespoke flow.
 
 ### `effects:` (required to include `web`)
 
 A CRM write crosses the network trust boundary, so the row must include
 `web` (`axon-T924`). `sensitive:<category>` / `legal:<basis>` are
 **propagated** from the delivered data — delivering PII into a system of
-record is *further processing* (D105.6); a `sensitive:*` delivery with no
+record is *further processing*; a `sensitive:*` delivery with no
 `legal:<basis>` is `axon-T924`.
 
 ### operations (closed catalog, `axon-T925`)
@@ -133,7 +133,7 @@ record is *further processing* (D105.6); a `sensitive:*` delivery with no
 
 Every operation requires a **`key:`** — the idempotency key
 (`axon-T926`) so an at-least-once retry (Brief #63 hard-deadline
-timeouts included) never double-creates a record (D105.5). A miss or a
+timeouts included) never double-creates a record. A miss or a
 vendor failure degrades to a typed error + an audit row, never a
 fabricated receipt.
 
@@ -144,11 +144,11 @@ fabricated receipt.
   `provider: http` — without the T920 barrier or the idempotency law.
 - **Not a bidirectional sync.** `deliver` is egress only; reading a CRM
   back into the program is future scope (and would be born Untrusted,
-  the §98 problem).
+  the v2.52.0 problem).
 - **Not a connector catalog.** The language binds no vendor; the
   enterprise transducer maps the canonical operations onto the tenant's
   configured CRM. axon competes on the governed boundary, not on
   connector breadth.
 - **Not a lawful basis.** Governance (per-tenant enable default OFF, SoD
   `crm:deliver`, the audit trail) demonstrates diligence; it does not
-  create a GDPR lawful basis for the PII being delivered (D105.6).
+  create a GDPR lawful basis for the PII being delivered.

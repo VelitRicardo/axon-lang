@@ -1,4 +1,4 @@
-//! §Fase 25.j — Buffer pool benchmark vs `Vec::with_capacity` baseline.
+//! v1.19.0 — Buffer pool benchmark vs `Vec::with_capacity` baseline.
 //!
 //! Measures acquire+release throughput of `axon_csys::BufferPool`
 //! against the canonical "naive Rust" baseline of `Vec::with_capacity`

@@ -1,12 +1,12 @@
-//! §Fase 62.B — Multi-Document Navigation (MDN).
+//! v2.12.0 — Multi-Document Navigation (MDN).
 //!
 //! A faithful implementation of `docs/papers/paper_multi_document.md`: a document
 //! corpus as a **labeled directed graph** `C = (D, R, τ, ω, σ)`, navigated by
-//! relationship rather than by embedding similarity. This module ships **§62.B.1
+//! relationship rather than by embedding similarity. This module ships **v2.12.0
 //! — the corpus graph + signed Epistemic PageRank (EPR)**, the paper's most
 //! distinctive result.
 //!
-//! # Signed Epistemic PageRank (paper §2.3, Def 4.2, Theorem 3)
+//! # Signed Epistemic PageRank (paper section 2.3, Def 4.2, Theorem 3)
 //!
 //! The corpus is decomposed by edge polarity into a *trust* subgraph `G⁺`
 //! (`cite`, `elaborate`, `corroborate`) and a *distrust* subgraph `G⁻`
@@ -29,7 +29,7 @@
 //! By Perron–Frobenius (Theorem 3) each of `EPR⁺`, `EPR⁻` exists, is unique and
 //! strictly positive, and the power iteration converges geometrically. Unlike a
 //! standard PageRank, `EPR` is a **signed reputation** — it may be negative for a
-//! document more contested than endorsed (paper §2.3 WARNING), and it sums to
+//! document more contested than endorsed (paper section 2.3 WARNING), and it sums to
 //! `1 - λ`, not 1. The property tests below verify each of these.
 //!
 //! Embeddings-free throughout (program invariant #1).
@@ -73,7 +73,7 @@ impl EdgeType {
         }
     }
 
-    /// §Fase 64.C — the relation-type slug (the inverse of [`EdgeType::from_slug`]).
+    /// v2.14.0 — the relation-type slug (the inverse of [`EdgeType::from_slug`]).
     /// Used by the adaptive write-back to address the edge's row in the store by
     /// its `etype` column value.
     pub fn slug(self) -> &'static str {
@@ -89,7 +89,7 @@ impl EdgeType {
         }
     }
 
-    /// §Fase 63.A — parse a relation-type slug (the closed catalog the frontend
+    /// v2.13.0 — parse a relation-type slug (the closed catalog the frontend
     /// `corpus` grammar uses) into an [`EdgeType`]. `None` for an unknown slug.
     pub fn from_slug(s: &str) -> Option<EdgeType> {
         Some(match s {
@@ -148,10 +148,10 @@ pub enum CorpusError {
     BadWeight(DocId, DocId),
     /// The corpus has no documents.
     Empty,
-    /// §Fase 63.A — a `relations:` entry named an unknown edge type (defensive;
+    /// v2.13.0 — a `relations:` entry named an unknown edge type (defensive;
     /// the frontend type-checker already rejects these at compile time).
     UnknownRelationType(String),
-    /// §Fase 63.A — a `relations:` entry referenced an undeclared document.
+    /// v2.13.0 — a `relations:` entry referenced an undeclared document.
     UnknownDocumentRef(String),
 }
 
@@ -177,7 +177,7 @@ impl Corpus {
         Ok(Corpus { docs: map, edges })
     }
 
-    /// §Fase 63.A — build an MDN corpus graph from a frontend `corpus`
+    /// v2.13.0 — build an MDN corpus graph from a frontend `corpus`
     /// declaration: the document names (mapped to ids by index) and the typed
     /// weighted `relations:` edges `(etype_slug, from, to, weight)`. The relation
     /// type slug resolves via [`EdgeType::from_slug`]; `from`/`to` resolve against
@@ -222,8 +222,8 @@ impl Corpus {
         Corpus::new(docs, edges)
     }
 
-    /// §Fase 64.B — build a DYNAMIC MDN corpus graph from LIVE store rows (the
-    /// §64.A `corpus from axonstore` form). `docs` are `(string_id, title)` rows
+    /// v2.14.0 — build a DYNAMIC MDN corpus graph from LIVE store rows (the
+    /// v2.14.0 `corpus from axonstore` form). `docs` are `(string_id, title)` rows
     /// from the documents store; `edges` are `(from_id, to_id, etype_slug,
     /// weight)` rows from the edge store. String ids map to internal `DocId`s by
     /// first-seen order.
@@ -233,7 +233,7 @@ impl Corpus {
     /// document, or whose type is off-catalog, or whose weight is non-finite, is
     /// SKIPPED — a dangling/garbage row (e.g. an edge to a since-deleted summary)
     /// must never break a live navigation. The weight is CLAMPED to `(0, 1]`
-    /// (the §64.A G4 invariant is a RUNTIME clamp here, weights being per-row
+    /// (the v2.14.0 G4 invariant is a RUNTIME clamp here, weights being per-row
     /// dynamic, not compile-time literals). Returns `Err(Empty)` only when there
     /// are no documents.
     pub fn from_rows(
@@ -271,7 +271,7 @@ impl Corpus {
             if !weight.is_finite() {
                 continue; // garbage weight — skip
             }
-            // ω ∈ (0, 1] runtime clamp (§64.A G4 as a runtime invariant).
+            // ω ∈ (0, 1] runtime clamp (v2.14.0 G4 as a runtime invariant).
             let w = weight.clamp(1e-9, 1.0);
             built.push(Edge { from: f, to: t, etype: et, weight: w });
         }
@@ -291,7 +291,7 @@ impl Corpus {
         self.docs.get(&id)
     }
 
-    /// All documents (for the §62.D memory endofunctor, which rebuilds the corpus
+    /// All documents (for the v2.12.0 memory endofunctor, which rebuilds the corpus
     /// with updated edge weights — geometry, not topology).
     pub fn documents(&self) -> Vec<&Document> {
         self.docs.values().collect()
@@ -472,10 +472,10 @@ pub fn epistemic_pagerank(corpus: &Corpus, params: &EprParams) -> EprResult {
     EprResult { epr, epr_plus, epr_minus, iterations: iters }
 }
 
-// ── §Fase 62.B.2 — ε-informative navigation + submodular greedy ──────────────
+// ── v2.12.0 — ε-informative navigation + submodular greedy ──────────────
 
 /// The marginal information gain `I(A; d | Q, S)` of visiting candidate `d` given
-/// the query and the already-selected set `S` (paper §2.2, Cor 2.1). MUST be
+/// the query and the already-selected set `S` (paper section 2.2, Cor 2.1). MUST be
 /// **monotone submodular** for the `(1 − 1/e)` greedy guarantee — adding `d`
 /// helps less as `S` grows (diminishing returns). An LLM estimates it in
 /// production; a deterministic coverage gain drives the property tests.
@@ -489,7 +489,7 @@ pub trait MarginalGain {
 /// no positive-gain element remains.
 ///
 /// Guarantee: `f(S_greedy) ≥ (1 − 1/e) · f(S_OPT) ≈ 0.632 · f(S_OPT)` — tight
-/// unless P = NP (paper §2.2 NOTE). Candidate order ties break by `DocId` for
+/// unless P = NP (paper section 2.2 NOTE). Candidate order ties break by `DocId` for
 /// determinism. Returns the selected ids in selection order.
 pub fn greedy_submodular_select(
     ground: &[DocId],
@@ -545,7 +545,7 @@ pub struct MdnNavResult {
     pub total_gain: f64,
 }
 
-/// ε-informative greedy navigation over the corpus graph (paper §2.2, Cor 2.1 +
+/// ε-informative greedy navigation over the corpus graph (paper section 2.2, Cor 2.1 +
 /// Def 3). From a seed document, repeatedly select the **reachable** (out-edge
 /// adjacent), unvisited document with maximum marginal information gain, while
 /// the gain stays `≥ ε` (ε-informative — never visit an uninformative doc) and
@@ -607,7 +607,7 @@ pub fn navigate_corpus(
     MdnNavResult { selected, trail, total_gain }
 }
 
-// ── §Fase 62.B.3 — contradiction / balance + Jeffreys cost + shortest path ───
+// ── v2.12.0 — contradiction / balance + Jeffreys cost + shortest path ───
 
 /// The contradiction relation (paper Def 11): the document pairs `(Dᵢ, Dⱼ)`
 /// joined by a `contradict` edge — `Dᵢ` disputes a claim in `Dⱼ`.
@@ -620,7 +620,7 @@ pub fn contradictions(corpus: &Corpus) -> Vec<(DocId, DocId)> {
         .collect()
 }
 
-/// Structural balance (Harary 1953; paper §2.3 NOTE). A signed corpus is
+/// Structural balance (Harary 1953; paper section 2.3 NOTE). A signed corpus is
 /// **balanced** iff its documents 2-color so every positive (trust) edge is
 /// intra-color and every negative (distrust) edge is inter-color — equivalently,
 /// every cycle has an even number of negative edges. Balanced ⇒ clean epistemic
@@ -714,7 +714,7 @@ pub fn edge_cost(edge: &Edge, dist: &HashMap<DocId, Vec<f64>>) -> f64 {
     type_cost_coefficient(edge.etype) * jeffreys_divergence(p, q)
 }
 
-/// The optimal navigation path `π* = argmin_π Σ α_τ·J(Dᵢ,Dⱼ)` (paper §2.4) — the
+/// The optimal navigation path `π* = argmin_π Σ α_τ·J(Dᵢ,Dⱼ)` (paper section 2.4) — the
 /// minimum-cost weighted path via Dijkstra (a graph shortest path, not a
 /// geodesic). Edge costs are non-negative (`α_τ > 0`, `J ≥ 0`), so Dijkstra is
 /// exact. Returns `(path, total_cost)` or `None` if `to` is unreachable.
@@ -798,7 +798,7 @@ pub fn shortest_cost_path(
     None
 }
 
-// ── §Fase 63.B — deterministic reference MarginalGain over document titles ───
+// ── v2.13.0 — deterministic reference MarginalGain over document titles ───
 
 fn title_tokens(s: &str) -> HashSet<String> {
     s.split(|c: char| !c.is_alphanumeric())
@@ -807,7 +807,7 @@ fn title_tokens(s: &str) -> HashSet<String> {
         .collect()
 }
 
-/// §Fase 63.B — a deterministic, embeddings-free reference [`MarginalGain`]:
+/// v2.13.0 — a deterministic, embeddings-free reference [`MarginalGain`]:
 /// query-term **coverage** over document titles. The marginal gain of a
 /// candidate is the number of query terms its title covers that the
 /// already-selected set does not — monotone submodular (diminishing returns) by
@@ -851,7 +851,7 @@ impl MarginalGain for LexicalGain<'_> {
 mod tests {
     use super::*;
 
-    // ── §Fase 64.B — Corpus::from_rows (dynamic, store-sourced graph) ──────
+    // ── v2.14.0 — Corpus::from_rows (dynamic, store-sourced graph) ──────
 
     #[test]
     fn from_rows_builds_the_live_graph() {
@@ -909,7 +909,7 @@ mod tests {
 
     #[test]
     fn edge_type_slug_round_trips() {
-        // §Fase 64.C — slug() is the inverse of from_slug(), used to address an
+        // v2.14.0 — slug() is the inverse of from_slug(), used to address an
         // edge's store row by its `etype` value in the write-back.
         for s in [
             "cite", "elaborate", "corroborate", "depend", "implement", "exemplify",
@@ -962,7 +962,7 @@ mod tests {
         assert_eq!(Corpus::new(vec![], vec![]).unwrap_err(), CorpusError::Empty);
     }
 
-    // ── §63.A — build an MDN graph from a `corpus` declaration ───────────────
+    // ── v2.13.0 — build an MDN graph from a `corpus` declaration ───────────────
 
     #[test]
     fn edge_type_from_slug_roundtrips() {
@@ -1032,7 +1032,7 @@ mod tests {
         let c = Corpus::new(docs, edges).unwrap();
         let params = EprParams { lambda: 0.5, ..EprParams::default() };
         let r = epistemic_pagerank(&c, &params);
-        // EPR = EPR⁺ - λ·EPR⁻ ⇒ Σ EPR = 1 - λ (paper §2.3 WARNING).
+        // EPR = EPR⁺ - λ·EPR⁻ ⇒ Σ EPR = 1 - λ (paper section 2.3 WARNING).
         assert!((sum(&r.epr) - (1.0 - params.lambda)).abs() < 1e-6);
     }
 
@@ -1057,7 +1057,7 @@ mod tests {
     #[test]
     fn a_contested_document_can_have_negative_net_epr() {
         // D1 is lightly cited but heavily contradicted ⇒ more contested than
-        // endorsed ⇒ negative net EPR (paper §2.3 WARNING — a meaningful signal
+        // endorsed ⇒ negative net EPR (paper section 2.3 WARNING — a meaningful signal
         // a probability distribution cannot express).
         let docs = vec![doc(1, 0, 0.9), doc(2, 1, 0.1), doc(3, 1, 0.1), doc(4, 1, 0.1)];
         let edges = vec![
@@ -1108,7 +1108,7 @@ mod tests {
         assert!((r.epr_plus[&1] - 1.0).abs() < 1e-9, "the lone doc holds all trust mass");
     }
 
-    // ── §62.B.2 — submodular greedy + ε-informative navigation ───────────────
+    // ── v2.12.0 — submodular greedy + ε-informative navigation ───────────────
 
     use std::collections::HashSet;
 
@@ -1247,7 +1247,7 @@ mod tests {
         assert_eq!(r.selected, vec![1], "the uninformative neighbour is not visited");
     }
 
-    // ── §62.B.3 — contradiction / balance + Jeffreys cost + shortest path ────
+    // ── v2.12.0 — contradiction / balance + Jeffreys cost + shortest path ────
 
     #[test]
     fn contradictions_lists_the_contradict_edges() {
@@ -1358,7 +1358,7 @@ mod tests {
         assert!(shortest_cost_path(&c, &dist, 1, 2).is_none());
     }
 
-    // ── §63.B — LexicalGain reference scorer drives MDN navigation ───────────
+    // ── v2.13.0 — LexicalGain reference scorer drives MDN navigation ───────────
 
     fn titled(id: DocId, title: &str) -> Document {
         Document { id, title: title.into(), depth: 0, recency: 0.1, epistemic: "believe".into() }

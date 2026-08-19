@@ -1,25 +1,25 @@
-//! §Fase 84 — Remote Hands: the shared, compiler-and-runtime vocabulary for
+//! v2.39.0 — Remote Hands: the shared, compiler-and-runtime vocabulary for
 //! the technician-command surface (`tool { target:, risk:, argv: }`).
 //!
 //! This module is deliberately dependency-free and pure so BOTH the frontend
 //! type-checker (`axon-frontend::type_checker`) and the runtime dispatcher
 //! (`axon-lang`, which consumes this crate) classify an argv template the
-//! **same** way — a single source of truth for the one property the whole fase
-//! rests on (D84.1): a `${param}` placeholder is a *whole* argv element, bound
+//! **same** way — a single source of truth for the one property the whole cycle
+//! rests on: a `${param}` placeholder is a *whole* argv element, bound
 //! to a typed argument, substituted opaquely, and never re-parsed by a shell.
 //!
 //! Nothing here executes a command; it only *classifies* the template so the
 //! checker can reject an unsafe shape at compile time and the runtime can
 //! substitute arguments without ever tokenising them.
 
-/// The v1-closed `risk:` catalog. Additive-only; a third level is a fase, not a
-/// config edit (§5 restraint).
+/// The v1-closed `risk:` catalog. Additive-only; a third level is a cycle, not a
+/// config edit (section 5 restraint).
 pub const RISK_SAFE: &str = "safe";
 pub const RISK_DESTRUCTIVE: &str = "destructive";
 pub const VALID_RISK_LEVELS: &[&str] = &[RISK_SAFE, RISK_DESTRUCTIVE];
 
 /// The two mandatory labels a `risk: destructive` tool's bound session must
-/// offer as a reachable `branch{…}` (the human confirm/deny exit — D84.2).
+/// offer as a reachable `branch{…}` (the human confirm/deny exit — the design decision).
 pub const CONFIRM_APPROVED_LABEL: &str = "approved";
 pub const CONFIRM_DENIED_LABEL: &str = "denied";
 
@@ -35,7 +35,7 @@ pub enum ArgvToken {
     Placeholder(String),
     /// A malformed / mixed element that contains `${` but is NOT a clean
     /// whole-element placeholder — e.g. `"${host}.txt"`, `"pre${x}"`,
-    /// `"${a}${b}"`, `"${}"`, `"${1bad}"`. This is the shape the fase exists to
+    /// `"${a}${b}"`, `"${}"`, `"${1bad}"`. This is the shape the cycle exists to
     /// forbid: it would let an argument fuse with surrounding text or be split,
     /// reopening escape/injection. Always a compile error (`axon-T859`); it
     /// never reaches the runtime.
@@ -81,8 +81,8 @@ pub fn classify_argv(argv: &[String]) -> Vec<ArgvToken> {
 }
 
 /// A stable, canonical string identity of a rendered/declared argv template,
-/// used by the enterprise confirmation-hash binding (D84.7) and the reference
-/// agent's template allowlist (D84.9). NUL-separates elements so no argument
+/// used by the enterprise confirmation-hash binding and the reference
+/// agent's template allowlist. NUL-separates elements so no argument
 /// value can forge an element boundary. The caller hashes this (SHA-256) — this
 /// module stays crypto-free so the frontend has zero new deps.
 pub fn argv_canonical_bytes(argv: &[String]) -> Vec<u8> {

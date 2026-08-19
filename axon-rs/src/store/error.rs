@@ -1,16 +1,16 @@
-//! §Fase 118.b.3 — the `axonstore` ERROR CATALOG, in a module that links no driver.
+//! v2.81.0 — the `axonstore` ERROR CATALOG, in a module that links no driver.
 //!
-//! **The fifth instance of the smell, and §118 said to expect it.** `StoreError`
+//! **The fifth instance of the smell, and v2.81.0 said to expect it.** `StoreError`
 //! lived in `store/postgres_backend.rs` — so `runner.rs`, `wire_integrations.rs`,
-//! `registry.rs` and the §113 lease kernel all imported the general error type of
+//! `registry.rs` and the v2.67.0 lease kernel all imported the general error type of
 //! every store operation *from the Postgres driver module*, and gating that module
 //! took the error catalog with it.
 //!
 //! It was never a Postgres type. The enum and its five impls contain **zero**
 //! `sqlx` references, and its variants are mostly about governance rather than
-//! SQL: `LeaseExpired` is §113's CT-2 Anchor Breach (a τ-decaying affine
-//! capability used after expiry), `Filter` delegates to the §35.b WHERE algebra,
-//! `Epistemic` to §35.g's Pillar I confidence floor. `postgres_backend` was
+//! SQL: `LeaseExpired` is v2.67.0's CT-2 Anchor Breach (a τ-decaying affine
+//! capability used after expiry), `Filter` delegates to the v1.30.0 WHERE algebra,
+//! `Epistemic` to v1.30.0's Pillar I confidence floor. `postgres_backend` was
 //! simply the first module that needed somewhere to put a failure.
 //!
 //! `postgres_backend` re-exports it, so every existing call site — including
@@ -27,14 +27,14 @@ use std::fmt;
 /// a failure.
 #[derive(Debug, Clone, PartialEq)]
 pub enum StoreError {
-    /// §Fase 113.d — **the CT-2 Anchor Breach.** A store operation was attempted
+    /// v2.67.0 — **the CT-2 Anchor Breach.** A store operation was attempted
     /// against a resource whose `lease` has expired.
     ///
     /// The README has always promised this: a `lease` is a τ-decaying affine
     /// capability, and *post-expiry USE* is an Anchor Breach. The kernel that
     /// raises it was complete years ago. What did not exist was **a moment at
     /// which a resource could be used** — a flow could not `use` a `resource`, so
-    /// the breach had nowhere to fire. §113 made the store operation that moment.
+    /// the breach had nowhere to fire. v2.67.0 made the store operation that moment.
     LeaseExpired {
         store: String,
         resource: String,
@@ -68,14 +68,14 @@ pub enum StoreError {
     UnsupportedColumnType { column: String, pg_type: String },
     /// A retrieved column of a supported type failed to decode.
     Decode { column: String, pg_type: String, source: String },
-    /// §Fase 37.x.b (D1) — the table named by a store operation could
+    /// v1.32.0 (D1) — the table named by a store operation could
     /// not be resolved to a relation in ANY schema of the database.
     TableNotResolved { table: String },
-    /// §Fase 37.x.b (D1) — the table name resolves to a relation in
+    /// v1.32.0 (D1) — the table name resolves to a relation in
     /// more than one schema and the connection's `search_path` does not
     /// disambiguate it. Carries the schemas found, sorted.
     AmbiguousTable { table: String, schemas: Vec<String> },
-    /// §Fase 37.x.f (D9) — a store SQL statement failed with a
+    /// v1.32.0 (D9) — a store SQL statement failed with a
     /// schema-drift SQLSTATE: the cached schema no longer matches the
     /// live table (an `ALTER TABLE` ran since the cache was populated).
     /// `42P01` undefined_table, `42703` undefined_column, `42804`
@@ -86,12 +86,12 @@ pub enum StoreError {
     /// parse/plan-time rejection, so the failed statement had ZERO side
     /// effects (a retried `persist`/`mutate` cannot double-write).
     SchemaDrift { op: &'static str, sqlstate: String, source: String },
-    /// §Fase 38.f (D3) — `axon-T806`. A `postgresql` store declared
+    /// v1.31.0 (D3) — `axon-T806`. A `postgresql` store declared
     /// `schema: env:VAR` and the named env var is unset at deploy
     /// time. Never falls back silently — the deploy fails, the
     /// operator either exports the var or fixes the declaration.
     MissingPerTenantSchemaEnv { store: String, var: String },
-    /// §Fase 38.f (D8 strengthening) — `axon-T807`. A declared column
+    /// v1.31.0 (D8 strengthening) — `axon-T807`. A declared column
     /// schema and the live introspected columns disagree at deploy
     /// time. Carries a human-readable drift summary (which columns
     /// are missing on the live DB, which have a type mismatch). The
@@ -226,7 +226,7 @@ impl std::error::Error for StoreError {
 }
 
 impl StoreError {
-    /// §Fase 37.x.f (D9) — `true` iff this is a schema-drift failure
+    /// v1.32.0 (D9) — `true` iff this is a schema-drift failure
     /// ([`StoreError::SchemaDrift`]) — the signal that triggers the
     /// `(dsn, table)` cache self-heal (evict + retry once).
     pub fn is_schema_drift(&self) -> bool {

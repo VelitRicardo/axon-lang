@@ -524,13 +524,13 @@ ECC 6 · cache 4).
 
 | Test file | Tests | Covers |
 |-----------|-------|--------|
-| `axon-frontend/tests/fase115_a_module_resolver.rs` | 3 | cycle refusal through the driver (named path), diamond links the shared module once, scan/parser parity over every accepted import form |
-| `axon-frontend/tests/fase115_b_interfaces.rs` | 4 | the KIND-PARITY gate (run-family + T950 resource kinds, cross-module kind-mismatch blame), `.axi` persistence + roundtrip + body-hiding |
-| `axon-frontend/tests/fase115_c_epistemic_compat.rs` | 3 | T954 fails the compile, `@allow_downgrade` compiles with a VISIBLE warning, gap-1 warns |
-| `axon-frontend/tests/fase115_d_registry_typecheck.rs` | 9 | the paper's example compiles; T953 family: missing module, missing export (with export list), local + cross-import collision, selective-required, `@scope` refusal; selectivity law; soft types stay soft |
-| `axon-frontend/tests/fase115_e_link_faithful.rs` | 6 | full persona body survives (the anti-stub proof), imported flow steps survive, provenance + `IRImport.resolved`, deterministic bytes, dep-`run` exclusion, cross-module deep check at the merged gate with entry-file line mapping |
-| `axon-frontend/tests/fase115_f_cache_laws.rs` | 5 | cold/warm/source-invalidation, early cutoff counted, dep-interface invalidation, corruption self-heal, a failing project never caches its way to green |
-| `axon-rs/tests/fase115_g_cli_multifile.rs` | 4 | `check` + `compile` e2e on a real on-disk project (warm cache pass included), T953 exit codes, single-file programs bypass the EMS with zero IR drift |
+| `axon-frontend/tests/module_resolver.rs` | 3 | cycle refusal through the driver (named path), diamond links the shared module once, scan/parser parity over every accepted import form |
+| `axon-frontend/tests/interfaces.rs` | 4 | the KIND-PARITY gate (run-family + T950 resource kinds, cross-module kind-mismatch blame), `.axi` persistence + roundtrip + body-hiding |
+| `axon-frontend/tests/epistemic_compat.rs` | 3 | T954 fails the compile, `@allow_downgrade` compiles with a VISIBLE warning, gap-1 warns |
+| `axon-frontend/tests/registry_typecheck.rs` | 9 | the paper's example compiles; T953 family: missing module, missing export (with export list), local + cross-import collision, selective-required, `@scope` refusal; selectivity law; soft types stay soft |
+| `axon-frontend/tests/link_faithful.rs` | 6 | full persona body survives (the anti-stub proof), imported flow steps survive, provenance + `IRImport.resolved`, deterministic bytes, dep-`run` exclusion, cross-module deep check at the merged gate with entry-file line mapping |
+| `axon-frontend/tests/cache_laws.rs` | 5 | cold/warm/source-invalidation, early cutoff counted, dep-interface invalidation, corruption self-heal, a failing project never caches its way to green |
+| `axon-rs/tests/cli_multifile.rs` | 4 | `check` + `compile` e2e on a real on-disk project (warm cache pass included), T953 exit codes, single-file programs bypass the EMS with zero IR drift |
 | enterprise `fase115_h_bundle_deploy.rs` | — | bundle → linked FlowIr stored; limits fail closed; single-source path unchanged |
 
 Every `.axon` snippet in this paper is itself compiled by `axon check` in the docs

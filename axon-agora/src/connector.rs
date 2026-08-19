@@ -2,17 +2,17 @@
 //!
 //! Each platform's native core implements [`SocialConnector`]; the runtime reaches it through
 //! the `agora_*` provider dispatch arm (`axon-rs::agora_runtime`), inside `spawn_blocking` —
-//! so the trait is **synchronous and dyn-safe**, exactly the `ScrapeFetcher` (§98.g) /
-//! `EnrichmentProvider` (§104.a) injection shape. A connector op therefore runs in production
+//! so the trait is **synchronous and dyn-safe**, exactly the `ScrapeFetcher` (v2.52.0) /
+//! `EnrichmentProvider` (v2.58.0) injection shape. A connector op therefore runs in production
 //! through `execute_server_flow` with the governance a `tool` already carries: secret injection
-//! without revelation (§94.c), the linear budget (§72), and lease + capacity (§114). D116.6:
+//! without revelation (v2.48.0), the linear budget (v2.28.0), and lease + capacity (v2.69.0). the design decision:
 //! the trait is uniform, so new platforms are additive without touching the surface.
 
 use crate::platform::Platform;
 use crate::posture::PostureRefusal;
 use crate::protocol::ProtocolViolation;
 
-/// A comment read from a platform. Born `Untrusted` at the boundary (§98/T908): its text is
+/// A comment read from a platform. Born `Untrusted` at the boundary (v2.52.0/T908): its text is
 /// attacker-controlled and must not launder into a trusted instruction.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Comment {
@@ -44,7 +44,7 @@ pub struct PublishRequest {
     pub media_urls: Vec<String>,
 }
 
-/// The receipt of a governed egress write (§105/§114): the platform's id for the created object
+/// The receipt of a governed egress write (v2.60.0/v2.69.0): the platform's id for the created object
 /// and its public URL if the platform returns one.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct PublishReceipt {
@@ -85,12 +85,12 @@ pub enum ConnectorError {
     /// The platform's official API has no such operation (e.g. Instagram media
     /// deletion) — honestly unsupported, never emulated.
     Unsupported { platform: Platform, reason: String },
-    /// No credential is available for this call — neither the §94.c custody
+    /// No credential is available for this call — neither the v2.48.0 custody
     /// injection (`CallContext.secret`) nor the connector's configured token.
     /// Fail-closed: never an unauthenticated vendor call (the lambda_tools
     /// posture).
     MissingCredential { platform: Platform },
-    /// The publish quota is exhausted (§72 / axon-W018).
+    /// The publish quota is exhausted (v2.28.0 / axon-W018).
     QuotaExhausted,
     /// A protocol-order violation (axon-T957).
     Protocol(ProtocolViolation),
@@ -136,20 +136,20 @@ impl std::fmt::Display for ConnectorError {
     }
 }
 
-/// Per-call context (§116.c). The credential is PER-CALL, not per-connector-instance:
-/// in the enterprise runtime one registered connector serves many tenants, and the §94.c
+/// Per-call context (v2.77.0). The credential is PER-CALL, not per-connector-instance:
+/// in the enterprise runtime one registered connector serves many tenants, and the v2.48.0
 /// custody injection resolves the per-tenant token at dispatch (`axon_secret`), which the
 /// `agora_runtime` dispatch strips out of the body and hands here — the value never rides
 /// a vendor payload, a log line, or the flow's bindings.
 #[derive(Clone, Default)]
 pub struct CallContext {
     /// The custody-revealed credential for THIS call, if the tool declared `secret:`
-    /// (§94.c/§116.b). `None` in a dev runtime with no custody — the connector then falls
+    /// (v2.48.0/v2.77.0). `None` in a dev runtime with no custody — the connector then falls
     /// back to its own configured token, or fails closed. Redacted from `Debug` output.
     pub secret: Option<String>,
 }
 
-// The §94 redacting-Debug discipline (the `RevealedSecret` shape): a custody value
+// The v2.48.0 redacting-Debug discipline (the `RevealedSecret` shape): a custody value
 // must never reach a log line through a stray `{:?}`.
 impl std::fmt::Debug for CallContext {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -171,7 +171,7 @@ impl CallContext {
 /// dispatch in `spawn_blocking` (the Brief #63 isolation discipline), and a sync trait is
 /// dyn-safe for the `Arc<dyn SocialConnector>` registry.
 ///
-/// Implementors live in the native cores (§116.c–f) and register via
+/// Implementors live in the native cores (v2.77.0–f) and register via
 /// `axon-rs::agora_runtime::register_agora_connector`. An op the platform's official API does
 /// not offer MUST return [`ConnectorError::Unsupported`] — never an emulation.
 pub trait SocialConnector: Send + Sync {

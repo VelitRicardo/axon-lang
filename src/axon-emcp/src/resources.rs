@@ -63,7 +63,7 @@ pub fn list(catalog: &Arc<Catalog>) -> Vec<Value> {
 /// Dispatch a `resources/read` request. Params shape (per MCP spec):
 /// `{ "uri": "..." }`.
 ///
-/// §Fase 8 — every read is recorded as a `resource_read` event keyed
+/// v1.3.0 — every read is recorded as a `resource_read` event keyed
 /// by URI family (`axon://primitives/`, `axon://grammar/`, …) NOT the
 /// full slug. The bounded cardinality is intentional: we count
 /// usage shape, not which-document-was-read.
@@ -237,7 +237,7 @@ mod tests {
         write!(
             f,
             "---\nname: {name}\nsummary: s\ncategory: session_types\n\
-             top_level: true\nsince: Fase X\n---\n\nBody.\n"
+             top_level: true\nsince: cycle X\n---\n\nBody.\n"
         )
         .unwrap();
         Arc::new(Catalog::load_from(&dir).unwrap())
@@ -294,7 +294,7 @@ mod tests {
         assert_eq!(Category::SessionTypes.as_str(), "session_types");
     }
 
-    // ── §Phase 3 — reference docs (grammar / logic / compliance) ────────
+    // ── Phase 3 — reference docs (grammar / logic / compliance) ────────
 
     /// Build a corpus root with one primitive + one reference doc per
     /// kind. Returns the catalog wrapped in an `Arc` for the dispatch
@@ -316,7 +316,7 @@ mod tests {
         write!(
             f,
             "---\nname: socket\nsummary: s\ncategory: session_types\n\
-             top_level: true\nsince: Fase 41.b\n---\n\nBody.\n"
+             top_level: true\nsince: v2.3.0\n---\n\nBody.\n"
         )
         .unwrap();
 
@@ -460,7 +460,7 @@ mod tests {
 
     #[test]
     fn reference_loader_rejects_frontmatter_name_mismatch() {
-        // §Phase 3 invariant — the frontmatter `name:` MUST match
+        // Phase 3 invariant — the frontmatter `name:` MUST match
         // the file stem. A file `pci_dss.md` declaring `name: hipaa`
         // is an invitation to shadow the real hipaa entry; reject it.
         use std::sync::atomic::{AtomicU64, Ordering};

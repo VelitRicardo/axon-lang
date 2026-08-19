@@ -1,9 +1,9 @@
-//! §Fase 115.a — Phase 0 of the Epistemic Module System: dependency discovery.
+//! v2.76.0 — Phase 0 of the Epistemic Module System: dependency discovery.
 //!
 //! Builds the module dependency DAG for a multi-file AXON project and
 //! topologically sorts it (Kahn), refusing cycles (`axon-T955`).
 //!
-//! # Design (D115.1)
+//! # Design
 //!
 //! - **In-memory-first.** The resolver operates over a [`ModuleSet`] — a
 //!   deterministic map from [`ModulePath`] to source text. The filesystem
@@ -19,11 +19,11 @@
 //!   The scanner's only job is to know which files to load.
 //! - **Deterministic everywhere.** `BTreeMap`/`BTreeSet` ordering, and the
 //!   Kahn ready-queue pops the smallest module path first, so the
-//!   topological order is a pure function of the module set (§4.4 of the
+//! topological order is a pure function of the module set (section 4.4 of the
 //!   EMS paper — the property the enterprise `ir_sha256` dedupe anchor
 //!   relies on).
 //!
-//! # Refusal posture (D115.9)
+//! # Refusal posture
 //!
 //! Two import forms parse but are **refused** downstream (`axon-T953`, in
 //! the type-checker's module mode): the non-selective `import a.b` (name
@@ -49,7 +49,7 @@ pub const MAX_MODULES: usize = 512;
 // ════════════════════════════════════════════════════════════════════
 
 /// A dotted module path: `axon.security` ⇔ `["axon", "security"]` ⇔
-/// `<modules-root>/axon/security.axon` (D115.8).
+/// `<modules-root>/axon/security.axon`.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ModulePath(pub Vec<String>);
 
@@ -119,7 +119,7 @@ pub struct ScannedImport {
     pub module_path: ModulePath,
     /// The `{…}` selector names. Empty ⇔ the non-selective form.
     pub names: Vec<String>,
-    /// `@allow_downgrade` ECC valve present (§115.c).
+    /// `@allow_downgrade` ECC valve present (v2.76.0).
     pub allow_downgrade: bool,
     /// Whether the `{…}` selector was present at all.
     pub selective: bool,
@@ -214,7 +214,7 @@ pub fn scan_imports(source: &str, filename: &str) -> Result<Vec<ScannedImport>, 
             }
         }
 
-        // ── §115.c valve: @allow_downgrade ───────────────────────
+        // ── v2.76.0 valve: @allow_downgrade ───────────────────────
         let mut allow_downgrade = false;
         if toks.get(i).map(|t| &t.ttype) == Some(&TokenType::At)
             && toks
@@ -310,10 +310,10 @@ pub struct ModuleSet {
 impl ModuleSet {
     /// Walk the filesystem from `entry_file`, loading every transitively
     /// imported module under `modules_root` (default: the entry file's
-    /// directory — D115.8).
+    /// directory — the design decision).
     ///
     /// Only **selective, unscoped** imports load files; the refused forms
-    /// (D115.9) surface later with real locations, so an unresolvable
+    /// surface later with real locations, so an unresolvable
     /// `@scope` path can never abort the load of an otherwise-valid
     /// project.
     pub fn from_entry_file(
@@ -365,7 +365,7 @@ impl ModuleSet {
             })?;
             for imp in imports {
                 if !imp.selective || imp.module_path.is_scoped() {
-                    continue; // refused later with a real location (D115.9)
+                    continue; // refused later with a real location
                 }
                 if modules.contains_key(&imp.module_path) {
                     continue;
@@ -695,7 +695,7 @@ impl ModuleGraph {
 }
 
 // ════════════════════════════════════════════════════════════════════
-//  Unit tests (integration suite: tests/fase115_a_module_resolver.rs)
+//  Unit tests (integration suite: tests/module_resolver.rs)
 // ════════════════════════════════════════════════════════════════════
 
 #[cfg(test)]

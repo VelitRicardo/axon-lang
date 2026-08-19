@@ -39,12 +39,12 @@ pub const SERVER_NAME: &str = "axon-emcp";
 /// Run the stdio MCP loop. Returns `Ok(())` on clean EOF (the agent
 /// closed the pipe); `Err` on a fatal transport failure.
 ///
-/// `telemetry` is the per-instance §Fase 8 registry. Recording is
+/// `telemetry` is the per-instance v1.3.0 registry. Recording is
 /// always-on (in-memory); the JSONL sink + deployment-ID propagation
 /// activate when the corresponding env vars are set (see
 /// [`crate::telemetry::TelemetryConfig::from_env`]).
 pub async fn run_stdio(catalog: Catalog, telemetry: Arc<Telemetry>) -> std::io::Result<()> {
-    // §Fase 10 — caller hands us the shared `Arc<Telemetry>` already
+    // v1.4.0 — caller hands us the shared `Arc<Telemetry>` already
     // so the OTLP pusher (background task spawned in `main`) can
     // hold its own clone and read the same in-process state every
     // recorder writes to.
@@ -91,7 +91,7 @@ async fn handle_one(
     let req = match parsed {
         Ok(r) => r,
         Err(e) => {
-            // We can't recover the id — JSON-RPC §5 says respond with a
+            // We can't recover the id — JSON-RPC section 5 says respond with a
             // null-id error in this case.
             return Some(error_response(
                 Value::Null,
@@ -106,7 +106,7 @@ async fn handle_one(
     let outcome = dispatch(&req, catalog, telemetry).await;
 
     if is_notification {
-        // No reply per JSON-RPC §4.1.
+        // No reply per JSON-RPC section 4.1.
         return None;
     }
     Some(match outcome {
@@ -136,11 +136,11 @@ async fn dispatch(
         "resources/list" => Ok(json!({ "resources": resources::list(catalog) })),
         "resources/read" => resources::dispatch_read(req.params.clone(), catalog, telemetry),
 
-        // ── Prompts (§Phase 5) ───────────────────────────────────────────
+        // ── Prompts (Phase 5) ───────────────────────────────────────────
         "prompts/list" => Ok(json!({ "prompts": prompts::list(catalog) })),
         "prompts/get" => prompts::dispatch_get(req.params.clone(), catalog, telemetry),
 
-        // ── Anything else: per JSON-RPC §5.1, `-32601 method not found`.
+        // ── Anything else: per JSON-RPC section 5.1, `-32601 method not found`.
         other => Err(JsonRpcError {
             code: -32601,
             message: format!("method not found: `{other}`"),
@@ -150,7 +150,7 @@ async fn dispatch(
 }
 
 /// The `initialize` response carries the server's protocol-version +
-/// capabilities. We advertise tools, resources, AND prompts (§Phase 5)
+/// capabilities. We advertise tools, resources, AND prompts (Phase 5)
 /// — the three host-facing MCP surfaces this server implements. None
 /// of them push change-notifications; `listChanged: false` everywhere.
 fn initialize_response() -> Value {
@@ -352,7 +352,7 @@ mod tests {
         let resp = handle_one(req, &cat_embedded(), &tel()).await.expect("reply owed");
         let v: Value = serde_json::from_slice(&resp).unwrap();
         let prompts = v["result"]["prompts"].as_array().expect("prompts array");
-        assert!(prompts.len() >= 3, "§Phase 5 ships ≥ 3 prompts");
+        assert!(prompts.len() >= 3, "Phase 5 ships ≥ 3 prompts");
         // Every entry advertises {name, description, arguments}.
         for p in prompts {
             assert!(p["name"].is_string());

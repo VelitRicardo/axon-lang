@@ -1,11 +1,11 @@
-//! §Fase 124.b — **known-answer and byte-identity tests for the vendored Ed25519.**
+//! v4.0.0 — **known-answer and byte-identity tests for the vendored Ed25519.**
 //!
 //! # Why this gate is STRONGER than ML-DSA's
 //!
-//! Ed25519 signing is deterministic (RFC 8032 §5.1.6: the nonce is a hash, not
+//! Ed25519 signing is deterministic (RFC 8032 section 5.1.6: the nonce is a hash, not
 //! a random draw), which unlocks two proofs the hedged ML-DSA could not have:
 //!
-//! 1. **Published vectors, end to end.** RFC 8032 §7.1 prints seed, public key
+//! 1. **Published vectors, end to end.** RFC 8032 section 7.1 prints seed, public key
 //!    and signature. We assert all three — the seed→pk derivation AND the
 //!    signature bytes — against the RFC's own hex.
 //! 2. **Byte-identity across implementations.** Same seed + message must
@@ -14,7 +14,7 @@
 //!
 //! This closes `FIPS.KAT_ED25519`'s ask: the audit-engine control whose
 //! evidence locator has said `"PENDING"` since the framework matrix was
-//! written. The §124.b signer work points that control here.
+//! written. The v4.0.0 signer work points that control here.
 //!
 //! `native`-only for the same reason as the other kernel KATs: without the C
 //! there is nothing to exercise, and the provenance gate is the check that
@@ -35,7 +35,7 @@ fn hex(b: &[u8]) -> String {
     b.iter().map(|x| format!("{x:02x}")).collect()
 }
 
-/// One RFC 8032 §7.1 vector, asserted in full: seed → pk, sign → sig, verify.
+/// One RFC 8032 section 7.1 vector, asserted in full: seed → pk, sign → sig, verify.
 fn rfc8032_case(seed_hex: &str, pk_hex: &str, msg_hex: &str, sig_hex: &str) {
     let seed: [u8; 32] = unhex(seed_hex).try_into().unwrap();
     let msg = unhex(msg_hex);
@@ -59,7 +59,7 @@ fn rfc8032_case(seed_hex: &str, pk_hex: &str, msg_hex: &str, sig_hex: &str) {
     assert!(verify(&sig, &msg, &kp.public), "and it must verify");
 }
 
-/// 🎯 RFC 8032 §7.1 TEST 1 — the empty message.
+/// 🎯 RFC 8032 section 7.1 TEST 1 — the empty message.
 #[test]
 fn rfc8032_test_1_empty_message() {
     rfc8032_case(
@@ -70,7 +70,7 @@ fn rfc8032_test_1_empty_message() {
     );
 }
 
-/// 🎯 RFC 8032 §7.1 TEST 2 — one byte, and a DIFFERENT keypair. Two vectors
+/// 🎯 RFC 8032 section 7.1 TEST 2 — one byte, and a DIFFERENT keypair. Two vectors
 /// with two keys kill a kernel that hardcodes anything key-dependent.
 #[test]
 fn rfc8032_test_2_one_byte() {
@@ -82,7 +82,7 @@ fn rfc8032_test_2_one_byte() {
     );
 }
 
-/// 🎯 RFC 8032 §7.1 TEST 3 — two bytes, third keypair.
+/// 🎯 RFC 8032 section 7.1 TEST 3 — two bytes, third keypair.
 #[test]
 fn rfc8032_test_3_two_bytes() {
     rfc8032_case(

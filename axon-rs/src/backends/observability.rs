@@ -1,4 +1,4 @@
-//! Tracing span helpers for native Rust LLM backends — Fase 24.b.
+//! Tracing span helpers for native Rust LLM backends — v1.18.0.
 //!
 //! Each provider's HTTP loop emits structured `tracing` events around the
 //! lifecycle of a single `complete` / `stream` call. The shape is fixed
@@ -157,12 +157,12 @@ mod tests {
     use super::*;
     use tracing::Instrument;
 
-    /// §Fase 118.b.3 — install a subscriber for the assertion's duration.
+    /// v2.81.0 — install a subscriber for the assertion's duration.
     ///
     /// `Span::metadata()` returns `None` for a DISABLED span, and a span is
     /// disabled when no subscriber is interested. These two tests asserted
     /// `Some(...)` while installing nothing — so they were reading AMBIENT
-    /// state, and passed only because `sqlx` (unconditional until §118.b.3)
+    /// state, and passed only because `sqlx` (unconditional until v2.81.0)
     /// pulled `tracing` machinery that left spans enabled. Making `postgres`
     /// optional removed `sqlx` from the lean build and the assertions went red,
     /// having never actually tested what they claimed.

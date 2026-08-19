@@ -3,7 +3,7 @@ name: warden
 summary: "An adversarial security-analysis flow-body block — audits a target under a paraconsistent adversarial framing (abduction over authorized evidence), emitting attested Vulnerability findings (a witness, not LLM prose). Authorization-native: the `within <Scope>` clause is mandatory (fail-closed). The active auditor of a TARGET, distinct from `shield` (the passive I/O firewall of the AGENT)."
 category: operators
 top_level: false
-since: Fase 88
+since: v2.43.0
 grammar: |
   warden(<target>) within <Scope> {
       // find_exploits() -> list[Vulnerability]  (attested findings only)

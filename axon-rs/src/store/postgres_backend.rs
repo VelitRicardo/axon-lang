@@ -1,4 +1,4 @@
-//! §Fase 35.c (v1.30.0) — `PostgresStoreBackend`, the SQL substrate of
+//! v1.30.0 — `PostgresStoreBackend`, the SQL substrate of
 //! the `axonstore` cognitive data plane.
 //!
 //! This module makes `axonstore { backend: postgresql }` real: the four
@@ -40,7 +40,7 @@
 //! attributable to its declaration in `pg_stat_activity`, pooler logs
 //! and DBA dashboards.
 //!
-//! # §Fase 37.x.b — search-path-independent table resolution
+//! # v1.32.0 — search-path-independent table resolution
 //!
 //! [`introspect_conn`] resolves a store table to
 //! its schema + column types against `pg_catalog` — NOT via the
@@ -73,7 +73,7 @@
 //! No DDL: `IRAxonStore` carries no column schema, so v1.30.0 operates
 //! against existing tables (no `CREATE TABLE` / `migrate` / index). Each
 //! operation is a single-statement autocommit; the multi-statement
-//! `transact { … }` block is a documented future fase. The supported
+//! `transact { … }` block is a documented future cycle. The supported
 //! column-type catalog is [`classify_pg_type`]; a column outside it is
 //! a clear [`StoreError::UnsupportedColumnType`], not a silent miss.
 
@@ -89,14 +89,14 @@ use sqlx::{Column, PgConnection, PgPool, Postgres, Row, TypeInfo};
 use crate::store::epistemic::EpistemicError;
 use crate::store::filter::{self, build_pg_where, FilterError, SqlValue};
 
-// §Fase 118.b.3 — the §96 pooler-mode decision MOVED to `store::pooler_mode`.
+// v2.81.0 — the v2.51.0 pooler-mode decision MOVED to `store::pooler_mode`.
 // It reads `AXON_DB_POOLER_MODE` and compares two strings; it is about
 // DEPLOYMENT TOPOLOGY, not about a driver, and `runner`'s eager-pin loops ask it
 // before they ask anything of Postgres. Re-exported so call sites keep resolving.
 pub(crate) use super::pooler_mode::connection_pinning_enabled;
 
 /// Upper bound on pooled connections per backend (D7 — bounded).
-// §Fase 118.b.3 — MOVED to `store::row`. Its own doc comment said it was made
+// v2.81.0 — MOVED to `store::row`. Its own doc comment said it was made
 // `pub` "so the registry uses THIS constant rather than a copy of the number — a
 // second copy of a fact is how the islands happened". Gating the driver would have
 // forced exactly that copy back into existence.
@@ -110,9 +110,9 @@ const IDLE_TIMEOUT_SECS: u64 = 300;
 //  Error catalog (typed, total — D7)
 // ════════════════════════════════════════════════════════════════════
 
-// §Fase 118.b.3 — the error catalog MOVED to `store::error`, a leaf module with
-// no driver. It is the fifth instance of the §118 smell: a general concept —
-// including §113's `LeaseExpired` anchor breach and the §35.b/§35.g
+// v2.81.0 — the error catalog MOVED to `store::error`, a leaf module with
+// no driver. It is the fifth instance of the v2.81.0 smell: a general concept —
+// including v2.67.0's `LeaseExpired` anchor breach and the v1.30.0/v1.30.0
 // delegations — parked in the module that first needed it, so gating the
 // driver took the error type of every store operation with it.
 // Re-exported so every call site keeps resolving.
@@ -159,7 +159,7 @@ fn mask_dsn(dsn: &str) -> String {
     dsn.to_string()
 }
 
-/// §Fase 38.h — public alias of [`mask_dsn`] so the introspection
+/// v1.31.0 — public alias of [`mask_dsn`] so the introspection
 /// CLI (`store::introspect_cli`) can render error messages with
 /// masked credentials without re-implementing the routine.
 pub fn mask_dsn_pub(dsn: &str) -> String {
@@ -185,7 +185,7 @@ fn application_name_for(store_name: &str) -> String {
     application_name_for_with_namespace(store_name, None)
 }
 
-/// §Fase 38.f (D3) — `application_name` stamping that optionally
+/// v1.31.0 (D3) — `application_name` stamping that optionally
 /// carries a resolved per-tenant schema namespace (Gap-3 inheritance):
 ///
 ///   * `application_name_for_with_namespace("claims", None)` →
@@ -239,7 +239,7 @@ fn check_identifier(name: &str, kind: &'static str) -> Result<(), StoreError> {
     }
 }
 
-/// §Fase 37.x.c (D2) — render the SCHEMA-QUALIFIED relation reference
+/// v1.32.0 (D2) — render the SCHEMA-QUALIFIED relation reference
 /// for an operation's SQL: `"schema"."table"` when the schema resolved
 /// to a safe identifier, the bare `"table"` otherwise.
 ///
@@ -270,14 +270,14 @@ fn qualified_relation(schema: Option<&str>, table: &str) -> String {
 /// Build a parameterized `SELECT * FROM "schema"."table" WHERE …`
 /// statement.
 ///
-/// §Fase 37.x.c (D2) — `schema` is the table's resolved schema (from
+/// v1.32.0 (D2) — `schema` is the table's resolved schema (from
 /// [`introspect_conn`]); when `Some` and a safe
 /// identifier the relation is emitted SCHEMA-QUALIFIED so it resolves
 /// on any session regardless of the ambient `search_path`. `None`
 /// renders the bare `"table"` (the pre-37.x form — D5).
-/// §Fase 37.d (D3) — `bindings` resolves `${name}` placeholders in the
+/// v1.32.0 (D3) — `bindings` resolves `${name}` placeholders in the
 /// `where` expression to `$N` bind parameters (never string-spliced).
-/// §v1.36.4 — `column_types` (the `column → udt_name` map) lets
+/// v1.36.4 — `column_types` (the `column → udt_name` map) lets
 /// [`build_pg_where`] cast each `where`-clause value to its column's
 /// Postgres type. Pass an empty map when the schema is unknown — the
 /// filter then renders bare `$N` placeholders.
@@ -294,7 +294,7 @@ pub fn build_select_sql(
     Ok((format!("SELECT * FROM {relation} WHERE {clause}"), params))
 }
 
-/// §Fase 76.d — [`build_select_sql`] with a caller-supplied STRUCTURAL
+/// v2.33.0 — [`build_select_sql`] with a caller-supplied STRUCTURAL
 /// select list (the aggregate SELECT: quoted group columns + the
 /// labeled aggregate expression). The list MUST come from
 /// [`crate::store::filter::render_aggregate_select`] — a closed-catalog
@@ -321,8 +321,8 @@ pub fn build_aggregate_select_sql(
 /// Build a parameterized `DELETE FROM "schema"."table" WHERE …`
 /// statement.
 ///
-/// §Fase 37.x.c (D2) — `schema` schema-qualifies the relation (see
-/// [`build_select_sql`]). §v1.36.4 — `column_types` drives the
+/// v1.32.0 (D2) — `schema` schema-qualifies the relation (see
+/// [`build_select_sql`]). v1.36.4 — `column_types` drives the
 /// `where`-clause value cast.
 pub fn build_delete_sql(
     table: &str,
@@ -337,12 +337,12 @@ pub fn build_delete_sql(
     Ok((format!("DELETE FROM {relation} WHERE {clause}"), params))
 }
 
-/// §Fase 37.x.b (D1) — a store table resolved against `pg_catalog`,
+/// v1.32.0 (D1) — a store table resolved against `pg_catalog`,
 /// independent of the ambient `search_path`. The product of
 /// [`introspect_conn`].
 #[derive(Debug, Clone)]
 pub(crate) struct ResolvedTable {
-    /// The schema the table resolves to (e.g. `public`). §37.x.c (D2)
+    /// The schema the table resolves to (e.g. `public`). v1.32.0 (D2)
     /// emits the schema-qualified `"schema"."table"` so an operation
     /// stops depending on the connection's `search_path`.
     pub schema: String,
@@ -352,13 +352,13 @@ pub(crate) struct ResolvedTable {
     pub column_types: std::collections::HashMap<String, String>,
 }
 
-/// §Fase 37.x.f (D9) — capacity bound on the schema cache. A many-
+/// v1.32.0 (D9) — capacity bound on the schema cache. A many-
 /// table / many-DSN / multi-tenant adopter cannot grow it unbounded; at
 /// the bound the OLDEST entry (smallest insertion sequence) is evicted.
 /// 10k matches the idempotency / replay store bound.
 const SCHEMA_CACHE_CAPACITY: usize = 10_000;
 
-/// §Fase 37.x.f (D9) — the process-global schema cache:
+/// v1.32.0 (D9) — the process-global schema cache:
 /// `(dsn, table) → ResolvedTable`, capacity-bounded + self-healing.
 ///
 /// A table's schema + column types are stable for a process lifetime,
@@ -369,7 +369,7 @@ const SCHEMA_CACHE_CAPACITY: usize = 10_000;
 /// retried once against fresh introspection. The cache is also
 /// capacity-bounded ([`SCHEMA_CACHE_CAPACITY`]) so it cannot grow
 /// without limit. Only a successfully-resolved, non-empty entry is
-/// cached (the §v1.36.5 don't-cache-failures rule, preserved).
+/// cached (the v1.36.5 don't-cache-failures rule, preserved).
 struct SchemaCache {
     /// `(dsn, table)` → the resolution + its insertion sequence.
     entries: std::collections::HashMap<
@@ -400,7 +400,7 @@ impl SchemaCache {
         self.entries.get(key).map(|(arc, _)| std::sync::Arc::clone(arc))
     }
 
-    /// Insert (or refresh) a resolution. §D9 — at capacity the oldest
+    /// Insert (or refresh) a resolution. D9 — at capacity the oldest
     /// entry (smallest sequence) is evicted first; a linear scan,
     /// acceptable at the 10k bound (the idempotency store's approach).
     fn insert(
@@ -426,7 +426,7 @@ impl SchemaCache {
         self.entries.insert(key, (resolved, seq));
     }
 
-    /// §D9 — drop `key` so the next operation re-introspects.
+    /// D9 — drop `key` so the next operation re-introspects.
     fn evict(&mut self, key: &(String, String)) {
         self.entries.remove(key);
     }
@@ -437,7 +437,7 @@ static SCHEMA_CACHE: std::sync::LazyLock<std::sync::Mutex<SchemaCache>> =
         std::sync::Mutex::new(SchemaCache::new(SCHEMA_CACHE_CAPACITY))
     });
 
-/// §Fase 37.x.b (D1) — the pure resolution core: group a flat
+/// v1.32.0 (D1) — the pure resolution core: group a flat
 /// `(schema, column, udt)` introspection result by schema and decide.
 ///
 /// - 0 schemas → [`StoreError::TableNotResolved`].
@@ -477,7 +477,7 @@ pub fn resolve_from_rows(
     }
 }
 
-/// §Fase 37.x.b — decode a `pg_catalog` introspection result into the
+/// v1.32.0 — decode a `pg_catalog` introspection result into the
 /// flat `(schema, column, udt)` triples [`resolve_from_rows`] groups. A
 /// row missing any field is skipped (defensive — the resolution
 /// queries always project all three).
@@ -494,7 +494,7 @@ fn collect_triples(rows: &[PgRow]) -> Vec<(String, String, String)> {
     out
 }
 
-/// §Fase 37.x.f (D9) — `true` iff `code` is a schema-drift SQLSTATE: a
+/// v1.32.0 (D9) — `true` iff `code` is a schema-drift SQLSTATE: a
 /// store SQL statement that fails with one has hit a STALE cache.
 ///
 ///  - `42P01` undefined_table — the table was dropped / renamed / had
@@ -514,7 +514,7 @@ pub fn is_schema_drift_sqlstate(code: &str) -> bool {
     matches!(code, "42P01" | "42703" | "42804" | "42883")
 }
 
-/// §Fase 37.x.f (D9) — classify a failed store SQL statement: a
+/// v1.32.0 (D9) — classify a failed store SQL statement: a
 /// schema-drift SQLSTATE ([`is_schema_drift_sqlstate`]) yields
 /// [`StoreError::SchemaDrift`] (which triggers the cache self-heal);
 /// anything else is a plain [`StoreError::Query`]. `pub(crate)` so the
@@ -539,7 +539,7 @@ pub(crate) fn classify_sql_error(
     }
 }
 
-/// §Fase 37.x.b/d (D1/D3) — the two-stage `pg_catalog` table resolution
+/// v1.32.0 (D1/D3) — the two-stage `pg_catalog` table resolution
 /// run on a CALLER-PROVIDED connection, so it shares the operation's
 /// transaction (D3 — one coherent introspect-and-operate session).
 ///
@@ -563,7 +563,7 @@ pub(crate) async fn introspect_conn(
     table: &str,
 ) -> Result<std::sync::Arc<ResolvedTable>, StoreError> {
     // — Stage 1: primary, search-path-correct via `to_regclass`. —
-    // §Fase 38.x.a (D1) — `.persistent(false)` issues an UNNAMED PARSE
+    // v1.31.0 (D1) — `.persistent(false)` issues an UNNAMED PARSE
     // (empty name `""`), which Postgres auto-discards/replaces on the
     // next unnamed PARSE — structurally collision-free behind every
     // transaction-mode pooler. Setting `statement_cache_capacity(0)`
@@ -621,7 +621,7 @@ pub(crate) async fn introspect_conn(
             resolve_from_rows(table, collect_triples(&scan))
         }
     };
-    // §Fase 37.x.h (D6) — every resolution failure logs as a structured
+    // v1.32.0 (D6) — every resolution failure logs as a structured
     // `tracing::error!` so an adopter's operator can SEE it in production
     // logs / journald, not only in the propagated `StoreError`. The
     // Display hint (the `TableNotResolved` / `AmbiguousTable` arms above)
@@ -673,14 +673,14 @@ pub(crate) async fn introspect_conn(
     }
 }
 
-/// §v1.36.2 — the `::<type>` cast suffix for a `$N` value placeholder.
+/// v1.36.2 — the `::<type>` cast suffix for a `$N` value placeholder.
 ///
 /// axon's runtime carries no column schema (D12), so a `text`-bound
 /// value cannot reach a `uuid` / `int` / `timestamptz` column: Postgres
 /// has no cross-type operator. The cure is to cast the VALUE to the
 /// column's type — `$N::uuid` is a valid explicit cast over the bound
 /// parameter (`'83d0…'::uuid` parses the text). v1.36.2 applies it to
-/// every WRITE placeholder (`INSERT` values, `UPDATE … SET`); §v1.36.4
+/// every WRITE placeholder (`INSERT` values, `UPDATE … SET`); v1.36.4
 /// applies the identical cure to the read side via [`build_pg_where`]
 /// (`"col" {op} $N::<type>`). The column's Postgres type name comes
 /// from a cached `to_regclass` + `pg_catalog` introspection
@@ -708,11 +708,11 @@ fn write_cast(
 /// same discipline 35.b applies to `NULL` in a `where` clause. Postgres
 /// infers the column type for an inline `NULL`.
 ///
-/// §v1.36.2 — each `$N` value placeholder is cast to its column's
+/// v1.36.2 — each `$N` value placeholder is cast to its column's
 /// introspected type (`column_types`) so a `text`-bound value writes
 /// into a `uuid` / `int` / `timestamptz` column. An empty
 /// `column_types` map emits bare `$N` (the pre-1.36.2 behaviour).
-/// §Fase 37.x.c (D2) — `schema` schema-qualifies the relation
+/// v1.32.0 (D2) — `schema` schema-qualifies the relation
 /// (`INSERT INTO "schema"."table"`); `None` renders the bare `"table"`.
 pub fn build_insert_sql(
     table: &str,
@@ -761,13 +761,13 @@ pub fn build_insert_sql(
 /// reference offsets by column count and so mis-numbers the moment a
 /// `SET` value is `NULL`.)
 ///
-/// §v1.36.2 — each `SET` value placeholder is cast to its column's
+/// v1.36.2 — each `SET` value placeholder is cast to its column's
 /// introspected type (`column_types`), the same `$N::<type>` cure
 /// `build_insert_sql` applies, so a `text`-bound value writes into a
-/// non-`text` column. §v1.36.4 — the same `column_types` map is now
+/// non-`text` column. v1.36.4 — the same `column_types` map is now
 /// threaded into the `WHERE` side too, so a `where`-clause value is
 /// cast to its column's type (`"col" {op} $N::<type>`).
-/// §Fase 37.x.c (D2) — `schema` schema-qualifies the relation
+/// v1.32.0 (D2) — `schema` schema-qualifies the relation
 /// (`UPDATE "schema"."table"`); `None` renders the bare `"table"`.
 pub fn build_update_sql(
     table: &str,
@@ -815,7 +815,7 @@ pub fn build_update_sql(
     Ok((sql, params))
 }
 
-/// §Fase 64.C — build the ATOMIC, RELATIVE edge-weight reinforcement `UPDATE`
+/// v2.14.0 — build the ATOMIC, RELATIVE edge-weight reinforcement `UPDATE`
 /// for the memory endofunctor's write-back over a store-sourced MDN corpus:
 ///
 /// ```sql
@@ -925,7 +925,7 @@ pub fn classify_pg_type(pg_type: &str) -> Option<PgTypeClass> {
     })
 }
 
-// §Fase 118.b.3 — `StoreRow` MOVED to `store::error`'s neighbour module; see
+// v2.81.0 — `StoreRow` MOVED to `store::error`'s neighbour module; see
 // `store/error.rs`. It is JSON-safe column/value pairs — `Vec<(String, JsonValue)>`
 // — with zero driver content, and `store::epistemic` (which links no driver) needs
 // it. Re-exported so every call site keeps resolving.
@@ -1116,7 +1116,7 @@ impl PostgresStoreBackend {
         Self::connect_named_with_namespace(connection, store_name, None)
     }
 
-    /// §Fase 38.f (D3) — same as [`Self::connect_named`] but stamps an
+    /// v1.31.0 (D3) — same as [`Self::connect_named`] but stamps an
     /// OPTIONAL per-tenant schema namespace into `application_name`.
     ///
     /// `connect_named_with_namespace("env:DB", "claims", Some("tenant_42"))`
@@ -1135,19 +1135,19 @@ impl PostgresStoreBackend {
         Self::connect_named_sized(connection, store_name, namespace, MAX_POOL_CONNECTIONS)
     }
 
-    /// §Fase 113 — **the pool size finally comes from somewhere you can say.**
+    /// v2.67.0 — **the pool size finally comes from somewhere you can say.**
     ///
-    /// Until §113 every `postgresql` axonstore in existence got exactly
+    /// Until v2.67.0 every `postgresql` axonstore in existence got exactly
     /// [`MAX_POOL_CONNECTIONS`] connections: hardcoded, no environment variable,
     /// no config, no source-level knob. The pool an adopter's flow depends on was
     /// the *least* configurable of the three pools in the product.
     ///
     /// `resource.capacity` is that knob. It was declared, lowered into the IR,
-    /// and — as §113's census proved by exhaustive grep — **read by zero lines of
+    /// and — as v2.67.0's census proved by exhaustive grep — **read by zero lines of
     /// code in either repository**, while the README sold it as a pool cap.
     ///
     /// Threading it to `max_connections` here is what makes `resource` a WIRE and
-    /// not a LABEL. If this argument were ignored, §113 would be the nominal link
+    /// not a LABEL. If this argument were ignored, v2.67.0 would be the nominal link
     /// its own plan forbids.
     pub fn connect_named_sized(
         connection: &str,
@@ -1165,7 +1165,7 @@ impl PostgresStoreBackend {
             .application_name(&application_name_for_with_namespace(
                 store_name, namespace,
             ));
-        // §Fase 38.x.a (D2) — `DEALLOCATE ALL` on every released conn.
+        // v1.31.0 (D2) — `DEALLOCATE ALL` on every released conn.
         //
         // This is the SECOND layer of pooler-coherent transaction safety,
         // composing with the per-query `.persistent(false)` (D1). If a
@@ -1186,7 +1186,7 @@ impl PostgresStoreBackend {
         // meta-invariant: even the cleanup is unnamed, so no prepared
         // statement can ever survive a connection release.
         let pool = PgPoolOptions::new()
-            // §Fase 113 — `resource.capacity`, or the legacy default when the
+            // v2.67.0 — `resource.capacity`, or the legacy default when the
             // store is not on a resource.
             .max_connections(max_connections.max(1))
             .min_connections(0)
@@ -1221,7 +1221,7 @@ impl PostgresStoreBackend {
         &self.pool
     }
 
-    /// §Fase 37.x.j (D1) — Acquire ONE physical Postgres connection
+    /// v1.32.0 (D1) — Acquire ONE physical Postgres connection
     /// from the pool to be held for the duration of a flow execution
     /// ([`crate::runner::ExecContext`] for the sync path,
     /// [`crate::flow_dispatcher::DispatchCtx`] for the async streaming
@@ -1235,11 +1235,11 @@ impl PostgresStoreBackend {
     /// connection, a transaction-mode pooler (Supabase Supavisor,
     /// PgBouncer, Neon, RDS Proxy) cannot swap the backend between
     /// queries — the D3 "unnamed prepared statement does not exist"
-    /// race that Fase 37.x.j closes.
+    /// race that v1.32.0 closes.
     ///
     /// The connection is released back to the pool on `Drop` of the
     /// returned `PoolConnection`. The existing
-    /// `after_release(DEALLOCATE ALL)` hook (Fase 38.x.a D2) wipes any
+    /// `after_release(DEALLOCATE ALL)` hook (v1.31.0 D2) wipes any
     /// prepared statements before the conn is reused — composing
     /// cleanly with the per-flow pinning of 37.x.j.
     ///
@@ -1249,7 +1249,7 @@ impl PostgresStoreBackend {
     ///     Postgres unreachable).
     ///   - `StoreError::Connect` if the pool is in a permanently-bad
     ///     state (TLS handshake failure, DNS resolution failure, etc.).
-    /// §Fase 118.a / D118.2 — returns the PORT
+    /// v2.81.0 / the design decision — returns the PORT
     /// ([`crate::pinned_conn::PinnedConn`]), not a raw
     /// `PoolConnection<Postgres>`. This module is where the sqlx types
     /// legitimately live; the executor that holds the result for the rest of the
@@ -1257,8 +1257,8 @@ impl PostgresStoreBackend {
     pub async fn acquire_pin(
         &self,
     ) -> Result<crate::pinned_conn::PinnedConn, StoreError> {
-        // §Fase 96.a — under a SESSION pooler or a DIRECT connection, every pool
-        // connection is already a coherent, stable session, so the §37.x.j pin
+        // v2.51.0 — under a SESSION pooler or a DIRECT connection, every pool
+        // connection is already a coherent, stable session, so the v1.32.0 pin
         // (one connection held for the WHOLE flow so ops route through the same
         // physical backend) is REDUNDANT — and harmful: it keeps a scarce
         // connection checked out across the flow's cognition (LLM) steps,
@@ -1287,7 +1287,7 @@ impl PostgresStoreBackend {
     /// `retrieve` — run `SELECT * FROM "schema"."table" WHERE …` and map
     /// every row to a JSON-safe [`StoreRow`].
     ///
-    /// §Fase 37.x.d (D3) — on a cache MISS the schema introspection and
+    /// v1.32.0 (D3) — on a cache MISS the schema introspection and
     /// the `SELECT` execute inside ONE transaction, so a
     /// transaction-mode pooler pins one physical backend for both —
     /// they cannot split across sessions. A cache HIT needs no
@@ -1298,7 +1298,7 @@ impl PostgresStoreBackend {
     /// backpressured `Stream<Row>` variant (Pillar III).
     pub async fn query(
         &self,
-        // §Fase 37.x.j (D1) — the connection source for this op.
+        // v1.32.0 (D1) — the connection source for this op.
         // `StoreConn::Pool(&self.pool)` for legacy callers (the
         // v1.38.5 and earlier behavior); `StoreConn::Pinned(conn)` for
         // 37.x.j flow-pinned execution where the caller acquired a
@@ -1313,7 +1313,7 @@ impl PostgresStoreBackend {
         bindings: &std::collections::HashMap<String, String>,
     ) -> Result<Vec<StoreRow>, StoreError> {
         // — cache HIT: operate with the cached resolution; no
-        //   transaction. §37.x.f (D9) self-heals a stale cache. —
+        // transaction. v1.32.0 (D9) self-heals a stale cache. —
         if let Some(resolved) = self.cached_schema(table) {
             let (sql, params) = build_select_sql(
                 table,
@@ -1322,12 +1322,12 @@ impl PostgresStoreBackend {
                 bindings,
                 &resolved.column_types,
             )?;
-            // §Fase 38.x.a (D1) — see `introspect_conn` for the full rationale.
+            // v1.31.0 (D1) — see `introspect_conn` for the full rationale.
             let mut q = sqlx::query(&sql).persistent(false);
             for value in &params {
                 q = bind_value(q, value);
             }
-            // §Fase 37.x.j (D1) — dispatch through the StoreConn so
+            // v1.32.0 (D1) — dispatch through the StoreConn so
             // a pinned variant routes through the same physical conn
             // as every other op against this store for the flow.
             match conn.fetch_all(q).await {
@@ -1337,23 +1337,23 @@ impl PostgresStoreBackend {
                     if !err.is_schema_drift() {
                         return Err(err);
                     }
-                    // §37.x.f (D9) — the cached schema is STALE; evict
+                    // v1.32.0 (D9) — the cached schema is STALE; evict
                     // and fall through to the miss path: the single
                     // retry, with fresh introspection.
                     self.evict_schema(table);
                 }
             }
         }
-        // — cache MISS, or the §37.x.f (D9) self-heal retry: resolve +
+        // cache MISS, or the v1.32.0 (D9) self-heal retry: resolve +
         //   operate in ONE transaction (D3). —
-        // §Fase 37.x.j (D1) — `conn.begin()` borrows the `StoreConn`
+        // v1.32.0 (D1) — `conn.begin()` borrows the `StoreConn`
         // mutably for the transaction's lifetime; on the Pinned variant
         // the transaction runs on the same physical backend as the
         // cache-HIT attempt above (D3 invariant preserved).
         let mut tx = conn.begin().await.map_err(|e| {
             StoreError::Connect { source: e.to_string() }
         })?;
-        // §Fase 37.x.j.11 (POST-CLOSE HOTFIX 2026-05-21) — ROLLBACK +
+        // v1.32.0 (POST-CLOSE HOTFIX 2026-05-21) — ROLLBACK +
         // propagate the introspect error directly. Pre-hotfix the
         // code fell through to bare-table SQL with `(None, &no_types)`
         // inside the SAME (now poisoned) transaction. The cascade
@@ -1365,7 +1365,7 @@ impl PostgresStoreBackend {
         // Honest scope cut: adopters whose introspect privileges
         // differ from query privileges (rare in practice — same DB
         // user) no longer get the fall-through. If real adopter
-        // demand surfaces, a future fase can add an opt-in
+        // demand surfaces, a future cycle can add an opt-in
         // `unsafe_skip_introspect` flag.
         let resolved = match introspect_conn(&mut tx, table).await {
             Ok(r) => r,
@@ -1393,7 +1393,7 @@ impl PostgresStoreBackend {
             bindings,
             &resolved.column_types,
         )?;
-        // §Fase 38.x.a (D1) — `.persistent(false)` is mandatory inside the
+        // v1.31.0 (D1) — `.persistent(false)` is mandatory inside the
         // `pool.begin()` transaction: the named PARSE protocol leaks across
         // logical sessions when the physical conn behind the pooler is
         // reused. See `introspect_conn` for the full rationale.
@@ -1412,7 +1412,7 @@ impl PostgresStoreBackend {
         rows.iter().map(map_pg_row).collect()
     }
 
-    /// §Fase 37.x.d (D3) — the cached `(schema, column_types)`
+    /// v1.32.0 (D3) — the cached `(schema, column_types)`
     /// resolution for `table`, or `None` on a cache miss. Pure — no
     /// I/O. A HIT lets an operation skip the transaction; a MISS makes
     /// the caller introspect ([`introspect_conn`]) inside the
@@ -1426,13 +1426,13 @@ impl PostgresStoreBackend {
         SCHEMA_CACHE.lock().unwrap().get(&key)
     }
 
-    /// §Fase 37.x.d (D3) — store a successful resolution in the
+    /// v1.32.0 (D3) — store a successful resolution in the
     /// process-global `(dsn, table)` cache.
     ///
-    /// §v1.36.5 rule preserved — an EMPTY resolution is NEVER cached: a
+    /// v1.36.5 rule preserved — an EMPTY resolution is NEVER cached: a
     /// real relation always has at least one column, so an empty map is
     /// a transient failure that must be retried, never a poisoned
-    /// entry. §Fase 37.x.f (D9) adds the bounded-LRU + drift eviction.
+    /// entry. v1.32.0 (D9) adds the bounded-LRU + drift eviction.
     pub(crate) fn cache_schema(
         &self,
         table: &str,
@@ -1444,7 +1444,7 @@ impl PostgresStoreBackend {
         }
     }
 
-    /// §Fase 37.x.f (D9) — evict `table`'s cached resolution so the
+    /// v1.32.0 (D9) — evict `table`'s cached resolution so the
     /// next operation re-introspects. Called by the self-heal path when
     /// a store SQL statement fails with a schema-drift SQLSTATE — the
     /// live table has drifted from the cached schema. `pub(crate)` so
@@ -1452,7 +1452,7 @@ impl PostgresStoreBackend {
     pub(crate) fn evict_schema(&self, table: &str) {
         let key = (self.dsn.clone(), table.to_string());
         SCHEMA_CACHE.lock().unwrap().evict(&key);
-        // §Fase 37.x.h (D6) — observability of the D9 self-heal. A live
+        // v1.32.0 (D6) — observability of the D9 self-heal. A live
         // `ALTER TABLE` is the expected trigger; a flood of these from
         // one `(masked_dsn, table)` means a misconfiguration (a migration
         // never finished, two services racing against the same table) and
@@ -1470,7 +1470,7 @@ impl PostgresStoreBackend {
         );
     }
 
-    /// §Fase 37.x.g (D8) — EAGERLY resolve + introspect `table` against
+    /// v1.32.0 (D8) — EAGERLY resolve + introspect `table` against
     /// the live database, populating the process-global schema cache.
     /// The deploy-time verification entry point: a resolution failure
     /// surfaces at DEPLOY, not at the first production request.
@@ -1496,19 +1496,19 @@ impl PostgresStoreBackend {
     }
 
     /// `persist` — run `INSERT INTO "schema"."table" (…) VALUES (…)`.
-    /// Returns the number of rows inserted. §Fase 37.x.d (D3) — on a
+    /// Returns the number of rows inserted. v1.32.0 (D3) — on a
     /// cache MISS the resolution + the `INSERT` execute in ONE
     /// transaction; a cache HIT needs no transaction.
     pub async fn insert(
         &self,
-        // §Fase 37.x.j (D1) — see `query()` for the rationale on the
+        // v1.32.0 (D1) — see `query()` for the rationale on the
         // `StoreConn` connection-source parameter.
         conn: &mut crate::store::store_conn::StoreConn<'_>,
         table: &str,
         data: &[(String, SqlValue)],
     ) -> Result<u64, StoreError> {
         // — cache HIT: operate with the cached resolution; no
-        //   transaction. §37.x.f (D9) self-heals a stale cache. —
+        // transaction. v1.32.0 (D9) self-heals a stale cache. —
         if let Some(resolved) = self.cached_schema(table) {
             let (sql, params) = build_insert_sql(
                 table,
@@ -1516,12 +1516,12 @@ impl PostgresStoreBackend {
                 data,
                 &resolved.column_types,
             )?;
-            // §Fase 38.x.a (D1) — see `introspect_conn` for the full rationale.
+            // v1.31.0 (D1) — see `introspect_conn` for the full rationale.
             let mut q = sqlx::query(&sql).persistent(false);
             for value in &params {
                 q = bind_value(q, value);
             }
-            // §Fase 37.x.j (D1) — dispatch through StoreConn.
+            // v1.32.0 (D1) — dispatch through StoreConn.
             match conn.execute(q).await {
                 Ok(result) => return Ok(result.rows_affected()),
                 Err(e) => {
@@ -1529,7 +1529,7 @@ impl PostgresStoreBackend {
                     if !err.is_schema_drift() {
                         return Err(err);
                     }
-                    // §37.x.f (D9) — stale cache: evict + fall through
+                    // v1.32.0 (D9) — stale cache: evict + fall through
                     // (the single retry). Safe — a drift SQLSTATE is a
                     // parse/plan-time rejection, so this `INSERT` wrote
                     // zero rows; the retry cannot double-write.
@@ -1537,13 +1537,13 @@ impl PostgresStoreBackend {
                 }
             }
         }
-        // — cache MISS, or the §37.x.f (D9) self-heal retry: resolve +
+        // cache MISS, or the v1.32.0 (D9) self-heal retry: resolve +
         //   operate in ONE transaction (D3). —
-        // §Fase 37.x.j (D1) — see `query()` for the begin() rationale.
+        // v1.32.0 (D1) — see `query()` for the begin() rationale.
         let mut tx = conn.begin().await.map_err(|e| {
             StoreError::Connect { source: e.to_string() }
         })?;
-        // §Fase 37.x.j.11 — ROLLBACK + propagate introspect error
+        // v1.32.0 — ROLLBACK + propagate introspect error
         // directly. See `query()` above for the full rationale.
         let resolved = match introspect_conn(&mut tx, table).await {
             Ok(r) => r,
@@ -1568,7 +1568,7 @@ impl PostgresStoreBackend {
             data,
             &resolved.column_types,
         )?;
-        // §Fase 38.x.a (D1) — mandatory inside the `pool.begin()` tx.
+        // v1.31.0 (D1) — mandatory inside the `pool.begin()` tx.
         let mut q = sqlx::query(&sql).persistent(false);
         for value in &params {
             q = bind_value(q, value);
@@ -1585,12 +1585,12 @@ impl PostgresStoreBackend {
     }
 
     /// `mutate` — run `UPDATE "schema"."table" SET … WHERE …`. Returns
-    /// the number of rows affected. §Fase 37.x.d (D3) — on a cache MISS
+    /// the number of rows affected. v1.32.0 (D3) — on a cache MISS
     /// the resolution + the `UPDATE` execute in ONE transaction; a
     /// cache HIT needs no transaction.
     pub async fn mutate(
         &self,
-        // §Fase 37.x.j (D1) — see `query()` for the rationale.
+        // v1.32.0 (D1) — see `query()` for the rationale.
         conn: &mut crate::store::store_conn::StoreConn<'_>,
         table: &str,
         where_expr: &str,
@@ -1598,7 +1598,7 @@ impl PostgresStoreBackend {
         bindings: &std::collections::HashMap<String, String>,
     ) -> Result<u64, StoreError> {
         // — cache HIT: operate with the cached resolution; no
-        //   transaction. §37.x.f (D9) self-heals a stale cache. —
+        // transaction. v1.32.0 (D9) self-heals a stale cache. —
         if let Some(resolved) = self.cached_schema(table) {
             let (sql, params) = build_update_sql(
                 table,
@@ -1608,12 +1608,12 @@ impl PostgresStoreBackend {
                 bindings,
                 &resolved.column_types,
             )?;
-            // §Fase 38.x.a (D1) — see `introspect_conn` for the full rationale.
+            // v1.31.0 (D1) — see `introspect_conn` for the full rationale.
             let mut q = sqlx::query(&sql).persistent(false);
             for value in &params {
                 q = bind_value(q, value);
             }
-            // §Fase 37.x.j (D1) — dispatch through StoreConn.
+            // v1.32.0 (D1) — dispatch through StoreConn.
             match conn.execute(q).await {
                 Ok(result) => return Ok(result.rows_affected()),
                 Err(e) => {
@@ -1621,7 +1621,7 @@ impl PostgresStoreBackend {
                     if !err.is_schema_drift() {
                         return Err(err);
                     }
-                    // §37.x.f (D9) — stale cache: evict + fall through
+                    // v1.32.0 (D9) — stale cache: evict + fall through
                     // (the single retry). Safe — a drift SQLSTATE is a
                     // parse/plan-time rejection, so this `UPDATE`
                     // modified zero rows; the retry cannot double-write.
@@ -1629,13 +1629,13 @@ impl PostgresStoreBackend {
                 }
             }
         }
-        // — cache MISS, or the §37.x.f (D9) self-heal retry: resolve +
+        // cache MISS, or the v1.32.0 (D9) self-heal retry: resolve +
         //   operate in ONE transaction (D3). —
-        // §Fase 37.x.j (D1) — see `query()` for the begin() rationale.
+        // v1.32.0 (D1) — see `query()` for the begin() rationale.
         let mut tx = conn.begin().await.map_err(|e| {
             StoreError::Connect { source: e.to_string() }
         })?;
-        // §Fase 37.x.j.11 — ROLLBACK + propagate introspect error
+        // v1.32.0 — ROLLBACK + propagate introspect error
         // directly. See `query()` above for the full rationale.
         let resolved = match introspect_conn(&mut tx, table).await {
             Ok(r) => r,
@@ -1662,7 +1662,7 @@ impl PostgresStoreBackend {
             bindings,
             &resolved.column_types,
         )?;
-        // §Fase 38.x.a (D1) — mandatory inside the `pool.begin()` tx.
+        // v1.31.0 (D1) — mandatory inside the `pool.begin()` tx.
         let mut q = sqlx::query(&sql).persistent(false);
         for value in &params {
             q = bind_value(q, value);
@@ -1678,7 +1678,7 @@ impl PostgresStoreBackend {
         Ok(result.rows_affected())
     }
 
-    /// §Fase 64.C — execute ONE atomic, relative edge-weight reinforcement
+    /// v2.14.0 — execute ONE atomic, relative edge-weight reinforcement
     /// ([`build_reinforce_sql`]) on the given **tenant-scoped** connection: the
     /// memory endofunctor's `ω += Δ` write-back over a store-sourced MDN corpus.
     /// Returns the rows affected (0 when the edge row no longer exists — a
@@ -1727,19 +1727,19 @@ impl PostgresStoreBackend {
     }
 
     /// `purge` — run `DELETE FROM "schema"."table" WHERE …`. Returns the
-    /// number of rows deleted. §Fase 37.x.d (D3) — on a cache MISS the
+    /// number of rows deleted. v1.32.0 (D3) — on a cache MISS the
     /// resolution + the `DELETE` execute in ONE transaction; a cache
     /// HIT needs no transaction.
     pub async fn purge(
         &self,
-        // §Fase 37.x.j (D1) — see `query()` for the rationale.
+        // v1.32.0 (D1) — see `query()` for the rationale.
         conn: &mut crate::store::store_conn::StoreConn<'_>,
         table: &str,
         where_expr: &str,
         bindings: &std::collections::HashMap<String, String>,
     ) -> Result<u64, StoreError> {
         // — cache HIT: operate with the cached resolution; no
-        //   transaction. §37.x.f (D9) self-heals a stale cache. —
+        // transaction. v1.32.0 (D9) self-heals a stale cache. —
         if let Some(resolved) = self.cached_schema(table) {
             let (sql, params) = build_delete_sql(
                 table,
@@ -1748,12 +1748,12 @@ impl PostgresStoreBackend {
                 bindings,
                 &resolved.column_types,
             )?;
-            // §Fase 38.x.a (D1) — see `introspect_conn` for the full rationale.
+            // v1.31.0 (D1) — see `introspect_conn` for the full rationale.
             let mut q = sqlx::query(&sql).persistent(false);
             for value in &params {
                 q = bind_value(q, value);
             }
-            // §Fase 37.x.j (D1) — dispatch through StoreConn.
+            // v1.32.0 (D1) — dispatch through StoreConn.
             match conn.execute(q).await {
                 Ok(result) => return Ok(result.rows_affected()),
                 Err(e) => {
@@ -1761,7 +1761,7 @@ impl PostgresStoreBackend {
                     if !err.is_schema_drift() {
                         return Err(err);
                     }
-                    // §37.x.f (D9) — stale cache: evict + fall through
+                    // v1.32.0 (D9) — stale cache: evict + fall through
                     // (the single retry). Safe — a drift SQLSTATE is a
                     // parse/plan-time rejection, so this `DELETE`
                     // removed zero rows; the retry cannot double-delete.
@@ -1769,13 +1769,13 @@ impl PostgresStoreBackend {
                 }
             }
         }
-        // — cache MISS, or the §37.x.f (D9) self-heal retry: resolve +
+        // cache MISS, or the v1.32.0 (D9) self-heal retry: resolve +
         //   operate in ONE transaction (D3). —
-        // §Fase 37.x.j (D1) — see `query()` for the begin() rationale.
+        // v1.32.0 (D1) — see `query()` for the begin() rationale.
         let mut tx = conn.begin().await.map_err(|e| {
             StoreError::Connect { source: e.to_string() }
         })?;
-        // §Fase 37.x.j.11 — ROLLBACK + propagate introspect error
+        // v1.32.0 — ROLLBACK + propagate introspect error
         // directly. See `query()` above for the full rationale.
         let resolved = match introspect_conn(&mut tx, table).await {
             Ok(r) => r,
@@ -1801,7 +1801,7 @@ impl PostgresStoreBackend {
             bindings,
             &resolved.column_types,
         )?;
-        // §Fase 38.x.a (D1) — mandatory inside the `pool.begin()` tx.
+        // v1.31.0 (D1) — mandatory inside the `pool.begin()` tx.
         let mut q = sqlx::query(&sql).persistent(false);
         for value in &params {
             q = bind_value(q, value);
@@ -1819,10 +1819,10 @@ impl PostgresStoreBackend {
 
     /// Verify database reachability with `SELECT 1`.
     pub async fn ping(&self) -> Result<(), StoreError> {
-        // §Fase 38.x.a (D1) — even the trivial reachability probe carries
+        // v1.31.0 (D1) — even the trivial reachability probe carries
         // `.persistent(false)`: a `SELECT 1` PARSE collision is rare but
         // possible behind an aggressive transaction-mode pooler, and the
-        // grep §-assertion in `fase38x_a_pooler_prepared_statement_regression.rs`
+        // grep -assertion in `pooler_prepared_statement_regression.rs`
         // enforces the invariant uniformly.
         sqlx::query("SELECT 1")
             .persistent(false)
@@ -1841,7 +1841,7 @@ impl PostgresStoreBackend {
 mod tests {
     use super::*;
 
-        // §Fase 118.b.3 — `pinning_mode_gate` MOVED to `store::pooler_mode` with its
+        // v2.81.0 — `pinning_mode_gate` MOVED to `store::pooler_mode` with its
         // subject. A test that stays behind when the thing it tests moves is how a
         // suite starts asserting about a file instead of about a behaviour.
 
@@ -1850,8 +1850,8 @@ mod tests {
     }
 
     /// Empty bindings — these `build_*_sql` tests pin the pre-37.d
-    /// behaviour (no `${name}` resolution). The §Fase 37.d resolution
-    /// is exercised by `tests/fase37_d_*` and `store::filter`.
+    /// behaviour (no `${name}` resolution). The v1.32.0 resolution
+    /// is exercised by `tests/filter_injection.rs` and `store::filter`.
     fn nb() -> std::collections::HashMap<String, String> {
         std::collections::HashMap::new()
     }
@@ -2019,14 +2019,14 @@ mod tests {
     fn select_with_filter() {
         let (sql, params) =
             build_select_sql("users", None, "id = 1", &nb(), &nb()).unwrap();
-        // §37.x.e (D4) — unknown column type + equality → `::text`.
+        // v1.32.0 (D4) — unknown column type + equality → `::text`.
         assert_eq!(sql, "SELECT * FROM \"users\" WHERE \"id\"::text = $1");
         assert_eq!(params, vec![SqlValue::Integer(1)]);
     }
 
     #[test]
     fn select_casts_the_filter_value_to_its_introspected_column_type() {
-        // §v1.36.4 — a known column type casts the WHERE value, so the
+        // v1.36.4 — a known column type casts the WHERE value, so the
         // comparison uses the native operator (`int4 = int4`).
         let types = std::collections::HashMap::from([(
             "id".to_string(),
@@ -2100,7 +2100,7 @@ mod tests {
 
     #[test]
     fn insert_casts_a_document_into_a_jsonb_column() {
-        // §Fase 73.d — a `Json` document is bound as text and cast to the
+        // v2.26.0 — a `Json` document is bound as text and cast to the
         // introspected `jsonb` column type (`$N::jsonb`), so it lands as a
         // native jsonb value (Postgres parses + stores the binary form).
         // This is the write half of the jsonb round-trip; the read half is
@@ -2236,7 +2236,7 @@ mod tests {
 
     #[test]
     fn reinforce_sql_is_atomic_relative_and_clamped() {
-        // §Fase 64.C — the write-back UPDATE: the weight increment is computed
+        // v2.14.0 — the write-back UPDATE: the weight increment is computed
         // INSIDE the database (`"weight" + $1`), so it's race-free; the clamp
         // keeps ω ∈ [ε, 1]; the WHERE keys carry their introspected casts.
         let mut types = std::collections::HashMap::new();
@@ -2298,7 +2298,7 @@ mod tests {
         ));
     }
 
-    // ── §v1.36.2 — typed-column write cast ───────────────────────────
+    // ── v1.36.2 — typed-column write cast ───────────────────────────
 
     #[test]
     fn insert_casts_each_value_to_its_introspected_column_type() {
@@ -2354,7 +2354,7 @@ mod tests {
 
     #[test]
     fn update_where_value_is_cast_to_its_column_type() {
-        // §v1.36.4 — when the WHERE column's type IS known, its value
+        // v1.36.4 — when the WHERE column's type IS known, its value
         // placeholder is cast too (the SET-side cure applied to WHERE).
         let types = std::collections::HashMap::from([
             ("status".to_string(), "text".to_string()),
@@ -2430,11 +2430,11 @@ mod tests {
         ));
     }
 
-    // ── §Fase 37.x.c — schema-anchored relation (D2) ─────────────────
+    // ── v1.32.0 — schema-anchored relation (D2) ─────────────────
 
     #[test]
     fn select_with_a_resolved_schema_is_qualified() {
-        // §37.x.c (D2) — a resolved schema renders `"schema"."table"`,
+        // v1.32.0 (D2) — a resolved schema renders `"schema"."table"`,
         // so the SELECT resolves on any session regardless of the
         // ambient `search_path`.
         let (sql, _) =
@@ -2490,7 +2490,7 @@ mod tests {
 
     #[test]
     fn a_qualified_table_still_casts_and_offsets_correctly() {
-        // §37.x.c composes with §v1.36.2/§v1.36.4 — schema-qualification
+        // v1.32.0 composes with v1.36.2/v1.36.4 — schema-qualification
         // is orthogonal to the value cast + the WHERE param offset.
         let types = std::collections::HashMap::from([
             ("status".to_string(), "uuid".to_string()),
@@ -2573,7 +2573,7 @@ mod tests {
         );
     }
 
-    // ── §Fase 37.x.b — resolve_from_rows (D1 pure resolution core) ───
+    // ── v1.32.0 — resolve_from_rows (D1 pure resolution core) ───
 
     fn triple(s: &str, c: &str, t: &str) -> (String, String, String) {
         (s.to_string(), c.to_string(), t.to_string())
@@ -2638,7 +2638,7 @@ mod tests {
         ));
     }
 
-    // ── §Fase 37.x.d — schema cache (D3) ─────────────────────────────
+    // ── v1.32.0 — schema cache (D3) ─────────────────────────────
 
     #[tokio::test]
     async fn schema_cache_round_trips_a_resolution() {
@@ -2670,7 +2670,7 @@ mod tests {
 
     #[tokio::test]
     async fn schema_cache_never_stores_an_empty_resolution() {
-        // §v1.36.5 rule preserved — a real relation always has ≥ 1
+        // v1.36.5 rule preserved — a real relation always has ≥ 1
         // column, so an empty map is a transient failure to retry,
         // never a poisoned cache entry.
         let backend = PostgresStoreBackend::connect(
@@ -2691,7 +2691,7 @@ mod tests {
         );
     }
 
-    // ── §Fase 37.x.f — D9 self-healing bounded cache ─────────────────
+    // ── v1.32.0 — D9 self-healing bounded cache ─────────────────
 
     #[test]
     fn is_schema_drift_sqlstate_recognises_exactly_the_drift_codes() {
@@ -2743,7 +2743,7 @@ mod tests {
 
     #[test]
     fn schema_cache_evicts_the_oldest_entry_at_capacity() {
-        // §D9 — the bound: a many-table adopter cannot grow the cache
+        // D9 — the bound: a many-table adopter cannot grow the cache
         // without limit; at capacity the OLDEST insertion is evicted.
         let mut cache = SchemaCache::new(2);
         let key = |t: &str| ("dsn".to_string(), t.to_string());
@@ -2767,7 +2767,7 @@ mod tests {
 
     #[test]
     fn schema_cache_evict_drops_a_named_entry() {
-        // §D9 — the self-heal eviction primitive.
+        // D9 — the self-heal eviction primitive.
         let mut cache = SchemaCache::new(10);
         let key = ("dsn".to_string(), "t".to_string());
         cache.insert(key.clone(), rt("public"));
@@ -2846,7 +2846,7 @@ mod tests {
         assert!(matches!(e, StoreError::Filter(_)));
     }
 
-    // ── §Fase 37.x.h — D6 honest, actionable failure ─────────────────
+    // ── v1.32.0 — D6 honest, actionable failure ─────────────────
 
     #[test]
     fn d6_table_not_resolved_display_carries_an_actionable_hint() {
@@ -2880,7 +2880,7 @@ mod tests {
         // The Display of `AmbiguousTable` MUST tell an adopter both the
         // schemas the table resolved into AND the two real remedies —
         // narrow `search_path` OR declare the target schema explicitly
-        // (the Fase 38 `schema:` declaration the gap report names).
+        // (the v1.31.0 `schema:` declaration the gap report names).
         let err = StoreError::AmbiguousTable {
             table: "rates".into(),
             schemas: vec!["finance".into(), "legacy".into()],

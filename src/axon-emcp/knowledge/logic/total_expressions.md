@@ -1,6 +1,6 @@
 ---
 name: total_expressions
-title: "Every control-flow / data predicate is a total, pure expression (§Fase 70)"
+title: "Every control-flow / data predicate is a total, pure expression (v2.26.0)"
 summary: "The law that every expression AXON evaluates for control flow or a data predicate — an `if` condition, and (incrementally) `let` values and `where:` clauses — is TOTAL (always terminates), PURE (no side effects, no I/O), and statically TYPED against the flow's scope. The expression sublanguage is a closed catalog (arithmetic, comparison, boolean, the collection/string builtins, field/index access) with no recursion and no unbounded loops, so every expression is decidable: the compiler may const-fold it (deciding constant conditions at `axon check`, with a dead-branch warning), and the runtime can NEVER diverge, mutate, or call a model inside a condition. Mechanical truth is COMPUTED, never delegated to cognition — the executable form of `dispatch_vs_cognition`."
 ---
 
@@ -10,10 +10,10 @@ AXON separates two kinds of work sharply: **cognition** (an LLM reasoning
 step — `step … ask:`, `apply: <Tool>`) and **dispatch** (everything
 mechanical the runtime decides itself). The doctrine
 [`axon://logic/dispatch_vs_cognition`](axon://logic/dispatch_vs_cognition)
-says the mechanical must never masquerade as the cognitive. §Fase 70 makes
+says the mechanical must never masquerade as the cognitive. v2.26.0 makes
 that **executable** for the one place it used to leak: deciding control flow.
 
-Before §70, an elementary check like *"have we made too many calls?"* —
+Before v2.26.0, an elementary check like *"have we made too many calls?"* —
 `recent.length >= limit` — had no native form. An adopter had to reach for
 `use Tool(...)` or an LLM step to count and compare. That is the exact
 anti-pattern `dispatch_vs_cognition` condemns: a deterministic, total
@@ -30,7 +30,7 @@ non-determinism for arithmetic.
 
 ## Why it is total (decidable by construction)
 
-The expression grammar (§70) is a **closed catalog**: literals, references,
+The expression grammar (v2.26.0) is a **closed catalog**: literals, references,
 arithmetic (`+ - * / %`), comparison (`== != < <= > >=`), boolean
 (`and`/`or`/`not`), the collection/string builtins (`.length`, `.count`,
 `.is_empty`, `.is_null`, `.contains`, `.starts_with`, `.ends_with`), and

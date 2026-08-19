@@ -47,7 +47,7 @@ impl Blame {
         }
     }
 
-    /// §Fase 119.m.2 — this value, on the runtime's ONE responsibility axis.
+    /// v2.83.0 — this value, on the runtime's ONE responsibility axis.
     ///
     /// `Blame` and [`crate::wire_envelope::BlameParty`] are the same
     /// Findler-Felleisen calculus: this enum's own doc cites ℰMCP spec
@@ -560,7 +560,7 @@ impl BlameTracker {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-//  §Fase 34.f — McpStreamingTool: Tool::stream() over MCP JSON-RPC 2.0
+// v1.29.0 — McpStreamingTool: Tool::stream() over MCP JSON-RPC 2.0
 //  partial responses (`notifications/message` / `notifications/progress`)
 //  + best-effort `notifications/cancelled` on cancel.
 // ════════════════════════════════════════════════════════════════════════════
@@ -572,7 +572,7 @@ use futures::StreamExt;
 use crate::backends::sse_streaming::LineBuffer;
 use crate::tool_trait::{Tool, ToolChunk, ToolContext, ToolFinishReason, ToolStream};
 
-/// MCP tool with first-class streaming surface (Fase 34.f).
+/// MCP tool with first-class streaming surface (v1.29.0).
 ///
 /// MCP's wire format is JSON-RPC 2.0 over HTTP. Servers that
 /// support partial-response streaming emit a sequence of JSON-RPC
@@ -854,7 +854,7 @@ impl Tool for McpStreamingTool {
             max_results: None,
             output_schema: String::new(),
             effect_row: Vec::new(),
-            // §Fase 58.f.2 — reconstructed entry for the legacy sync
+            // v2.8.0 — reconstructed entry for the legacy sync
             // delegate; no typed input schema needed on this path.
             parameters: Vec::new(),
             secret: String::new(),
@@ -1182,10 +1182,10 @@ mod tests {
             secret: String::new(),
             secret_partition: String::new(),
             source: ToolSource::Program,
-            // §Fase 34.c — MCP tools default to non-streaming; effect_row
+            // v1.29.0 — MCP tools default to non-streaming; effect_row
             // carries `network` + `epistemic:speculate` but no `stream:`
             // prefix. MCP streaming via partial-response notifications
-            // lands in Fase 34.f.
+            // lands in v1.29.0.
             is_streaming: false,
             scrape: None,
         }
@@ -1433,7 +1433,7 @@ mod tests {
     }
 
     // ════════════════════════════════════════════════════════════════
-    //  §Fase 34.f — McpStreamingTool lib unit tests
+    // v1.29.0 — McpStreamingTool lib unit tests
     // ════════════════════════════════════════════════════════════════
 
     #[test]

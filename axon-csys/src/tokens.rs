@@ -1,4 +1,4 @@
-//! §Fase 25.g — BPE tokeniser (Rust shim).
+//! v1.19.0 — BPE tokeniser (Rust shim).
 //!
 //! Safe Rust wrapper around the C23 BPE merge engine in
 //! `c-src/tokens/bpe.c`. Pillar split:
@@ -136,7 +136,7 @@ pub enum BpeError {
     NullArg,
     /// Output buffer too small for the encode result.
     BufferTooSmall,
-    /// §Fase 119.h — the crate was built without the `native` feature, so the
+    /// v2.83.0 — the crate was built without the `native` feature, so the
     /// C23 BPE kernel is not linked and no tokeniser can be constructed.
     ///
     /// This is NOT a failure to recover from: it is the declared shape of a
@@ -215,11 +215,11 @@ fn err_from_code(code: axon_csys_bpe_error_t) -> Option<BpeError> {
 /// table for the vocabulary is O(vocab_size). Adopters should cache the
 /// tokeniser at process scope (the [`cl100k_base`] / [`o200k_base`]
 /// helpers do this via `OnceLock`).
-/// §Fase 119.h — `Tokenizer` without the C23 kernel: **uninhabited**.
+/// v2.83.0 — `Tokenizer` without the C23 kernel: **uninhabited**.
 ///
 /// A toolchain-free build links no BPE engine, so a tokeniser cannot exist.
 /// Modelling that as an empty enum rather than a struct-that-errors is the
-/// §118 `PinnedConn` pattern, and it buys two things:
+/// v2.81.0 `PinnedConn` pattern, and it buys two things:
 ///
 /// 1. **Signatures stay profile-independent.** `cl100k_base() ->
 ///    Result<&'static Tokenizer, BpeError>` is the same type in both builds,
@@ -642,7 +642,7 @@ pub fn utf8_boundary_floor(bytes: &[u8], max_offset: usize) -> usize {
     {
         unsafe { axon_csys_utf8_boundary_floor(bytes.as_ptr(), bytes.len(), max_offset) }
     }
-    // §Fase 119.h — the C kernel is a SIMD FAST PATH, not the meaning. The
+    // v2.83.0 — the C kernel is a SIMD FAST PATH, not the meaning. The
     // meaning is "walk back to the nearest non-continuation byte", which is
     // four lines of safe Rust; the drift gate compares them.
     #[cfg(not(feature = "native"))]
@@ -673,7 +673,7 @@ pub fn utf8_count_chars(bytes: &[u8]) -> usize {
     {
         unsafe { axon_csys_utf8_count_chars(bytes.as_ptr(), bytes.len()) }
     }
-    // §Fase 119.h — same contract as the C: count non-continuation bytes.
+    // v2.83.0 — same contract as the C: count non-continuation bytes.
     #[cfg(not(feature = "native"))]
     {
         bytes

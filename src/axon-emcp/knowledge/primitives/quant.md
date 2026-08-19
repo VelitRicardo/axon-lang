@@ -3,7 +3,7 @@ name: quant
 summary: A flow-body block that lifts a continuous carrier tensor into a finite Hilbert space, evolves it, and yields the expectation of a declared observable (the cognitive↔quantum bridge; OSS simulator capped at n≤10).
 category: operators
 top_level: false
-since: Fase 51 (v2.19.0)
+since: v2.19.0
 grammar: |
   # Flow-body block. The attribute header is OPTIONAL and goes in PARENS;
   # the braces hold real flow steps (let / for / yield), like `par`.
@@ -11,7 +11,7 @@ grammar: |
         observable: <ObservableName>, # the Hermitian operator to measure
         qubits: <n>, depth: <d>,    # all optional
         bandwidth: <γ>, reupload: <L>, # `reupload: L≥2` interleaves the
-        backend: quant_sim) {         #   data encoding L times (§Fase 69.c)
+        backend: quant_sim) { #   data encoding L times (v2.23.0)
       let surrogate = <continuous-carrier>   # bind the carrier (a Tensor)
       yield surrogate                        # collapse → the ⟨observable⟩ expectation
   }
@@ -88,7 +88,7 @@ flow Classify(embedding: Tensor) -> String {
 The other header attributes (all optional, order-free, in the parens):
 `observable:`, `qubits:`, `depth:`, `bandwidth:`, `reupload:`, `backend:`.
 
-### `reupload:` — data re-uploading layers (header attribute, §Fase 69.c)
+### `reupload:` — data re-uploading layers (header attribute, v2.23.0)
 
 `reupload: L` interleaves the carrier encoding **L times** through the
 circuit instead of once. `L = 1` (the default when omitted) is plain
@@ -151,7 +151,7 @@ shielded, and VRAM-quota'd per tenant.
   compile error (enterprise lifts it).
 - **`axon-E0784`** — header validity: the `observable:` must resolve to a
   declared observable, and `qubits`/`depth`/`bandwidth`/`reupload` must be
-  in range (`reupload >= 1`, §Fase 69.c).
+  in range (`reupload >= 1`, v2.23.0).
 - **`axon-E0787`** — `yield` outside a `quant` block is rejected.
 - **`axon-W005`** — a circuit-depth advisory (soft barren-plateau note).
 

@@ -1,4 +1,4 @@
-//! AXON Runtime — Supply-Chain Attestation (§ESK Fase 6.6)
+//! AXON Runtime — Supply-Chain Attestation (v1.2.0)
 //!
 //! Direct port of `axon/runtime/esk/attestation.py`.
 //!

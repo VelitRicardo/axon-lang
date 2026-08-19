@@ -1,4 +1,4 @@
-//! §Fase 37.x.j (D1) — `StoreConn`: connection-pinned executor wrapper.
+//! v1.32.0 (D1) — `StoreConn`: connection-pinned executor wrapper.
 //!
 //! The Connection-Pinned Flow Execution Contract pins ONE physical
 //! Postgres connection per axonstore for the entire flow lifetime,
@@ -25,7 +25,7 @@
 //! fall through to a `begin()` + introspect-in-tx + retry, all against
 //! the SAME `StoreConn` borrow without ever consuming it.
 //!
-//! # Design choice (C′ per Fase 37.x.j.1 ratification 2026-05-20)
+//! # Design choice (C′ per v1.32.0 ratification 2026-05-20)
 //!
 //! The sqlx-idiomatic generic `E: Executor` pattern (option C) was
 //! considered and rejected because it cannot survive the cache
@@ -44,7 +44,7 @@ use sqlx::postgres::{PgArguments, PgQueryResult, PgRow};
 use sqlx::Connection;
 use sqlx::{PgPool, Postgres, Transaction};
 
-/// §Fase 37.x.j (D1) — A connection-source for `PostgresStoreBackend`
+/// v1.32.0 (D1) — A connection-source for `PostgresStoreBackend`
 /// operations.
 ///
 /// Two variants:
@@ -93,7 +93,7 @@ pub enum StoreConn<'a> {
     /// statement-already-exists collisions (D2 `after_release
     /// DEALLOCATE ALL` per-conn-return). Vulnerable to the unnamed-
     /// statement race against transaction-mode poolers (the D3 class
-    /// that Fase 37.x.j closes for flows that opt in via pinning).
+    /// that v1.32.0 closes for flows that opt in via pinning).
     Pool(&'a PgPool),
     /// 37.x.j path: this `PoolConnection<Postgres>` was acquired ONCE
     /// at flow start by `PostgresStoreBackend::acquire_pin()` and held
@@ -118,7 +118,7 @@ impl<'a> StoreConn<'a> {
     /// Construct a pinned-conn-backed connection source. Used by
     /// `ExecContext.with_store_conn` (sync runner) and
     /// `DispatchCtx.with_store_conn` (async dispatcher) after the
-    /// pin was acquired at flow start. (Sub-fases 37.x.j.4/5.)
+    /// pin was acquired at flow start. (Sub-cycles 37.x.j.4/5.)
     pub fn pinned(conn: &'a mut PoolConnection<Postgres>) -> Self {
         StoreConn::Pinned(conn)
     }
@@ -137,7 +137,7 @@ impl<'a> StoreConn<'a> {
         matches!(self, StoreConn::Pinned(_))
     }
 
-    /// §Fase 37.x.j (D1) — Execute a `SELECT`-style query against this
+    /// v1.32.0 (D1) — Execute a `SELECT`-style query against this
     /// connection source and return every row.
     ///
     /// Internally re-borrows the wrapped pool/conn so the `StoreConn`
@@ -147,7 +147,7 @@ impl<'a> StoreConn<'a> {
     ///
     /// The caller MUST set `.persistent(false)` on the query before
     /// invocation — this is the per-query D1 invariant established in
-    /// Fase 38.x.a and reasserted across the 37.x.j surface.
+    /// v1.31.0 and reasserted across the 37.x.j surface.
     pub async fn fetch_all<'q>(
         &mut self,
         q: sqlx::query::Query<'q, Postgres, PgArguments>,
@@ -158,7 +158,7 @@ impl<'a> StoreConn<'a> {
         }
     }
 
-    /// §Fase 37.x.j (D1) — Execute a `SELECT`-style query expected to
+    /// v1.32.0 (D1) — Execute a `SELECT`-style query expected to
     /// return a single row. The query is consumed.
     ///
     /// Symmetric to [`Self::fetch_all`] / [`Self::execute`]; provided
@@ -173,7 +173,7 @@ impl<'a> StoreConn<'a> {
         }
     }
 
-    /// §Fase 37.x.j (D1) — Execute a non-`SELECT` query (INSERT /
+    /// v1.32.0 (D1) — Execute a non-`SELECT` query (INSERT /
     /// UPDATE / DELETE / DEALLOCATE / etc.) and return the rows-affected
     /// summary. Symmetric to [`Self::fetch_all`].
     pub async fn execute<'q>(
@@ -186,7 +186,7 @@ impl<'a> StoreConn<'a> {
         }
     }
 
-    /// §Fase 37.x.j (D1) — Begin a Postgres transaction on this
+    /// v1.32.0 (D1) — Begin a Postgres transaction on this
     /// connection source.
     ///
     /// On the [`StoreConn::Pool`] variant, sqlx acquires a fresh
@@ -210,7 +210,7 @@ impl<'a> StoreConn<'a> {
     ) -> Result<Transaction<'b, Postgres>, sqlx::Error> {
         match self {
             StoreConn::Pool(p) => p.begin().await,
-            // §Fase 37.x.j (D2) — `Connection::begin` is in scope via
+            // v1.32.0 (D2) — `Connection::begin` is in scope via
             // the `sqlx::Connection` import; without it the deref chain
             // `&mut PoolConnection → &mut PgConnection` would not resolve
             // the `.begin()` method.
@@ -227,7 +227,7 @@ mod tests {
     use super::*;
 
     // The StoreConn enum is dispatch-only; its real test surface lives
-    // in `axon-rs/tests/fase37xj_connection_pinning.rs` where actual
+    // in `axon-rs/tests/connection_pinning.rs` where actual
     // queries run against a real Postgres (or an in-memory mock that
     // exercises the variants). Here we only pin the constructor +
     // discriminator API so a future refactor that drops these helpers

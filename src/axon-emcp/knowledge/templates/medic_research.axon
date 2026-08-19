@@ -99,7 +99,7 @@ flow RecordAdverseEvent(event: AdverseEvent) -> FlowEnvelope<EventReceipt> {
 flow RecordProtocolDeviation(deviation: ProtocolDeviation) -> FlowEnvelope<DeviationReceipt> {
     step Assess {
         given: deviation
-        ask: "Classify the deviation's impact; recommend IRB notification urgency per the §21 CFR 56 thresholds."
+        ask: "Classify the deviation's impact; recommend IRB notification urgency per the v1.13.1 CFR 56 thresholds."
         output: FlowEnvelope<DeviationReceipt>
     }
     return Assess.output

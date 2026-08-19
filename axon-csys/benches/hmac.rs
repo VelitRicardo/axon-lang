@@ -1,4 +1,4 @@
-//! §Fase 25.j — HMAC-SHA256 benchmark vs `hmac::Hmac<Sha256>`.
+//! v1.19.0 — HMAC-SHA256 benchmark vs `hmac::Hmac<Sha256>`.
 //!
 //! Measures throughput of `axon_csys::hmac_sha256` against the
 //! `hmac` crate parametric over `sha2::Sha256`. Both back onto the

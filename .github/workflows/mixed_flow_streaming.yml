@@ -1,0 +1,179 @@
+name: v1.31.0 — Mixed-Flow Streaming Integrity
+
+# v1.31.0 (D6, D5) — Dedicated CI workflow exercising the full
+# mixed-flow streaming surface on every PR + master push. D1–D6
+# ratificadas 2026-05-17; this workflow locks the contract — the
+# exactly-one-terminator wire invariant, `in_memory` as a first-class
+# declarable `axonstore` backend, the `retrieve → step → persist`
+# agent shape behind a streaming `axonendpoint`, the streaming-path
+# data-flow integrity, and the D1 property/fuzz pass — at PR time so
+# the gap report's defect class (a mixed agent flow that streams a
+# malformed double-terminator wire, has no test, and cannot run
+# without a live Postgres) can never regress into a release.
+#
+# Four parallel lanes:
+#
+#   1. rust-frontend — `in_memory` as a declarable `axonstore`
+#      backend: the `VALID_STORE_BACKENDS` catalog add (36.x.b/D2),
+#      `connection:`-optional, the SQL backends still valid, an
+#      unknown backend still rejected, the full agent flow compiles.
+#
+#   2. rust-runtime — every runtime surface end-to-end through the
+#      real streaming dispatcher: the diagnostic anchor (36.x.a),
+#      the `in_memory` runtime backend + canonical agent flow
+#      (36.x.b), the mixed-flow streaming integration pack — the
+#      founder's exact `ChatFlow` shape included (36.x.d), and the
+#      data-flow integrity audit — `${interpolation}` threads a
+#      `retrieve` alias and a `step` output across the streaming
+#      path (36.x.e).
+#
+#   3. fuzz-d1 — the 600-iteration deterministic property pass over
+#      `run_streaming_via_dispatcher`: exactly one terminator
+#      (`FlowComplete` XOR `FlowError`) for every flow shape, every
+#      outcome — NEVER a double terminator (the core D1 invariant).
+#
+# 4. regression — v1.24.0/34 streaming surfaces v1.31.0 touches
+#      (the streaming producer, the streaming-tool dispatch path,
+#      the enforcement-summary + metadata population, the unified
+#      stream handler). D5 absolute: the exactly-one-terminator gate
+#      + the streaming-path data-flow fix must not regress any prior
+#      streaming wire.
+
+on:
+  push:
+    branches: [master]
+    tags: ["v*"]
+  pull_request:
+    branches: [master]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  # ── 1. Frontend lane: `in_memory` as a declarable backend ───────────
+  rust-frontend:
+    name: Rust frontend — in_memory axonstore backend (v1.31.0/D2)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry and build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            axon-frontend/target
+          key: ${{ runner.os }}-cargo-mixed-flow-streaming-frontend-${{ hashFiles('axon-frontend/Cargo.lock', 'axon-frontend/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-mixed-flow-streaming-frontend-
+
+      - name: "v1.31.0 — `backend: in_memory` type-checks (catalog + connection-optional)"
+        working-directory: axon-frontend
+        run: cargo test --test in_memory_store -- --nocapture
+
+  # ── 2. Runtime lane: full mixed-flow streaming surface ──────────────
+  rust-runtime:
+    name: Rust runtime — full v1.31.0 mixed-flow streaming surface
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry and build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            axon-rs/target
+          key: ${{ runner.os }}-cargo-mixed-flow-streaming-runtime-${{ hashFiles('axon-rs/Cargo.lock', 'axon-rs/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-mixed-flow-streaming-runtime-
+
+      - name: v1.31.0 — mixed-flow streaming diagnostic anchor
+        working-directory: axon-rs
+        run: cargo test --test mixed_flow_streaming_diagnostic -- --nocapture
+
+      - name: v1.31.0 — in_memory runtime backend + canonical agent flow
+        working-directory: axon-rs
+        run: cargo test --test in_memory_store -- --nocapture
+
+      - name: v1.31.0 — mixed-flow streaming integration (the founder's ChatFlow shape)
+        working-directory: axon-rs
+        run: cargo test --test mixed_flow_streaming -- --nocapture
+
+      - name: v1.31.0 — streaming-path data-flow integrity audit
+        working-directory: axon-rs
+        run: cargo test --test data_flow_integrity -- --nocapture
+
+  # ── 3. D1 fuzz lane: the exactly-one-terminator property pass ───────
+  fuzz-d1:
+    name: v1.31.0 — exactly-one-terminator D1 fuzz (600 iters)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry and build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            axon-rs/target
+          key: ${{ runner.os }}-cargo-mixed-flow-streaming-fuzz-${{ hashFiles('axon-rs/Cargo.lock', 'axon-rs/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-mixed-flow-streaming-fuzz-
+
+      - name: v1.31.0 — terminator fuzz (never two, always one when not cancelled)
+        working-directory: axon-rs
+        run: cargo test --test terminator_fuzz -- --nocapture
+
+  # ── 4. Regression lane: D5 — no prior streaming surface regresses ───
+  #
+  # v1.31.0 gates `run_streaming_via_dispatcher`'s post-loop
+  # `FlowComplete` and fixes the streaming-path data-flow. D5 is
+  # absolute — every v1.24.0/34 streaming wire must be preserved. This
+  # lane pins the streaming-tool dispatch path, the enforcement-summary
+  # + metadata population, and the unified stream handler at PR time.
+  regression:
+    name: v1.24.0/34 streaming regression (D5 — v1.31.0 must not regress)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry and build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            axon-rs/target
+          key: ${{ runner.os }}-cargo-mixed-flow-streaming-regression-${{ hashFiles('axon-rs/Cargo.lock', 'axon-rs/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-mixed-flow-streaming-regression-
+
+      - name: v1.24.0 streaming producer + stream-effect layer
+        working-directory: axon-rs
+        run: |
+          cargo test --test stub_steps_executed_anchor -- --nocapture
+          cargo test --test stream_effect_layer -- --nocapture
+          cargo test --test default_on_and_tool_call -- --nocapture
+
+      - name: v1.24.0/34 streaming-tool path — enforcement summary + metadata + unified handler
+        working-directory: axon-rs
+        run: |
+          cargo test --test enforcer_activation -- --nocapture
+          cargo test --test dialect_metadata_population -- --nocapture
+          cargo test --test unified_stream_handler_diagnostic -- --nocapture

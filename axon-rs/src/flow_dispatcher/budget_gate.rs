@@ -1,4 +1,4 @@
-//! §Fase 114.a — **the budget gate, in ONE place, on EVERY tool path.**
+//! v2.69.0 — **the budget gate, in ONE place, on EVERY tool path.**
 //!
 //! # The live bug this closes
 //!
@@ -7,7 +7,7 @@
 //! tumbling window, fail-closed, with `on_exhausted ∈ {block, defer, shed}`
 //! honoured.
 //!
-//! Until §114.a it was wired to **exactly one** dispatch site —
+//! Until v2.69.0 it was wired to **exactly one** dispatch site —
 //! `pure_shape::run_step_streaming_tool` — which you reach only if **all three**
 //! hold:
 //!
@@ -31,7 +31,7 @@
 //! # Why this is a module and not a copy-paste
 //!
 //! The obvious fix is to paste the gate into `lambda_tools` too. That would make
-//! **two copies of one law** — and §113 established what that costs: the key-shape
+//! **two copies of one law** — and v2.67.0 established what that costs: the key-shape
 //! check for `axon-T850` had been inlined at three sites, and *three copies of a
 //! law is how the islands happened*. The copies drift, and the one nobody looks at
 //! quietly stops meaning anything.
@@ -54,7 +54,7 @@ pub enum BudgetGrant {
     /// The token was consumed (or no budget governs this tool). **Proceed.**
     ///
     /// An unbudgeted tool is granted unconditionally — byte-identical to
-    /// pre-§72. A budget you did not declare cannot deny you.
+    /// pre-v2.28.0. A budget you did not declare cannot deny you.
     Granted,
     /// `on_exhausted: shed` — best-effort. **The call is NOT made**, but the flow
     /// continues: the step completes with empty output.
@@ -77,7 +77,7 @@ pub enum BudgetGrant {
 pub fn charge(ctx: &DispatchCtx, tool_name: &str) -> Result<BudgetGrant, DispatchError> {
     let Some(budget) = &ctx.budget else {
         // No budget declared for this program. Unbudgeted tools are granted
-        // unconditionally — the §72 doctrine: a budget you did not write cannot
+        // unconditionally — the v2.28.0 doctrine: a budget you did not write cannot
         // deny you.
         return Ok(BudgetGrant::Granted);
     };

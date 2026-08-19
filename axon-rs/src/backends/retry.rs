@@ -1,4 +1,4 @@
-//! Retry policy for native Rust LLM backends — Fase 24.b.
+//! Retry policy for native Rust LLM backends — v1.18.0.
 //!
 //! Mirror of the v1.16.1 Python `_call_with_retry` policy in
 //! `axon.server.model_clients`. The transport layer retries on:

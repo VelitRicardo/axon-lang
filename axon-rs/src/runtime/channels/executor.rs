@@ -1,7 +1,7 @@
-//! AXON Runtime — Rust executor integration for typed channels (Fase 13.l).
+//! AXON Runtime — Rust executor integration for typed channels (v1.6.0).
 //!
 //! The Python side (`axon/runtime/executor.py`) gained four dispatch
-//! branches in Fase 13.i + 13.j (`emit_apply` / `publish_apply` /
+//! branches in v1.6.0 + v1.6.0 (`emit_apply` / `publish_apply` /
 //! `discover_apply` / `listen_apply`) so a flow's channel surface
 //! executes end-to-end on the Python interpreter. The Rust crate
 //! exposed `TypedEventBus` standalone in 13.f.2, but a Rust-native
@@ -219,7 +219,7 @@ impl RunContext {
         // the next acquire — temporary `if let Some(_) = lock().get(_)`
         // patterns previously kept guards alive across the whole
         // if-else chain, which deadlocked the error-path acquire of
-        // the same locks. Fixed (Fase 13.l).
+        // the same locks. Fixed (v1.6.0).
         let from_handles = {
             let dh = self.discovered_handles.lock().unwrap();
             dh.get(head).cloned()

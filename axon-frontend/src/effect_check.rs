@@ -1,7 +1,7 @@
-//! §Fase 120 — the static effect discipline: **D9 exhaustiveness**, the
-//! resolution diagnostics of **D120.2**, and the clause-scope law.
+//! v2.87.0 — the static effect discipline: **D9 exhaustiveness**, the
+//! resolution diagnostics of **the design decision**, and the clause-scope law.
 //!
-//! `fase_23` D9, verbatim:
+//! `the design plan` D9, verbatim:
 //!
 //! > Any `perform Effect.Op(...)` not discharged by an enclosing
 //! > `handle Effect { ... }` before reaching the top-level run statement is a
@@ -9,7 +9,7 @@
 //!
 //! # Why this is INTERPROCEDURAL, and why that is not gold-plating
 //!
-//! The canonical program `fase_23` §3.1 publishes performs in one place and
+//! The canonical program `the design plan` section 3.1 publishes performs in one place and
 //! handles in another:
 //!
 //! ```text
@@ -51,7 +51,7 @@
 //! # What this module does NOT do
 //!
 //! **D11 (effect-row polymorphism) and D1 (operation polymorphism) are out of
-//! scope for §120** and are recorded as such rather than half-built. Rows here
+//! scope for v2.87.0** and are recorded as such rather than half-built. Rows here
 //! are CLOSED sets of concrete effect names — enough for exhaustiveness, which
 //! is what makes `perform` safe. `ε`-variables over step signatures are a
 //! separate piece of type-checker work.
@@ -100,7 +100,7 @@ struct RowCtx<'c> {
 impl RowCtx<'_> {
     /// Which effect does this site raise?
     ///
-    /// **D9 must see through the BARE form.** `fase_23` §3.1 publishes
+    /// **D9 must see through the BARE form.** `the design plan` section 3.1 publishes
     /// `perform Emit(response.token)`, and reading `PerformStep::effect_name`
     /// straight off the AST returns `None` for it — the resolution happens in
     /// the IR generator, downstream of here. Skipping unresolved sites would
@@ -141,7 +141,7 @@ impl<'a> EffectChecker<'a> {
         }
     }
 
-    /// Run every §120 static law and return the diagnostics, in source order.
+    /// Run every v2.87.0 static law and return the diagnostics, in source order.
     pub fn check(mut self) -> Vec<EffectDiagnostic> {
         // Laws that do not depend on the call graph: resolution, arity,
         // clause scope, handler well-formedness. Reported once, at their site.
@@ -374,7 +374,7 @@ impl<'a> EffectChecker<'a> {
                 self.diagnostics.push(EffectDiagnostic {
                     message: format!(
                         "axon-T968 clause `{}` invokes `resume` {straight_line_resumes} times \
-                         on one path. Continuations are ONE-SHOT (fase_23 D2): the runtime \
+                         on one path. Continuations are ONE-SHOT (the design plan D2): the runtime \
                          consumes the captured continuation on the first `resume` and does \
                          not clone it, so a second call has nothing to resume. Multi-shot \
                          resumption (backtracking, non-determinism) is deliberately not \
@@ -395,7 +395,7 @@ impl<'a> EffectChecker<'a> {
         frames.pop();
     }
 
-    /// D120.2 — resolution and membership at one `perform` / `forward` site.
+    /// the design decision — resolution and membership at one `perform` / `forward` site.
     fn check_perform_site(&mut self, p: &PerformStep, verb: &str) {
         match self.catalog.resolve_site(p.effect_name.as_deref(), &p.operation_name) {
             OpResolution::Ambiguous(owners) => {
@@ -706,7 +706,7 @@ impl<'a> EffectChecker<'a> {
             self.diagnostics.push(EffectDiagnostic {
                 message: format!(
                     "axon-T966 {entry} reaches a `perform` of effect '{effect}' that NO \
-                     enclosing `handle` discharges (raised at line {}, via {}). fase_23 D9: \
+                     enclosing `handle` discharges (raised at line {}, via {}). the design plan D9: \
                      an undischarged effect is a COMPILE error — there is no runtime \
                      fallback, because a `perform` with no handler has nowhere to yield to \
                      and the program would have deployed before anyone found out. Wrap the \

@@ -24,7 +24,7 @@ persona ChatHost {
 }
 
 tool ChatBackend {
-    // LLM-routed: the tool IS the model. No `provider:` (§114.b).
+    // LLM-routed: the tool IS the model. No `provider:` (v2.69.0).
     effects:  <network, stream:drop_oldest>
     timeout:  60s
 }

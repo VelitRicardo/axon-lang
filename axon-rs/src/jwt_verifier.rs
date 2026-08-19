@@ -1,6 +1,6 @@
 //! JWT signature verification + JWKS client.
 //!
-//! Closes the §Fase 10.e gap where `tenant.rs` previously extracted
+//! Closes the v1.4.0 gap where `tenant.rs` previously extracted
 //! `tenant_id` from the payload without checking the signature.
 //!
 //! Wire contract (must match Python `axon_enterprise.jwt_issuer`):
@@ -315,7 +315,7 @@ impl JwtVerifier {
 mod tests {
     use super::*;
 
-    /// §Fase 119.i — serialises the two env-reading tests.
+    /// v2.83.0 — serialises the two env-reading tests.
     ///
     /// The environment is PROCESS-GLOBAL and these two tests write opposite
     /// values into the same variable: one removes `AXON_JWT_JWKS_URL` to prove

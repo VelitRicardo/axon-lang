@@ -3,17 +3,17 @@ name: publish
 summary: Capability extrusion — publishes a shield-gated channel for discovery; under a signing shield it declares the channel for signed webhook egress.
 category: wire
 top_level: false
-since: Fase 13
+since: v1.6.0
 grammar: |
-  # Flow-body form (Publish-Ext, paper §4.3):
+  # Flow-body form (Publish-Ext, paper section 4.3):
   publish <ChannelRef> within <ShieldRef>
 ---
 
 # `publish`
 
 `publish` is **capability extrusion** (Publish-Ext, π-calculus
-paper §4.3): it makes a shield-gated channel discoverable —
-`discover` imports it under a local alias. Since §77 it is also
+paper section 4.3): it makes a shield-gated channel discoverable —
+`discover` imports it under a local alias. Since v2.34.0 it is also
 the **egress declaration**: publishing a channel `within` a
 shield that declares `sign:` marks the channel's durable events
 for **signed external delivery** (webhooks).
@@ -44,9 +44,9 @@ flow CompleteSkill(task_id: String) -> Unit {
 
 `publish C within S` binds the capability so a later
 `discover C as alias` resolves the shield reference. In-process
-only; nothing leaves the runtime. Byte-identical to pre-§77.
+only; nothing leaves the runtime. Byte-identical to pre-v2.34.0.
 
-### Egress declaration (signing shield, §77)
+### Egress declaration (signing shield, v2.34.0)
 
 When shield `S` declares `sign:`:
 

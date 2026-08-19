@@ -1,4 +1,4 @@
-//! §Fase 33.x.b + 33.x.c — Streaming execution plan extraction +
+//! v1.24.0 — Streaming execution plan extraction +
 //! unified `.axon` source compilation pipeline.
 //!
 //! Builds a streaming-shaped execution plan from `.axon` source for
@@ -47,7 +47,7 @@ use crate::stream_effect::BackpressurePolicy;
 use crate::stream_effect_dispatcher::resolve_stream_effect_for_step;
 
 // ────────────────────────────────────────────────────────────────────
-//  §33.x.c — Shared source-compilation pipeline
+// v1.24.0 — Shared source-compilation pipeline
 // ────────────────────────────────────────────────────────────────────
 
 /// Compile an `.axon` source string into its AST [`crate::ast::Program`]
@@ -69,7 +69,7 @@ use crate::stream_effect_dispatcher::resolve_stream_effect_for_step;
 ///
 /// # Performance
 ///
-/// This is the canonical source-compilation entry point on the Fase
+/// This is the canonical source-compilation entry point on the cycle
 /// 33.x.b production async streaming path (called once per
 /// flow-invocation). The legacy `axon_server.rs` call sites still
 /// inline their own pipelines; 33.x.i (mono-file `crate::backend`
@@ -166,7 +166,7 @@ pub fn ir_flow_node_kind(node: &IRFlowNode) -> &'static str {
         IRFlowNode::Ingest(_) => "ingest",
         IRFlowNode::ShieldApply(_) => "shield_apply",
         IRFlowNode::Stream(_) => "stream_block",
-        // §Fase 120 — the algebraic-effect constructs. These slugs are the ones
+        // v2.87.0 — the algebraic-effect constructs. These slugs are the ones
         // `effect_handlers` puts on the wire as `step_type`, so an adopter
         // reading an SSE trace sees the same names their source uses.
         IRFlowNode::Handle(_) => "handle",
@@ -181,16 +181,16 @@ pub fn ir_flow_node_kind(node: &IRFlowNode) -> &'static str {
         IRFlowNode::OtsApply(_) => "ots_apply",
         IRFlowNode::MandateApply(_) => "mandate_apply",
         IRFlowNode::ComputeApply(_) => "compute_apply",
-        // §Fase 119.m.3 — a NEW wire slug. Additive: no pre-§119.m program can
+        // v2.83.0 — a NEW wire slug. Additive: no pre-v2.83.0 program can
         // emit it, so every existing flow's wire shape is byte-identical (D4).
         IRFlowNode::AgentCall(_) => "agent_call",
         IRFlowNode::Listen(_) => "listen",
         IRFlowNode::DaemonStep(_) => "daemon_step",
         IRFlowNode::Emit(_) => "emit",
-        // §Fase 92.b — ephemeral-credential minting. Same step_type string
+        // v2.46.0 — ephemeral-credential minting. Same step_type string
         // as `runner::extract_step_info` (drift-gated).
         IRFlowNode::Mint(_) => "mint",
-        // §Fase 94.b — mediated secret renewal. Same step_type string as
+        // v2.48.0 — mediated secret renewal. Same step_type string as
         // `runner::extract_step_info` (drift-gated).
         IRFlowNode::Rotate(_) => "rotate",
         IRFlowNode::Publish(_) => "publish",
@@ -200,15 +200,15 @@ pub fn ir_flow_node_kind(node: &IRFlowNode) -> &'static str {
         IRFlowNode::Mutate(_) => "mutate",
         IRFlowNode::Purge(_) => "purge",
         IRFlowNode::Transact(_) => "transact",
-        // §Fase 88.a — the `warden` adversarial-analysis block. Same step_type
+        // v2.43.0 — the `warden` adversarial-analysis block. Same step_type
         // string as `runner::extract_step_info` below (drift-gated).
         IRFlowNode::Warden(_) => "warden",
-        // §Fase 51.a — the `quant` cognitive block. Same step_type string as
+        // v2.4.0 — the `quant` cognitive block. Same step_type string as
         // `runner::extract_step_info` below (drift-gated).
         IRFlowNode::Quant(_) => "quant",
-        // §Fase 51.d.2 — the `yield` measurement point.
+        // v2.4.0 — the `yield` measurement point.
         IRFlowNode::Yield(_) => "yield",
-        // §Fase 52.c — `run <Flow>(args)` flow-step.
+        // v2.4.0 — `run <Flow>(args)` flow-step.
         IRFlowNode::Run(_) => "run",
     }
 }
@@ -313,7 +313,7 @@ pub struct StreamingStep {
     /// step doesn't `apply:` a tool with a stream effect.
     /// Activated by 33.x.d's `StreamPolicyEnforcer` wrap; recorded
     /// today in `axon.complete.stream_policies` for audit
-    /// correlation (Fase 33.e).
+    /// correlation (v1.24.0).
     pub effect_policy: Option<BackpressurePolicy>,
 }
 
@@ -326,12 +326,12 @@ pub struct StreamingExecutionPlan {
     /// resolution upstream of plan construction).
     pub backend_name: String,
     /// Composed system prompt — persona + context + anchor
-    /// instructions (Fase 11 stack). Same shape as the sync
+    /// instructions (v1.4.0 stack). Same shape as the sync
     /// `runner::build_system_prompt` output.
     pub system_prompt: String,
     /// Ordered step list. Empty plan == empty flow (rare but valid
     /// per IR grammar; the streaming path emits FlowStart +
-    /// FlowComplete with `steps_executed: 0` per Fase 33.b).
+    /// FlowComplete with `steps_executed: 0` per v1.24.0).
     pub steps: Vec<StreamingStep>,
 }
 
@@ -351,7 +351,7 @@ pub enum PlanError {
     IrGeneration(String),
     /// The requested flow_name was not found in the IR's flow list.
     FlowNotFound { flow_name: String, available: Vec<String> },
-    // §Fase 33.z.e — `LegacyOrchestrationRequired` variant DELETED
+    // v1.24.0 — `LegacyOrchestrationRequired` variant DELETED
     // (the 33.y.l `#[deprecated]` retirement cycle completes here).
     // The 33.y per-IRFlowNode async dispatcher (45/45 graduation)
     // covers every IRFlowNode variant the planner used to reject.
@@ -370,21 +370,21 @@ pub enum PlanFallback {
     /// fires on FINAL flow output, which is incompatible with
     /// per-token streaming until per-chunk anchor checking lands.
     AnchorConstraintsPresent,
-    /// Flow uses `apply: <lambda>` (Fase 15 lambda data apply).
+    /// Flow uses `apply: <lambda>` (v1.10.0 lambda data apply).
     /// Lambda apply runs after the step's LLM response; per-chunk
-    /// lambda application is a future fase.
+    /// lambda application is a future cycle.
     LambdaApplyPresent,
-    /// Flow uses `let X = ...` SSA bindings (Fase 17). Binding
+    /// Flow uses `let X = ...` SSA bindings (v1.12.0). Binding
     /// resolution runs between steps; streaming path doesn't yet
     /// thread the binding context through the per-chunk loop.
     LetBindingPresent,
     /// Flow uses `use_tool` mid-step (function calling). Mid-stream
-    /// tool calls are explicit Fase 33-followon-2 scope.
+    /// tool calls are explicit v1.24.0-followon-2 scope.
     UseToolPresent,
-    /// Flow contains a `Hibernate` step (Fase 19 CPS). Hibernation
+    /// Flow contains a `Hibernate` step (v1.14.0 CPS). Hibernation
     /// requires the synchronous CPS handler stack.
     HibernatePresent,
-    /// Flow contains a `Drill` or `Trail` step (Fase 19 PIX). PIX
+    /// Flow contains a `Drill` or `Trail` step (v1.14.0 PIX). PIX
     /// trace state is captured on the synchronous path.
     PixPresent,
     /// Flow contains an `IRFlowNode` variant that 33.x.b does not
@@ -392,7 +392,7 @@ pub enum PlanFallback {
     /// ShieldApply / etc.). 33.x.b ships the canonical
     /// `step S { ask: "..." [apply: tool] }` shape only; subsequent
     /// 33.x followups extend coverage per founder-sequenced
-    /// sub-fases. The legacy synchronous path keeps working for
+    /// steps. The legacy synchronous path keeps working for
     /// these flows — there is no functional regression.
     UnsupportedNode {
         /// Stable kind discriminant — e.g. `"conditional"`,
@@ -427,7 +427,7 @@ impl PlanFallback {
 /// Pipeline: lex → parse → type-check → IR generation → walk the
 /// IR's runs for `flow_name` → emit one [`StreamingStep`] per step.
 ///
-/// §Fase 33.z.e — Returns `Err(PlanError::*)` only for hard compile
+/// v1.24.0 — Returns `Err(PlanError::*)` only for hard compile
 /// failures (Parse / TypeCheck / IrGeneration / FlowNotFound). The
 /// 33.y.l `LegacyOrchestrationRequired` variant has been DELETED;
 /// every IRFlowNode variant the planner produces is dispatchable
@@ -438,7 +438,7 @@ pub fn build_streaming_plan(
     flow_name: &str,
     backend_name: &str,
 ) -> Result<StreamingExecutionPlan, PlanError> {
-    // §33.x.c — delegated to the unified `compile_source_to_ir`
+    // v1.24.0 — delegated to the unified `compile_source_to_ir`
     // helper. Both the AST and IR forms are returned so
     // `build_plan_from_ir` can resolve effect rows from the AST
     // without re-walking the parser pipeline.
@@ -449,10 +449,10 @@ pub fn build_streaming_plan(
 /// Build a plan from an already-typed IR. Useful for tests that
 /// drive the planner with hand-constructed IR (no source parse).
 ///
-/// §Fase 33.z.e — the `unsupported_feature_reason` rejection step
+/// v1.24.0 — the `unsupported_feature_reason` rejection step
 /// has been DELETED in lockstep with `PlanError::LegacyOrchestrationRequired`
 /// + the v1.26.0 legacy path 33.z.e deleted. The per-IRFlowNode dispatcher
-/// (Fase 33.y 45/45) handles every IRFlowNode variant; the planner
+/// (v1.24.0 45/45) handles every IRFlowNode variant; the planner
 /// no longer needs to gate against a closed-deferred-catalog. Any
 /// shape the planner could compile pre-33.z.e is dispatchable
 /// post-33.z.e via `flow_dispatcher::dispatch_node`.
@@ -462,7 +462,7 @@ pub fn build_plan_from_ir(
     flow_name: &str,
     backend_name: &str,
 ) -> Result<StreamingExecutionPlan, PlanError> {
-    // 5. Locate the flow on the IR side. §33.x.c uses the public
+    // 5. Locate the flow on the IR side. v1.24.0 uses the public
     //    `find_ir_flow_by_name` helper so the diagnostic message
     //    shape is shared across callers.
     let flow = find_ir_flow_by_name(ir, flow_name)?;
@@ -482,7 +482,7 @@ pub fn build_plan_from_ir(
             available: ir.flows.iter().map(|f| f.name.clone()).collect(),
         })?;
 
-    // §Fase 33.z.e — `unsupported_feature_reason` gate retired.
+    // v1.24.0 — `unsupported_feature_reason` gate retired.
     // The dispatcher path handles every IRFlowNode variant; no
     // pre-flight rejection needed. The `StreamingExecutionPlan`
     // produced below carries only canonical Step variants by
@@ -492,7 +492,7 @@ pub fn build_plan_from_ir(
     // + system-prompt composition + per-step effect policy
     // resolution.
 
-    // 7. System prompt — §33.x.c uses the public composer with
+    // 7. System prompt — v1.24.0 uses the public composer with
     //    `backend_tag: None`. The streaming wire's
     //    `axon.complete.backend` field already carries the backend
     //    name so the prompt suffix is redundant on this path
@@ -533,12 +533,12 @@ pub fn build_plan_from_ir(
     })
 }
 
-// §33.x.c — The private `ir_flow_node_kind` was lifted to the
+// v1.24.0 — The private `ir_flow_node_kind` was lifted to the
 // module's public surface above. The single source of truth for
 // the kind-string mapping lives at `flow_plan::ir_flow_node_kind`
 // and is drift-gated by `tests::ir_flow_node_kind_runner_drift`.
 
-// §33.x.c — `compose_system_prompt` was lifted to public
+// v1.24.0 — `compose_system_prompt` was lifted to public
 // `compose_system_prompt_public` above. It accepts an optional
 // `backend_tag` so the sync CLI path can opt into the canonical
 // `[Backend: foo | AXON x.y.z]` suffix during 33.x.i migration.
@@ -718,7 +718,7 @@ mod tests {
         assert_eq!(plan.flow_name, "Empty");
     }
 
-    // ── §33.x.c — Public helper tests ───────────────────────────────
+    // ── v1.24.0 — Public helper tests ───────────────────────────────
 
     #[test]
     fn compile_source_to_ir_returns_program_and_ir_for_valid_source() {
@@ -754,12 +754,12 @@ mod tests {
 
     #[test]
     fn compile_source_to_ir_surfaces_type_check_error() {
-        // §Fase 28 — `axonendpoint method: YEET` is rejected at
+        // v1.20.0 — `axonendpoint method: YEET` is rejected at
         // parse time. Use a different shape that parses cleanly
         // but fails type-check: undefined flow reference.
         let src = "axonendpoint Bad { method: POST path: \"/x\" execute: NonexistentFlow public: true }";
         let err = compile_source_to_ir(src, "test.axon").unwrap_err();
-        // Either parser rejected it (post-Fase 28 hardening may
+        // Either parser rejected it (post-v1.20.0 hardening may
         // catch undefined references at parse time) or the type
         // checker did — both are valid PlanError variants.
         assert!(matches!(err, PlanError::Parse(_) | PlanError::TypeCheck(_)));
@@ -891,7 +891,7 @@ mod tests {
 
     #[test]
     fn ir_flow_node_kind_runner_drift() {
-        // §33.x.c drift gate: `flow_plan::ir_flow_node_kind` is the
+        // v1.24.0 drift gate: `flow_plan::ir_flow_node_kind` is the
         // single source of truth for IRFlowNode kind slugs. The
         // legacy `runner.rs::extract_step_info` produces a
         // `step_type` string for each variant that downstream

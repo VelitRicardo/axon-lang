@@ -48,7 +48,7 @@ pub fn run_compile(
         }
     };
 
-    // ── 1.b §Fase 115.g — a source with imports compiles through the
+    // ── 1.b v2.76.0 — a source with imports compiles through the
     // EMS: resolve → interfaces → ECC → link → ONE IR over the linked
     // program (module provenance included). The emitted JSON is the
     // deployable multi-module artifact.
@@ -140,13 +140,13 @@ pub fn run_compile(
     // ── 5. Generate IR ───────────────────────────────────────────
     let ir_program = IRGenerator::new().generate(&program);
 
-    // ── 6+7. Serialize + emit (shared with the §115 EMS path) ────
+    // ── 6+7. Serialize + emit (shared with the v2.76.0 EMS path) ────
     emit_ir_json(&ir_program, file, backend, output, stdout, use_color)
 }
 
 /// Steps 6–7 of `axon compile`: attach `_meta`, serialize, and write to
 /// stdout or the output file. Shared by the single-file path and the
-/// §Fase 115 multi-module path (one emission, one shape).
+/// v2.76.0 multi-module path (one emission, one shape).
 fn emit_ir_json(
     ir_program: &axon_frontend::ir_nodes::IRProgram,
     file: &str,

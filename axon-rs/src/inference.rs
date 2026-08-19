@@ -1,16 +1,16 @@
-//! §Fase 87.f — the `InferenceBackend` port + the OSS reference active-inference
+//! v2.42.0 — the `InferenceBackend` port + the OSS reference active-inference
 //! engine (classical, honest).
 //!
 //! This is the control loop of a `savant`: it turns the mandate's epistemic gap
 //! into a stream of self-generated actions by minimising **Expected Free Energy
-//! (EFE)** over candidate policies (paper §3). The reference here is a small,
+//! (EFE)** over candidate policies (paper section 3). The reference here is a small,
 //! exact, *classical* implementation:
 //!
 //!   - The belief state is a probability vector `q` over hypotheses (a classical
 //!     mixed state / Bayesian model average — **NOT** quantum superposition, and
-//!     claiming NO computational advantage, per the paper §3.3 revision and the
-//!     transversal `no_unwitnessed_advantage` law, §69). The enterprise engine
-//!     (§87.h) may mount a density-matrix representation behind this same trait,
+//! claiming NO computational advantage, per the paper section 3.3 revision and the
+//! transversal `no_unwitnessed_advantage` law, v2.23.0). The enterprise engine
+//! (v2.42.0) may mount a density-matrix representation behind this same trait,
 //!     but any convergence-advantage claim there must carry a `witness`.
 //!   - Perception = Bayesian belief update (the discrete analogue of minimising
 //!     Variational Free Energy).
@@ -87,7 +87,7 @@ pub struct Policy {
 }
 
 /// The active-inference port (charter split R1). Enterprise mounts a
-/// density-matrix / QuIDD engine (§87.h) behind this trait, witness-gated.
+/// density-matrix / QuIDD engine (v2.42.0) behind this trait, witness-gated.
 pub trait InferenceBackend {
     /// Bayesian belief update: `posteriorᵢ ∝ priorᵢ · likelihoodᵢ`.
     fn update_belief(&self, prior: &[f64], likelihood: &[f64]) -> Vec<f64>;

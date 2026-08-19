@@ -1,4 +1,4 @@
-//! §Fase 112.a — the **source adapter registry**: what an `observe` actually looks at.
+//! v2.67.0 — the **source adapter registry**: what an `observe` actually looks at.
 //!
 //! # Why this exists
 //!
@@ -13,8 +13,8 @@
 //! ```
 //!
 //! Nothing in the language said what a `source` name resolves to, and so nothing
-//! ever resolved one. §111 (F14) found the whole Cognitive-I/O family unreachable;
-//! §112 found that the architecture was complete and only two pieces were missing —
+//! ever resolved one. v2.67.0 (F14) found the whole Cognitive-I/O family unreachable;
+//! v2.67.0 found that the architecture was complete and only two pieces were missing —
 //! a supervisor, and **a `Handler` that actually goes and looks at something.**
 //!
 //! # The defect this replaces
@@ -31,7 +31,7 @@
 //! available, so a supervisor wired to it would have reported perfect health for
 //! everything, forever.
 //!
-//! That is the §111 defect in its purest form, and it is the thing this module
+//! That is the v2.67.0 defect in its purest form, and it is the thing this module
 //! exists to make impossible.
 //!
 //! # The law
@@ -50,7 +50,7 @@
 //! Prometheus / CloudWatch / Datadog behind the same trait, exactly as it does for
 //! `tool_registry` and `shield_registry`. The one adapter OSS *does* ship is
 //! [`ResourceProbeAdapter`] (below), which probes a source that names a **declared
-//! `resource`** — the built-in family ratified in the §112 plan.
+//! `resource`** — the built-in family ratified in the v2.67.0 plan.
 
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock, RwLock};
@@ -174,12 +174,12 @@ pub fn clear_source_adapters() {
 //  The one adapter OSS ships: probe a declared `resource`
 // ────────────────────────────────────────────────────────────────────
 
-/// §112.a — the built-in adapter family (ratified): a `source` that names a
+/// v2.67.0 — the built-in adapter family (ratified): a `source` that names a
 /// **declared `resource`** is probed by reaching that resource's `endpoint`.
 ///
 /// This is the honest OSS default. It uses only what the program already declares
 /// — `resource Db { kind: postgres  endpoint: db.main }` — **resolves that config
-/// key** (§113: the address lives in configuration, never in source — `axon-T944`)
+/// key** (v2.67.0: the address lives in configuration, never in source — `axon-T944`)
 /// and goes to the real address. It reports:
 ///
 /// - `certainty: 1.0` when the endpoint accepts a connection (we reached it and it
@@ -194,7 +194,7 @@ pub fn clear_source_adapters() {
 /// enterprise adapters behind this same trait.
 pub struct ResourceProbeAdapter {
     name: String,
-    /// §Fase 113 — `resource.endpoint` is a **config key** (`axon-T944`), not an
+    /// v2.67.0 — `resource.endpoint` is a **config key** (`axon-T944`), not an
     /// address. Something has to turn it into one, and deciding *where
     /// configuration lives* is not this module's business — that is the port's.
     resolver: std::sync::Arc<dyn crate::resource_resolver::ResourceResolver>,
@@ -209,7 +209,7 @@ impl ResourceProbeAdapter {
         }
     }
 
-    /// §Fase 113 — probe using an explicit resolver: enterprise's per-tenant
+    /// v2.67.0 — probe using an explicit resolver: enterprise's per-tenant
     /// config, or a test's in-memory map.
     pub fn with_resolver(
         name: impl Into<String>,
@@ -223,7 +223,7 @@ impl ResourceProbeAdapter {
 
     /// Resolve the resource's endpoint **key** and reduce it to `host:port`.
     ///
-    /// §Fase 113 — the endpoint is a config key, so it is RESOLVED first. That
+    /// v2.67.0 — the endpoint is a config key, so it is RESOLVED first. That
     /// also *improves the refusal*: where the old code could only say "no
     /// reachable address", this can say **which key is unset** — a failure that
     /// names the knob the operator has to turn instead of one that reads like a
@@ -367,7 +367,7 @@ mod tests {
     /// **The load-bearing law.** An unregistered source resolves to nothing, and
     /// the caller must refuse. There is no default adapter, and there must never
     /// be one: a source nobody registered is UNKNOWN, and reporting unknown as
-    /// healthy is the entire defect §112 exists to end.
+    /// healthy is the entire defect v2.67.0 exists to end.
     ///
     /// NOTE: the registry is a process-global (same shape as `shield_registry`), so
     /// these tests use names nobody else registers rather than clearing it — a
@@ -388,14 +388,14 @@ mod tests {
         assert!(lookup_source_adapter("reg_probe").is_some());
     }
 
-    /// The probe reaches a REAL address. This is the test that separates §112.a
+    /// The probe reaches a REAL address. This is the test that separates v2.67.0
     /// from the `DryRunHandler` it replaces: the certainty is `1.0` because we
     /// **connected**, not because we assumed.
     #[test]
     fn a_reachable_resource_is_observed_because_we_actually_connected() {
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let addr = listener.local_addr().unwrap();
-        // §Fase 113 — the resource names a config KEY; the resolver supplies the
+        // v2.67.0 — the resource names a config KEY; the resolver supplies the
         // address. The probe still opens a real socket to a real listener.
         let r = resource("Db", "postgres", "db.main");
         let resolver = std::sync::Arc::new(
@@ -435,7 +435,7 @@ mod tests {
     /// We refuse to invent an address. A resource whose endpoint gives us nowhere
     /// to go is not probed optimistically — it is refused.
     ///
-    /// §Fase 113 — the endpoint is now a config KEY, so "nowhere to go" has two
+    /// v2.67.0 — the endpoint is now a config KEY, so "nowhere to go" has two
     /// distinct shapes, and telling them apart is the whole improvement:
     /// **the key is unset** (a knob to turn) versus **the key resolves to
     /// something with no host** (a bad value). Both refuse; neither guesses.

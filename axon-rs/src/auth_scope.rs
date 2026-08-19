@@ -1,4 +1,4 @@
-//! §Fase 32.g — Auth scope (capability subset matching) for first-class
+//! v1.23.0 — Auth scope (capability subset matching) for first-class
 //! axonendpoint routes.
 //!
 //! D8 ratificada 2026-05-11. When an axonendpoint declares
@@ -27,7 +27,7 @@
 //!   when JWKS is configured). The unverified-decode path matches the
 //!   existing `tenant_id_from_bearer_unverified` precedent for single-
 //!   tenant / dev installs.
-//! - **Enterprise** (Fase 21 integration surface): capabilities are
+//! - **Enterprise** (v1.13.1 integration surface): capabilities are
 //!   registered + version-introspected via `/.well-known/axon-
 //!   capabilities`; auditors verify the runtime's capability set matches
 //!   the deployed source. Layered on top of this OSS primitive.
@@ -47,7 +47,7 @@
 
 use std::collections::BTreeSet;
 
-// §Fase 118.a — `http::HeaderMap`, not `axum::http::HeaderMap`. Same type: axum
+// v2.81.0 — `http::HeaderMap`, not `axum::http::HeaderMap`. Same type: axum
 // re-exports it. This module is about capability slugs, and its only tie to the
 // web framework was a header type, so naming the real crate lets it stay outside
 // the `server` feature.
@@ -154,11 +154,11 @@ pub fn check_capabilities(declared: &[String], have: &[String]) -> AuthVerdict {
 }
 
 // ════════════════════════════════════════════════════════════════════
-//  §Fase 90.a — canonical capability projection `π` + the grantability
+// v2.45.0 — canonical capability projection `π` + the grantability
 //  law (`every_requirement_is_grantable`).
 //
-//  §89 proved *every boundary declares a guard* (`every_boundary_is_
-//  guarded`, `axon-T890`). §90 proves *every declared guard is
+// v2.44.0 proved *every boundary declares a guard* (`every_boundary_is_
+// guarded`, `axon-T890`). v2.45.0 proves *every declared guard is
 //  satisfiable*: a `requires: [x]` whose `x` no authority can grant is a
 //  dead boundary — a locked door with no fabricable key. This module
 //  supplies the total, injective projection between the two authority
@@ -179,7 +179,7 @@ pub fn check_capabilities(declared: &[String], have: &[String]) -> AuthVerdict {
 //    capability they did not already hold as a permission; `π` only
 //    makes the *representation* of held authority match the
 //    *representation* a boundary requires. No `no_unwitnessed_advantage`
-//    (§69) concern — there is no cognition here, only a total function.
+// (v2.23.0) concern — there is no cognition here, only a total function.
 //  - **COMPUTING** — fail-closed: a permission that does not project to
 //    a valid canonical slug is `NotProjectable` (never silently
 //    dropped), and a fractured namespace (two authorities colliding to
@@ -269,7 +269,7 @@ pub fn project_permission(perm: &str) -> Result<Capability, ProjectionError> {
 /// The image of `π` over a HELD authority set, with the authorities that
 /// did not project surfaced explicitly — never silently dropped.
 ///
-/// §Fase 93.a (`every_granted_authority_projects`). [`build_grantable_set`]
+/// v2.47.0 (`every_granted_authority_projects`). [`build_grantable_set`]
 /// serves the *catalog* side of the law (deploy gate: is a requirement
 /// satisfiable by ANY authority?). This serves the *principal* side: given
 /// the permissions a principal actually holds (built-in role expansion ∪
@@ -344,7 +344,7 @@ pub struct GrantableSet {
 
 impl GrantableSet {
     /// A clean set has no collisions and no unprojectable authorities —
-    /// the precondition the §90.b deploy gate requires before checking
+    /// the precondition the v2.45.0 deploy gate requires before checking
     /// `requires ⊆ grantable`.
     pub fn is_clean(&self) -> bool {
         self.collisions.is_empty() && self.unprojectable.is_empty()
@@ -408,7 +408,7 @@ pub enum GrantabilityVerdict {
 }
 
 /// The grantability law — `requires ⊆ grantable`. A `requires:` scope
-/// absent from the grantable set is a DEAD boundary (§90 Modo-C): it can
+/// absent from the grantable set is a DEAD boundary (v2.45.0 Modo-C): it can
 /// be declared but never satisfied. Total; declaration order preserved
 /// for diagnostic continuity (mirrors [`check_capabilities`]).
 pub fn check_grantable(
@@ -584,10 +584,10 @@ mod tests {
         assert!(!is_valid_capability_slug(""));
     }
 
-    // ── §Fase 90.a — projection `π` + grantability law ──────────────
+    // ── v2.45.0 — projection `π` + grantability law ──────────────
 
     /// The exact RBAC control-plane catalog shape (colon `resource:action`)
-    /// the enterprise projects at mint. Kept in sync by the §90.f drift
+    /// the enterprise projects at mint. Kept in sync by the v2.45.0 drift
     /// gate on the enterprise side; here a representative sample anchors
     /// the projection contract.
     const CATALOG_SAMPLE: &[&str] = &[
@@ -656,7 +656,7 @@ mod tests {
 
     #[test]
     fn build_grantable_set_is_clean_for_disjoint_catalog_plus_reserved() {
-        // The real invariant verified against deployed code (§90 §1):
+        // The real invariant verified against deployed code (v2.45.0 section 1):
         // π(colon catalog) ∩ reserved-dotted = ∅. No `store:platform_*`
         // perm exists, so projecting the catalog + the reserved caps
         // yields no collision.
@@ -713,7 +713,7 @@ mod tests {
         }
     }
 
-    // ── §Fase 93.a — `π` lifted to held-authority sets ──────────────
+    // ── v2.47.0 — `π` lifted to held-authority sets ──────────────
 
     #[test]
     fn project_set_is_total_over_a_clean_held_set() {

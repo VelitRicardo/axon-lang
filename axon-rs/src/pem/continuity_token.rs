@@ -24,12 +24,12 @@
 //! -------------------------
 //! The signer key is a 32-byte random value the adopter rotates on
 //! a schedule that matches their key-rotation policy for
-//! refresh tokens (§10.b). Rotating the signer only affects
+//! refresh tokens (v1.4.0). Rotating the signer only affects
 //! in-flight reconnect tokens; worst-case the client sees a
 //! `ForgedOrRotated` error and re-authenticates via the normal
 //! session-establishment flow.
 //!
-//! §Fase 25.h delegation note
+//! v1.19.0 delegation note
 //! --------------------------
 //! As of 2026-05-08 the HMAC-SHA256 + base64url + hex + constant-
 //! time compare + record-separator parsing primitives all live in
@@ -112,7 +112,7 @@ impl ContinuityToken {
 // ── Signer ───────────────────────────────────────────────────────────
 
 /// Holds the shared secret + signs / verifies tokens. One signer
-/// per process; adopters rotate via the secrets service (§10.f) on
+/// per process; adopters rotate via the secrets service (v1.4.0) on
 /// the cadence they prefer.
 #[derive(Debug, Clone)]
 pub struct ContinuityTokenSigner {
@@ -122,7 +122,7 @@ pub struct ContinuityTokenSigner {
 impl ContinuityTokenSigner {
     /// Wrap an adopter-supplied secret. Accepts any byte length; 32
     /// bytes of CSPRNG output is the recommended size (matches
-    /// §10.e signer-key guidance).
+    /// v1.4.0 signer-key guidance).
     pub fn new(key: impl Into<Vec<u8>>) -> Self {
         ContinuityTokenSigner { key: key.into() }
     }

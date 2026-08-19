@@ -12,7 +12,7 @@
 use crate::ast::*;
 use crate::tokens::{is_declaration_keyword, Token, TokenType, Trivia, TriviaKind};
 
-// Comment token kinds the lexer now emits (Fase 14.a). The parser
+// Comment token kinds the lexer now emits (v1.5.2). The parser
 // filters these out of its working stream — they are materialised into
 // a parallel `Trivia` array indexed by effective-token position, then
 // attached to `Program.declaration_trivia[i]` once each declaration's
@@ -41,7 +41,7 @@ const fn token_to_trivia_kind(tt: &TokenType) -> Option<TriviaKind> {
     }
 }
 
-/// Fase 14.b — write `leading_trivia` and `trailing_trivia` into the
+/// v1.5.2 — write `leading_trivia` and `trailing_trivia` into the
 /// per-struct fields of a `Declaration` variant.
 ///
 /// Mirrors what the Python parser does automatically via its
@@ -50,7 +50,7 @@ const fn token_to_trivia_kind(tt: &TokenType) -> Option<TriviaKind> {
 /// variant is in a single place.
 fn attach_trivia_to_decl(decl: &mut Declaration, leading: Vec<Trivia>, trailing: Vec<Trivia>) {
     match decl {
-        // §Fase 114.a — a top-level `budget` carries its comments like any other
+        // v2.69.0 — a top-level `budget` carries its comments like any other
         // declaration.
         Declaration::Budget(n) => {
             n.leading_trivia = leading;
@@ -76,7 +76,7 @@ fn attach_trivia_to_decl(decl: &mut Declaration, leading: Vec<Trivia>, trailing:
             n.leading_trivia = leading;
             n.trailing_trivia = trailing;
         }
-        // §Fase 120 — an `effect` declaration carries its comments like any peer.
+        // v2.87.0 — an `effect` declaration carries its comments like any peer.
         Declaration::Effect(n) => {
             n.leading_trivia = leading;
             n.trailing_trivia = trailing;
@@ -298,14 +298,14 @@ fn attach_trivia_to_decl(decl: &mut Declaration, leading: Vec<Trivia>, trailing:
 
 // ── Public error type ────────────────────────────────────────────────────────
 
-/// §Fase 28.d — Source-context constants. D4 ratified 2026-05-10:
+/// v1.20.0 — Source-context constants. D4 ratified 2026-05-10:
 /// 2 lines before + 2 lines after the error line. Mirror of the
 /// Python-side `_SOURCE_CONTEXT_LINES_BEFORE` / `_AFTER` so the
 /// rustc-style block has identical shape across stacks.
 pub const SOURCE_CONTEXT_LINES_BEFORE: usize = 2;
 pub const SOURCE_CONTEXT_LINES_AFTER: usize = 2;
 
-/// §Fase 28.d — Rustc-style source-context block for a parse error.
+/// v1.20.0 — Rustc-style source-context block for a parse error.
 ///
 /// Holds a reference to the source text plus the line/column the
 /// error points at. Rendering is lazy — call ``render()`` to format
@@ -395,7 +395,7 @@ pub struct ParseError {
     pub message: String,
     pub line: u32,
     pub column: u32,
-    /// §Fase 28.d — Optional rustc-style source-context block.
+    /// v1.20.0 — Optional rustc-style source-context block.
     /// `None` preserves the legacy single-line shape; populated by
     /// `Parser::with_source` callers (and by `parse_with_recovery`
     /// / `parse` when a source has been attached to the parser).
@@ -405,7 +405,7 @@ pub struct ParseError {
 }
 
 impl ParseError {
-    /// §Fase 28.d — Attach a `SourceSnippet` derived from raw source
+    /// v1.20.0 — Attach a `SourceSnippet` derived from raw source
     /// text and filename. Returns `self` so the call can be chained
     /// at the construction site. No-op when `line == 0`. Idempotent.
     #[must_use]
@@ -437,11 +437,11 @@ impl std::fmt::Display for ParseError {
 
 impl std::error::Error for ParseError {}
 
-// ── §Fase 28.c — Public recovery result ──────────────────────────────────────
+// ── v1.20.0 — Public recovery result ──────────────────────────────────────
 //
-// Mirror of Python's `axon.compiler.parser.ParseResult` (Fase 28.b).
+// Mirror of Python's `axon.compiler.parser.ParseResult` (v1.20.0).
 // The rationale, sync semantics, and test contract are documented in
-// `docs/fase/fase_28_adopter_diagnostic_robustness.md`. The Rust frontend
+// `docs/cycle/adopter_diagnostic_robustness.md`. The Rust frontend
 // must produce structurally identical error lists to the Python parser
 // when handed the same source — that is the cross-stack drift gate
 // (D7 ratified 2026-05-10: byte-identical error lists).
@@ -480,7 +480,7 @@ impl ParseResult {
     }
 }
 
-/// §Fase 28.c — Top-level declaration keywords used as resync points
+/// v1.20.0 — Top-level declaration keywords used as resync points
 /// during error recovery (D2 ratified 2026-05-10). Mirrors the
 /// `_TOP_LEVEL_DECLARATION_KEYWORDS` frozenset on the Python side.
 ///
@@ -524,10 +524,10 @@ const fn is_top_level_decl_kw_for_recovery(tt: &TokenType) -> bool {
             | TokenType::Mandate
             | TokenType::Compute
             | TokenType::Daemon
-            // §Fase 87.a/d — the autonomous research primitive + synth policy.
+            // v2.42.0 — the autonomous research primitive + synth policy.
             | TokenType::Savant
             | TokenType::Synth
-            // §Fase 88.a — the authorization-scope policy declaration.
+            // v2.43.0 — the authorization-scope policy declaration.
             | TokenType::Scope
             | TokenType::AxonStore
             | TokenType::AxonEndpoint
@@ -556,7 +556,7 @@ const fn is_top_level_decl_kw_for_recovery(tt: &TokenType) -> bool {
     )
 }
 
-// ── §Fase 30.b — axonendpoint transport + keepalive closed enums ────────────
+// ── v1.21.0 — axonendpoint transport + keepalive closed enums ────────────
 //
 // D2 ratified 2026-05-10: `transport` is a closed enum
 // {json, sse, ndjson}. D6 ratified: `keepalive` is a closed enum
@@ -570,7 +570,7 @@ const fn is_top_level_decl_kw_for_recovery(tt: &TokenType) -> bool {
 /// type-checker (30.c) so adopter tooling sees one canonical list.
 pub const AXONENDPOINT_TRANSPORT_VALUES: &[&str] = &["json", "sse", "ndjson"];
 
-/// §Fase 33.z.k.b (v1.28.0) — Closed-catalog SSE wire-format
+/// v1.28.0 — Closed-catalog SSE wire-format
 /// dialects. Selected via the parametrized grammar
 /// `transport: sse(<dialect>)`; bare `transport: sse` resolves to
 /// the Q1 default per the flow's algebraic-effect predicate
@@ -619,13 +619,13 @@ pub const AXONENDPOINT_TRANSPORT_DIALECTS: &[&str] =
 /// Adopter-facing acceptable values for `keepalive:` field.
 pub const AXONENDPOINT_KEEPALIVE_VALUES: &[&str] = &["5s", "15s", "30s", "60s"];
 
-/// §Fase 32.b D3 — Closed method enum for `method:` field. Adopter-
+/// v1.23.0 D3 — Closed method enum for `method:` field. Adopter-
 /// declarable methods only; HEAD/OPTIONS/CONNECT/TRACE are
 /// runtime-managed (CORS preflight, etc.) and never declared from
 /// source. Closed enum refuses interpretation drift; smart-suggest
 /// catches near-misses at parse time.
 ///
-/// §Fase 107.a — `QUERY` (RFC 10008, Proposed Standard, June 2026): the safe +
+/// v2.62.0 — `QUERY` (RFC 10008, Proposed Standard, June 2026): the safe +
 /// idempotent + cacheable method that CARRIES A REQUEST BODY — the first new HTTP
 /// method in two decades. It carries a LAW, not just a route: `axon-T927` refuses
 /// at compile time a QUERY endpoint whose flow performs a declared write (the
@@ -635,12 +635,12 @@ pub const AXONENDPOINT_KEEPALIVE_VALUES: &[&str] = &["5s", "15s", "30s", "60s"];
 pub const AXONENDPOINT_METHOD_VALUES: &[&str] =
     &["GET", "POST", "PUT", "DELETE", "PATCH", "QUERY"];
 
-/// §Fase 36.d (D2) — Closed catalog for the `axonendpoint backend:`
+/// v1.31.0 (D2) — Closed catalog for the `axonendpoint backend:`
 /// declaration. The set is `CANONICAL_PROVIDERS ∪ {auto, stub}`:
 ///
 ///   - the seven canonical LLM providers — `anthropic`, `gemini`,
 ///     `glm`, `kimi`, `ollama`, `openai`, `openrouter` — a concrete,
-///     declared backend that rung 2 of the Fase 36 D1 resolution
+/// declared backend that rung 2 of the v1.31.0 D1 resolution
 ///     ladder fires immediately;
 ///   - `auto` — transparent: declaring it is equivalent to omitting
 ///     `backend:` entirely (the route resolves down the ladder —
@@ -652,7 +652,7 @@ pub const AXONENDPOINT_METHOD_VALUES: &[&str] =
 /// `axon-frontend` carries zero runtime deps and therefore cannot
 /// import `axon::backends::CANONICAL_PROVIDERS`; this list is a
 /// hand-maintained mirror. The axon-rs drift gate
-/// (`tests/fase36_d_backend_catalog_drift.rs`) asserts the two stay
+/// (`tests/backend_catalog_drift.rs`) asserts the two stay
 /// byte-identical — adding a provider in one place without the other
 /// fails CI.
 pub const AXONENDPOINT_BACKEND_VALUES: &[&str] = &[
@@ -687,7 +687,7 @@ fn axonendpoint_is_valid_keepalive(s: &str) -> bool {
     AXONENDPOINT_KEEPALIVE_VALUES.iter().any(|&v| v == s)
 }
 
-/// §Fase 37.y (D2) — Closed type catalog for query parameters.
+/// v1.32.0 (D2) — Closed type catalog for query parameters.
 ///
 /// Query values arrive over HTTP as URL-encoded strings; the catalog
 /// is the set of types axon will validate / coerce them into for the
@@ -700,18 +700,18 @@ fn axonendpoint_is_valid_keepalive(s: &str) -> bool {
 ///
 /// Extending the catalog is a future axon-T?nn surface; v1.38.5 ships
 /// the 5 types covering ~95% of REST query patterns. Lists / dates /
-/// datetimes / enums are honest deferrals (see §7 of the plan vivo).
+/// datetimes / enums are honest deferrals (see section 7 of the plan vivo).
 pub const AXONENDPOINT_QUERY_PARAM_TYPES: &[&str] =
     &["Text", "Int", "Float", "Bool", "Uuid"];
 
-/// `true` iff `s` is one of the §Fase 37.y (D2) query-param catalog
+/// `true` iff `s` is one of the v1.32.0 (D2) query-param catalog
 /// entries — exact case-sensitive match (axon types are PascalCase).
 #[inline]
 pub(crate) fn axonendpoint_is_valid_query_param_type(s: &str) -> bool {
     AXONENDPOINT_QUERY_PARAM_TYPES.iter().any(|&v| v == s)
 }
 
-/// §Fase 37.y (D1) — Extract `{name}` placeholder names from an
+/// v1.32.0 (D1) — Extract `{name}` placeholder names from an
 /// `axonendpoint` `path:` string, in left-to-right declaration order.
 ///
 /// Recognized placeholder grammar (single-segment, no nested braces):
@@ -780,7 +780,7 @@ pub(crate) fn extract_path_param_names(path: &str) -> Result<Vec<String>, String
     Ok(out)
 }
 
-/// §Fase 32.g (D8) — Closed capability-slug grammar. Validates a
+/// v1.23.0 (D8) — Closed capability-slug grammar. Validates a
 /// `requires:` slug per `^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$`.
 ///
 /// Hand-rolled (no regex dep at parser layer) — each segment must
@@ -818,11 +818,11 @@ fn is_valid_slug_segment(seg: &str) -> bool {
 }
 
 // ════════════════════════════════════════════════════════════════════
-//  §Fase 37.y (D1) — `extract_path_param_names` unit tests
+// v1.32.0 (D1) — `extract_path_param_names` unit tests
 // ════════════════════════════════════════════════════════════════════
 
 // ════════════════════════════════════════════════════════════════════
-//  §Fase 37.y (D2) — `axonendpoint_is_valid_query_param_type` + the
+// v1.32.0 (D2) — `axonendpoint_is_valid_query_param_type` + the
 //  inline `query: { … }` parser, end-to-end through the lexer.
 // ════════════════════════════════════════════════════════════════════
 
@@ -846,7 +846,7 @@ mod query_param_catalog_tests {
             "Timestamp",    // not in v1.38.5 — list/dates deferred
             "Date",
             "DateTime",
-            "List<Text>",   // multi-value query params deferred (§7)
+            "List<Text>", // multi-value query params deferred (section 7)
             "Jsonb",        // store-only types not query-applicable
             "Bytea",
             "text",         // lowercase rejected (axon types are PascalCase)
@@ -866,7 +866,7 @@ mod query_param_catalog_tests {
     fn catalog_size_matches_design() {
         // The plan vivo D2 states a closed 5-type catalog. A future
         // axon-T?nn surface may extend it; that requires updating BOTH
-        // the catalog AND the plan vivo §7 honest-scope note.
+        // the catalog AND the plan vivo section 7 honest-scope note.
         assert_eq!(AXONENDPOINT_QUERY_PARAM_TYPES.len(), 5);
     }
 }
@@ -1125,7 +1125,7 @@ mod query_param_parser_tests {
     #[test]
     fn list_generic_type_is_parse_error_with_deferral_hint() {
         // Multi-value query params (`?tag=a&tag=b`) are honest-
-        // deferred per the plan vivo §7. Adopters who write
+        // deferred per the plan vivo section 7. Adopters who write
         // `List<Text>` should see a clear error explaining the
         // deferral, not a confusing "type `List` not in catalog".
         let src = r#"
@@ -1213,7 +1213,7 @@ mod query_param_parser_tests {
     fn kivi_secret_write_path_plus_query() {
         // Combined path-param + query-param test: an endpoint that
         // takes IDs in the URL AND optional filters in the query
-        // string. This is the natural REST shape Fase 37.y serves.
+        // string. This is the natural REST shape v1.32.0 serves.
         let src = r#"
             axonendpoint write_secret {
                 method: POST
@@ -1226,7 +1226,7 @@ mod query_param_parser_tests {
         let ep = parse_endpoint_source(src).expect("parses");
         // Path params populated (from 37.y.1):
         assert_eq!(ep.path_params, vec!["tenant_id", "secret_name"]);
-        // Query params populated (from this sub-fase 37.y.2):
+        // Query params populated (from this step 37.y.2):
         assert_eq!(ep.query_params.len(), 2);
         assert_eq!(ep.query_params[0].name, "dry_run");
         assert_eq!(ep.query_params[0].type_expr.name, "Bool");
@@ -1442,7 +1442,7 @@ mod capability_slug_tests {
 pub struct Parser {
     tokens: Vec<Token>,
     pos: usize,
-    /// §Fase 119.f — declarations lifted out of a FLOW BODY to program level.
+    /// v2.83.0 — declarations lifted out of a FLOW BODY to program level.
     ///
     /// README nests an epistemic block inside a flow to scope the helper
     /// flows it calls:
@@ -1456,31 +1456,31 @@ pub struct Parser {
     ///
     /// A top-level `know { … }` already HOISTS its children into the
     /// program-level IR collections, stamping `epistemic_mode` on each
-    /// (`ir_generator`, §99.d/§105/§110). Hoisting the nested one to a
+    /// (`ir_generator`, v2.53.0/v2.60.0/v2.66.0). Hoisting the nested one to a
     /// top-level `Declaration::Epistemic` therefore makes it byte-identical
     /// to the form that already works — zero new handling in the checker, the
     /// IR generator, or the runtime. The alternative (a new FlowStep variant
     /// carrying declarations) would fork every one of those.
     hoisted: Vec<Declaration>,
-    /// Fase 14.a — leading trivia parallel array, indexed by the
+    /// v1.5.2 — leading trivia parallel array, indexed by the
     /// effective-token position. `leading_trivia[i]` is the comment
     /// trivia that appeared between the previous effective token (or
     /// file start) and `tokens[i]`.
     leading_trivia: Vec<Vec<Trivia>>,
-    /// Fase 14.a — trailing trivia parallel array. `trailing_trivia[i]`
+    /// v1.5.2 — trailing trivia parallel array. `trailing_trivia[i]`
     /// is the comment trivia on the same line as `tokens[i]`, before
     /// the next effective token. Populated by the constructor.
     trailing_trivia: Vec<Vec<Trivia>>,
-    /// Fase 17.a — side-channel for tagging let value_kind. Set by
+    /// v1.12.0 — side-channel for tagging let value_kind. Set by
     /// `parse_let_atom` / `parse_let_value_expr` as they descend; read
     /// at the end of `parse_let` and stored on the LetStatement.
     last_let_value_kind: String,
-    /// Fase 19.e — loop nesting depth for break/continue scope check.
+    /// v1.14.0 — loop nesting depth for break/continue scope check.
     /// Incremented at the start of `parse_for_in`, decremented after.
     /// `parse_break`/`parse_continue` raise ParseError when this is
     /// zero (the keyword has no meaning outside a loop body).
     loop_depth: u32,
-    /// §Fase 28.d — Optional source text + filename for the rustc-
+    /// v1.20.0 — Optional source text + filename for the rustc-
     /// style source-context block on `ParseError`. Set via the
     /// fluent `Parser::with_source` builder; default `None` keeps
     /// existing callers (`Parser::new(tokens).parse()`) emitting
@@ -1491,7 +1491,7 @@ pub struct Parser {
 
 impl Parser {
     pub fn new(raw_tokens: Vec<Token>) -> Self {
-        // ── Fase 14.a — split the raw token stream into:
+        // ── v1.5.2 — split the raw token stream into:
         //   - effective tokens the grammar consumes (cursor advances
         //     over these as before),
         //   - parallel `leading_trivia` / `trailing_trivia` arrays
@@ -1542,7 +1542,7 @@ impl Parser {
         }
     }
 
-    /// §Fase 28.d — Fluent attach of source text + filename for
+    /// v1.20.0 — Fluent attach of source text + filename for
     /// rustc-style source-context blocks on emitted `ParseError`s.
     /// Returns `self` so it chains with `.parse_with_recovery()`:
     ///
@@ -1590,7 +1590,7 @@ impl Parser {
                 .get(end_pos)
                 .cloned()
                 .unwrap_or_default();
-            // Fase 14.b — also copy trivia into the per-struct fields on
+            // v1.5.2 — also copy trivia into the per-struct fields on
             // the declaration so consumers can read `flow.leading_trivia`
             // directly without going through `program.declaration_trivia[i]`.
             // The side-channel is preserved for backward compat with
@@ -1600,7 +1600,7 @@ impl Parser {
             program
                 .declaration_trivia
                 .push(DeclarationTrivia { leading, trailing });
-            // §Fase 119.f — drain anything a flow body hoisted to program
+            // v2.83.0 — drain anything a flow body hoisted to program
             // level. Appended AFTER the enclosing declaration so source order
             // still reads top-to-bottom in `axon desugar`.
             for hoisted in std::mem::take(&mut self.hoisted) {
@@ -1611,9 +1611,9 @@ impl Parser {
                 });
             }
         }
-        // §Fase 80.g — expand `voice` declarations FIRST (they may emit
-        // `from Preset@vN` upstream legs), then §80.f preset references,
-        // BEFORE type-check — so the §80.c laws and the IR see the expanded
+        // v2.37.0 — expand `voice` declarations FIRST (they may emit
+        // `from Preset@vN` upstream legs), then v2.37.0 preset references,
+        // BEFORE type-check — so the v2.37.0 laws and the IR see the expanded
         // program (and `axon desugar` prints exactly this lowering).
         // Unknown presets stay unexpanded — the checker reports them with
         // the catalog list (accumulating diagnostics beat a parse abort).
@@ -1622,7 +1622,7 @@ impl Parser {
         Ok(program)
     }
 
-    // ── §Fase 28.c — recovery-mode parse ─────────────────────────
+    // ── v1.20.0 — recovery-mode parse ─────────────────────────
     //
     // Mirror of Python's `Parser.parse_with_recovery` from
     // `axon/compiler/parser.py`. Wraps `parse_declaration` in a
@@ -1631,7 +1631,7 @@ impl Parser {
     // parsing resumes. The two stacks must produce structurally
     // identical error lists on the same input — that is the cross-
     // stack drift gate (D7). See the test module
-    // `tests::fase28_recovery_tests` and Python-side
+    // `tests::recovery_tests` and Python-side
     // `tests/test_fase28_parser_recovery.py`.
 
     /// Recovery-mode parse. Collects every parse error in source
@@ -1684,7 +1684,7 @@ impl Parser {
                         .push(DeclarationTrivia { leading, trailing });
                 }
                 Err(err) => {
-                    // §Fase 28.d — attach source-context block when a
+                    // v1.20.0 — attach source-context block when a
                     // source has been provided via `with_source(...)`;
                     // otherwise the error keeps its single-line shape.
                     errors.push(self.attach_source_to_error(err));
@@ -1703,7 +1703,7 @@ impl Parser {
         ParseResult { program, errors }
     }
 
-    /// §Fase 28.d — Decorate a `ParseError` with a `SourceSnippet`
+    /// v1.20.0 — Decorate a `ParseError` with a `SourceSnippet`
     /// when the parser has source context attached, otherwise return
     /// the error unchanged. Idempotent: if the error already carries
     /// a snippet, this overwrites it with the parser's source.
@@ -1714,7 +1714,7 @@ impl Parser {
         }
     }
 
-    /// §Fase 28.c — Walk the cursor forward until the next sync
+    /// v1.20.0 — Walk the cursor forward until the next sync
     /// point (top-level declaration keyword at brace-depth ≤ 0) or
     /// EOF. Used by `parse_with_recovery` to skip the malformed
     /// remainder of a failed declaration.
@@ -1776,7 +1776,7 @@ impl Parser {
         Ok(tok)
     }
 
-    /// §Fase 41.b — build a `ParseError` at the current token's location.
+    /// v2.3.0 — build a `ParseError` at the current token's location.
     fn error(&self, message: &str) -> ParseError {
         let tok = self.current();
         ParseError { message: message.to_string(), line: tok.line, column: tok.column, ..Default::default() }
@@ -1851,7 +1851,7 @@ impl Parser {
     }
 
     fn check_run_modifier(&self) -> bool {
-        // §Fase 119.m.3 — `with <Persona>` is the spelling README uses on every
+        // v2.83.0 — `with <Persona>` is the spelling README uses on every
         // `run` it publishes; `as <Persona>` is the one the parser took. Same
         // position, same meaning, and the two cannot be confused: `with` is not
         // a keyword token, and the only OTHER `with` in the language sits after
@@ -1885,7 +1885,7 @@ impl Parser {
         Ok(items)
     }
 
-    /// §Fase 83.a — a bracketed list of quoted string literals, tolerant of
+    /// v2.38.0 — a bracketed list of quoted string literals, tolerant of
     /// an empty `[]` and a trailing comma before `]` (the `Window.exclude`
     /// shape, generalized into a reusable helper). Used for CORS field
     /// lists whose values contain characters (`://`, `.`, `-`) that aren't
@@ -1946,7 +1946,7 @@ impl Parser {
         Ok(parts.join("."))
     }
 
-    /// §Fase 119.f.10 — a **SUBJECT**: the thing a statement acts ON.
+    /// v2.83.0 — a **SUBJECT**: the thing a statement acts ON.
     ///
     /// Every statement in the language has two kinds of operand, and they had
     /// been parsed by the same function:
@@ -1967,7 +1967,7 @@ impl Parser {
     ///
     /// Literals are subjects too (`compute X on Profile.tenure, 1.2, "USD"`).
     /// A string literal keeps its quotes here so the runtime can tell a literal
-    /// from a binding name — the §60 classification, preserved instead of
+    /// from a binding name — the v2.10.0 classification, preserved instead of
     /// flattened.
     fn parse_subject(&mut self) -> Result<String, ParseError> {
         let t = self.current().clone();
@@ -2124,7 +2124,7 @@ impl Parser {
     fn parse_declaration(&mut self) -> Result<Declaration, ParseError> {
         let tok = self.current().clone();
 
-        // §Fase 114.a — a TOP-LEVEL `budget <Name> { … }`.
+        // v2.69.0 — a TOP-LEVEL `budget <Name> { … }`.
         //
         // `budget` lexes as `TokenType::Budget` (the daemon-field keyword). At top
         // level it is only a declaration when a NAME follows — `budget Foo { … }`.
@@ -2144,8 +2144,8 @@ impl Parser {
             TokenType::Tool => self.parse_tool().map(Declaration::Tool),
             TokenType::Type => self.parse_type_def().map(Declaration::Type),
             TokenType::Flow => self.parse_flow().map(Declaration::Flow),
-            // §Fase 120 — `effect E { Op(p: T) -> R }`. A peer of `tool`, per
-            // `fase_23` §3.1 ("top-level, like tool/persona/anchor").
+            // v2.87.0 — `effect E { Op(p: T) -> R }`. A peer of `tool`, per
+            // `the design plan` section 3.1 ("top-level, like tool/persona/anchor").
             TokenType::Effect => self.parse_effect().map(Declaration::Effect),
             TokenType::Intent => self.parse_intent().map(Declaration::Intent),
             TokenType::Run => self.parse_run().map(Declaration::Run),
@@ -2158,7 +2158,7 @@ impl Parser {
             // ── Tier 2 declarations (full AST) ──────────────────
             TokenType::Agent => self.parse_agent().map(Declaration::Agent),
             TokenType::Shield => self.parse_shield().map(Declaration::Shield),
-            // §Fase 71.a — temporal execution-window guard.
+            // v2.27.0 — temporal execution-window guard.
             TokenType::Window => self.parse_window().map(Declaration::Window),
             TokenType::Pix => self.parse_pix().map(Declaration::Pix),
             TokenType::Ledger => self.parse_ledger().map(Declaration::Ledger),
@@ -2173,69 +2173,69 @@ impl Parser {
             TokenType::AxonStore => self.parse_axonstore().map(Declaration::AxonStore),
             TokenType::AxonEndpoint => self.parse_axonendpoint().map(Declaration::AxonEndpoint),
 
-            // ── §λ-L-E Fase 1 — I/O cognitivo ───────────────────
+            // ── v1.1.0 — I/O cognitivo ───────────────────
             TokenType::Resource => self.parse_resource().map(Declaration::Resource),
             TokenType::Fabric => self.parse_fabric().map(Declaration::Fabric),
             TokenType::Manifest => self.parse_manifest().map(Declaration::Manifest),
             TokenType::Observe => self.parse_observe().map(Declaration::Observe),
 
-            // ── §λ-L-E Fase 3 — Control cognitivo ───────────────
+            // ── v1.1.0 — Control cognitivo ───────────────
             TokenType::Reconcile => self.parse_reconcile().map(Declaration::Reconcile),
             TokenType::Lease => self.parse_lease().map(Declaration::Lease),
             TokenType::Ensemble => self.parse_ensemble().map(Declaration::Ensemble),
 
-            // ── §λ-L-E Fase 4 — Topology + π-calculus sessions ─
+            // ── v1.1.0 — Topology + π-calculus sessions ─
             TokenType::Session => self.parse_session_definition().map(Declaration::Session),
             TokenType::Topology => self.parse_topology().map(Declaration::Topology),
 
-            // ── §Fase 41.b — typed WebSocket transport ─────────
+            // ── v2.3.0 — typed WebSocket transport ─────────
             TokenType::Socket => self.parse_socket().map(Declaration::Socket),
 
-            // ── §Fase 80.b — outbound vendor connection ─────────
+            // ── v2.37.0 — outbound vendor connection ─────────
             TokenType::Upstream => self.parse_upstream().map(Declaration::Upstream),
 
-            // ── §Fase 80.g — the voice-agent simplicity layer ───
+            // ── v2.37.0 — the voice-agent simplicity layer ───
             TokenType::Voice => self.parse_voice().map(Declaration::Voice),
 
-            // ── §Fase 83.a — the named origin-policy declaration ─
+            // ── v2.38.0 — the named origin-policy declaration ─
             TokenType::Cors => self.parse_cors().map(Declaration::Cors),
 
-            // ── §Fase 85.a — the named result-memoization policy ─
+            // ── v2.40.0 — the named result-memoization policy ─
             TokenType::Cache => self.parse_cache().map(Declaration::Cache),
             TokenType::Document => self.parse_document().map(Declaration::Document),
 
-            // ── §Fase 105 — Governed CRM Delivery ─
+            // ── v2.60.0 — Governed CRM Delivery ─
             TokenType::Deliver => self.parse_deliver().map(Declaration::Deliver),
             TokenType::Notify => self.parse_notify().map(Declaration::Notify),
 
-            // ── §Fase 87.a — the long-horizon autonomous research primitive ─
+            // ── v2.42.0 — the long-horizon autonomous research primitive ─
             TokenType::Savant => self.parse_savant().map(Declaration::Savant),
 
-            // ── §Fase 87.d — the dynamic tool-synthesis policy ──────────────
+            // ── v2.42.0 — the dynamic tool-synthesis policy ──────────────
             TokenType::Synth => self.parse_synth().map(Declaration::Synth),
 
-            // ── §Fase 88.a — the authorization-scope policy declaration ─────
+            // ── v2.43.0 — the authorization-scope policy declaration ─────
             TokenType::Scope => self.parse_scope().map(Declaration::Scope),
 
-            // ── §Fase 92.a — the ephemeral-credential contract ──────────────
+            // ── v2.46.0 — the ephemeral-credential contract ──────────────
             TokenType::Credential => self.parse_credential().map(Declaration::Credential),
 
-            // ── §Fase 51.c.2 — Pauli-sum observable ────────────
+            // ── v2.4.0 — Pauli-sum observable ────────────
             TokenType::Observable => self.parse_observable().map(Declaration::Observable),
 
-            // ── §Fase 69.a — Advantage Witness ──────────────────
+            // ── v2.23.0 — Advantage Witness ──────────────────
             TokenType::Witness => self.parse_witness().map(Declaration::Witness),
 
-            // ── §λ-L-E Fase 5 — Cognitive immune system ─────────
+            // ── v1.1.0 — Cognitive immune system ─────────
             TokenType::Immune => self.parse_immune().map(Declaration::Immune),
             TokenType::Reflex => self.parse_reflex().map(Declaration::Reflex),
             TokenType::Heal => self.parse_heal().map(Declaration::Heal),
 
-            // ── §λ-L-E Fase 9 — UI cognitiva ────────────────────
+            // ── v1.3.1 — UI cognitiva ────────────────────
             TokenType::Component => self.parse_component().map(Declaration::Component),
             TokenType::View => self.parse_view().map(Declaration::View),
 
-            // ── §λ-L-E Fase 13 — Mobile typed channels ──────────
+            // ── v1.6.0 — Mobile typed channels ──────────
             TokenType::Channel => self.parse_channel().map(Declaration::Channel),
 
             // ── Tier 3+ structural fallback ─────────────────────
@@ -2251,7 +2251,7 @@ impl Parser {
             TokenType::Mcp => self.parse_generic_declaration(),
 
             _ => {
-                // §Fase 28.e — append "Did you mean X?" hint when the
+                // v1.20.0 — append "Did you mean X?" hint when the
                 // unknown token looks like a typo'd top-level keyword
                 // (Levenshtein ≤ 2). D3, D11 ratified 2026-05-10.
                 let hint = crate::smart_suggest::suggest_for(
@@ -2312,7 +2312,7 @@ impl Parser {
             self.consume(TokenType::RBrace)?;
         }
 
-        // ── §Fase 115.c — the `@allow_downgrade` ECC valve ───────────────
+        // ── v2.76.0 — the `@allow_downgrade` ECC valve ───────────────
         //
         // `import a.b.{X} @allow_downgrade` acknowledges an epistemic
         // downgrade across this edge (see `epistemic_compat.rs`). The
@@ -2341,7 +2341,7 @@ impl Parser {
             }
         }
 
-        // ── §Fase 111 — `apx` is RETRACTED ───────────────────────────────
+        // ── v2.67.0 — `apx` is RETRACTED ───────────────────────────────
         //
         // `import X with apx { … }` used to parse and then call
         // `skip_braced_block()` — the policy was consumed and thrown on the
@@ -2460,7 +2460,7 @@ impl Parser {
                 "memory" => node.memory_scope = self.consume_any_ident_or_kw()?.value,
                 "language" => node.language = self.consume(TokenType::StringLit)?.value,
                 "depth" => node.depth = self.consume_any_ident_or_kw()?.value,
-                // §Fase 91.a — the frame's cognitive timezone (IANA string).
+                // v2.46.0 — the frame's cognitive timezone (IANA string).
                 "now" => node.now_tz = Some(self.consume(TokenType::StringLit)?.value),
                 "max_tokens" => {
                     node.max_tokens = Some(
@@ -2606,7 +2606,7 @@ impl Parser {
             trailing_trivia: Vec::new(),
         };
 
-        // §Fase 84.b/D84.13 — unknown fields are recorded (not silently
+        // v2.39.0/the design decision — unknown fields are recorded (not silently
         // skipped) so a `target:`-bound technician tool can HARD-ERROR on one
         // (a typo'd safety field must never quietly disable a guard), while a
         // legacy schema-less tool keeps its lenient record-and-skip (zero
@@ -2633,18 +2633,18 @@ impl Parser {
                 "filter" => node.filter_expr = self.parse_filter_expression()?,
                 "timeout" => node.timeout = self.consume(TokenType::Duration)?.value,
                 "runtime" => node.runtime = self.consume_any_ident_or_kw()?.value,
-                // §Fase 114.c — the `resource` this tool's channel runs on. The
+                // v2.69.0 — the `resource` this tool's channel runs on. The
                 // channel's address, concurrency and lifecycle come from it;
                 // `runtime:` then names the path within the channel.
                 "resource" => node.resource_ref = self.consume_any_ident_or_kw()?.value,
                 "sandbox" => node.sandbox = Some(self.parse_bool()?),
                 "effects" => node.effects = Some(self.parse_effect_row()?),
-                // §Fase 58.a — the tool's typed input schema + output type.
+                // v2.8.0 — the tool's typed input schema + output type.
                 "parameters" => node.parameters = self.parse_tool_param_schema()?,
                 "output_type" => node.output_type = Some(self.parse_output_type_string()?),
-                // §Fase 116.a (D116.9) — the tool's required authorization
+                // v2.77.0 — the tool's required authorization
                 // scopes: bare dot-separated capability slugs, the EXACT
-                // grammar + charset of `credential.grants` (§92) so the two
+                // grammar + charset of `credential.grants` (v2.46.0) so the two
                 // vocabularies are one. `requires: [w_organization_social,
                 // video.publish]`. Subset coverage is `axon-T956`.
                 "requires" => {
@@ -2669,11 +2669,11 @@ impl Parser {
                     }
                     node.requires = items;
                 }
-                // §Fase 94.c — the per-tenant secret KEY injected at
+                // v2.48.0 — the per-tenant secret KEY injected at
                 // dispatch (`rotation_without_revelation`). Key shape +
                 // technician exclusion are `axon-T902` (type-checker).
                 "secret" => node.secret = self.parse_dotted_identifier()?,
-                // §Fase 95.a — `secret_partition:` names one of this tool's
+                // v2.49.0 — `secret_partition:` names one of this tool's
                 // own `parameters:` (a bare identifier, NOT dotted — it is a
                 // parameter reference, not a key). Its runtime value becomes
                 // a single appended key segment at dispatch. The membership +
@@ -2681,17 +2681,17 @@ impl Parser {
                 "secret_partition" => {
                     node.secret_partition = self.consume_any_ident_or_kw()?.value
                 }
-                // §Fase 84.b — Remote Hands technician fields.
+                // v2.39.0 — Remote Hands technician fields.
                 "target" => node.target = Some(self.consume_any_ident_or_kw()?.value),
                 "risk" => node.risk = Some(self.consume_any_ident_or_kw()?.value),
                 // The argv template: a bracketed list of quoted elements
                 // (`argv: ["ping", "-c", "${count}", "${host}"]`). Reuses the
                 // CORS list helper (tolerant of `[]` and a trailing comma).
                 "argv" => node.argv = self.parse_bracketed_strings()?,
-                // §Fase 85.b — the tool's result-memoization policy reference
+                // v2.40.0 — the tool's result-memoization policy reference
                 // (a declared `cache` name, or the `none` opt-out sentinel).
                 "cache" => node.cache = self.consume_any_ident_or_kw()?.value,
-                // §Fase 98.b — the closed-catalog web-acquisition config
+                // v2.52.0 — the closed-catalog web-acquisition config
                 // block. `scrape: { engine: …, extract: […], … }`.
                 "scrape" => node.scrape = Some(self.parse_scrape_spec()?),
                 _ => {
@@ -2702,11 +2702,11 @@ impl Parser {
         }
         self.consume(TokenType::RBrace)?;
 
-        // §Fase 84.b/D84.13 — a `target:`-bound tool opts into strict field
-        // checking. An unknown field on it is a parse error, mirroring the §83
+        // v2.39.0/the design decision — a `target:`-bound tool opts into strict field
+        // checking. An unknown field on it is a parse error, mirroring the v2.38.0
         // `cors`/`voice` closed-catalog discipline — but scoped to the
         // technician surface so ordinary tools are untouched.
-        // §Fase 98.b (D98.2) — a `scrape:`-bearing web-acquisition tool opts
+        // v2.52.0 — a `scrape:`-bearing web-acquisition tool opts
         // into the same strictness: a typo'd safety field (e.g. a mis-spelled
         // `respect_robots`) must never quietly disable a guard.
         if node.target.is_some() || node.scrape.is_some() {
@@ -2738,9 +2738,9 @@ impl Parser {
         Ok(node)
     }
 
-    /// §Fase 98.b — parse the closed-catalog `scrape: { … }` web-acquisition
+    /// v2.52.0 — parse the closed-catalog `scrape: { … }` web-acquisition
     /// config sub-block. Every field is optional; an unknown field is a hard
-    /// parse error (the §83 `cors` closed-catalog discipline). Mirrors the
+    /// parse error (the v2.38.0 `cors` closed-catalog discipline). Mirrors the
     /// field grammar of `parse_tool` for the scrape-specific keys.
     fn parse_scrape_spec(&mut self) -> Result<crate::ast::ScrapeSpec, ParseError> {
         let open = self.consume(TokenType::LBrace)?;
@@ -2793,7 +2793,7 @@ impl Parser {
         Ok(spec)
     }
 
-    /// §Fase 58.a — parse a tool's INPUT SCHEMA: a brace-delimited list of
+    /// v2.8.0 — parse a tool's INPUT SCHEMA: a brace-delimited list of
     /// `name: Type` parameters (`parameters: { query: String, max_results: Int }`).
     /// Reuses the flow-parameter shape (`Parameter`), so the same `TypeExpr`
     /// grammar — generics like `List<T>`, `?`-optionals — applies. A trailing
@@ -2850,7 +2850,7 @@ impl Parser {
             let name = self.consume_any_ident_or_kw()?.value;
             if self.check(TokenType::Colon) {
                 self.advance();
-                // Fase 11.c / 11.e — qualifiers can be compound slugs
+                // v1.4.0 — qualifiers can be compound slugs
                 // from a closed catalogue:
                 //
                 //   * dot-separated  — `legal:HIPAA.164_502`,
@@ -2995,7 +2995,7 @@ impl Parser {
             });
         }
 
-        // Optional ESK Fase 6.1 — `compliance [HIPAA, ...]` prefix modifier
+        // Optional ESK — `compliance [HIPAA, ...]` prefix modifier
         // between `type Name` / `range` / `where` and the body `{`.
         if self.check(TokenType::Identifier) && self.current().value == "compliance" {
             self.advance();
@@ -3026,10 +3026,10 @@ impl Parser {
     }
 
     fn parse_type_expr(&mut self) -> Result<TypeExpr, ParseError> {
-        // §Fase 119.c — a LEADING bracket is the list-type sugar the README
+        // v2.83.0 — a LEADING bracket is the list-type sugar the README
         // has always written in flow signatures: `readings: [SensorReading]`
         // (blocks 44-45). It lowers to exactly what `List<SensorReading>`
-        // produces, so nothing downstream learns a new shape — the §39.a
+        // produces, so nothing downstream learns a new shape — the v2.0.0
         // comment below already names `List<T>` as the canonical carrier.
         if self.check(TokenType::LBracket) {
             let open = self.current().clone();
@@ -3059,7 +3059,7 @@ impl Parser {
 
         if self.check(TokenType::Lt) {
             self.advance();
-            // §Fase 39.a — recursive: the generic param can itself be a
+            // v2.0.0 — recursive: the generic param can itself be a
             // nested type expression. `FlowEnvelope<List<TenantRecord>>`
             // parses as outer=FlowEnvelope, inner=List<TenantRecord>.
             // Pre-39.a the inner had to be a single Identifier; nested
@@ -3076,7 +3076,7 @@ impl Parser {
             };
             self.consume(TokenType::Gt)?;
         }
-        // §Fase 51.c.3 — bracket type parameters for the continuous-carrier
+        // v2.4.0 — bracket type parameters for the continuous-carrier
         // grammar: `SymbolicPtr[Tensor[Float32]]`, `DensityMatrix[1024]`. The
         // param is either a nested type expression OR a numeric dimension.
         if self.check(TokenType::LBracket) {
@@ -3182,13 +3182,13 @@ impl Parser {
         })
     }
 
-    // ── §Fase 120 — algebraic effects (Plotkin/Pretnar) ─────────────
+    // ── v2.87.0 — algebraic effects (Plotkin/Pretnar) ─────────────
     //
-    // Four constructs, in the shape `fase_23` §3.1 publishes verbatim.
+    // Four constructs, in the shape `the design plan` section 3.1 publishes verbatim.
 
     /// `effect SSE { Emit(token: Token) -> Unit  Done() -> Never }`
     ///
-    /// The declaration exists so the operation catalog is CLOSED. D120.2's bare
+    /// The declaration exists so the operation catalog is CLOSED. the design decision's bare
     /// `perform Emit(x)` resolves against exactly this set, and an operation
     /// two effects both declare is a compile error naming both — not a silent
     /// pick. Without the declaration there would be nothing to resolve against
@@ -3213,7 +3213,7 @@ impl Parser {
             };
             self.consume(TokenType::RParen)?;
 
-            // `-> T` is optional in the grammar; §3.1 always writes it, and a
+            // `-> T` is optional in the grammar; section 3.1 always writes it, and a
             // missing return type reads as Unit at the type-checker.
             let mut return_type = String::new();
             if self.check(TokenType::Arrow) {
@@ -3261,11 +3261,11 @@ impl Parser {
     /// scope (D3).
     ///
     /// The `in { … }` body is parsed with [`Self::parse_flow_step`], and that is
-    /// the whole point of D120.1: the body is ORDINARY flow steps, so
+    /// the whole point of the design decision: the body is ORDINARY flow steps, so
     /// `run generate(…)` inside a handler runs for real. Lowering it onto
     /// `axon-rs`'s `Instruction` alphabet instead would have made every
-    /// non-effect node in it a `Passthrough` — inert — which is the §111 defect
-    /// this fase exists not to repeat.
+    /// non-effect node in it a `Passthrough` — inert — which is the v2.67.0 defect
+    /// this cycle exists not to repeat.
     fn parse_handle_block(&mut self) -> Result<HandleBlock, ParseError> {
         let tok = self.consume(TokenType::Handle)?;
         let loc = self.loc_of(&tok);
@@ -3336,7 +3336,7 @@ impl Parser {
             return Err(ParseError {
                 message: format!(
                     "`handle {}` must be followed by `in {{ … }}` — a handler scope is \
-                     DELIMITED (fase_23 D3). Without the `in` block the frame has no \
+                     DELIMITED (the design plan D3). Without the `in` block the frame has no \
                      extent, so no `perform` could ever reach these clauses (got '{}')",
                     effect_names.join(", "),
                     in_tok.value
@@ -3365,7 +3365,7 @@ impl Parser {
     /// The shared head of `perform` and `forward` (D12): an optionally
     /// qualified operation name plus a parenthesised argument list.
     ///
-    /// D120.2 — BOTH spellings parse. `SSE.Emit(x)` fixes the effect here;
+    /// the design decision — BOTH spellings parse. `SSE.Emit(x)` fixes the effect here;
     /// `Emit(x)` leaves `effect_name` `None` and the closed catalog resolves it
     /// downstream, where an ambiguity can be reported with both candidates
     /// named. The qualified form is told from the bare one by the `.`, which
@@ -3384,7 +3384,7 @@ impl Parser {
         self.consume(TokenType::LParen)?;
         let mut arguments = Vec::new();
         while !self.check(TokenType::RParen) && !self.check(TokenType::Eof) {
-            // §119.f.10 SUBJECTS: `fase_23` §3.1 writes `perform
+            // v2.83.0 SUBJECTS: `the design plan` section 3.1 writes `perform
             // Emit(response.token)` — a dotted reference into a prior binding.
             arguments.push(self.parse_subject()?);
             if self.check(TokenType::Comma) {
@@ -3465,7 +3465,7 @@ impl Parser {
         let tok = self.current().clone();
 
         match tok.ttype {
-            // §Fase 119.f — an epistemic block INSIDE a flow body. Its
+            // v2.83.0 — an epistemic block INSIDE a flow body. Its
             // children are hoisted to program level (see `Parser::hoisted`),
             // which is exactly what a top-level block already does, so the
             // nested spelling costs nothing downstream. The flow itself gets
@@ -3501,7 +3501,7 @@ impl Parser {
 
             // ── Tier 2 flow steps (typed AST) ─────────────────────
             TokenType::Probe => self.parse_flow_step_simple("probe").map(|l| FlowStep::Probe(ProbeStep { target: l.1, fields: Vec::new(), loc: l.0 })),
-            // §Fase 119.f.8 — ONE implementation for both positions (the D119.4
+            // v2.83.0 — ONE implementation for both positions (the the design decision
             // doctrine). `reason <target>` and `reason { given ask depth }` are
             // the same node; the second is what the README publishes.
             TokenType::Reason => self.parse_reason_step().map(FlowStep::Reason),
@@ -3523,17 +3523,17 @@ impl Parser {
             TokenType::Explore => self.parse_explore_step(),
             TokenType::Ingest => self.parse_ingest_step(),
             TokenType::Shield => self.parse_apply_step("shield").map(|l| FlowStep::ShieldApply(ShieldApplyStep { shield_name: l.1, target: l.2, output_type: l.3, loc: l.0 })),
-            // §Fase 111.e — `stream` parses its BODY. It used to go through
+            // v2.67.0 — `stream` parses its BODY. It used to go through
             // `parse_block_step`, whose entire job is `skip_braced_block()` —
             // the block's contents were thrown away at parse time, which is why
             // `run_stream` had nothing to run and "completed" with an empty
             // string while the README sold "Algebraic Effects and Free Monads".
             TokenType::Stream => self.parse_stream_block().map(FlowStep::Stream),
-            // ── §Fase 120 — algebraic effects ────────────────────
+            // ── v2.87.0 — algebraic effects ────────────────────
             //
             // All five constructs parse at flow level. `resume` / `abort` /
             // `forward` are legal only inside a handler CLAUSE — that scope law
-            // is enforced by the type-checker (§120.d), not here, because the
+            // is enforced by the type-checker (v2.87.0), not here, because the
             // parser does not know whether an enclosing `handle` exists when it
             // is re-entered through `parse_flow_step` from a clause body.
             TokenType::Handle => self.parse_handle_block().map(FlowStep::Handle),
@@ -3561,18 +3561,18 @@ impl Parser {
             TokenType::Corroborate => self.parse_corroborate_step(),
             TokenType::Ots => self.parse_apply_step("ots").map(|l| FlowStep::OtsApply(OtsApplyStep { ots_name: l.1, target: l.2, output_type: l.3, loc: l.0 })),
             TokenType::Mandate => self.parse_apply_step("mandate").map(|l| FlowStep::MandateApply(MandateApplyStep { mandate_name: l.1, target: l.2, output_type: l.3, loc: l.0 })),
-            // §Fase 111.f — `compute <Name> on a, b -> out`. The ARGUMENTS used to
+            // v2.67.0 — `compute <Name> on a, b -> out`. The ARGUMENTS used to
             // be `Vec::new()` — hardcoded empty at the parse site — so even if
             // the runtime had wanted to compute something, it had nothing to
             // compute it FROM.
             TokenType::Compute => self.parse_compute_apply().map(FlowStep::ComputeApply),
             TokenType::Listen => self.parse_listen_step(),
             TokenType::Daemon => self.parse_flow_step_simple("daemon").map(|l| FlowStep::DaemonStep(DaemonStepNode { daemon_ref: l.1, loc: l.0 })),
-            // §λ-L-E Fase 13 — Mobile typed channels (paper §3.1, §3.2, §4.3)
+            // v1.6.0 — Mobile typed channels (paper section 3.1, section 3.2, section 4.3)
             TokenType::Emit => self.parse_emit_step(),
-            // §Fase 92.b — `mint <Credential> as <binding>` (ephemeral credential).
+            // v2.46.0 — `mint <Credential> as <binding>` (ephemeral credential).
             TokenType::Mint => self.parse_mint_step(),
-            // §Fase 94.b — `rotate <SecretsStore> [where "…"] with <Tool> as
+            // v2.48.0 — `rotate <SecretsStore> [where "…"] with <Tool> as
             // <binding>` (mediated secret renewal).
             TokenType::Rotate => self.parse_rotate_step(),
             TokenType::Publish => self.parse_publish_step(),
@@ -3582,19 +3582,19 @@ impl Parser {
             TokenType::Mutate => self.parse_mutate_step(),
             TokenType::Purge => self.parse_store_where_step().map(|(loc, store_name, where_expr)| FlowStep::Purge(PurgeStep { store_name, where_expr, loc })),
             TokenType::Transact => self.parse_block_step("transact").map(|l| FlowStep::Transact(TransactBlock { loc: l })),
-            // §Fase 88.a — the `warden` adversarial-analysis block.
+            // v2.43.0 — the `warden` adversarial-analysis block.
             TokenType::Warden => self.parse_warden().map(FlowStep::Warden),
-            // §Fase 51.a — the `quant` cognitive block (Hilbert-space projection).
+            // v2.4.0 — the `quant` cognitive block (Hilbert-space projection).
             TokenType::Quant => self.parse_quant().map(FlowStep::Quant),
-            // §Fase 51.d.2 — the `yield` measurement point.
+            // v2.4.0 — the `yield` measurement point.
             TokenType::Yield => self.parse_yield().map(FlowStep::Yield),
-            // §Fase 52.c — `run <Flow>(args)` as a flow-step: invoke a declared
+            // v2.4.0 — `run <Flow>(args)` as a flow-step: invoke a declared
             // flow from inside a body (a `daemon` listen handler, Q3). Reuses
             // the top-level run parser.
             TokenType::Run => self.parse_run().map(FlowStep::Run),
 
             _ => {
-                // §Fase 28.e — append "Did you mean X?" hint when the
+                // v1.20.0 — append "Did you mean X?" hint when the
                 // unknown token looks like a typo'd flow-body keyword
                 // (e.g. `stepp` / `reasn` / `validte`). D3, D11.
                 let hint = crate::smart_suggest::suggest_for(
@@ -3658,7 +3658,7 @@ impl Parser {
         Ok(node)
     }
 
-    /// §Fase 119.n — the step-body field/statement loop, extracted from
+    /// v2.83.0 — the step-body field/statement loop, extracted from
     /// [`Self::parse_step`] so a `stream<T>` handler arm can reuse it VERBATIM.
     ///
     /// The caller has already consumed the opening `{` and owns the closing `}`.
@@ -3699,9 +3699,9 @@ impl Parser {
                     self.consume(TokenType::Colon)?;
                     node.output_type = self.parse_output_type_string()?;
                 }
-                // §Fase 119.f — `navigate` in a step body is TWO forms, told
+                // v2.83.0 — `navigate` in a step body is TWO forms, told
                 // apart by the token after the keyword:
-                //   `navigate: <Ref>`        the field (pre-§119.f)
+                // `navigate: <Ref>` the field (pre-v2.83.0)
                 //   `navigate <Ref> query: …` the STATEMENT README publishes
                 // The second is an elevation: it binds `as:` before the step
                 // generates, so the step's `ask:` can interpolate it.
@@ -3724,14 +3724,14 @@ impl Parser {
                         .map(|l| FlowStep::Trail(TrailStep { navigate_ref: l.1, loc: l.0 }))?;
                     node.pix_ops.push(op);
                 }
-                // §Fase 119.f — `validate <binding> against: <Schema>`, the
+                // v2.83.0 — `validate <binding> against: <Schema>`, the
                 // form README's pix family publishes inside a step. The
                 // flow-level `validate <target>` already exists; this adds the
                 // step position plus the `against:` clause the docs write.
                 TokenType::Validate => {
                     let tok = self.current().clone();
                     self.advance();
-                    // §Fase 119.f.10 — SUBJECT: `validate Assess.output against: X`.
+                    // v2.83.0 — SUBJECT: `validate Assess.output against: X`.
                     let target = self.parse_subject()?;
                     let mut rule = String::new();
                     if self.current().value == "against" {
@@ -3746,7 +3746,7 @@ impl Parser {
                         loc: Loc { line: tok.line, column: tok.column },
                     }));
                 }
-                // §Fase 121 — `if confidence < 0.8 -> refine(max_attempts: 2)`,
+                // v2.88.0 — `if confidence < 0.8 -> refine(max_attempts: 2)`,
                 // the self-correction guard blocks 1/16/18 publish immediately
                 // after a `validate … against:`.
                 //
@@ -3754,7 +3754,7 @@ impl Parser {
                 // metric (`confidence`), the comparison (`<`), the action
                 // (`refine`), the argument (`max_attempts`) — and each refusal
                 // below names its catalog, because a free position here would
-                // breed the imaginary catalog three fases have now paid for.
+                // breed the imaginary catalog three cycles have now paid for.
                 // General branching (`if <cond> { … } else { … }`) stays a
                 // FLOW-level construct; a step body gets a guard or nothing.
                 TokenType::If => {
@@ -3911,11 +3911,11 @@ impl Parser {
                     self.consume(TokenType::Colon)?;
                     node.apply_ref = self.consume_any_ident_or_kw()?.value;
                 }
-                // §Fase 68.b — `requires_context: <tokens>`: the step's declared
+                // v2.22.0 — `requires_context: <tokens>`: the step's declared
                 // model-capability requirement (the context window the cognition
-                // needs). A bare positive integer literal; the §68.c resolver maps
+                // needs). A bare positive integer literal; the v2.22.0 resolver maps
                 // it to a concrete model. Range/ceiling is the type-checker's job
-                // (§68.b positive-int + §68.f catalog ceiling) — the parser only
+                // (v2.22.0 positive-int + v2.22.0 catalog ceiling) — the parser only
                 // requires an integer token here (a float / non-number is a parse
                 // error, surfaced at the exact column).
                 TokenType::Identifier if inner.value == "requires_context" => {
@@ -3939,7 +3939,7 @@ impl Parser {
                     self.advance();
                     node.requires_context = Some(value);
                 }
-                // §Fase 91.a — `now: "<IANA-tz>"`: the step's declared cognitive
+                // v2.46.0 — `now: "<IANA-tz>"`: the step's declared cognitive
                 // timezone. A string literal; the format law (IANA shape) is the
                 // type-checker's job (`axon-T892`) — the parser only requires a
                 // string token here, surfaced at the exact column.
@@ -3962,7 +3962,7 @@ impl Parser {
                     self.advance();
                     node.now_tz = Some(tz.value);
                 }
-                // §Fase 54.a — a `use` nested inside a `step { }` body used
+                // v2.7.0 — a `use` nested inside a `step { }` body used
                 // to be skipped structurally (grouped with the sub-constructs
                 // below), silently degrading the tool dispatch to an
                 // unconstrained LLM step with NO diagnostic. That fallthrough
@@ -3991,8 +3991,8 @@ impl Parser {
                         ..Default::default()
                     });
                 }
-                // §Fase 119 (D119.4) — `mandate X on Y`, `shield X on Y -> b`,
-                // `ots X on Y` as STEP-BODY statements. README §XV has always
+                // v2.83.0 — `mandate X on Y`, `shield X on Y -> b`,
+                // `ots X on Y` as STEP-BODY statements. README XV has always
                 // written the application here — next to the `output:` it
                 // constrains — and the parser accepted the same form only at
                 // flow level, which is why README blocks 40–42 never compiled.
@@ -4013,9 +4013,9 @@ impl Parser {
                     let g = self.parse_step_guard("ots")?;
                     node.guards.push(g);
                 }
-                // §Fase 119.c — `lambda RawQuote on ticker -> verified_quote`
+                // v2.83.0 — `lambda RawQuote on ticker -> verified_quote`
                 // inside a step body: README blocks 46-47's exact shape, the
-                // D119.4 statement position extended to the fourth member of
+                // the design decision statement position extended to the fourth member of
                 // the apply family. Semantically it is an ELEVATION, not a
                 // guard: dispatch runs it BEFORE the step's generation, so the
                 // elevated binding is in scope for the prompt.
@@ -4023,10 +4023,10 @@ impl Parser {
                     let g = self.parse_step_guard("lambda")?;
                     node.guards.push(g);
                 }
-                // §Fase 119.f — `probe <target> for [a, b, c]` as a STATEMENT.
+                // v2.83.0 — `probe <target> for [a, b, c]` as a STATEMENT.
                 //
                 // `probe` used to fall into `skip_flow_step_structural` below,
-                // which DISCARDED it — the §111 silent-drop shape, in the step
+                // which DISCARDED it — the v2.67.0 silent-drop shape, in the step
                 // parser. The extraction list had nowhere to live even at flow
                 // level. Both are fixed here: the statement is kept, and its
                 // `for [...]` list reaches the AST.
@@ -4038,7 +4038,7 @@ impl Parser {
                 {
                     let tok = self.current().clone();
                     self.advance();
-                    // §Fase 119.f.10 — SUBJECT: README §psyche writes
+                    // v2.83.0 — SUBJECT: README psyche writes
                     // `probe student.recent_interactions for [...]`.
                     let target = self.parse_subject()?;
                     let mut fields = Vec::new();
@@ -4059,8 +4059,8 @@ impl Parser {
                         loc: Loc { line: tok.line, column: tok.column },
                     }));
                 }
-                // §Fase 119.f — `use_tool <name> [with k: v, …]` as a STATEMENT.
-                // §54.a made `use` inside a step body a hard error pointing at
+                // v2.83.0 — `use_tool <name> [with k: v, …]` as a STATEMENT.
+                // v2.7.0 made `use` inside a step body a hard error pointing at
                 // the canonical forms; `use_tool` is the OTHER spelling README
                 // publishes, and it names the tool explicitly, so there is no
                 // ambiguity to protect against — the dispatch is not dropped,
@@ -4075,7 +4075,7 @@ impl Parser {
                         loop {
                             let k = self.consume_any_ident_or_kw()?.value.clone();
                             self.consume(TokenType::Colon)?;
-                            // `value_kind` mirrors §60's classification: a
+                            // `value_kind` mirrors v2.10.0's classification: a
                             // string literal is a literal, anything else is a
                             // binding reference the runtime must look up.
                             let kind = if self.check(TokenType::StringLit) {
@@ -4106,12 +4106,12 @@ impl Parser {
                         loc: Loc { line: tok.line, column: tok.column },
                     }));
                 }
-                // §Fase 119.f — `par { … }` inside a step body.
+                // v2.83.0 — `par { … }` inside a step body.
                 TokenType::Par => {
                     let block = self.parse_par_block()?;
                     node.pix_ops.push(FlowStep::Par(block));
                 }
-                // §Fase 119.f.8 — `reason { given: … ask: "…" depth: N }` as a
+                // v2.83.0 — `reason { given: … ask: "…" depth: N }` as a
                 // step-body statement. This is the README's single most-published
                 // cognitive form (16 blocks) and it was the most expensive
                 // resident of the silent-drop arm below: the block reached
@@ -4119,9 +4119,9 @@ impl Parser {
                 // whose ONLY cognition was a `reason` lowered to an empty `ask`
                 // and generated over nothing. The elevation position and the
                 // flow position share `parse_reason_step` — one concept, two
-                // positions (D119.4).
-                // §Fase 119.f.8 — `reason` in a step body is TWO forms, told
-                // apart by the token after the keyword, exactly as §119.f did
+                // positions.
+                // v2.83.0 — `reason` in a step body is TWO forms, told
+                // apart by the token after the keyword, exactly as v2.83.0 did
                 // for `navigate`:
                 //
                 //   `reason: "…"`             the FIELD — a one-line deliberation
@@ -4160,7 +4160,7 @@ impl Parser {
                     let r = self.parse_reason_step()?;
                     node.pix_ops.push(FlowStep::Reason(r));
                 }
-                // §Fase 119.f.9 — `weave [a, b] format: T include: […]` as a
+                // v2.83.0 — `weave [a, b] format: T include: […]` as a
                 // step-body statement: the shape fourteen README blocks close
                 // with. It was the worst resident of the silent-drop arm below,
                 // because it did not merely lose the node — the skipper stops
@@ -4172,14 +4172,14 @@ impl Parser {
                     let w = self.parse_weave_step()?;
                     node.pix_ops.push(w);
                 }
-                // §Fase 119.m.3 — `<Agent>(arg, …)` as a step-body statement:
+                // v2.83.0 — `<Agent>(arg, …)` as a step-body statement:
                 // the form every agent example in the README uses, and the one
-                // that makes §119.m.1's executor reachable from source.
+                // that makes v2.83.0's executor reachable from source.
                 //
                 // Told apart from the field arms above by the `(` — those all
                 // match on a specific field NAME, so a call can never shadow
                 // one. The name is a NAME (never dotted: an agent declaration
-                // has no path), the arguments are §119.f.10 SUBJECTS, because
+                // has no path), the arguments are v2.83.0 SUBJECTS, because
                 // README writes `TrendAnalyzer(Gather.output)`.
                 TokenType::Identifier
                     if self
@@ -4204,23 +4204,23 @@ impl Parser {
                         loc: self.loc_of(&tok),
                     }));
                 }
-                // §Fase 119.f.11 — `retrieve from <Store> where "…"` as a
-                // step-body statement. README §axonstore writes the store read
+                // v2.83.0 — `retrieve from <Store> where "…"` as a
+                // step-body statement. README axonstore writes the store read
                 // INSIDE the step that consumes it, which is the elevation
                 // position: the rows must be bound before the step generates.
                 //
                 // Unlike the three before it, this one needed no engine work —
                 // `FlowStep::Retrieve` and `wire_integrations::run_retrieve`
-                // are among the most-exercised paths in the system (§35–38, the
+                // are among the most-exercised paths in the system (v1.30.0–v1.31.0, the
                 // pg integration suites). Only the position was missing.
                 TokenType::Retrieve => {
                     let r = self.parse_retrieve_step()?;
                     node.pix_ops.push(r);
                 }
-                // §Fase 119.n — `stream<T> { on_chunk: … on_complete: … }` in a
+                // v2.83.0 — `stream<T> { on_chunk: … on_complete: … }` in a
                 // step body. THE LAST RESIDENT of the silent-drop arm leaves
-                // here: `probe` left in §119.f, `reason` in §119.f.8, `weave` in
-                // §119.f.9, `retrieve` in §119.f.11.
+                // here: `probe` left in v2.83.0, `reason` in v2.83.0, `weave` in
+                // v2.83.0, `retrieve` in v2.83.0.
                 //
                 // What it cost, measured on README block 15 before this landed:
                 // the whole block — a `probe`, a `validate`, and BOTH `output:`
@@ -4228,7 +4228,7 @@ impl Parser {
                 // `step Stream` reached the dispatcher with `pix_ops=0`,
                 // `ask=""`, `output=""`. An entirely EMPTY step, that `axon
                 // check` passed with 0 errors, and whose `Stream.output` the
-                // next step then reasoned over. The block had left the §117
+                // next step then reasoned over. The block had left the v2.81.0
                 // ledger on the strength of compiling.
                 //
                 // NOT a `pix_ops` push — see `StepNode::stream`. The other ten
@@ -4250,8 +4250,8 @@ impl Parser {
                     }
                     node.stream = Some(Box::new(sb));
                 }
-                // §Fase 120 — `perform Op(args)` in a step body, the position
-                // `fase_23` §3.1 publishes:
+                // v2.87.0 — `perform Op(args)` in a step body, the position
+                // `the design plan` section 3.1 publishes:
                 //
                 //     step generate {
                 //         given: prompt
@@ -4259,7 +4259,7 @@ impl Parser {
                 //         perform Done()
                 //     }
                 //
-                // NOT a `pix_ops` push, and this is the §119.n lesson applied a
+                // NOT a `pix_ops` push, and this is the v2.83.0 lesson applied a
                 // second time. Every `pix_ops` statement is an ELEVATION that
                 // runs BEFORE the step generates. The performed ARGUMENT here is
                 // the step's own output, so running it as an elevation would
@@ -4400,7 +4400,7 @@ impl Parser {
 
         while self.check_run_modifier() {
             let mod_tok = self.current().clone();
-            // §Fase 119.m.3 — `with <Persona>`, README's spelling of `as`.
+            // v2.83.0 — `with <Persona>`, README's spelling of `as`.
             if mod_tok.value == "with" && mod_tok.ttype != TokenType::As {
                 self.advance();
                 node.persona = self.consume(TokenType::Identifier)?.value;
@@ -4489,11 +4489,11 @@ impl Parser {
 
     // ── IF ────────────────────────────────────────────────────────
 
-    // ── §Fase 70.a — the pure expression engine (Pratt parser) ───────────
+    // ── v2.26.0 — the pure expression engine (Pratt parser) ───────────
 
-    /// Parse a pure expression (§Fase 70). Precedence-climbing: `or` < `and` <
+    /// Parse a pure expression (v2.26.0). Precedence-climbing: `or` < `and` <
     /// comparison < `+ -` < `* / %` < unary (`- not`) < atom. Total + pure; no
-    /// side effects. Field/index access + the builtin catalog land in §70.c/d.
+    /// side effects. Field/index access + the builtin catalog land in v2.26.0.
     fn parse_expr(&mut self) -> Result<Expr, ParseError> {
         self.parse_expr_bp(0)
     }
@@ -4545,11 +4545,11 @@ impl Parser {
         })
     }
 
-    /// §Fase 70.c — parse a primary then its `.` postfix chain: a builtin call
+    /// v2.26.0 — parse a primary then its `.` postfix chain: a builtin call
     /// (`.length`, `.contains(x)`) when the name is in the closed catalog, else
     /// a dotted reference-path continuation (`a.b.c` → `Ref("a.b.c")`, the
-    /// pre-§70.c behaviour). Field access on a non-reference (`(a+b).x`) is
-    /// reserved for §70.d.
+    /// pre-v2.26.0 behaviour). Field access on a non-reference (`(a+b).x`) is
+    /// reserved for v2.26.0.
     fn parse_postfix(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.parse_expr_atom()?;
         loop {
@@ -4572,7 +4572,7 @@ impl Parser {
                     }
                     expr = Expr::Call(builtin, args);
                 } else {
-                    // §Fase 70.d — a plain dotted path on a Ref extends the Ref
+                    // v2.26.0 — a plain dotted path on a Ref extends the Ref
                     // (back-compat: `a.b.c` → `Ref("a.b.c")`); on any other base
                     // it is a structured field access (the JSONB seam).
                     expr = match expr {
@@ -4581,7 +4581,7 @@ impl Parser {
                     };
                 }
             } else if self.check(TokenType::LBracket) {
-                // §Fase 70.d — index access `base[index]`.
+                // v2.26.0 — index access `base[index]`.
                 self.advance();
                 let index = self.parse_expr_bp(0)?;
                 self.consume(TokenType::RBracket)?;
@@ -4638,13 +4638,13 @@ impl Parser {
             _ => {
                 // Reference: a single identifier (or keyword used as a name).
                 // The `.` chain (dotted path / builtin call) is handled by the
-                // postfix layer (§70.c `parse_postfix`).
+                // postfix layer (v2.26.0 `parse_postfix`).
                 Ok(Expr::Ref(self.consume_any_ident_or_kw()?.value))
             }
         }
     }
 
-    /// §Fase 70.a — render a literal to its legacy surface string (for the
+    /// v2.26.0 — render a literal to its legacy surface string (for the
     /// back-compat `(condition, op, value)` triple). Only used when an
     /// expression fits the legacy shape; numeric round-tripping is exact for
     /// ints and faithful-enough for floats (the legacy runtime re-parses it).
@@ -4666,7 +4666,7 @@ impl Parser {
     }
 
     /// A legacy "leaf" is a bare reference (truthy check) or a
-    /// `<ref> <cmp> <ref|literal>` triple — exactly what the pre-§70 `if`
+    /// `<ref> <cmp> <ref|literal>` triple — exactly what the pre-v2.26.0 `if`
     /// grammar could express.
     fn expr_legacy_leaf(expr: &Expr) -> Option<(String, String, String)> {
         match expr {
@@ -4709,9 +4709,9 @@ impl Parser {
         }
     }
 
-    /// §Fase 70.a — if the parsed condition fits the legacy
+    /// v2.26.0 — if the parsed condition fits the legacy
     /// `(condition, op, value)` + `or`-chain shape, return the legacy fields so
-    /// the IR + runtime stay byte-identical to pre-§70 (zero drift). `None` ⇒
+    /// the IR + runtime stay byte-identical to pre-v2.26.0 (zero drift). `None` ⇒
     /// the condition uses richer forms (`and`, `not`, arithmetic, parentheses,
     /// nesting) and must ride the `cond` expression evaluator.
     #[allow(clippy::type_complexity)]
@@ -4736,7 +4736,7 @@ impl Parser {
         let tok = self.consume(TokenType::If)?;
         let loc = self.loc_of(&tok);
 
-        // §Fase 70.a — parse the condition as a pure expression, then split:
+        // v2.26.0 — parse the condition as a pure expression, then split:
         // a legacy-expressible condition populates the legacy triple fields
         // (cond = None → byte-identical IR + eval); a richer condition rides
         // the `cond` expression evaluator.
@@ -4807,7 +4807,7 @@ impl Parser {
         let iterable = self.parse_dotted_identifier()?;
 
         self.consume(TokenType::LBrace)?;
-        // Fase 19.e — increment loop_depth so `parse_break` /
+        // v1.14.0 — increment loop_depth so `parse_break` /
         // `parse_continue` inside the body pass the scope check.
         // Decrement on every exit path (Ok / Err) so a parse error
         // mid-body does not leave the depth permanently elevated
@@ -4833,7 +4833,7 @@ impl Parser {
         })
     }
 
-    /// Fase 19.e — `break` keyword. Compile-time scope check
+    /// v1.14.0 — `break` keyword. Compile-time scope check
     /// (`loop_depth == 0`) rejects break outside a for-in body.
     fn parse_break(&mut self) -> Result<BreakStatement, ParseError> {
         let tok = self.consume(TokenType::Break)?;
@@ -4849,7 +4849,7 @@ impl Parser {
         Ok(BreakStatement { loc })
     }
 
-    /// Fase 19.e — `continue` keyword. Same scope check as
+    /// v1.14.0 — `continue` keyword. Same scope check as
     /// `parse_break`.
     fn parse_continue(&mut self) -> Result<ContinueStatement, ParseError> {
         let tok = self.consume(TokenType::Continue)?;
@@ -4873,7 +4873,7 @@ impl Parser {
 
         // Name can be an identifier or a keyword used as binding name
         let name = self.consume_any_ident_or_kw()?.value;
-        // §Fase 51.c.3 — optional type annotation `let x: <TypeExpr> = …`.
+        // v2.4.0 — optional type annotation `let x: <TypeExpr> = …`.
         let type_annotation = if self.check(TokenType::Colon) {
             self.advance();
             Some(self.parse_type_expr()?)
@@ -4881,7 +4881,7 @@ impl Parser {
             None
         };
         self.consume(TokenType::Assign)?;
-        // Fase 17.a — reset side-channel before parsing value; the
+        // v1.12.0 — reset side-channel before parsing value; the
         // atom / expr helpers tag the kind as they descend.
         self.last_let_value_kind = "literal".to_string();
         let (value, value_ast) = self.parse_let_value_expr_with_ast()?;
@@ -4920,13 +4920,13 @@ impl Parser {
         Ok(atom)
     }
 
-    /// §Fase 70.f — parse a `let`-binding value, additionally producing a
+    /// v2.26.0 — parse a `let`-binding value, additionally producing a
     /// structured `value_ast` for the expression case. A list literal keeps the
-    /// dedicated path; everything else is parsed through the §70 expression
-    /// engine and classified: a bare literal / reference keeps its pre-§70
+    /// dedicated path; everything else is parsed through the v2.26.0 expression
+    /// engine and classified: a bare literal / reference keeps its pre-v2.26.0
     /// string form (`value_ast = None`, byte-identical), while a real expression
     /// (`price * qty`, `recent.length`) additionally carries a `value_ast` the
-    /// runtime evaluates for real (pre-§70.f it was treated as an opaque literal
+    /// runtime evaluates for real (pre-v2.26.0 it was treated as an opaque literal
     /// string). Used ONLY by `parse_let` — other value positions (list items,
     /// remember/stream values) keep the string-only `parse_let_value_expr`.
     fn parse_let_value_expr_with_ast(&mut self) -> Result<(String, Option<Expr>), ParseError> {
@@ -4951,13 +4951,13 @@ impl Parser {
         })
     }
 
-    /// §Fase 70.f — a readable surface rendering of an expression for the
+    /// v2.26.0 — a readable surface rendering of an expression for the
     /// vestigial `value_expr` string (the runtime uses `value_ast`).
     fn render_expr(e: &Expr) -> String {
         match e {
             Expr::Lit(l) => Self::expr_lit_surface(l),
             Expr::Ref(p) => p.clone(),
-            // §Fase 119.o — surface form of a `logic { }` chain. This string is
+            // v2.83.0 — surface form of a `logic { }` chain. This string is
             // vestigial (the runtime evaluates `value_ast`), so it renders the
             // shape rather than trying to reconstruct the author's layout.
             Expr::Let { name, value, body } => format!(
@@ -5104,13 +5104,13 @@ impl Parser {
     }
 
     /// Parse: keyword { ... } — block-level step, skip body structurally.
-    /// §Fase 111.e — `stream { <steps> }` with a REAL body.
+    /// v2.67.0 — `stream { <steps> }` with a REAL body.
     ///
     /// The four block primitives (`deliberate`, `consensus`, `stream`,
     /// `transact`) all went through [`Self::parse_block_step`], whose entire job
     /// is `skip_braced_block()`. Their bodies were discarded at parse time — so
     /// their handlers were not no-ops through neglect, they were no-ops
-    /// *by construction*: there was nothing in the AST to execute. §111 retracted
+    /// *by construction*: there was nothing in the AST to execute. v2.67.0 retracted
     /// `transact`; this gives `stream` its body back. `deliberate` / `consensus`
     /// remain body-less pending their Tier-4 disposition.
     fn parse_stream_block(&mut self) -> Result<StreamBlock, ParseError> {
@@ -5118,7 +5118,7 @@ impl Parser {
         let loc = self.loc_of(&tok);
         self.advance(); // consume `stream`
 
-        // §Fase 119.n — `<T>`: the CHUNK type, and the reason this is not just a
+        // v2.83.0 — `<T>`: the CHUNK type, and the reason this is not just a
         // cosmetic capture. The skip loop below used to eat it: `stream<QuoteData>`
         // advanced straight past `<QuoteData>` looking for `{`, so the one piece of
         // type information the author wrote about the stream was discarded before
@@ -5158,7 +5158,7 @@ impl Parser {
         if self.check(TokenType::LBrace) {
             self.advance();
             while !self.check(TokenType::RBrace) && !self.check(TokenType::Eof) {
-                // §Fase 119.n — the two SPECIFIED handler arms. `fase_23`'s D8
+                // v2.83.0 — the two SPECIFIED handler arms. `the design plan`'s D8
                 // promises `stream<τ> { on_chunk: … on_complete: … }` compiles
                 // with "cero cambios en `.axon` source files de adopters"; before
                 // this landed it was a hard parse error at flow level and a
@@ -5197,7 +5197,7 @@ impl Parser {
                 }
 
                 // A `<ident>: {` that is NOT one of the two arms is a TYPO in a
-                // closed catalog, and the §119.h.2 discipline says to ask which
+                // closed catalog, and the v2.83.0 discipline says to ask which
                 // direction the silence fails in: a mis-spelled `on_chunk` would
                 // fall through to `parse_flow_step` and be reported against the
                 // brace, pointing the author at the wrong token entirely. Name
@@ -5229,7 +5229,7 @@ impl Parser {
                     });
                 }
 
-                // §Fase 111.e's body form, kept: `stream { <flow steps> }`.
+                // v2.67.0's body form, kept: `stream { <flow steps> }`.
                 block.body.push(self.parse_flow_step()?);
             }
             self.consume(TokenType::RBrace)?;
@@ -5238,7 +5238,7 @@ impl Parser {
         Ok(block)
     }
 
-    /// §Fase 119.n — one `on_chunk:` / `on_complete:` arm, parsed as a STEP body.
+    /// v2.83.0 — one `on_chunk:` / `on_complete:` arm, parsed as a STEP body.
     ///
     /// The arm carries `output:` (README block 15 writes `output: QuoteSnapshot`
     /// in `on_chunk` and `output: VerifiedQuote` in `on_complete`), and `output:`
@@ -5294,12 +5294,12 @@ impl Parser {
         })
     }
 
-    /// §Fase 86 — parse `forge <Name>(seed: "<text>") -> <Type> { mode:,
+    /// v2.41.0 — parse `forge <Name>(seed: "<text>") -> <Type> { mode:,
     /// novelty:, depth:, branches:, constraints: }`. Real field capture
-    /// (replacing the pre-§86 discard-everything stub). Strict closed-catalog:
+    /// (replacing the pre-v2.41.0 discard-everything stub). Strict closed-catalog:
     /// an unknown field is a hard parse error; all cross-field laws (Boden mode
     /// catalog, novelty range, depth/branches ≥ 1, `constraints:` → `anchor`)
-    /// are §86.c type-checker territory.
+    /// are v2.41.0 type-checker territory.
     fn parse_forge_step(&mut self) -> Result<ForgeBlock, ParseError> {
         let tok = self.consume(TokenType::Forge)?;
         let name = self.consume(TokenType::Identifier)?.value;
@@ -5354,10 +5354,10 @@ impl Parser {
         Ok(node)
     }
 
-    /// §Fase 65 — Parse `par { stmt1  stmt2  … }` into CONCURRENT branches.
+    /// v2.15.0 — Parse `par { stmt1 stmt2 … }` into CONCURRENT branches.
     /// Each top-level flow statement inside the block is one branch (a
     /// single-statement body); they execute concurrently at runtime
-    /// (`flow_dispatcher::parallel::run_branches_concurrently`). Before §65 the
+    /// (`flow_dispatcher::parallel::run_branches_concurrently`). Before v2.15.0 the
     /// `par` body was skipped (`parse_block_step`), so the branches were lost
     /// and the handler ran as a stub. Multi-statement branches (grouping
     /// several steps into one sequential branch) are a future grammar
@@ -5380,7 +5380,7 @@ impl Parser {
         })
     }
 
-    /// §Fase 51.a — Parse the `quant` cognitive block surface.
+    /// v2.4.0 — Parse the `quant` cognitive block surface.
     ///
     /// Grammar (the attribute header is OPTIONAL):
     /// ```text
@@ -5390,11 +5390,11 @@ impl Parser {
     /// ```
     /// The bare form (the paper's example) leaves every attribute defaulted
     /// (`encoding = amplitude`, `effect = quant_sim`). The body is parsed into
-    /// real nested `FlowStep`s — like `par` branches — so §51.b's Continuous
+    /// real nested `FlowStep`s — like `par` branches — so v2.4.0's Continuous
     /// Type Invariant scans actual AST rather than skipped tokens.
-    /// §Fase 88.a — parse `warden(<target>) within <Scope> { <body> }`. The
+    /// v2.43.0 — parse `warden(<target>) within <Scope> { <body> }`. The
     /// `within <Scope>` clause is MANDATORY at the grammar level (fail-closed by
-    /// construction: a scopeless warden cannot be written); §88.c checks the
+    /// construction: a scopeless warden cannot be written); v2.43.0 checks the
     /// scope RESOLVES + the target is in its allowlist.
     fn parse_warden(&mut self) -> Result<WardenBlock, ParseError> {
         let tok = self.consume(TokenType::Warden)?;
@@ -5423,10 +5423,10 @@ impl Parser {
         Ok(block)
     }
 
-    /// §Fase 88.a — parse `scope <Name> { targets: [ … ], depth: <ident>,
+    /// v2.43.0 — parse `scope <Name> { targets: [ … ], depth: <ident>,
     /// approver: [requires] "<cap>" }`. Flat key:value block (the `cache` shape).
-    /// Catalog + non-empty validation is §88.c. Unknown fields are a hard error
-    /// (D83.7): a scope governs an offensive-capable analysis.
+    /// Catalog + non-empty validation is v2.43.0. Unknown fields are a hard error
+    ///: a scope governs an offensive-capable analysis.
     fn parse_scope(&mut self) -> Result<ScopeDefinition, ParseError> {
         let tok = self.consume(TokenType::Scope)?;
         let name = self.consume(TokenType::Identifier)?.value;
@@ -5519,7 +5519,7 @@ impl Parser {
                     "qubits" => block.qubits = Some(self.consume_number()? as i64),
                     "depth" => block.depth = Some(self.consume_number()? as i64),
                     "bandwidth" => block.bandwidth = Some(self.consume_number()?),
-                    // §Fase 69.c — data re-uploading layers.
+                    // v2.23.0 — data re-uploading layers.
                     "reupload" => block.reupload = Some(self.consume_number()? as i64),
                     // `backend:` selects the algebraic-effect tag (D1/D9).
                     "backend" => block.effect = self.consume_any_ident_or_kw()?.value,
@@ -5553,7 +5553,7 @@ impl Parser {
         Ok(block)
     }
 
-    /// §Fase 51.d.2 — Parse the `yield <expr>` measurement point. Reuses the
+    /// v2.4.0 — Parse the `yield <expr>` measurement point. Reuses the
     /// `let`-value expression grammar (reference / literal / arithmetic) so the
     /// yielded value's tokenization intent is preserved in `value_kind`.
     fn parse_yield(&mut self) -> Result<YieldStatement, ParseError> {
@@ -5569,7 +5569,7 @@ impl Parser {
     }
 
     /// Parse: keyword Name on target -> output_type (apply pattern).
-    /// §Fase 111.f — `compute <Name> on <a>, <b>, … -> <out>`.
+    /// v2.67.0 — `compute <Name> on <a>, <b>, … -> <out>`.
     ///
     /// Positional arguments, bound to the compute's declared parameters in order.
     /// The generic [`Self::parse_apply_step`] captured a single `on <target>` and
@@ -5584,7 +5584,7 @@ impl Parser {
         if self.current().value == "on" {
             self.advance();
             loop {
-                // §Fase 119.f.10 — SUBJECT position. README writes
+                // v2.83.0 — SUBJECT position. README writes
                 // `compute EligibilityScore on Profile.tenure, Profile.spend,
                 // Profile.incidents -> score`; the bare-identifier read stopped
                 // at the first dot, which is why every published `compute`
@@ -5623,7 +5623,7 @@ impl Parser {
             let next = self.current().clone();
             if next.value == "on" {
                 self.advance();
-                // §Fase 119.f.10 — SUBJECT position (the name before `on` is a
+                // v2.83.0 — SUBJECT position (the name before `on` is a
                 // NAME and stays bare).
                 target = self.parse_subject()?;
             }
@@ -5648,7 +5648,7 @@ impl Parser {
         ))
     }
 
-    /// §Fase 119 (D119.4) — `<kind> <Name> [on <target>] [-> <binding>]` inside
+    /// v2.83.0 — `<kind> <Name> [on <target>] [-> <binding>]` inside
     /// a `step { }` body.
     ///
     /// Differences from the flow-level `parse_apply_step`, both deliberate:
@@ -5657,7 +5657,7 @@ impl Parser {
     ///   42 writes `mandate LegalPrecision on ContractDrafter(terms)`. The
     ///   flow-level form never needed this; the published step-level form does.
     /// - No trailing braced block is skipped. A guard is one statement; a
-    ///   silently-skipped block after it would be the §119.b.1 defect again.
+    /// silently-skipped block after it would be the v2.83.0 defect again.
     fn parse_step_guard(&mut self, kind: &str) -> Result<StepGuardNode, ParseError> {
         let tok = self.current().clone();
         self.advance(); // consume the keyword
@@ -5666,7 +5666,7 @@ impl Parser {
         let mut binding = String::new();
         if self.current().value == "on" {
             self.advance();
-            // §Fase 119.f.10 — SUBJECT position. `shield S on vital_event -> safe`
+            // v2.83.0 — SUBJECT position. `shield S on vital_event -> safe`
             // already worked; `shield S on Charge.output -> x` did not.
             target = self.parse_subject()?;
             // `ContractDrafter(terms)` — capture the balanced argument list
@@ -5714,14 +5714,14 @@ impl Parser {
         })
     }
 
-    /// §Fase 119.f.8 — `reason [<target>] [{ given: … ask: "…" depth: N }]`.
+    /// v2.83.0 — `reason [<target>] [{ given: … ask: "…" depth: N }]`.
     ///
     /// Replaces the `parse_flow_step_simple("reason")` call whose entire
     /// treatment of the block was `skip_braced_block()`. Sixteen README blocks
     /// write the braced form and every one of them lowered to an empty prompt.
     ///
     /// The field set is CLOSED. An unrecognised key is an ERROR that names the
-    /// key and lists what is accepted — the §119.h.2 discipline: a skipped
+    /// key and lists what is accepted — the v2.83.0 discipline: a skipped
     /// field in a deliberation removes the deliberation (a promptless `reason`
     /// is silent, not loud), so the silent direction is the dangerous one.
     fn parse_reason_step(&mut self) -> Result<ReasonStep, ParseError> {
@@ -5729,7 +5729,7 @@ impl Parser {
         let loc = self.loc_of(&tok);
         self.advance(); // consume `reason`
 
-        // The pre-§119.f.8 positional form: `reason <target>`. Absent when the
+        // The pre-v2.83.0 positional form: `reason <target>`. Absent when the
         // block follows immediately, which is how the README always writes it.
         //
         // The `Colon` lookahead matters: a bare `reason` on its own line inside
@@ -5861,7 +5861,7 @@ impl Parser {
         Ok(node)
     }
 
-    /// §Fase 119.f.9 — the CLOSED braceless catalog for `weave`.
+    /// v2.83.0 — the CLOSED braceless catalog for `weave`.
     ///
     /// `output` is deliberately ABSENT, for the reason `at_navigate_field`
     /// already records: in step-body position `output:` is the STEP's own
@@ -5874,14 +5874,14 @@ impl Parser {
         self.field_ahead(FIELDS)
     }
 
-    /// §Fase 119.f.9 — `weave [a, b] [into <T>] [format: … include: […]]`.
+    /// v2.83.0 — `weave [a, b] [into <T>] [format: … include: […]]`.
     ///
-    /// Three published surfaces, one implementation (D119.4):
+    /// Three published surfaces, one implementation:
     ///   - the step-body statement — `weave [A.output, B.output]` followed by a
     ///     braceless `format:` / `include:` list (14 README blocks);
     ///   - the flow-body statement — `weave [A, B] into Report { format: T }`;
     ///   - the braced field form `weave { sources: […] … }`, which no published
-    ///     block writes but which predates this fase and keeps working.
+    /// block writes but which predates this cycle and keeps working.
     fn parse_weave_step(&mut self) -> Result<FlowStep, ParseError> {
         let tok = self.current().clone();
         self.advance();
@@ -5899,7 +5899,7 @@ impl Parser {
         };
         // `weave [A.output, B.output]` — the sources are REFERENCES, so they
         // are dotted. `parse_bracketed_dot_identifiers` is the same helper
-        // `given:` uses; the pre-§119.f.9 braced form's `sources:` used the
+        // `given:` uses; the pre-v2.83.0 braced form's `sources:` used the
         // non-dotted one, which is why a dotted source never had a spelling
         // that reached the AST.
         if self.check(TokenType::LBracket) {
@@ -5966,7 +5966,7 @@ impl Parser {
                         }
                         "priority" => node.priority = self.parse_bracketed_dot_identifiers()?,
                         "style" => node.style = self.consume_any_ident_or_kw()?.value.clone(),
-                        // §Fase 119.f.9 — the braced form takes `include:` too,
+                        // v2.83.0 — the braced form takes `include:` too,
                         // so the two spellings of one construct cannot disagree
                         // about which fields exist.
                         "include" => node.include = self.parse_bracketed_dot_identifiers()?,
@@ -5985,10 +5985,10 @@ impl Parser {
         let tok = self.current().clone();
         self.advance();
         let tool_name = self.consume_any_ident_or_kw()?.value.clone();
-        // §Fase 58.b — two mutually-exclusive `use` argument surfaces:
+        // v2.8.0 — two mutually-exclusive `use` argument surfaces:
         //   * `use Tool(query = "${q}", max_results = 5)` — D2 canonical
-        //     multi-field keyword args (§58.b `UseArgs::Named`).
-        //   * `use Tool on "${arg}"` / `on query` — the §54.b single positional
+        // multi-field keyword args (v2.8.0 `UseArgs::Named`).
+        // * `use Tool on "${arg}"` / `on query` — the v2.7.0 single positional
         //     argument (D5 back-compat, `UseArgs::LegacyPositional`):
         //       - a STRING LITERAL carrying interpolation (`on "${query}"`)
         //         resolved at dispatch against request-bound flow params;
@@ -6021,7 +6021,7 @@ impl Parser {
         }))
     }
 
-    /// §Fase 58.b — parse `(name = value, …)` keyword args for the canonical
+    /// v2.8.0 — parse `(name = value, …)` keyword args for the canonical
     /// `use Tool(...)` multi-field dispatch. Values are captured as expression
     /// strings (StringLit / Integer / Float / Bool / dotted identifier / list)
     /// via the shared `parse_let_atom`, since the frontend has no structured
@@ -6035,7 +6035,7 @@ impl Parser {
             let name = self.consume_any_ident_or_kw()?.value;
             self.consume(TokenType::Assign)?;
             let value = self.parse_let_atom()?;
-            // §Fase 60 — `parse_let_atom` classified the value (`"literal"` vs
+            // v2.10.0 — `parse_let_atom` classified the value (`"literal"` vs
             // `"reference"`); carry it so the runtime resolves a bare
             // identifier / `Step.output` as a binding lookup, not a literal.
             let value_kind = self.last_let_value_kind.clone();
@@ -6104,7 +6104,7 @@ impl Parser {
         let mut event = String::new();
         let mut timeout = String::new();
         if !self.at_declaration_start() && !self.check(TokenType::RBrace) {
-            // §Fase 119.d — README §III writes `hibernate until "event_name"`
+            // v2.83.0 — README III writes `hibernate until "event_name"`
             // (the `until` keyword + a STRING event). The parser accepted only
             // the bare-identifier form, so the published block never compiled.
             // Both forms resolve to the same field.
@@ -6132,11 +6132,11 @@ impl Parser {
         }))
     }
 
-    /// §Fase 108.d — `focus <Dataspace> { where: "<filter>", select: [cols], as: <name> }`
+    /// v2.63.0 — `focus <Dataspace> { where: "<filter>", select: [cols], as: <name> }`
     /// — σ_φ ∘ π_v over a declared dataspace. The `where:` string is the
-    /// §35 data-plane filter grammar (D108.9, shared with retrieve /
+    /// v1.30.0 data-plane filter grammar (the design decision, shared with retrieve /
     /// navigate). Pre-108.d the optional body was silently discarded.
-    /// §Fase 109.a — `grad <letName> wrt <x> [as <name>]` /
+    /// v2.65.0 — `grad <letName> wrt <x> [as <name>]` /
     /// `grad <letName> wrt [a, b] as <name>`. The differentiation itself
     /// happens at CHECK/IR time (T931/T932 + the symbolic differentiator);
     /// the parser only captures the surface.
@@ -6286,10 +6286,10 @@ impl Parser {
                     match f.as_str() {
                         "group_by" => group_by = self.parse_bracketed_identifiers()?,
                         "alias" | "as" => alias = self.consume_any_ident_or_kw()?.value.clone(),
-                        // §Fase 108.d — the closed aggregate catalog, kept
+                        // v2.63.0 — the closed aggregate catalog, kept
                         // RAW (`count`, `sum(score)`, …); T930 validates.
                         "compute" => compute = self.parse_bracketed_aggregates()?,
-                        // §Fase 108.d — the data-plane where (D108.9).
+                        // v2.63.0 — the data-plane where.
                         "where" => where_expr = self.consume(TokenType::StringLit)?.value.clone(),
                         _ => self.skip_value(),
                     }
@@ -6352,7 +6352,7 @@ impl Parser {
         }))
     }
 
-    /// §Fase 108.d — parse `[count, sum(score), avg(x)]`: bracketed
+    /// v2.63.0 — parse `[count, sum(score), avg(x)]`: bracketed
     /// aggregate entries, each `ident` or `ident(ident)`, kept raw.
     fn parse_bracketed_aggregates(&mut self) -> Result<Vec<String>, ParseError> {
         let mut out = Vec::new();
@@ -6375,7 +6375,7 @@ impl Parser {
         Ok(out)
     }
 
-    /// §Fase 108.c — the governed ingest step:
+    /// v2.63.0 — the governed ingest step:
     ///
     /// ```text
     /// ingest <sourceRef> into <Dataspace> {
@@ -6489,7 +6489,7 @@ impl Parser {
         }))
     }
 
-    /// §Fase 119.f — is the cursor on a `navigate` field (`<name>:`)?
+    /// v2.83.0 — is the cursor on a `navigate` field (`<name>:`)?
     ///
     /// The continuation test for the braceless field list. Closed catalog by
     /// construction: a name outside it ends the navigate and belongs to the
@@ -6497,7 +6497,7 @@ impl Parser {
     /// unambiguous.
     fn at_navigate_field(&self) -> bool {
         const FIELDS: &[&str] = &[
-            // §Fase 119.f — `output` is deliberately ABSENT from the
+            // v2.83.0 — `output` is deliberately ABSENT from the
             // BRACELESS catalog even though the braced form accepts it as an
             // alias for `as`. In step-body position `output:` is the STEP's
             // own field, and a shared name would make the terminator
@@ -6510,7 +6510,7 @@ impl Parser {
         self.field_ahead(FIELDS)
     }
 
-    /// §Fase 119.f — the same test for `drill`.
+    /// v2.83.0 — the same test for `drill`.
     fn at_drill_field(&self) -> bool {
         // Same reason as `at_navigate_field`: no `output` in the braceless
         // catalog, because that name belongs to the enclosing step.
@@ -6529,15 +6529,15 @@ impl Parser {
             .is_some_and(|t| t.ttype == TokenType::Colon)
     }
 
-    /// §Fase 119.f — a CONFIG KEY: `"env:DATABASE_URL"` or the bare
+    /// v2.83.0 — a CONFIG KEY: `"env:DATABASE_URL"` or the bare
     /// `env:DATABASE_URL` README publishes.
     ///
-    /// §113 made `connection:`/`endpoint:` a config KEY rather than a URL or a
+    /// v2.67.0 made `connection:`/`endpoint:` a config KEY rather than a URL or a
     /// DSN — the address resolves per deployment. README writes both the
     /// quoted and the bare spelling; the parser took only the quoted one, so
     /// every published `axonstore` with an unquoted key failed on its own
     /// third line. One value, two spellings — the epsilon/tolerance
-    /// resolution of §119.b.1, applied to the config surface.
+    /// resolution of v2.83.0, applied to the config surface.
     fn parse_config_key(&mut self) -> Result<String, ParseError> {
         if self.check(TokenType::StringLit) {
             return Ok(self.consume(TokenType::StringLit)?.value.clone());
@@ -6551,7 +6551,7 @@ impl Parser {
         Ok(scheme)
     }
 
-    /// §Fase 119.f — a PIX field value: a string literal OR a binding
+    /// v2.83.0 — a PIX field value: a string literal OR a binding
     /// reference. README writes `query: question` (the flow parameter) far
     /// more often than a literal, and the parser accepted only the literal —
     /// which is why every published `navigate` failed on its own second line.
@@ -6581,8 +6581,8 @@ impl Parser {
                 column: tok.column,
             },
         };
-        // §Fase 119.f — the BRACELESS field form, which is what README §pix/
-        // §corpus publishes everywhere:
+        // v2.83.0 — the BRACELESS field form, which is what README pix/
+        // corpus publishes everywhere:
         //
         //     navigate ContractIndex
         //         query: question
@@ -6613,9 +6613,9 @@ impl Parser {
                     "budget" => node.budget = self.parse_optional_int(),
                     "where" => node.where_expr = self.parse_pix_value()?,
                     "depth" => node.depth = self.parse_optional_int(),
-                    // §Fase 119.f — `recall: episodic` selects the MDN memory
+                    // v2.83.0 — `recall: episodic` selects the MDN memory
                     // mode README's clinical/legal examples write. The
-                    // navigator's episodic path is §63.C's adaptive corpus
+                    // navigator's episodic path is v2.13.0's adaptive corpus
                     // reinforcement, keyed by the corpus declaration; the
                     // value is accepted and recorded on the seed so nothing
                     // is silently dropped, and the adaptive path already
@@ -6650,15 +6650,15 @@ impl Parser {
                         "output" | "as" => {
                             node.output_name = self.consume_any_ident_or_kw()?.value.clone()
                         }
-                        // §Fase 63.B — MDN corpus-graph navigation.
+                        // v2.13.0 — MDN corpus-graph navigation.
                         "from" => node.seed = self.consume_any_ident_or_kw()?.value.clone(),
                         "budget" => node.budget = self.parse_optional_int(),
-                        // §Fase 66 (Q2) — column-scoped navigation: a raw filter
+                        // v2.17.0 (Q2) — column-scoped navigation: a raw filter
                         // expr (mirrors `retrieve … where`) pushed to the SELECT
                         // that sources the corpus `documents:`/`relations:` rows,
                         // so a `corpus from axonstore` is scoped to a sub-tenant
                         // COLUMN (`where: "tenant_id == '${tenant_id}'"`), not just
-                        // the axon-tenant RLS scope. Resolved by the §37.d filter
+                        // the axon-tenant RLS scope. Resolved by the v1.32.0 filter
                         // compiler at runtime (`${name}` → `$N` bind params).
                         "where" => {
                             node.where_expr = self.consume(TokenType::StringLit)?.value.clone()
@@ -6688,12 +6688,12 @@ impl Parser {
                 column: tok.column,
             },
         };
-        // §Fase 119.f — `drill <Ref> into "<path>" query: … as: …`, the form
+        // v2.83.0 — `drill <Ref> into "<path>" query: … as: …`, the form
         // README publishes. `into` is a positional keyword (no colon), the
         // rest is the same braceless closed-catalog field list as `navigate`.
         if self.current().value == "into" {
             self.advance();
-            // §Fase 119.f — README writes BOTH `into "Liabilities"` (a title)
+            // v2.83.0 — README writes BOTH `into "Liabilities"` (a title)
             // and `into findings.top_region` (a dotted binding path). The
             // subtree path is dot-separated either way, so both spellings
             // land in the same field.
@@ -6768,8 +6768,8 @@ impl Parser {
     fn parse_listen_step(&mut self) -> Result<FlowStep, ParseError> {
         let tok = self.current().clone();
         self.advance();
-        // §λ-L-E Fase 13 D4 — dual-mode listen:
-        //   • String topic (legacy, deprecated since Fase 13)
+        // v1.6.0 D4 — dual-mode listen:
+        // • String topic (legacy, deprecated since v1.6.0)
         //   • Identifier (canonical: declared ChannelDefinition)
         let (channel, channel_is_ref) = if self.check(TokenType::StringLit) {
             (self.consume(TokenType::StringLit)?.value.clone(), false)
@@ -6787,7 +6787,7 @@ impl Parser {
                 alias = self.consume_any_ident_or_kw()?.value.clone();
             }
         }
-        // §Fase 52.a — parse the handler body into real flow-steps (was
+        // v2.4.0 — parse the handler body into real flow-steps (was
         // `skip_braced_block`'d, leaving the listener inert). The body runs on
         // each event / scheduled tick.
         let body = self.parse_listener_body()?;
@@ -6803,10 +6803,10 @@ impl Parser {
         }))
     }
 
-    /// §Fase 52.a — parse a `listen … { <flow steps> }` handler body. The body
+    /// v2.4.0 — parse a `listen … { <flow steps> }` handler body. The body
     /// is OPTIONAL (a bodyless `listen channel` returns an empty Vec); when
     /// present, each statement is a real [`FlowStep`] (the same grammar as a
-    /// flow / `quant` / `par` body), executed per trigger by the §52.c runtime.
+    /// flow / `quant` / `par` body), executed per trigger by the v2.4.0 runtime.
     fn parse_listener_body(&mut self) -> Result<Vec<FlowStep>, ParseError> {
         let mut body = Vec::new();
         if self.check(TokenType::LBrace) {
@@ -6819,10 +6819,10 @@ impl Parser {
         Ok(body)
     }
 
-    /// §Fase 119.f.11 — `retrieve [from] <Store> [where "<expr>"] [as <alias>]`
+    /// v2.83.0 — `retrieve [from] <Store> [where "<expr>"] [as <alias>]`
     /// alongside the pre-existing braced `retrieve <Store> { where: … as: … }`.
     ///
-    /// README §axonstore writes the braceless form with `from` and with `where`
+    /// README axonstore writes the braceless form with `from` and with `where`
     /// taking its argument DIRECTLY — no colon. Neither spelling parsed, so the
     /// only published `retrieve` failed on its own first line.
     fn parse_retrieve_step(&mut self) -> Result<FlowStep, ParseError> {
@@ -6841,7 +6841,7 @@ impl Parser {
         let mut aggregate = String::new();
         let mut group_by = String::new();
         let mut cache = String::new();
-        // §Fase 119.f.11 — the BRACELESS clauses README publishes. Note they
+        // v2.83.0 — the BRACELESS clauses README publishes. Note they
         // take their argument with NO colon (`where "…"`, `as record`), which
         // is why the closed-catalog `field_ahead` test used elsewhere does not
         // apply: the terminator here is the clause keyword itself. Both names
@@ -6870,12 +6870,12 @@ impl Parser {
                     match f.as_str() {
                         "where" => where_expr = self.consume(TokenType::StringLit)?.value.clone(),
                         "as" | "alias" => alias = self.consume_any_ident_or_kw()?.value.clone(),
-                        // §Fase 67.b — `order_by:` is a string literal
+                        // v2.21.0 — `order_by:` is a string literal
                         // (`"col asc, col2 desc"`), same surface as `where:`.
                         "order_by" => {
                             order_by = self.consume(TokenType::StringLit)?.value.clone()
                         }
-                        // §Fase 67.b — `limit:` is a bare integer literal
+                        // v2.21.0 — `limit:` is a bare integer literal
                         // (`limit: 100`) OR a string carrying a binding
                         // (`limit: "${max}"`). Captured raw; the runtime
                         // resolves + validates it as a `u32`.
@@ -6889,11 +6889,11 @@ impl Parser {
                                 _ => self.skip_value(),
                             }
                         }
-                        // §Fase 76.d — `aggregate:` is a string literal from
+                        // v2.33.0 — `aggregate:` is a string literal from
                         // the CLOSED catalog (`"count"`, `"sum(tokens)"`, …);
                         // `group_by:` is a string literal listing columns
                         // (`"industry, status"`). Both captured raw; the
-                        // §38.d proof (axon-T843/T844/T845) + the runtime
+                        // v1.31.0 proof (axon-T843/T844/T845) + the runtime
                         // (`filter::parse_aggregate_clause`) validate.
                         "aggregate" => {
                             aggregate = self.consume(TokenType::StringLit)?.value.clone()
@@ -6901,7 +6901,7 @@ impl Parser {
                         "group_by" => {
                             group_by = self.consume(TokenType::StringLit)?.value.clone()
                         }
-                        // §Fase 85.b — `cache:` names a declared `cache`
+                        // v2.40.0 — `cache:` names a declared `cache`
                         // policy. A retrieve reads a store (never `pure`), so
                         // caching it always accepts staleness — the checker
                         // requires a finite `ttl:` on the referenced cache
@@ -6931,15 +6931,15 @@ impl Parser {
         }))
     }
 
-    /// §Fase 35.m — Parse a `purge` step, capturing the optional
-    /// `{ where: "<expr>" }` filter. (Fase 35.p moved `mutate` to its
+    /// v1.30.0 — Parse a `purge` step, capturing the optional
+    /// `{ where: "<expr>" }` filter. (v1.30.0 moved `mutate` to its
     /// own `parse_mutate_step`, which also captures SET columns; this
     /// helper now serves `purge` alone — a `DELETE` has no SET clause.)
     ///
-    /// Before Fase 35.m these two steps parsed via `parse_flow_step_simple`,
+    /// Before v1.30.0 these two steps parsed via `parse_flow_step_simple`,
     /// which *skipped* the braced block — so a written `where:` clause
     /// was silently dropped and every `mutate`/`purge` ran against the
-    /// whole store, leaving the entire Fase 35.b/c parameterized-filter
+    /// whole store, leaving the entire v1.30.0 parameterized-filter
     /// machinery unreachable for them. This mirror of `parse_retrieve_step`
     /// (minus the `as:` alias — a mutate/purge binds no result) closes
     /// that gap. Returns `(loc, store_name, where_expr)`.
@@ -6987,10 +6987,10 @@ impl Parser {
         ))
     }
 
-    /// §Fase 35.o — Parse a `persist` step, capturing the optional
+    /// v1.30.0 — Parse a `persist` step, capturing the optional
     /// `{ col: value }` field block.
     ///
-    /// Before Fase 35.o `persist` parsed via `parse_flow_step_simple`,
+    /// Before v1.30.0 `persist` parsed via `parse_flow_step_simple`,
     /// which *skipped* the braced block — so a written field block was
     /// silently dropped and the runtime fell back to writing every
     /// context binding as a row, which fails against any real table
@@ -7003,7 +7003,7 @@ impl Parser {
     /// `where:` / `as:` filter keys.
     ///
     /// The optional `into` connector (`persist into <store>`) is
-    /// accepted and skipped — before Fase 35.o `into` was captured as
+    /// accepted and skipped — before v1.30.0 `into` was captured as
     /// the store name.
     fn parse_persist_step(&mut self) -> Result<FlowStep, ParseError> {
         let tok = self.current().clone();
@@ -7059,11 +7059,11 @@ impl Parser {
         }))
     }
 
-    /// §Fase 35.p — Parse a `mutate` step, capturing both the
+    /// v1.30.0 — Parse a `mutate` step, capturing both the
     /// `{ where: "<expr>" }` filter AND the `{ col: value }` SET
     /// assignments.
     ///
-    /// Before Fase 35.p `mutate` parsed via `parse_store_where_step`,
+    /// Before v1.30.0 `mutate` parsed via `parse_store_where_step`,
     /// which captured only `where:` and *skipped* every other key — so
     /// the runtime built the `UPDATE … SET` clause from every flow
     /// binding (params + step results + `let`s), which fails against
@@ -7230,9 +7230,9 @@ impl Parser {
         Ok(node)
     }
 
-    /// §Fase 53 — `extension Name { category: effects|scan, members: [ … ] }`.
+    /// v2.5.0 — `extension Name { category: effects|scan, members: [ … ] }`.
     /// The parser is permissive on field/category VALUES (validated in
-    /// §53.c by the type-checker — no-shadowing, category-membership);
+    /// v2.5.0 by the type-checker — no-shadowing, category-membership);
     /// it only enforces the structural grammar here.
     fn parse_extension(&mut self) -> Result<ExtensionDefinition, ParseError> {
         let tok = self.consume(TokenType::Extension)?;
@@ -7269,7 +7269,7 @@ impl Parser {
         Ok(node)
     }
 
-    /// §Fase 53 — parse `[ "name" [ : { semantics: "…", default_confidence: 0.8 } ], … ]`.
+    /// v2.5.0 — parse `[ "name" [: { semantics: "…", default_confidence: 0.8 } ], … ]`.
     /// Each member is a string literal optionally followed by a metadata
     /// block. Trailing/interleaved commas are tolerated.
     fn parse_extension_members(&mut self) -> Result<Vec<ExtensionMember>, ParseError> {
@@ -7321,7 +7321,7 @@ impl Parser {
         Ok(members)
     }
 
-    /// §Fase 71.a/e — `window <Name> { timezone: "…"  allow: [ {days hours} ]
+    /// v2.27.0 — `window <Name> { timezone: "…" allow: [ {days hours} ]
     /// exclude: [ "YYYY-MM-DD", … ]  on_outside: skip|defer|warn }`.
     fn parse_window(&mut self) -> Result<WindowDefinition, ParseError> {
         let tok = self.consume(TokenType::Window)?;
@@ -7355,7 +7355,7 @@ impl Parser {
         Ok(node)
     }
 
-    /// §Fase 71.a — the `allow: [ { … }, { … } ]` span list.
+    /// v2.27.0 — the `allow: [ { … }, { … } ]` span list.
     fn parse_window_allow(&mut self) -> Result<Vec<WindowSpan>, ParseError> {
         self.consume(TokenType::LBracket)?;
         let mut spans = Vec::new();
@@ -7373,7 +7373,7 @@ impl Parser {
         Ok(spans)
     }
 
-    /// §Fase 71.e — the `exclude: [ "YYYY-MM-DD", … ]` holiday list (ISO
+    /// v2.27.0 — the `exclude: [ "YYYY-MM-DD", … ]` holiday list (ISO
     /// date-string literals; validated for real-calendar-date-ness by the
     /// `axon-T826` type check). An empty list / absent field ⇒ no holidays.
     fn parse_window_exclude(&mut self) -> Result<Vec<String>, ParseError> {
@@ -7393,7 +7393,7 @@ impl Parser {
         Ok(dates)
     }
 
-    /// §Fase 71.a — one span `{ days: Mon..Fri  hours: 9..18 }`.
+    /// v2.27.0 — one span `{ days: Mon..Fri hours: 9..18 }`.
     fn parse_window_span(&mut self) -> Result<WindowSpan, ParseError> {
         let tok = self.consume(TokenType::LBrace)?;
         let mut span = WindowSpan {
@@ -7492,12 +7492,12 @@ impl Parser {
                         node.deflect_message = self.consume(TokenType::StringLit)?.value.clone()
                     }
                     "taint" => node.taint = self.consume_any_ident_or_kw()?.value.clone(),
-                    // ESK Fase 6.1 — covered regulatory classes.
+                    // ESK — covered regulatory classes.
                     "compliance" => node.compliance = self.parse_bracketed_identifiers()?,
-                    // §Fase 77.a — egress signing algorithm (closed catalog,
+                    // v2.34.0 — egress signing algorithm (closed catalog,
                     // validated by the checker: `axon-T846`).
                     "sign" => node.sign = self.consume_any_ident_or_kw()?.value.clone(),
-                    // §Fase 77.a — the value is still skipped (leniency
+                    // v2.34.0 — the value is still skipped (leniency
                     // preserved) but the NAME is recorded so the checker
                     // emits `axon-W010` instead of a silent drop.
                     _ => {
@@ -7550,7 +7550,7 @@ impl Parser {
         Ok(node)
     }
 
-    /// §Fase 62.0 — `ledger <Name> { source, depth, branching, model }`.
+    /// v2.12.0 — `ledger <Name> { source, depth, branching, model }`.
     /// The append-only audit chain (formerly the Provenance-Index reading of
     /// `pix`). Field grammar mirrors `pix` (same shape) but the SEMANTICS are
     /// audit, not navigation: `depth` = chain retention, `branching` = Merkle
@@ -7620,10 +7620,10 @@ impl Parser {
                     "dimensions" => node.dimensions = self.parse_bracketed_identifiers()?,
                     "manifold_noise" => node.manifold_noise = self.parse_optional_float(),
                     "manifold_momentum" => node.manifold_momentum = self.parse_optional_float(),
-                    // §Fase 119.f — `safety:` is what README §psyche publishes;
+                    // v2.83.0 — `safety:` is what README psyche publishes;
                     // `safety_constraints:` is what the parser has always taken.
                     // One field, two spellings — the `epsilon`/`tolerance`
-                    // resolution of §119.b.1.
+                    // resolution of v2.83.0.
                     "safety_constraints" | "safety" => {
                         node.safety_constraints = self.parse_bracketed_identifiers()?
                     }
@@ -7663,7 +7663,7 @@ impl Parser {
         };
         // corpus Name from mcp("server", "uri")  — static MCP-bound short form.
         // corpus Name from axonstore { documents: S(id,title)  relations: … }  —
-        // §Fase 64.A dynamic store-sourced MDN graph (falls through to the body).
+        // v2.14.0 dynamic store-sourced MDN graph (falls through to the body).
         let mut dynamic = false;
         if self.check(TokenType::From) {
             self.advance();
@@ -7681,7 +7681,7 @@ impl Parser {
             }
         }
         self.consume(TokenType::LBrace)?;
-        // §Fase 64.A — accumulate the store-mapping pieces while the dynamic body
+        // v2.14.0 — accumulate the store-mapping pieces while the dynamic body
         // is parsed; folded into `node.store_source` after the closing brace.
         let mut src = CorpusStoreSource {
             doc_store: String::new(),
@@ -7703,7 +7703,7 @@ impl Parser {
             if self.check(TokenType::Colon) {
                 self.advance();
                 match field_name.as_str() {
-                    // §Fase 64.A — dynamic: `documents: <DocStore>(id_col, title_col)`.
+                    // v2.14.0 — dynamic: `documents: <DocStore>(id_col, title_col)`.
                     "documents" if dynamic => {
                         let (store, cols) = self.parse_corpus_store_mapping(2)?;
                         src.doc_store = store;
@@ -7711,7 +7711,7 @@ impl Parser {
                         src.doc_title_col = cols[1].clone();
                     }
                     "documents" => node.documents = self.parse_bracketed_identifiers()?,
-                    // §Fase 64.A — dynamic: `relations: <EdgeStore>(from, to, etype, weight)`.
+                    // v2.14.0 — dynamic: `relations: <EdgeStore>(from, to, etype, weight)`.
                     "relations" if dynamic => {
                         let (store, cols) = self.parse_corpus_store_mapping(4)?;
                         src.edge_store = store;
@@ -7720,9 +7720,9 @@ impl Parser {
                         src.edge_type_col = cols[2].clone();
                         src.edge_weight_col = cols[3].clone();
                     }
-                    // §Fase 63.A — static typed weighted edges → MDN corpus graph.
+                    // v2.13.0 — static typed weighted edges → MDN corpus graph.
                     "relations" => node.relations = self.parse_corpus_relations()?,
-                    // §Fase 63.C — enable the memory endofunctor.
+                    // v2.13.0 — enable the memory endofunctor.
                     "adaptive" => node.adaptive = self.consume_any_ident_or_kw()?.value == "true",
                     _ => self.skip_value(),
                 }
@@ -7737,7 +7737,7 @@ impl Parser {
         Ok(node)
     }
 
-    /// §Fase 64.A — parse a store-mapping `<StoreName>( col1, col2, … )` of exactly
+    /// v2.14.0 — parse a store-mapping `<StoreName>(col1, col2, …)` of exactly
     /// `n` columns. Used by the dynamic store-sourced corpus's `documents:` (2
     /// cols: id, title) and `relations:` (4 cols: from, to, etype, weight). The
     /// store name is an identifier (a declared `axonstore`); the columns may be
@@ -7757,7 +7757,7 @@ impl Parser {
         Ok((store, cols))
     }
 
-    /// §Fase 63.A — parse `relations: [ etype(from, to, weight) … ]`, the typed
+    /// v2.13.0 — parse `relations: [ etype(from, to, weight) … ]`, the typed
     /// weighted edges of an MDN corpus graph. Entries are whitespace/newline
     /// separated; commas between them are optional. Edge-type validity (closed
     /// catalog), document references, and the weight range are checked by the
@@ -7791,7 +7791,7 @@ impl Parser {
         Ok(out)
     }
 
-    /// §Fase 108.b — the typed dataspace declaration:
+    /// v2.63.0 — the typed dataspace declaration:
     ///
     /// ```text
     /// dataspace <Name> {
@@ -7806,7 +7806,7 @@ impl Parser {
     /// kept RAW here and resolved against the closed 6-type catalog by
     /// the type-checker (`axon-T928`), so all schema errors accumulate
     /// in a single compile. An unknown body keyword is a parse error
-    /// (the grammar is closed — the §38 axonstore posture).
+    /// (the grammar is closed — the v1.31.0 axonstore posture).
     fn parse_dataspace(&mut self) -> Result<DataspaceDefinition, ParseError> {
         let tok = self.consume(TokenType::Dataspace)?;
         let name = self.consume(TokenType::Identifier)?.value;
@@ -7894,7 +7894,7 @@ impl Parser {
                     "homotopy_search" => {
                         node.homotopy_search = self.consume_any_ident_or_kw()?.value.clone()
                     }
-                    // §Fase 119.c — README's ots blocks write the loss as a bare
+                    // v2.83.0 — README's ots blocks write the loss as a bare
                     // identifier (`loss_function: SemanticPreservation`, `L2`,
                     // `Contrastive`); the parser accepted only a string literal, so
                     // all three published blocks failed at this exact token. Both
@@ -7951,7 +7951,7 @@ impl Parser {
                     "ki" | "Ki" => node.ki = self.parse_optional_float(),
                     "kd" | "Kd" => node.kd = self.parse_optional_float(),
                     "max_steps" => node.max_steps = self.parse_optional_int(),
-                    // §Fase 119.b — `epsilon:` is what the README publishes; `tolerance:`
+                    // v2.83.0 — `epsilon:` is what the README publishes; `tolerance:`
                     // is what the parser has always accepted. They are the SAME ε — the
                     // convergence band of `Converge(e, ε, N)`. Both spellings resolve here
                     // rather than one of them silently vanishing into `skip_value()`.
@@ -7962,15 +7962,15 @@ impl Parser {
                     _ => self.skip_value(),
                 }
             } else if self.check(TokenType::LBrace) {
-                // §Fase 119.b — `pid { Kp: 2.0, Ki: 0.3, Kd: 0.1 }`, which is the form
-                // README §XV publishes and the form every mandate example uses.
+                // v2.83.0 — `pid { Kp: 2.0, Ki: 0.3, Kd: 0.1 }`, which is the form
+                // README XV publishes and the form every mandate example uses.
                 //
                 // THIS BLOCK USED TO BE `skip_braced_block()`. The consequence was not a
                 // parse error — it was SILENT ACCEPTANCE: `axon check` printed
                 // "0 errors" and the IR came out with `kp: None, ki: None, kd: None`.
                 // The developer wrote the published example, the compiler agreed, and the
                 // ENTIRE CONTROL LAW was discarded between them. A dropped specification
-                // that reports success is the §111 defect living in the parser.
+                // that reports success is the v2.67.0 defect living in the parser.
                 if field_name == "pid" {
                     self.parse_pid_block(&mut node)?;
                 } else if field_name == "stability" {
@@ -7984,17 +7984,17 @@ impl Parser {
         Ok(node)
     }
 
-    /// §Fase 119.b — `pid { Kp: <f>, Ki: <f>, Kd: <f> }`.
+    /// v2.83.0 — `pid { Kp: <f>, Ki: <f>, Kd: <f> }`.
     ///
     /// The gains of the Cybernetic Refinement Calculus controller
-    /// (`docs/papers/paper_mandate.md` §3): `u(t) = Kp·e(t) + Ki·∫e + Kd·de/dt`.
+    /// (`docs/papers/paper_mandate.md` section 3): `u(t) = Kp·e(t) + Ki·∫e + Kd·de/dt`.
     /// Accepts both capitalised (`Kp`, the papers' and README's notation) and
     /// lower-case spellings, because the flat `kp:` form was already accepted and
     /// removing it would break programs that use it.
     ///
-    /// §Fase 119.h — unknown keys inside the block are REFUSED.
+    /// v2.83.0 — unknown keys inside the block are REFUSED.
     ///
-    /// §119.b left them skipped, reasoning that the enclosing declaration behaves
+    /// v2.83.0 left them skipped, reasoning that the enclosing declaration behaves
     /// that way and tightening it was a wider decision. Measuring the published
     /// 2.84.0 binary showed what that costs, and the cost is not symmetric:
     /// misspelling a GAIN is caught (the missing gain fails the sign conditions),
@@ -8041,11 +8041,11 @@ impl Parser {
         Ok(())
     }
 
-    /// §Fase 119.b — `stability { D: <f>, L: <f> }`.
+    /// v2.83.0 — `stability { D: <f>, L: <f> }`.
     ///
     /// The declared hypotheses of the mandate's stability theorem: `D` is the
-    /// drift bound `sup|drift(t)|` (paper_mandate §3), `L` the Lipschitz
-    /// constant of the refinement map (prompt_opt §6.3). With them declared,
+    /// drift bound `sup|drift(t)|` (paper_mandate section 3), `L` the Lipschitz
+    /// constant of the refinement map (prompt_opt section 6.3). With them declared,
     /// the type checker verifies the full band `D < |Kp+Ki+Kd| < 1/L`; without
     /// them it can verify only the sign conditions, which the papers show to be
     /// necessary but not sufficient. The declaration travels in the IR as a
@@ -8072,7 +8072,7 @@ impl Parser {
                         node.drift_bound = self.parse_optional_float()
                     }
                     "L" | "l" | "lipschitz" => node.lipschitz = self.parse_optional_float(),
-                    // §Fase 119.h — see `parse_pid_block`. This is the arm that
+                    // v2.83.0 — see `parse_pid_block`. This is the arm that
                     // was actually dangerous: a dropped bound is a dropped
                     // hypothesis, and the theorem it guards then holds vacuously.
                     _ => {
@@ -8111,7 +8111,7 @@ impl Parser {
         Ok(())
     }
 
-    /// §Fase 111.f — `compute <Name>(p: T, …) -> T { <expr> }`.
+    /// v2.67.0 — `compute <Name>(p: T, …) -> T { <expr> }`.
     ///
     /// # What this used to be
     ///
@@ -8130,7 +8130,7 @@ impl Parser {
     ///
     /// # What it is now
     ///
-    /// A named pure function over the §70 expression language — the closed,
+    /// A named pure function over the v2.26.0 expression language — the closed,
     /// total, side-effect-free term algebra the runtime already evaluates
     /// natively (`eval_expr`, the same evaluator behind `let`, `grad` and
     /// `conditional`). Linear in the term, no model in the loop: the advertised
@@ -8185,7 +8185,7 @@ impl Parser {
         self.consume(TokenType::LBrace)?;
         while !self.check(TokenType::RBrace) && !self.check(TokenType::Eof) {
             // A `<name>:` pair is a legacy field (only `shield:` is meaningful).
-            // Anything else is THE BODY — a §70 expression.
+            // Anything else is THE BODY — a v2.26.0 expression.
             //
             // NOTE: the field name may be a KEYWORD, not just an identifier —
             // `shield` is `TokenType::Shield`. Testing only for `Identifier` here
@@ -8205,7 +8205,7 @@ impl Parser {
                 self.consume(TokenType::Colon)?;
                 match field_name.as_str() {
                     "shield" => node.shield_ref = self.consume_any_ident_or_kw()?.value.clone(),
-                    // §Fase 119.o — `input: a (Float), b (Float)`.
+                    // v2.83.0 — `input: a (Float), b (Float)`.
                     //
                     // This is the parameter list EVERY published compute writes,
                     // and it was reaching `skip_value()` — silently discarded, so
@@ -8215,7 +8215,7 @@ impl Parser {
                     // same `parameters`, because they are one concept spelled two
                     // ways and a second slot would let them disagree.
                     "input" => self.parse_compute_input_list(&mut node)?,
-                    // §Fase 119.o — `output: Float` / `output: PremiumResult`,
+                    // v2.83.0 — `output: Float` / `output: PremiumResult`,
                     // the field spelling of `-> T`.
                     "output" => {
                         node.return_type = self.parse_output_type_string()?;
@@ -8229,7 +8229,7 @@ impl Parser {
                     .get(self.pos + 1)
                     .is_some_and(|t| t.ttype == TokenType::LBrace)
             {
-                // §Fase 119.o — `logic { let … return … }`, the body form all
+                // v2.83.0 — `logic { let … return … }`, the body form all
                 // four published computes write. It used to fall to
                 // `parse_expr()`, which met the bare word `logic` and produced a
                 // diagnostic about an expression the author never wrote.
@@ -8252,7 +8252,7 @@ impl Parser {
         Ok(node)
     }
 
-    /// §Fase 119.o — `input: base_rate (Float), risk_factor (Float)`.
+    /// v2.83.0 — `input: base_rate (Float), risk_factor (Float)`.
     ///
     /// The published spelling inverts the typed form's punctuation: the name
     /// comes first and the type rides in parentheses. Both land in
@@ -8291,7 +8291,7 @@ impl Parser {
         Ok(())
     }
 
-    /// §Fase 119.o — the `logic { }` body: a chain of `let`s closed by `return`.
+    /// v2.83.0 — the `logic { }` body: a chain of `let`s closed by `return`.
     ///
     /// Lowered to nested [`Expr::Let`] terms, innermost-last, so
     /// `let a = e₁  let b = e₂  return e₃` becomes `Let(a, e₁, Let(b, e₂, e₃))`.
@@ -8414,12 +8414,12 @@ impl Parser {
                     "strategy" => node.strategy = self.consume_any_ident_or_kw()?.value.clone(),
                     "on_stuck" => node.on_stuck = self.consume_any_ident_or_kw()?.value.clone(),
                     "shield" => node.shield_ref = self.consume_any_ident_or_kw()?.value.clone(),
-                    // §Fase 71.c — `window: <WindowName>` temporal binding.
+                    // v2.27.0 — `window: <WindowName>` temporal binding.
                     "window" => node.window_ref = self.consume_any_ident_or_kw()?.value.clone(),
                     "max_tokens" => node.max_tokens = self.parse_optional_int(),
                     "max_time" => node.max_time = self.consume_any_ident_or_kw()?.value.clone(),
                     "max_cost" => node.max_cost = self.parse_optional_float(),
-                    // §Fase 52.d — `requires: [cap, …]` capability scope (same
+                    // v2.4.0 — `requires: [cap, …]` capability scope (same
                     // closed slug grammar as `axonendpoint requires:`). The
                     // enterprise supervisor mints a per-run principal scoped to
                     // exactly these (least privilege).
@@ -8448,7 +8448,7 @@ impl Parser {
                     _ => self.skip_value(),
                 }
             } else if field.ttype == TokenType::Listen {
-                // §λ-L-E Fase 13 D4 — preserve listen blocks for type
+                // v1.6.0 D4 — preserve listen blocks for type
                 // checking.  We backtracked past the `listen` keyword
                 // by `advance()` above, so reconstruct a synthetic
                 // listener using the same dual-mode dispatch the flow
@@ -8473,7 +8473,7 @@ impl Parser {
                     line: field.line,
                     column: field.column,
                 };
-                // §Fase 52.a — parse the handler body (was skipped). This is
+                // v2.4.0 — parse the handler body (was skipped). This is
                 // what makes a `daemon` operational: the body runs per event /
                 // scheduled tick (e.g. a `listen "cron:…" as tick { run … }`).
                 let body = self.parse_listener_body()?;
@@ -8485,7 +8485,7 @@ impl Parser {
                     loc: listen_loc,
                 });
             } else if field_name == "budget" && self.check(TokenType::LBrace) {
-                // §Fase 72.a — the `budget { … }` linear-effect rate-limit block.
+                // v2.28.0 — the `budget { … }` linear-effect rate-limit block.
                 node.budget = Some(self.parse_budget_block(field.line, field.column)?);
             } else if self.check(TokenType::LBrace) {
                 self.skip_braced_block()?;
@@ -8495,10 +8495,10 @@ impl Parser {
         Ok(node)
     }
 
-    /// §Fase 114.a — a TOP-LEVEL `budget <Name> { … }`.
+    /// v2.69.0 — a TOP-LEVEL `budget <Name> { … }`.
     ///
     /// Same body as the daemon-attached block; what it gains is a **name** and a
-    /// **scope that is not a daemon**. Until §114, `budget` was a field of `daemon`
+    /// **scope that is not a daemon**. Until v2.69.0, `budget` was a field of `daemon`
     /// and of nothing else — so an adopter deploying an HTTP endpoint that calls a
     /// vendor tool had **no way in the language to bound how often it did that.**
     /// Not "the bound did not work": **the bound could not be written.** And the
@@ -8511,7 +8511,7 @@ impl Parser {
         Ok(block)
     }
 
-    /// §Fase 72.a — `budget { <rate|max>: N per <period> on Tool(<X>) … [on_exhausted: <p>] }`.
+    /// v2.28.0 — `budget { <rate|max>: N per <period> on Tool(<X>) … [on_exhausted: <p>] }`.
     fn parse_budget_block(&mut self, line: u32, column: u32) -> Result<BudgetBlock, ParseError> {
         self.consume(TokenType::LBrace)?;
         let mut quotas = Vec::new();
@@ -8541,7 +8541,7 @@ impl Parser {
         })
     }
 
-    /// §Fase 72.a — one quota line: `<kind>: <limit> per <period> on Tool(<effect>)`.
+    /// v2.28.0 — one quota line: `<kind>: <limit> per <period> on Tool(<effect>)`.
     /// `kind` (`rate`/`max`) is already consumed by the caller.
     fn parse_budget_quota(
         &mut self,
@@ -8594,10 +8594,10 @@ impl Parser {
         while !self.check(TokenType::RBrace) && !self.check(TokenType::Eof) {
             let field = self.current().clone();
             let field_name = field.value.clone();
-            // §Fase 38.b (D1) — `schema:` declaration in three closed
+            // v1.31.0 (D1) — `schema:` declaration in three closed
             // forms: inline column block, manifest reference (string
             // literal), or env-var schema namespace (`env:VAR` —
-            // unquoted or quoted). Parse the form; the §38.d / §38.e
+            // unquoted or quoted). Parse the form; the v1.31.0 / v1.31.0
             // type-checker consumes the resulting AST.
             if field.ttype == TokenType::Schema {
                 self.advance();
@@ -8610,7 +8610,7 @@ impl Parser {
                 self.advance();
                 match field_name.as_str() {
                     "backend" => node.backend = self.consume_any_ident_or_kw()?.value.clone(),
-                    // §Fase 94.a — the secret-class prefix of a
+                    // v2.48.0 — the secret-class prefix of a
                     // `backend: secrets` metadata store. Dotted-identifier
                     // form (`class: crm`, `class: crm.oauth`); the
                     // secrets-only placement rule + slug shape are
@@ -8619,7 +8619,7 @@ impl Parser {
                     // field in source order).
                     "class" => node.class = self.parse_dotted_identifier()?,
                     "connection" => node.connection = self.parse_config_key()?,
-                    // §Fase 113 — the `resource` this store RUNS ON. When
+                    // v2.67.0 — the `resource` this store RUNS ON. When
                     // present the store derives its DSN, its POOL SIZE and its
                     // sharing discipline from the resource; `connection:`
                     // becomes redundant and `axon-T946` refuses declaring both
@@ -8630,7 +8630,7 @@ impl Parser {
                     "confidence_floor" => node.confidence_floor = self.parse_optional_float(),
                     "isolation" => node.isolation = self.consume_any_ident_or_kw()?.value.clone(),
                     "on_breach" => node.on_breach = self.consume_any_ident_or_kw()?.value.clone(),
-                    // §Fase 35.j (D11) — Pillar IV: the capability slug
+                    // v1.30.0 (D11) — Pillar IV: the capability slug
                     // required to access this store. Validated against
                     // the closed slug grammar shared with `requires:`.
                     "capability" => {
@@ -8662,7 +8662,7 @@ impl Parser {
         Ok(node)
     }
 
-    /// §Fase 38.b (D1) — parse the three closed forms of an `axonstore`
+    /// v1.31.0 (D1) — parse the three closed forms of an `axonstore`
     /// `schema:` declaration:
     ///
     ///   * form (a) **inline** — `schema { col: Type [constraint…], … }`
@@ -8717,7 +8717,7 @@ impl Parser {
                     }
                 })?;
 
-                // §Fase 73.a (D1) — the OPTIONAL `Json<T>` shape LENS on a
+                // v2.26.0 (D1) — the OPTIONAL `Json<T>` shape LENS on a
                 // column. `payload: Json<UserEvent>` records the expected
                 // struct shape; the lens is a compile-time expectation only
                 // (the column stays physically `jsonb`, navigated totally at
@@ -8764,7 +8764,7 @@ impl Parser {
                     unique: false,
                     indexed: false,
                     default_value: String::new(),
-                    // §Fase 38.x.d (D1) — `identity` is now a recognized
+                    // v1.31.0 (D1) — `identity` is now a recognized
                     // inline keyword (see the constraint loop below).
                     // Defaults to false; set to true when the adopter
                     // writes `id: BigInt primary_key identity`.
@@ -8799,7 +8799,7 @@ impl Parser {
                             col.unique = true;
                             self.advance();
                         }
-                        // §Fase 73.f (D1) — the `index` constraint declares
+                        // v2.26.0 (D1) — the `index` constraint declares
                         // an index as a capability-honest effect (visible to
                         // the deploy gate, not a silent DBA action). The
                         // backend picks the method from the column type
@@ -8808,7 +8808,7 @@ impl Parser {
                             col.indexed = true;
                             self.advance();
                         }
-                        // §Fase 38.x.d (D1) — `identity` marks a column
+                        // v1.31.0 (D1) — `identity` marks a column
                         // as `GENERATED ALWAYS/BY DEFAULT AS IDENTITY`.
                         // Distinct from `auto_increment` (legacy SERIAL
                         // via `nextval(...)` default). T803 skips
@@ -8965,7 +8965,7 @@ impl Parser {
         })
     }
 
-    // ── §λ-L-E Fase 1 — Resource primitive ────────────────────────
+    // ── v1.1.0 — Resource primitive ────────────────────────
 
     /// Parse: `resource Name { kind, endpoint, capacity, lifetime, certainty_floor, shield }`.
     ///
@@ -9005,7 +9005,7 @@ impl Parser {
             self.advance(); // past ':'
             match field_name.as_str() {
                 "kind" => node.kind = self.consume_any_ident_or_kw()?.value,
-                // §Fase 113 — `endpoint:` accepts BOTH shapes on purpose:
+                // v2.67.0 — `endpoint:` accepts BOTH shapes on purpose:
                 //   - a dotted config key  (`endpoint: db.main`)      — the law
                 //   - a string literal     (`endpoint: "postgres://…"`) — the sin
                 //
@@ -9048,14 +9048,14 @@ impl Parser {
                     node.certainty_floor = self.parse_optional_float();
                 }
                 "shield" => node.shield_ref = self.consume_any_ident_or_kw()?.value,
-                // §Fase 113 — `within: <fabric>`. ONE field, so a resource
+                // v2.67.0 — `within: <fabric>`. ONE field, so a resource
                 // cannot be in two fabrics: Separation-Logic disjointness is
                 // unrepresentable rather than verified.
                 "within" => node.within = self.consume_any_ident_or_kw()?.value,
-                // §Fase 113 — an unknown field is a HARD ERROR, not a shrug.
+                // v2.67.0 — an unknown field is a HARD ERROR, not a shrug.
                 //
                 // This arm used to be `_ => self.skip_value()`. That is the same
-                // family as §111's root cause (`parse_block_step` →
+                // family as v2.67.0's root cause (`parse_block_step` →
                 // `skip_braced_block()`, which silently killed four primitives):
                 // a misspelled `withn:` would have been swallowed without a
                 // word, and the resource would have governed nothing while
@@ -9237,7 +9237,7 @@ impl Parser {
         Ok(node)
     }
 
-    // ── §λ-L-E Fase 3 — Control cognitivo ─────────────────────────
+    // ── v1.1.0 — Control cognitivo ─────────────────────────
 
     /// Parse: `reconcile Name { observe, threshold, tolerance, on_drift, shield, mandate, max_retries }`.
     fn parse_reconcile(&mut self) -> Result<ReconcileDefinition, ParseError> {
@@ -9458,7 +9458,7 @@ impl Parser {
         Ok(node)
     }
 
-    // ── §λ-L-E Fase 4 — Topology + π-calculus binary sessions ─────
+    // ── v1.1.0 — Topology + π-calculus binary sessions ─────
 
     /// Parse: `session Name { role1: [step, …]  role2: [step, …] }`.
     ///
@@ -9496,7 +9496,7 @@ impl Parser {
         Ok(node)
     }
 
-    /// §Fase 51.c.2 — Parse a Pauli-sum observable declaration:
+    /// v2.4.0 — Parse a Pauli-sum observable declaration:
     /// ```text
     /// observable EnergyHamiltonian {
     ///     qubits: 2
@@ -9506,7 +9506,7 @@ impl Parser {
     /// ```
     /// `term:` is a repeatable key (one `cₖ · Pₖ` per line). The coefficient is
     /// a real scalar (optional leading `+`/`-`), then `*`, then a quoted Pauli
-    /// string. The type-checker (§51.c.2) validates the closed `{I,X,Y,Z}`
+    /// string. The type-checker (v2.4.0) validates the closed `{I,X,Y,Z}`
     /// alphabet + equal lengths; real coefficients ⇒ Hermitian by construction.
     fn parse_observable(&mut self) -> Result<ObservableDefinition, ParseError> {
         let tok = self.consume(TokenType::Observable)?;
@@ -9559,7 +9559,7 @@ impl Parser {
         Ok(node)
     }
 
-    /// §Fase 69.a — Parse:
+    /// v2.23.0 — Parse:
     /// `witness Name { claim: <ref>  against: <baseline>  metric: <metric>
     ///                 threshold: <ε>  data: <source> }`.
     /// Order-free `key: value` pairs. `claim`/`against`/`metric`/`data` are bare
@@ -9602,7 +9602,7 @@ impl Parser {
         Ok(node)
     }
 
-    /// §Fase 41.b — Parse:
+    /// v2.3.0 — Parse:
     /// `socket Name { protocol: SessionRef, backpressure: credit(n),
     ///               reconnect: cognitive_state, legal_basis: ... }`.
     /// Fields are `key: value` pairs (order-free); only `protocol` is required.
@@ -9651,12 +9651,12 @@ impl Parser {
         Ok(node)
     }
 
-    /// §Fase 80.b — parse `upstream Name [from Preset@vN] { fields }`.
+    /// v2.37.0 — parse `upstream Name [from Preset@vN] { fields }`.
     ///
-    /// Field grammar per `docs/fase/fase_80_upstream_design.md` §1–2. The
+    /// Field grammar per `docs/cycle/upstream_design.md` section 1–2. The
     /// parser fixes the *shape* only; catalog membership (`transport:`,
     /// `auth:`, `overflow:`, `on_exhausted:`), key charsets and projection
-    /// totality are §80.c type-checker laws (T849–T851), mirroring how
+    /// totality are v2.37.0 type-checker laws (T849–T851), mirroring how
     /// `socket` splits parse vs. check.
     fn parse_upstream(&mut self) -> Result<UpstreamDefinition, ParseError> {
         let tok = self.consume(TokenType::Upstream)?;
@@ -9666,7 +9666,7 @@ impl Parser {
             loc: Loc { line: tok.line, column: tok.column },
             ..Default::default()
         };
-        // §80.f — preset instantiation: `upstream X from DeepgramSTT@v1 {…}`.
+        // v2.37.0 — preset instantiation: `upstream X from DeepgramSTT@v1 {…}`.
         if self.check(TokenType::From) {
             self.advance();
             let base = self.consume(TokenType::Identifier)?.value;
@@ -9683,7 +9683,7 @@ impl Parser {
                 "protocol" => node.protocol = self.consume_any_ident_or_kw()?.value,
                 "role" => node.role = self.consume_any_ident_or_kw()?.value,
                 "resolve" => node.resolve = self.parse_dotted_identifier()?,
-                // §Fase 114.u — the upstream's channel rides a declared
+                // v2.69.0 — the upstream's channel rides a declared
                 // `resource`; the address + instance bound DERIVE from it.
                 // XOR with `resolve:` is axon-T951 (type-checker territory).
                 "resource" => node.resource_ref = self.consume_any_ident_or_kw()?.value,
@@ -9731,12 +9731,12 @@ impl Parser {
         Ok(node)
     }
 
-    /// §Fase 83.a — parse `cors Name { fields }`. Field-shape checks
+    /// v2.38.0 — parse `cors Name { fields }`. Field-shape checks
     /// (wildcard+credentials, origin-glob shape, closed method catalog,
-    /// cross-method path consistency) are §83.c type-checker territory
+    /// cross-method path consistency) are v2.38.0 type-checker territory
     /// (T853-T857); the parser only builds the structural AST.
     ///
-    /// **Unknown fields are a hard error** (D83.7, not `shield`'s lenient
+    /// **Unknown fields are a hard error** (the design decision, not `shield`'s lenient
     /// `axon-W010` record-and-skip) — mirrors `upstream`'s stricter
     /// posture, appropriate for a security-relevant declaration.
     fn parse_cors(&mut self) -> Result<CorsDefinition, ParseError> {
@@ -9771,13 +9771,13 @@ impl Parser {
         Ok(node)
     }
 
-    /// §Fase 92.a — parse `credential Name { ttl: grants: }`. Strict
-    /// closed-catalog (unknown field is a hard error, the §83 D83.7
+    /// v2.46.0 — parse `credential Name { ttl: grants: }`. Strict
+    /// closed-catalog (unknown field is a hard error, the v2.38.0 the design decision
     /// discipline — a credential contract governs AUTHORITY, so a typo can
     /// never silently produce a permissive contract). `grants:` slugs are
     /// validated at parse time with the same closed grammar as
     /// `axonendpoint requires:`; the cross-field laws (non-empty grants,
-    /// TTL bounds) are §92.a type-checker territory (`axon-T893`/`T894`).
+    /// TTL bounds) are v2.46.0 type-checker territory (`axon-T893`/`T894`).
     fn parse_credential(&mut self) -> Result<CredentialDefinition, ParseError> {
         let tok = self.consume(TokenType::Credential)?;
         let name = self.consume(TokenType::Identifier)?.value;
@@ -9825,12 +9825,12 @@ impl Parser {
         Ok(node)
     }
 
-    /// §Fase 85.a — parse `cache Name { backend:, ttl:, key:, default:,
+    /// v2.40.0 — parse `cache Name { backend:, ttl:, key:, default:,
     /// apply_to_effects:, invalidate_on: }`. Strict closed-catalog (unknown
-    /// field is a hard error, the §83 D83.7 discipline — a cache governs
+    /// field is a hard error, the v2.38.0 the design decision discipline — a cache governs
     /// correctness, so a typo can never silently mean "no policy"). All
     /// cross-field laws (single default, non-pure-needs-ttl, reference
-    /// resolution, effect widening) are §85.c type-checker territory.
+    /// resolution, effect widening) are v2.40.0 type-checker territory.
     fn parse_cache(&mut self) -> Result<CacheDefinition, ParseError> {
         let tok = self.consume(TokenType::Cache)?;
         let name = self.consume(TokenType::Identifier)?.value;
@@ -9864,13 +9864,13 @@ impl Parser {
         Ok(node)
     }
 
-    // ── §Fase 99.b — Native Document Synthesis ─────────────────────────────
+    // ── v2.53.0 — Native Document Synthesis ─────────────────────────────
 
-    /// §Fase 99.b — parse `document <Name> { target:, template:?, provenance:?,
+    /// v2.53.0 — parse `document <Name> { target:, template:?, provenance:?,
     /// effects:?, <body blocks> }`. Document-level scalars are handled here;
     /// anything of the form `ident { … }` is a body block ([`parse_doc_block_body`]).
-    /// Unknown scalar fields are a hard error (the §83/§84 closed-catalog
-    /// discipline); the per-`target` block vocabulary is the §99.c checker's job.
+    /// Unknown scalar fields are a hard error (the v2.38.0/v2.39.0 closed-catalog
+    /// discipline); the per-`target` block vocabulary is the v2.53.0 checker's job.
     fn parse_document(&mut self) -> Result<crate::ast::DocumentDefinition, ParseError> {
         let tok = self.consume(TokenType::Document)?;
         let name = self.consume(TokenType::Identifier)?.value;
@@ -9921,7 +9921,7 @@ impl Parser {
         Ok(node)
     }
 
-    /// §Fase 99.b — parse a document body block whose `kind` was already
+    /// v2.53.0 — parse a document body block whose `kind` was already
     /// consumed: `{ (field: value | nested-block { … })* }`. Recursive — a
     /// `section` holds `para`/`table`/`chart`; a `slide` holds `bullets`/
     /// `notes`; a `sheet` holds `row`/`formula`. A member is a field iff a
@@ -9963,7 +9963,7 @@ impl Parser {
         Ok(block)
     }
 
-    /// §Fase 99.b — parse a document field value into a [`crate::ast::DocScalar`].
+    /// v2.53.0 — parse a document field value into a [`crate::ast::DocScalar`].
     /// A bare identifier is a REFERENCE (`text: revenue_summary`) — this is what
     /// the assertion-laundering barrier inspects; a quoted string / int / bool /
     /// bracketed list are literals.
@@ -9993,13 +9993,13 @@ impl Parser {
         }
     }
 
-    // ── §Fase 105 — Governed CRM Delivery ──────────────────────────────────
+    // ── v2.60.0 — Governed CRM Delivery ──────────────────────────────────
 
-    /// §Fase 105 — parse `deliver <Name> { target:, provenance:?, secret:,
+    /// v2.60.0 — parse `deliver <Name> { target:, provenance:?, secret:,
     /// effects:?, <operation blocks> }`. Delivery-level scalars are handled here;
     /// anything of the form `ident { … }` is an operation block
-    /// ([`parse_deliver_op`]). Unknown scalar fields are a hard error (the §99
-    /// §Fase 110.a — the governed human-notification declaration:
+    /// ([`parse_deliver_op`]). Unknown scalar fields are a hard error (the v2.53.0
+    /// v2.66.0 — the governed human-notification declaration:
     ///
     /// ```text
     /// notify LowSales {
@@ -10012,7 +10012,7 @@ impl Parser {
     /// }
     /// ```
     ///
-    /// The closed-field discipline (§99/§105): an unknown scalar field is
+    /// The closed-field discipline (v2.53.0/v2.60.0): an unknown scalar field is
     /// a hard parse error. The LAWS (T933/T934/T935) live in the checker
     /// so violations accumulate; the parser records shape (including a
     /// literal `to:` — kept so T934 can refuse it TEACHING the custody
@@ -10086,8 +10086,8 @@ impl Parser {
         Ok(node)
     }
 
-    /// §Fase 110.a — one-token lookahead helper for the `secret(` form.
-    /// §Fase 114.a — is the NEXT token an identifier? (`budget <Name> { … }` vs
+    /// v2.66.0 — one-token lookahead helper for the `secret(` form.
+    /// v2.69.0 — is the NEXT token an identifier? (`budget <Name> { … }` vs
     /// a bare `budget` used as an ordinary identifier.)
     fn peek_is_identifier(&self) -> bool {
         self.tokens
@@ -10155,7 +10155,7 @@ impl Parser {
         Ok(node)
     }
 
-    /// §Fase 105 — parse a delivery operation block whose `kind` was already
+    /// v2.60.0 — parse a delivery operation block whose `kind` was already
     /// consumed: `{ (field: value)* }`. Flat (unlike a document block, an
     /// operation has no nested children) — each member must be a `field: value`.
     fn parse_deliver_op(
@@ -10189,11 +10189,11 @@ impl Parser {
         Ok(op)
     }
 
-    /// §Fase 87.a — parse `savant <Name> { domain:, cognition{…}, memory{…},
+    /// v2.42.0 — parse `savant <Name> { domain:, cognition{…}, memory{…},
     /// budget{…}, mandate <M> {…} … }`. The block surface only; catalog +
-    /// ref-resolution + budget/interruptibility binding is the §87.b/c checker's
+    /// ref-resolution + budget/interruptibility binding is the v2.42.0 checker's
     /// job (the standing parse/check split). Unknown fields are a hard error
-    /// (D83.7): a savant governs an expensive autonomous process.
+    ///: a savant governs an expensive autonomous process.
     fn parse_savant(&mut self) -> Result<SavantDefinition, ParseError> {
         let tok = self.consume(TokenType::Savant)?;
         let name = self.consume(TokenType::Identifier)?.value;
@@ -10246,8 +10246,8 @@ impl Parser {
         Ok(node)
     }
 
-    /// §Fase 87.a — the `cognition { depth:, entropic_threshold:, divergence: }`
-    /// sub-block. Catalog validation of `depth`/`divergence` is §87.b.
+    /// v2.42.0 — the `cognition { depth:, entropic_threshold:, divergence: }`
+    /// sub-block. Catalog validation of `depth`/`divergence` is v2.42.0.
     fn parse_savant_cognition(
         &mut self,
         line: u32,
@@ -10280,8 +10280,8 @@ impl Parser {
         Ok(node)
     }
 
-    /// §Fase 87.a — the `memory { backend:, corpus_graph:, isolation_level: }`
-    /// sub-block. `backend` is resolved to a declared `memory`/`corpus` in §87.c.
+    /// v2.42.0 — the `memory { backend:, corpus_graph:, isolation_level: }`
+    /// sub-block. `backend` is resolved to a declared `memory`/`corpus` in v2.42.0.
     fn parse_savant_memory(
         &mut self,
         line: u32,
@@ -10316,8 +10316,8 @@ impl Parser {
         Ok(node)
     }
 
-    /// §Fase 87.a — the `budget { max_iterations:, max_tool_synth: }` sub-block.
-    /// Bound to a §72 linear budget (`RateLease`) in §87.c.
+    /// v2.42.0 — the `budget { max_iterations:, max_tool_synth: }` sub-block.
+    /// Bound to a v2.28.0 linear budget (`RateLease`) in v2.42.0.
     fn parse_savant_budget(
         &mut self,
         line: u32,
@@ -10349,7 +10349,7 @@ impl Parser {
         Ok(node)
     }
 
-    /// §Fase 87.a — the `mandate <Name> { objective:, output: }` sub-block. The
+    /// v2.42.0 — the `mandate <Name> { objective:, output: }` sub-block. The
     /// `mandate` keyword is already consumed by `parse_savant`.
     fn parse_savant_mandate(
         &mut self,
@@ -10383,10 +10383,10 @@ impl Parser {
         Ok(node)
     }
 
-    /// §Fase 87.d — parse `synth <Name> { target:, risk:, language:, sandbox:,
+    /// v2.42.0 — parse `synth <Name> { target:, risk:, language:, sandbox:,
     /// review:, max_lines: }`. Flat key:value block (the `cache` shape). Catalog
-    /// + deny-by-default validation is §87.d `check_synth`. Unknown fields are a
-    /// hard error (D83.7): a synth policy governs arbitrary-code execution.
+    /// + deny-by-default validation is v2.42.0 `check_synth`. Unknown fields are a
+    /// hard error: a synth policy governs arbitrary-code execution.
     fn parse_synth(&mut self) -> Result<SynthDefinition, ParseError> {
         let tok = self.consume(TokenType::Synth)?;
         let name = self.consume(TokenType::Identifier)?.value;
@@ -10425,9 +10425,9 @@ impl Parser {
         Ok(node)
     }
 
-    /// §Fase 80.g — parse `voice Name { fields }`. Cross-field laws
+    /// v2.37.0 — parse `voice Name { fields }`. Cross-field laws
     /// (stt/tts XOR realtime, interruptible ⇒ legal_basis, ref resolution)
-    /// are §80.c type-checker territory (T852), same parse/check split as
+    /// are v2.37.0 type-checker territory (T852), same parse/check split as
     /// every primitive in this file.
     fn parse_voice(&mut self) -> Result<VoiceDefinition, ParseError> {
         let tok = self.consume(TokenType::Voice)?;
@@ -10464,8 +10464,8 @@ impl Parser {
         Ok(node)
     }
 
-    /// §Fase 80.g — an upstream leg reference: `Ident` (a declared
-    /// `upstream`) or `Ident@vN` (a §80.f preset).
+    /// v2.37.0 — an upstream leg reference: `Ident` (a declared
+    /// `upstream`) or `Ident@vN` (a v2.37.0 preset).
     fn parse_upstream_ref(&mut self) -> Result<String, ParseError> {
         let base = self.consume(TokenType::Identifier)?.value;
         if self.check(TokenType::At) {
@@ -10477,7 +10477,7 @@ impl Parser {
         }
     }
 
-    /// §Fase 80.b — parse the `map: [ rule, … ]` projection list.
+    /// v2.37.0 — parse the `map: [ rule, … ]` projection list.
     ///
     /// rule := (`send` | `receive`) <MessageType> `as` (`json` | `binary`)
     ///         [ `tag` <string> ]                 — send-json only
@@ -10533,7 +10533,7 @@ impl Parser {
         Ok(rules)
     }
 
-    /// §Fase 80.b — parse `reconnect: { backoff_ms: <int>, max_attempts:
+    /// v2.37.0 — parse `reconnect: { backoff_ms: <int>, max_attempts:
     /// <int>, on_exhausted: <ident> }` (order-free, all three required —
     /// a reconnection policy with a hole is not a policy).
     fn parse_upstream_reconnect(&mut self) -> Result<UpstreamReconnect, ParseError> {
@@ -10591,7 +10591,7 @@ impl Parser {
         Ok(steps)
     }
 
-    /// §Fase 79.b — a **brace**-delimited session step block: `{ step, step, … }`.
+    /// v2.36.0 — a **brace**-delimited session step block: `{ step, step, … }`.
     /// Used by the `interrupt`/`resumable` regions (the paper's block surface),
     /// as opposed to the `[ … ]` step-lists used by roles and choice arms.
     fn parse_session_step_block(&mut self) -> Result<Vec<SessionStep>, ParseError> {
@@ -10629,31 +10629,31 @@ impl Parser {
                 self.advance();
                 Ok(SessionStep { op: "end".into(), loc, ..Default::default() })
             }
-            // §Fase 41.b — choice: `select { ℓ: [..], … }` (⊕) | `branch { ℓ: [..], … }` (&).
+            // v2.3.0 — choice: `select { ℓ: [..], … }` (⊕) | `branch { ℓ: [..], … }` (&).
             // `select`/`branch` are not keywords — they arrive as identifiers.
             TokenType::Identifier if tok.value == "select" || tok.value == "branch" => {
                 self.parse_session_choice(&tok.value, loc)
             }
-            // §Fase 79.b — `interrupt { <body> } on <Signal> as <sig> resumable { <handler> }`.
+            // v2.36.0 — `interrupt { <body> } on <Signal> as <sig> resumable { <handler> }`.
             // Contextual keyword (identifier), like `select`/`branch`.
             TokenType::Identifier if tok.value == "interrupt" => {
                 self.parse_session_interrupt(loc)
             }
-            // §Fase 79.b — `resume`: the handler's normal exit (hand control back to
+            // v2.36.0 — `resume`: the handler's normal exit (hand control back to
             // the parked body). A bare step, no payload; only meaningful inside an
-            // `interrupt` handler (enforced at type-check, §79.c).
+            // `interrupt` handler (enforced at type-check, v2.36.0).
             //
-            // ⚠️ §Fase 120 — this guard used to require `TokenType::Identifier`,
+            // ⚠️ v2.87.0 — this guard used to require `TokenType::Identifier`,
             // and `resume` became a HARD KEYWORD when the algebraic-effect
             // constructs landed. The session `resume` is a DIFFERENT `resume`
-            // (§79.b's interrupt-handler exit, not §120's one-shot continuation
+            // (v2.36.0's interrupt-handler exit, not v2.87.0's one-shot continuation
             // invocation), and it broke the moment the lexer stopped handing it
             // over as an identifier — `axon-frontend/src/voice_desugar.rs`'s own
             // expansion source stopped parsing.
             //
             // Matching on the VALUE rather than the token type is what keeps a
             // contextual keyword contextual. This was caught by the corpus gate
-            // (`fase120_a_effect_grammar::a7_…`), not by review: six new hard
+            // (`effect_grammar::a7_…`), not by review: six new hard
             // keywords across a 106-file `.axon` corpus is not a risk anyone
             // eyeballs correctly.
             _ if tok.value == "resume" => {
@@ -10672,7 +10672,7 @@ impl Parser {
         }
     }
 
-    /// §Fase 79.b — consume a **contextual keyword** (`on` / `as` / `resumable`):
+    /// v2.36.0 — consume a **contextual keyword** (`on` / `as` / `resumable`):
     /// a token whose *value* must equal `kw`, regardless of whether the lexer
     /// classified it as a keyword or a bare identifier. Keeps the `interrupt`
     /// surface readable without minting three reserved words.
@@ -10690,12 +10690,12 @@ impl Parser {
         Ok(())
     }
 
-    /// §Fase 79.b — Parse an interruptible region:
+    /// v2.36.0 — Parse an interruptible region:
     /// `interrupt { <body-steps> } on <Signal> as <sig> resumable { <handler-steps> }`.
     ///
-    /// Encoded into the string-tagged `SessionStep` (mirroring the §41.b choice
+    /// Encoded into the string-tagged `SessionStep` (mirroring the v2.3.0 choice
     /// shape): `op = "interrupt"`, `message_type = <Signal>` (validated against the
-    /// closed `CallInterruptCause` catalog at type-check, §79.c), two labelled
+    /// closed `CallInterruptCause` catalog at type-check, v2.36.0), two labelled
     /// `branches` (`body`, `handler`), `binder = <sig>`, `resumable = true`.
     fn parse_session_interrupt(&mut self, loc: Loc) -> Result<SessionStep, ParseError> {
         self.advance(); // consume `interrupt`
@@ -10724,7 +10724,7 @@ impl Parser {
         })
     }
 
-    /// §Fase 41.b — Parse a choice step: `select { ask: [..], cancel: [..] }`
+    /// v2.3.0 — Parse a choice step: `select { ask: [..], cancel: [..] }`
     /// (or `branch { … }`). Each `label: [steps]` arm is a nested sub-protocol.
     fn parse_session_choice(&mut self, op: &str, loc: Loc) -> Result<SessionStep, ParseError> {
         self.advance(); // consume `select` / `branch`
@@ -10813,7 +10813,7 @@ impl Parser {
         })
     }
 
-    // ── §λ-L-E Fase 5 — Cognitive immune system (paper_immune_v2.md) ────
+    // ── v1.1.0 — Cognitive immune system (paper_immune_v2.md) ────
 
     /// Parse: `immune Name { watch, sensitivity, baseline, window, scope, tau, decay }`.
     fn parse_immune(&mut self) -> Result<ImmuneDefinition, ParseError> {
@@ -11122,7 +11122,7 @@ impl Parser {
         Ok(node)
     }
 
-    // ── §λ-L-E Fase 9 — UI cognitiva (component / view) ────────────
+    // ── v1.3.1 — UI cognitiva (component / view) ────────────
 
     /// Parse: `component Name { renders, via_shield, on_interact, render_hint }`.
     fn parse_component(&mut self) -> Result<ComponentDefinition, ParseError> {
@@ -11229,54 +11229,54 @@ impl Parser {
             execute_flow: String::new(),
             output_type: String::new(),
             shield_ref: String::new(),
-            // §Fase 83.a — `cors:` reference; empty ≡ no cors declared
-            // (D83.5: no CORS headers, ever — secure by default).
+            // v2.38.0 — `cors:` reference; empty ≡ no cors declared
+            // (the design decision: no CORS headers, ever — secure by default).
             cors_ref: String::new(),
             retries: None,
             timeout: String::new(),
             compliance: Vec::new(),
-            // §Fase 30 — Defaults preserve backwards compat per D1.
+            // v1.21.0 — Defaults preserve backwards compat per D1.
             transport: "json".to_string(),
             keepalive: String::new(),
-            // §Fase 31.b — Inference fields (parser-default state).
+            // v1.22.0 — Inference fields (parser-default state).
             // Both fields toggle/populate only when the source provides
             // an explicit `transport:` declaration (parser sets
             // `transport_explicit = true`) AND the type-checker walks
             // the program to compute `implicit_transport`.
             transport_explicit: false,
             implicit_transport: String::new(),
-            // §Fase 32.g (D8) — auth scope; empty list ≡ no auth gate.
+            // v1.23.0 (D8) — auth scope; empty list ≡ no auth gate.
             requires_capabilities: Vec::new(),
-            // §Fase 89.a — explicit authorization-coverage opt-out. Default
-            // false; the §89.b rule requires coverage OR `public: true`.
+            // v2.44.0 — explicit authorization-coverage opt-out. Default
+            // false; the v2.44.0 rule requires coverage OR `public: true`.
             public: false,
-            // §Fase 32.h — Replay-token binding (D9 plan-vivo).
+            // v1.23.0 — Replay-token binding (D9 plan-vivo).
             // Parser defaults: not explicit; effective value resolved
             // at deploy time using the method-default heuristic.
             replay_explicit: false,
             replay: false,
-            // §Fase 33.z.k.b (v1.28.0) — Wire-format dialect default
+            // v1.28.0 — Wire-format dialect default
             // empty; the runtime classifier resolves the default
             // dialect per the algebraic-effect predicate when the
             // source omits `transport: sse(<dialect>)`.
             transport_dialect: String::new(),
-            // §Fase 33.z.k.1 (v1.27.1) — Algebraic-effect override.
+            // v1.27.1 — Algebraic-effect override.
             // Parser default false; populated by the type-checker's
             // compute_implicit_transports pass once the full program
             // is known (the predicate cross-references tool effects
             // declared anywhere in the program).
             has_algebraic_stream_effect: false,
-            // §Fase 36.d (D2) — declared execution backend; empty ≡
-            // not declared (the endpoint resolves down the Fase 36 D1
+            // v1.31.0 (D2) — declared execution backend; empty ≡
+            // not declared (the endpoint resolves down the v1.31.0 D1
             // ladder). A non-empty value is validated against the
             // closed `AXONENDPOINT_BACKEND_VALUES` catalog below.
             backend: String::new(),
-            // §Fase 37.y (D1) — Path-param names extracted from the
+            // v1.32.0 (D1) — Path-param names extracted from the
             // `path:` string AFTER the field is parsed. Initialized
             // empty; populated by `extract_path_param_names` after
             // the `path:` field is read in the loop below.
             path_params: Vec::new(),
-            // §Fase 37.y (D2) — Inline `query: { name: Type, name: Type? }`
+            // v1.32.0 (D2) — Inline `query: { name: Type, name: Type? }`
             // block. Initialized empty; populated by the `"query"` arm
             // in the field loop below. Closed catalog enforced at parse
             // time per `axonendpoint_is_valid_query_param_type`.
@@ -11296,10 +11296,10 @@ impl Parser {
                 self.advance();
                 match field_name.as_str() {
                     "method" => {
-                        // §Fase 32.b D3 — closed method enum
+                        // v1.23.0 D3 — closed method enum
                         // `{GET, POST, PUT, DELETE, PATCH}`. Unknown
                         // values rejected at parse time with smart-
-                        // suggest hint (Fase 28.e). HEAD/OPTIONS/etc.
+                        // suggest hint (v1.20.0). HEAD/OPTIONS/etc.
                         // are runtime-managed and not adopter-
                         // declarable.
                         let value_tok = self.consume_any_ident_or_kw()?;
@@ -11335,7 +11335,7 @@ impl Parser {
                     }
                     "path" => {
                         node.path = self.consume(TokenType::StringLit)?.value.clone();
-                        // §Fase 37.y (D1) — extract `{name}` placeholders
+                        // v1.32.0 (D1) — extract `{name}` placeholders
                         // for the Request Binding Contract's path-param
                         // source. Duplicate `{name}` in the same path
                         // is rejected at parse time (HTTP route patterns
@@ -11364,7 +11364,7 @@ impl Parser {
                     },
                     "body" => node.body_type = self.consume_any_ident_or_kw()?.value.clone(),
                     "query" => {
-                        // §Fase 37.y (D2) — Inline query-parameter block.
+                        // v1.32.0 (D2) — Inline query-parameter block.
                         // Grammar: `query: { name: Type [, name: Type?]* }`.
                         // Closed type catalog
                         // `AXONENDPOINT_QUERY_PARAM_TYPES = {Text, Int,
@@ -11374,9 +11374,9 @@ impl Parser {
                         // duplicate field name in the same block is a
                         // parse error (HTTP query strings DO allow
                         // multi-value but v1.38.5 binds the first value
-                        // only — see plan vivo §7 forward-compat).
+                        // only — see plan vivo section 7 forward-compat).
                         //
-                        // §Fase 37.y (D2 robustness) — declaring `query:`
+                        // v1.32.0 (D2 robustness) — declaring `query:`
                         // twice on the same axonendpoint silently merged
                         // params pre-hardening. Now it's a parse error
                         // so an adopter typo / copy-paste mistake
@@ -11422,13 +11422,13 @@ impl Parser {
                             }
                             self.consume(TokenType::Colon)?;
                             let type_expr = self.parse_type_expr()?;
-                            // §Fase 37.y (D2 robustness) — reject generic
+                            // v1.32.0 (D2 robustness) — reject generic
                             // type expressions on query params. The
                             // closed catalog is 5 primitives; container
                             // types (`Optional<T>`, `List<T>`, etc.)
                             // would mislead the adopter into thinking
                             // they bind multi-value query strings
-                            // (deferred per plan vivo §7) or that
+                            // (deferred per plan vivo section 7) or that
                             // `Optional<Text>` is the canonical way to
                             // declare an optional query (it's NOT —
                             // `Text?` is). Surface the canonical syntax
@@ -11471,7 +11471,7 @@ impl Parser {
                                 });
                             }
                             // Validate against the closed catalog. A
-                            // miss surfaces a Fase 28-style smart-suggest
+                            // miss surfaces a v1.20.0-style smart-suggest
                             // hint when within edit-distance 2.
                             if !axonendpoint_is_valid_query_param_type(&type_expr.name) {
                                 // `smart_suggest::suggest_for` returns
@@ -11530,7 +11530,7 @@ impl Parser {
                     },
                     "execute" => node.execute_flow = self.consume_any_ident_or_kw()?.value.clone(),
                     "output" => {
-                        // §Fase 38.x.f — promote axonendpoint `output:`
+                        // v1.31.0 — promote axonendpoint `output:`
                         // parsing from a single token to the full
                         // generic-aware type expression (mirroring
                         // `parse_step` for FlowStep::Step which already
@@ -11550,7 +11550,7 @@ impl Parser {
                         node.output_type = self.parse_output_type_string()?;
                     }
                     "shield" => node.shield_ref = self.consume_any_ident_or_kw()?.value.clone(),
-                    // §Fase 83.a — the `cors: <Name>` reference.
+                    // v2.38.0 — the `cors: <Name>` reference.
                     "cors" => node.cors_ref = self.consume_any_ident_or_kw()?.value.clone(),
                     "retries" => node.retries = self.parse_optional_int(),
                     "timeout" => {
@@ -11560,7 +11560,7 @@ impl Parser {
                     }
                     "compliance" => node.compliance = self.parse_bracketed_identifiers()?,
                     "replay" => {
-                        // §Fase 32.h (D9 plan-vivo) — Replay-token binding.
+                        // v1.23.0 (D9 plan-vivo) — Replay-token binding.
                         // Boolean `replay: true | false`. Default (when
                         // omitted) is method-derived at deploy-time:
                         // POST/PUT → true, GET/DELETE → false. Explicit
@@ -11570,17 +11570,17 @@ impl Parser {
                         node.replay = value_tok.value.eq_ignore_ascii_case("true");
                         node.replay_explicit = true;
                     }
-                    // §Fase 89.a — `public: true | false`, the explicit
+                    // v2.44.0 — `public: true | false`, the explicit
                     // authorization-coverage opt-out (doctrine
                     // `every_boundary_is_guarded`). Mirrors `replay:`'s bool
-                    // parse. Default false; the §89.b rule (`axon-T890`)
+                    // parse. Default false; the v2.44.0 rule (`axon-T890`)
                     // requires a covering discipline OR `public: true`.
                     "public" => {
                         let value_tok = self.consume(TokenType::Bool)?;
                         node.public = value_tok.value.eq_ignore_ascii_case("true");
                     }
                     "requires" => {
-                        // §Fase 32.g (D8) — Auth scope per axonendpoint.
+                        // v1.23.0 (D8) — Auth scope per axonendpoint.
                         // Closed slug grammar
                         // `^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$` enforced
                         // at parse time with smart-suggest-style hint.
@@ -11607,7 +11607,7 @@ impl Parser {
                         }
                         node.requires_capabilities = items;
                     }
-                    // §Fase 30.b — HTTP transport enum (D2 closed) + keepalive (D6 closed).
+                    // v1.21.0 — HTTP transport enum (D2 closed) + keepalive (D6 closed).
                     // Mirrors `axon/compiler/parser.py` `_parse_axonendpoint`.
                     // Drift-gate corpus verifies byte-identical parse cross-stack.
                     "transport" => {
@@ -11637,12 +11637,12 @@ impl Parser {
                             });
                         }
                         node.transport = value.clone();
-                        // §Fase 31.b D1 — mark the field as explicitly
+                        // v1.22.0 D1 — mark the field as explicitly
                         // declared so the type-checker's implicit-transport
                         // inference knows NOT to override this value with
                         // the produces_stream-driven inference.
                         node.transport_explicit = true;
-                        // §Fase 33.z.k.b (v1.28.0) — Optional dialect
+                        // v1.28.0 — Optional dialect
                         // parametrization: `transport: sse(<dialect>)`.
                         // Only valid when the base value is `sse`
                         // (json + ndjson dialects are the dialects
@@ -11747,7 +11747,7 @@ impl Parser {
                         node.keepalive = value.clone();
                     }
                     "backend" => {
-                        // §Fase 36.d (D2) — declared execution backend.
+                        // v1.31.0 (D2) — declared execution backend.
                         // Closed catalog `CANONICAL_PROVIDERS ∪ {auto,
                         // stub}`; an unknown name is a parse error with
                         // a smart-suggest hint (the same discipline as
@@ -12021,8 +12021,8 @@ impl Parser {
     }
 
     // ──────────────────────────────────────────────────────────────────
-    //  §λ-L-E Fase 13 — Mobile Typed Channels parsers
-    //  (paper_mobile_channels.md §3 + plan/fase_13)
+    // v1.6.0 — Mobile Typed Channels parsers
+    // (paper_mobile_channels.md section 3 + plan/the design plan)
     //  Direct port of axon/compiler/parser.py:_parse_channel/emit/publish/discover.
     // ──────────────────────────────────────────────────────────────────
 
@@ -12119,7 +12119,7 @@ impl Parser {
     }
 
     /// Parse a `message:` value, supporting nested `Channel<…>`
-    /// (second-order session types — paper §3.3).
+    /// (second-order session types — paper section 3.3).
     fn parse_channel_message_type(&mut self) -> Result<String, ParseError> {
         let head = self.consume(TokenType::Identifier)?;
         let mut spelling = head.value;
@@ -12136,7 +12136,7 @@ impl Parser {
     ///
     /// `value_ref` accepts a bare identifier (variable / channel name for
     /// mobility) or a dotted path (`Step.output.field`) referencing a prior
-    /// step result (Fase 13.i — runtime resolves via ContextManager).
+    /// step result (v1.6.0 — runtime resolves via ContextManager).
     fn parse_emit_step(&mut self) -> Result<FlowStep, ParseError> {
         let tok = self.consume(TokenType::Emit)?;
         let channel = self.consume(TokenType::Identifier)?.value;
@@ -12153,7 +12153,7 @@ impl Parser {
         }))
     }
 
-    /// §Fase 92.b — parse `mint <Credential> as <binding>`. The credential
+    /// v2.46.0 — parse `mint <Credential> as <binding>`. The credential
     /// reference must resolve to a declared `credential` (`axon-T895`,
     /// type-checker); the binding is a fresh flow-scoped name receiving the
     /// raw bearer string. Both tokens are required — a `mint` with no
@@ -12173,7 +12173,7 @@ impl Parser {
         }))
     }
 
-    /// §Fase 94.b — parse `rotate <SecretsStore> [where "<filter>"] with
+    /// v2.48.0 — parse `rotate <SecretsStore> [where "<filter>"] with
     /// <Tool> as <binding>` (doctrine `rotation_without_revelation`).
     ///
     /// All three anchors are grammar, not convention: the store names WHAT
@@ -12182,7 +12182,7 @@ impl Parser {
     /// (`axon-T899`), and the binding receives the metadata-only summary —
     /// a `rotate` without a binding would renew authority with no
     /// observable outcome, so `as` is REQUIRED (the `mint` posture). The
-    /// `where` filter is optional (§67 string grammar, proven against the
+    /// `where` filter is optional (v2.21.0 string grammar, proven against the
     /// synthesized metadata schema); omitting it rotates the WHOLE class —
     /// the deliberate post-breach bulk shape. `with` is a soft keyword
     /// (not a lexer token): reserving it globally would break every
@@ -12227,7 +12227,7 @@ impl Parser {
     }
 
     /// Parse: `IDENTIFIER ('.' (IDENTIFIER | keyword))*` → dot-joined string
-    /// (Fase 13.i).
+    /// (v1.6.0).
     ///
     /// Mirrors the Python `_parse_emit_value_ref` helper exactly so the IR
     /// JSON for `emit Hello(Build.output)` is byte-identical between the
@@ -12301,10 +12301,10 @@ impl Parser {
     }
 }
 
-// ── §λ-L-E Fase 13 — Mobile Typed Channels parser tests ─────────────────────
+// ── v1.6.0 — Mobile Typed Channels parser tests ─────────────────────
 
 #[cfg(test)]
-mod fase13_parser_tests {
+mod parser_tests {
     use super::*;
     use crate::lexer::Lexer;
 
@@ -12466,7 +12466,7 @@ mod fase13_parser_tests {
         }
     }
 
-    // ── Fase 13.i — emit value_ref accepts dotted access ───────────
+    // ── v1.6.0 — emit value_ref accepts dotted access ───────────
 
     fn extract_first_emit(prog: &Program) -> &EmitStatement {
         if let Declaration::Flow(f) = &prog.declarations[0] {
@@ -12509,10 +12509,10 @@ mod fase13_parser_tests {
     }
 }
 
-// ── §Fase 14.a — declaration_trivia parallel channel tests ──────────────────
+// ── v1.5.2 — declaration_trivia parallel channel tests ──────────────────
 
 #[cfg(test)]
-mod fase14a_declaration_trivia_tests {
+mod declaration_trivia_tests {
     use super::*;
     use crate::lexer::Lexer;
     use crate::tokens::TriviaKind;
@@ -12621,7 +12621,7 @@ mod fase14a_declaration_trivia_tests {
     }
 }
 
-// ── §Fase 14.b — per-struct trivia fields tests ─────────────────────────────
+// ── v1.5.2 — per-struct trivia fields tests ─────────────────────────────
 //
 // 14.b spreads `leading_trivia` / `trailing_trivia` into every Declaration
 // variant struct (FlowDefinition, ChannelDefinition, PersonaDefinition, …).
@@ -12630,7 +12630,7 @@ mod fase14a_declaration_trivia_tests {
 // backward compat — these tests verify the new direct access path.
 
 #[cfg(test)]
-mod fase14b_per_struct_trivia_tests {
+mod per_struct_trivia_tests {
     use super::*;
     use crate::lexer::Lexer;
     use crate::tokens::TriviaKind;
@@ -12721,7 +12721,7 @@ mod fase14b_per_struct_trivia_tests {
     }
 }
 
-// ── §Fase 14.c — inner doc comments (//!, /*!) ──────────────────────────────
+// ── v1.5.2 — inner doc comments (//!, /*!) ──────────────────────────────
 //
 // Inner doc comments document the *enclosing* item rather than the next
 // sibling. Today they flow through the trivia channel like any other
@@ -12730,7 +12730,7 @@ mod fase14b_per_struct_trivia_tests {
 // the inner-doc discriminator end-to-end.
 
 #[cfg(test)]
-mod fase14c_inner_doc_tests {
+mod inner_doc_tests {
     use super::*;
     use crate::lexer::Lexer;
     use crate::tokens::TriviaKind;
@@ -12780,7 +12780,7 @@ mod fase14c_inner_doc_tests {
 
     #[test]
     fn inner_doc_reaches_per_struct_fields() {
-        // Same data must be visible via the per-struct fields (Fase 14.b).
+        // Same data must be visible via the per-struct fields (v1.5.2).
         let src = "//! intro\nflow F() -> Out { }";
         let prog = parse(src);
         if let Declaration::Flow(f) = &prog.declarations[0] {
@@ -12792,7 +12792,7 @@ mod fase14c_inner_doc_tests {
     }
 }
 
-// ── §Fase 28.c — Parser error recovery test pack ─────────────────────────────
+// ── v1.20.0 — Parser error recovery test pack ─────────────────────────────
 //
 // Mirror of `tests/test_fase28_parser_recovery.py` (Python side, 28.b).
 // The test classes here line up 1-1 with the Python ones so the cross-
@@ -12810,7 +12810,7 @@ mod fase14c_inner_doc_tests {
 //   - integration_with_colon_diagnostic: v1.19.4 hint preserved under
 //     recovery mode
 #[cfg(test)]
-mod fase28_recovery_tests {
+mod recovery_tests {
     use super::*;
     use crate::lexer::Lexer;
 
@@ -13108,7 +13108,7 @@ mod fase28_recovery_tests {
     // 10 mutations = 1000 iterations, byte-bounded so fuzz time
     // stays under 1 s on a release build. Recovery must NEVER crash;
     // lexer-level errors are out of scope (lexer recovery is its own
-    // sub-fase). 28.b mirrors this with the same structure.
+    // step). 28.b mirrors this with the same structure.
 
     #[derive(Clone, Copy)]
     struct Xorshift(u64);
@@ -13223,7 +13223,7 @@ mod fase28_recovery_tests {
     }
 }
 
-// ── §Fase 28.d — Source-context diagnostic block test pack ───────────────────
+// ── v1.20.0 — Source-context diagnostic block test pack ───────────────────
 //
 // Mirror of `tests/test_fase28_source_context.py` (Python side, 28.d).
 // The render output must be byte-identical to the Python `SourceSnippet.render`
@@ -13231,7 +13231,7 @@ mod fase28_recovery_tests {
 // in `golden_*` tests are duplicated verbatim in the Python pack; edits
 // here MUST be mirrored on the Python side and vice versa.
 #[cfg(test)]
-mod fase28_source_context_tests {
+mod source_context_tests {
     use super::*;
     use crate::lexer::Lexer;
 
@@ -13490,14 +13490,14 @@ mod fase28_source_context_tests {
     }
 }
 
-// ── §Fase 28.e — Parser integration tests for smart-suggest ──────────────────
+// ── v1.20.0 — Parser integration tests for smart-suggest ──────────────────
 //
 // Mirror of `tests/test_fase28_smart_suggest.py::TestParserIntegration`.
 // Verifies that the parser actually wires `suggest_for` into the
 // unknown-keyword diagnostic at both error sites — top-level and
 // flow-body.
 #[cfg(test)]
-mod fase28_smart_suggest_parser_tests {
+mod smart_suggest_parser_tests {
     use super::*;
     use crate::lexer::Lexer;
 
@@ -13564,10 +13564,10 @@ mod fase28_smart_suggest_parser_tests {
     }
 }
 
-// ── §Fase 35.m — mutate / purge where-clause capture ────────────────
+// ── v1.30.0 — mutate / purge where-clause capture ────────────────
 
 #[cfg(test)]
-mod fase35m_mutate_purge_where_tests {
+mod mutate_purge_where_tests {
     use super::*;
 
     fn parse(src: &str) -> Program {
@@ -13631,10 +13631,10 @@ mod fase35m_mutate_purge_where_tests {
     }
 }
 
-// ── §Fase 35.o — persist field-block capture ────────────────────────
+// ── v1.30.0 — persist field-block capture ────────────────────────
 
 #[cfg(test)]
-mod fase35o_persist_fields_tests {
+mod persist_fields_tests {
     use super::*;
 
     fn parse(src: &str) -> Program {
@@ -13747,10 +13747,10 @@ mod fase35o_persist_fields_tests {
     }
 }
 
-// ── §Fase 35.p — mutate SET-field-block capture ─────────────────────
+// ── v1.30.0 — mutate SET-field-block capture ─────────────────────
 
 #[cfg(test)]
-mod fase35p_mutate_fields_tests {
+mod mutate_fields_tests {
     use super::*;
 
     fn parse(src: &str) -> Program {

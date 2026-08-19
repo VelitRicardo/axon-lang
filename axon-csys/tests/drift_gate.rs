@@ -1,4 +1,4 @@
-//! §Fase 25.j — Cross-stack drift gate.
+//! v1.19.0 — Cross-stack drift gate.
 //!
 //! Per founder ratification D6 (2026-05-08): every C kernel in
 //! `axon-csys` MUST produce byte-identical (integer kernels) or
@@ -102,7 +102,7 @@ fn hmac_fuzz_parity_vs_hmac_crate() {
     let mut r = rng();
     for i in 0..FUZZ_ITERATIONS {
         // Key length: 0..1024 bytes covers the long-key pre-hash branch
-        // (anything > 64 bytes triggers FIPS 198-1 §5).
+        // (anything > 64 bytes triggers FIPS 198-1 section 5).
         let key_len = r.random_range(0..=1024);
         let key = random_bytes(&mut r, key_len);
         let data_len = r.random_range(0..=8192);

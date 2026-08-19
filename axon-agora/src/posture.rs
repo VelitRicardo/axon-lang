@@ -1,7 +1,7 @@
-//! Owned-only posture refusals (D116.3; paper §2.1, §2.3, §2.4).
+//! Owned-only posture refusals (the design decision; paper section 2.1, section 2.3, section 2.4).
 //!
 //! Substrate for **axon-T958**: an operation the platform forbids in the owned-only posture is
-//! refused loudly, with the platform's own rule and the fix in the message (the §111 posture —
+//! refused loudly, with the platform's own rule and the fix in the message (the v2.67.0 posture —
 //! refuse with the remedy, never silently). `axon-agora` connects to assets the tenant OWNS;
 //! member-level automation, consumer-account publishing, and unattended/unaudited public posting
 //! where a platform forbids them are compile-time refusals, not runtime surprises.

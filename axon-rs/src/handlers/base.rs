@@ -4,7 +4,7 @@
 //!
 //! Free-Monad interpreter for the I/O Cognitivo Intention Tree. A Handler
 //! receives pure intentions (`IRManifest`, `IRObserve`) from an
-//! `IRIntentionTree` (Fase 1) and produces concrete outcomes wrapped in
+//! `IRIntentionTree` (v1.1.0) and produces concrete outcomes wrapped in
 //! the Lambda Data envelope E = ⟨c, τ, ρ, δ⟩.
 //!
 //! Design anchors (docs/plan_io_cognitivo.md):
@@ -41,7 +41,7 @@ pub struct LambdaEnvelope {
     pub c: f64,
     /// Temporal frame — ISO-8601 UTC timestamp of the observation.
     pub tau: String,
-    /// Provenance — handler id + optional cryptographic signature (Fase 6.2).
+    /// Provenance — handler id + optional cryptographic signature (v1.2.0).
     pub rho: String,
     /// Derivation kind: axiomatic | observed | inferred | mutated.
     pub delta: String,

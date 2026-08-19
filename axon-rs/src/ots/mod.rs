@@ -1,4 +1,4 @@
-//! Ontological Tool Synthesis — §λ-L-E Fase 11.e binary pipeline
+//! Ontological Tool Synthesis — v1.4.0 binary pipeline
 //! synthesis.
 //!
 //! Given a source `BufferKind` and a sink `BufferKind`, OTS finds
@@ -7,7 +7,7 @@
 //! (μ-law ↔ PCM16, linear resample) or a subprocess delegation
 //! to `ffmpeg` when no native path exists.
 //!
-//! Fase 11.e intentionally stays modest: the registry is global +
+//! v1.4.0 intentionally stays modest: the registry is global +
 //! built at startup, not hot-patched at runtime (a transformer
 //! appearing mid-flight hurts auditability; see the `@sensitive`
 //! + ffmpeg incompatibility the checker enforces). Adopters extend
@@ -25,7 +25,7 @@
 //!   of the kind taxonomy. Native transcoders work in-place when
 //!   the target kind has identical byte-width; otherwise they
 //!   allocate via the pool.
-//! - 11.c `LegalBasis` + §ffmpeg subprocess — the checker rejects
+//! - 11.c `LegalBasis` + ffmpeg subprocess — the checker rejects
 //!   the combination `sensitive:... + legal:HIPAA.* +
 //!   ots:backend:ffmpeg` because data crosses a process boundary
 //!   the auditor cannot observe.
@@ -44,7 +44,7 @@ pub use self::pipeline::{
 
 // ── Slug catalogue consumed by the type checker ─────────────────────
 //
-// §Fase 12.a — the compile-time catalog lives in `axon-frontend` so
+// v1.4.2 — the compile-time catalog lives in `axon-frontend` so
 // tooling can validate OTS effect slugs without linking the runtime.
 // Re-exported here for backward compatibility with existing callers.
 

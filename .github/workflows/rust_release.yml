@@ -1,6 +1,6 @@
 name: Rust Release Binaries
 
-# ⚠️ DORMANT as of §Fase 117.b (2026-08-03). READ THIS BEFORE TRUSTING IT.
+# ⚠️ DORMANT as of v2.81.0 (2026-08-03). READ THIS BEFORE TRUSTING IT.
 #
 # This workflow has never successfully published a binary. Two independent
 # reasons, both verified:
@@ -14,7 +14,7 @@ name: Rust Release Binaries
 #      10–21 seconds. Every release page carries `assets: 0`.
 #
 # The README used to call downloading these binaries the RECOMMENDED install
-# path. §117.b removed that claim rather than keep pointing adopters at an empty
+# path. v2.81.0 removed that claim rather than keep pointing adopters at an empty
 # page; `cargo install axon-lang` is now Option 1 and is the only documented
 # channel. A promise without backing is worse than an absent feature.
 #
@@ -22,9 +22,9 @@ name: Rust Release Binaries
 # makes the matrix fail in seconds (GitHub Actions billing is the standing
 # suspicion — the runs die too fast to be real build failures), and DELETE the
 # `Attach binaries to Python release` job, which is dead PyPI-era plumbing that
-# §116.c.5 already buried. Then put Option 1 back in the README, in the same PR.
+# v2.77.0 already buried. Then put Option 1 back in the README, in the same PR.
 #
-# §Fase 8.8 — Binary distribution for the native Rust `axon` runtime.
+# v1.3.0 — Binary distribution for the native Rust `axon` runtime.
 #
 # Builds statically-linkable binaries for the three major platforms on
 # every version tag, attaches them to the GitHub Release alongside

@@ -3,7 +3,7 @@ name: json
 summary: The open, semi-structured value type — a totally-navigable JSON document, refinable by an optional `Json<T>` shape lens, total and honest always.
 category: data_plane
 top_level: false
-since: Fase 73
+since: v2.26.0
 grammar: |
   Json                          # open: any JSON document, totally navigable
   Json<T>                       # refined: the compiler VIEWS it as the struct T
@@ -20,7 +20,7 @@ grammar: |
       }
   }
 
-  # navigation (the SAME §70.d operators), TOTAL:
+  # navigation (the SAME v2.26.0 operators), TOTAL:
   doc.address.city                  # Json (null if absent — never a panic)
   doc.items[0].price                # index access
   doc.age.as_int                    # honest coercion → null on a type mismatch
@@ -42,7 +42,7 @@ MongoDB is schemaless; ORMs hand you an opaque blob you parse imperatively
 open document at all. `Json` takes the position nobody else occupies —
 **total navigation** + an **optional honest lens** + **replayable
 determinism** — and it does so with the *same* projection operators the
-rigid types already use (§Fase 70.d `.field` / `[i]`). One projection
+rigid types already use (v2.26.0 `.field` / `[i]`). One projection
 algebra, two carriers.
 
 ## Total navigation (the Logic pillar)
@@ -54,7 +54,7 @@ null-as-a-value — never a panic, never divergence. A chained
 `doc.a.b.c` keeps walking through a missing hop (each stays null); a
 missing field is honestly **falsy** in a guard, so `if doc.tier ==
 "gold"` is decidably false rather than an error. This brings semi-
-structured data *under* the §70 total-expression law
+structured data *under* the v2.26.0 total-expression law
 ([`axon://logic/total_expressions`](axon://logic/total_expressions)),
 it does not poke a hole in it.
 

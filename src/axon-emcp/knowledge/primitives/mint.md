@@ -3,7 +3,7 @@ name: mint
 summary: The credential-minting flow verb — turns a declared `credential` contract into a real TTL-bounded bearer at runtime, fail-closed and attenuated.
 category: wire
 top_level: false
-since: Fase 92
+since: v2.46.0
 grammar: |
   mint <CredentialName> as <binding>    # flow-body verb (the emit/publish shape)
   # <CredentialName> must resolve to a declared `credential` (axon-T895);

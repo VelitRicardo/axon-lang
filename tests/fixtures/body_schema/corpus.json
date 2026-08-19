@@ -1,0 +1,400 @@
+{
+  "description": "v1.23.0 body schema validation cross-stack drift corpus. Each entry pairs a `type T { … }` declaration set with a JSON body and asserts both stacks produce the SAME (expected_type, field_path, expected, got) tuple — pass when `expected_validation` is null, fail otherwise. The `hint` field is intentionally excluded from byte-identical assertion since prose formatting can tolerably drift across stacks; the structured triple is the locked invariant.",
+  "d_letter_anchor": "D4 + D11",
+  "entries": [
+    {
+      "name": "free_form_no_declaration_passes",
+      "description": "D9 backwards-compat: empty body_type accepts anything",
+      "type_declarations": [],
+      "body_type": "",
+      "body": {"any": "shape", "the": ["client", "sends"]},
+      "expected_validation": null
+    },
+    {
+      "name": "primitive_string_accepts_string",
+      "type_declarations": [],
+      "body_type": "String",
+      "body": "hello",
+      "expected_validation": null
+    },
+    {
+      "name": "primitive_string_rejects_number",
+      "type_declarations": [],
+      "body_type": "String",
+      "body": 42,
+      "expected_validation": {
+        "expected_type": "String",
+        "field_path": "",
+        "expected": "String",
+        "got": "integer"
+      }
+    },
+    {
+      "name": "primitive_integer_accepts_integer",
+      "type_declarations": [],
+      "body_type": "Integer",
+      "body": 42,
+      "expected_validation": null
+    },
+    {
+      "name": "primitive_integer_rejects_float",
+      "type_declarations": [],
+      "body_type": "Integer",
+      "body": 3.14,
+      "expected_validation": {
+        "expected_type": "Integer",
+        "field_path": "",
+        "expected": "Integer",
+        "got": "number"
+      }
+    },
+    {
+      "name": "primitive_float_accepts_integer_json",
+      "type_declarations": [],
+      "body_type": "Float",
+      "body": 42,
+      "expected_validation": null
+    },
+    {
+      "name": "primitive_float_accepts_fractional",
+      "type_declarations": [],
+      "body_type": "Float",
+      "body": 3.14,
+      "expected_validation": null
+    },
+    {
+      "name": "primitive_boolean_accepts_true",
+      "type_declarations": [],
+      "body_type": "Boolean",
+      "body": true,
+      "expected_validation": null
+    },
+    {
+      "name": "primitive_boolean_rejects_string",
+      "type_declarations": [],
+      "body_type": "Boolean",
+      "body": "true",
+      "expected_validation": {
+        "expected_type": "Boolean",
+        "field_path": "",
+        "expected": "Boolean",
+        "got": "string"
+      }
+    },
+    {
+      "name": "any_type_accepts_anything",
+      "type_declarations": [],
+      "body_type": "Any",
+      "body": [1, "two", {"three": 3}],
+      "expected_validation": null
+    },
+    {
+      "name": "structured_well_formed",
+      "type_declarations": [
+        {"name": "Person", "fields": [
+          {"name": "name", "type": "String", "optional": false},
+          {"name": "age", "type": "Integer", "optional": false}
+        ]}
+      ],
+      "body_type": "Person",
+      "body": {"name": "alice", "age": 30},
+      "expected_validation": null
+    },
+    {
+      "name": "structured_missing_required_field",
+      "type_declarations": [
+        {"name": "Person", "fields": [
+          {"name": "name", "type": "String", "optional": false},
+          {"name": "age", "type": "Integer", "optional": false}
+        ]}
+      ],
+      "body_type": "Person",
+      "body": {"age": 30},
+      "expected_validation": {
+        "expected_type": "Person",
+        "field_path": "name",
+        "expected": "String",
+        "got": "missing"
+      }
+    },
+    {
+      "name": "structured_field_type_mismatch",
+      "type_declarations": [
+        {"name": "Person", "fields": [
+          {"name": "name", "type": "String", "optional": false},
+          {"name": "age", "type": "Integer", "optional": false}
+        ]}
+      ],
+      "body_type": "Person",
+      "body": {"name": "alice", "age": "thirty"},
+      "expected_validation": {
+        "expected_type": "Person",
+        "field_path": "age",
+        "expected": "Integer",
+        "got": "string"
+      }
+    },
+    {
+      "name": "structured_optional_field_absent_ok",
+      "type_declarations": [
+        {"name": "Person", "fields": [
+          {"name": "name", "type": "String", "optional": false},
+          {"name": "age", "type": "Integer", "optional": true}
+        ]}
+      ],
+      "body_type": "Person",
+      "body": {"name": "alice"},
+      "expected_validation": null
+    },
+    {
+      "name": "structured_optional_field_null_ok",
+      "type_declarations": [
+        {"name": "Person", "fields": [
+          {"name": "name", "type": "String", "optional": false},
+          {"name": "age", "type": "Integer", "optional": true}
+        ]}
+      ],
+      "body_type": "Person",
+      "body": {"name": "alice", "age": null},
+      "expected_validation": null
+    },
+    {
+      "name": "structured_extra_fields_accepted",
+      "description": "Forwards-compat: unknown keys on a structured body are silently accepted (Postel's Law). Strict mode is a future opt-in.",
+      "type_declarations": [
+        {"name": "Person", "fields": [
+          {"name": "name", "type": "String", "optional": false}
+        ]}
+      ],
+      "body_type": "Person",
+      "body": {"name": "alice", "extra": "ignored"},
+      "expected_validation": null
+    },
+    {
+      "name": "structured_rejects_non_object",
+      "type_declarations": [
+        {"name": "Person", "fields": [
+          {"name": "name", "type": "String", "optional": false}
+        ]}
+      ],
+      "body_type": "Person",
+      "body": "not an object",
+      "expected_validation": {
+        "expected_type": "Person",
+        "field_path": "",
+        "expected": "Person",
+        "got": "string"
+      }
+    },
+    {
+      "name": "nested_struct_dotted_path",
+      "type_declarations": [
+        {"name": "Address", "fields": [
+          {"name": "street", "type": "String", "optional": false},
+          {"name": "city", "type": "String", "optional": false}
+        ]},
+        {"name": "Person", "fields": [
+          {"name": "name", "type": "String", "optional": false},
+          {"name": "address", "type": "Address", "optional": false}
+        ]}
+      ],
+      "body_type": "Person",
+      "body": {"name": "alice", "address": {"street": "Main"}},
+      "expected_validation": {
+        "expected_type": "Person",
+        "field_path": "address.city",
+        "expected": "String",
+        "got": "missing"
+      }
+    },
+    {
+      "name": "list_of_strings_well_formed",
+      "type_declarations": [
+        {"name": "Tags", "fields": [
+          {"name": "values", "type": "List", "generic_param": "String", "optional": false}
+        ]}
+      ],
+      "body_type": "Tags",
+      "body": {"values": ["a", "b", "c"]},
+      "expected_validation": null
+    },
+    {
+      "name": "list_of_strings_indexed_violation",
+      "type_declarations": [
+        {"name": "Tags", "fields": [
+          {"name": "values", "type": "List", "generic_param": "String", "optional": false}
+        ]}
+      ],
+      "body_type": "Tags",
+      "body": {"values": ["a", 42, "c"]},
+      "expected_validation": {
+        "expected_type": "Tags",
+        "field_path": "values[1]",
+        "expected": "String",
+        "got": "integer"
+      }
+    },
+    {
+      "name": "list_rejects_non_array",
+      "type_declarations": [
+        {"name": "Tags", "fields": [
+          {"name": "values", "type": "List", "generic_param": "String", "optional": false}
+        ]}
+      ],
+      "body_type": "Tags",
+      "body": {"values": "not a list"},
+      "expected_validation": {
+        "expected_type": "Tags",
+        "field_path": "values",
+        "expected": "List<String>",
+        "got": "string"
+      }
+    },
+    {
+      "name": "range_type_in_bounds",
+      "type_declarations": [],
+      "body_type": "RiskScore",
+      "body": 0.75,
+      "expected_validation": null
+    },
+    {
+      "name": "range_type_out_of_bounds_upper",
+      "type_declarations": [],
+      "body_type": "RiskScore",
+      "body": 1.5,
+      "expected_validation": {
+        "expected_type": "RiskScore",
+        "field_path": "",
+        "expected": "RiskScore ∈ [0, 1]",
+        "got": "1.5"
+      }
+    },
+    {
+      "name": "range_type_out_of_bounds_lower",
+      "type_declarations": [],
+      "body_type": "SentimentScore",
+      "body": -1.5,
+      "expected_validation": {
+        "expected_type": "SentimentScore",
+        "field_path": "",
+        "expected": "SentimentScore ∈ [-1, 1]",
+        "got": "-1.5"
+      }
+    },
+    {
+      "name": "unknown_type_returns_diagnostic",
+      "description": "Adopter misspells type name — fail loudly, do not silently accept",
+      "type_declarations": [],
+      "body_type": "NotDeclared",
+      "body": {"any": "shape"},
+      "expected_validation": {
+        "expected_type": "NotDeclared",
+        "field_path": "",
+        "expected": "NotDeclared",
+        "got": "object"
+      }
+    },
+    {
+      "name": "banking_loan_application_well_formed",
+      "description": "Vertical X-ray: banking LoanApplication shape passes when well-formed",
+      "type_declarations": [
+        {"name": "Money", "fields": [
+          {"name": "amount", "type": "Float", "optional": false},
+          {"name": "currency", "type": "String", "optional": false}
+        ]},
+        {"name": "Person", "fields": [
+          {"name": "full_name", "type": "String", "optional": false},
+          {"name": "ssn_last4", "type": "String", "optional": false}
+        ]},
+        {"name": "LoanApplication", "fields": [
+          {"name": "amount", "type": "Money", "optional": false},
+          {"name": "applicant", "type": "Person", "optional": false},
+          {"name": "purpose", "type": "String", "optional": true}
+        ]}
+      ],
+      "body_type": "LoanApplication",
+      "body": {
+        "amount": {"amount": 50000.0, "currency": "USD"},
+        "applicant": {"full_name": "Alice Citizen", "ssn_last4": "1234"}
+      },
+      "expected_validation": null
+    },
+    {
+      "name": "banking_loan_application_amount_wrong_type",
+      "description": "Vertical X-ray: banking — amount must be Money not raw number",
+      "type_declarations": [
+        {"name": "Money", "fields": [
+          {"name": "amount", "type": "Float", "optional": false},
+          {"name": "currency", "type": "String", "optional": false}
+        ]},
+        {"name": "Person", "fields": [
+          {"name": "full_name", "type": "String", "optional": false},
+          {"name": "ssn_last4", "type": "String", "optional": false}
+        ]},
+        {"name": "LoanApplication", "fields": [
+          {"name": "amount", "type": "Money", "optional": false},
+          {"name": "applicant", "type": "Person", "optional": false}
+        ]}
+      ],
+      "body_type": "LoanApplication",
+      "body": {
+        "amount": 50000,
+        "applicant": {"full_name": "Alice", "ssn_last4": "1234"}
+      },
+      "expected_validation": {
+        "expected_type": "LoanApplication",
+        "field_path": "amount",
+        "expected": "Money",
+        "got": "integer"
+      }
+    },
+    {
+      "name": "medicine_clinical_phi_well_formed",
+      "description": "Vertical X-ray: HIPAA — clinical decision request with PHI scrubber upstream",
+      "type_declarations": [
+        {"name": "Symptom", "fields": [
+          {"name": "name", "type": "String", "optional": false},
+          {"name": "severity", "type": "ConfidenceScore", "optional": false}
+        ]},
+        {"name": "ClinicalDecisionRequest", "fields": [
+          {"name": "patient_id", "type": "String", "optional": false},
+          {"name": "symptoms", "type": "List", "generic_param": "Symptom", "optional": false}
+        ]}
+      ],
+      "body_type": "ClinicalDecisionRequest",
+      "body": {
+        "patient_id": "anon-1234",
+        "symptoms": [
+          {"name": "fatigue", "severity": 0.7},
+          {"name": "headache", "severity": 0.3}
+        ]
+      },
+      "expected_validation": null
+    },
+    {
+      "name": "medicine_clinical_severity_out_of_range",
+      "description": "Vertical X-ray: HIPAA — ConfidenceScore must be in [0, 1]",
+      "type_declarations": [
+        {"name": "Symptom", "fields": [
+          {"name": "name", "type": "String", "optional": false},
+          {"name": "severity", "type": "ConfidenceScore", "optional": false}
+        ]},
+        {"name": "ClinicalDecisionRequest", "fields": [
+          {"name": "patient_id", "type": "String", "optional": false},
+          {"name": "symptoms", "type": "List", "generic_param": "Symptom", "optional": false}
+        ]}
+      ],
+      "body_type": "ClinicalDecisionRequest",
+      "body": {
+        "patient_id": "anon-1234",
+        "symptoms": [{"name": "fatigue", "severity": 1.5}]
+      },
+      "expected_validation": {
+        "expected_type": "ClinicalDecisionRequest",
+        "field_path": "symptoms[0].severity",
+        "expected": "ConfidenceScore ∈ [0, 1]",
+        "got": "1.5"
+      }
+    }
+  ]
+}

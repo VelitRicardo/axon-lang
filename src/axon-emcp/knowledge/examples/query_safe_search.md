@@ -1,7 +1,7 @@
 ---
 name: query_safe_search
 title: HTTP QUERY (RFC 10008) — a complex read whose safety is a compile-time proof
-summary: "`method: QUERY` (§107): the HTTP method RFC 10008 added in June 2026 — safe + idempotent + cacheable, WITH a request body. It is the honest method for a complex read (a filter DSL that does not fit in a URI, and that a POST would misdescribe). The RFC says a QUERY MUST be safe; in every other stack that is a convention nobody enforces, even though caches and proxies are entitled to retry and cache it. In axon it is a PROOF: `axon-T927` refuses at compile time a QUERY endpoint whose flow performs a declared write (recursing into if/for/par/warden), and the PCC class `QuerySafetySoundness` re-derives it at deploy. Add one `persist` to this flow and the program stops compiling."
+summary: "`method: QUERY` (section 107): the HTTP method RFC 10008 added in June 2026 — safe + idempotent + cacheable, WITH a request body. It is the honest method for a complex read (a filter DSL that does not fit in a URI, and that a POST would misdescribe). The RFC says a QUERY MUST be safe; in every other stack that is a convention nobody enforces, even though caches and proxies are entitled to retry and cache it. In axon it is a PROOF: `axon-T927` refuses at compile time a QUERY endpoint whose flow performs a declared write (recursing into if/for/par/warden), and the PCC class `QuerySafetySoundness` re-derives it at deploy. Add one `persist` to this flow and the program stops compiling."
 topic: endpoints
 primitives:
   - axonendpoint
@@ -22,7 +22,7 @@ axonstore leads { backend: in_memory }
 // `warden`) and axon-T927 refuses the program:
 //
 //   axon-T927 axonendpoint 'LeadSearch' declares `method: QUERY`, but its flow
-//   'SearchLeads' performs a declared write (`persist`). RFC 10008 §2: a QUERY
+// 'SearchLeads' performs a declared write (`persist`). RFC 10008 section 2: a QUERY
 //   MUST be processed in a SAFE and IDEMPOTENT manner — caches, proxies and
 //   clients are entitled to retry and cache it freely, so a QUERY that changes
 //   state is a correctness + security bug, not a style choice.
@@ -49,7 +49,7 @@ cors PublicApi {
 // unsupported media type is 415, and every response advertises `Accept-Query` so
 // a client discovering the API learns what query shape to send. No idempotency
 // key is demanded — QUERY is idempotent BY DEFINITION.
-// Every endpoint is a trust boundary (§89, `every_boundary_is_guarded`), and a
+// Every endpoint is a trust boundary (v2.44.0, `every_boundary_is_guarded`), and a
 // safe method is no exception: QUERY changes no state, but it still READS data
 // that may be nobody's business. `requires:` covers the boundary — safety and
 // authorization are orthogonal guarantees, and axon insists on both.

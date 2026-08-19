@@ -1,0 +1,38 @@
+// META: flow_name=LegalIntakeReview, mode=count_only
+//
+// v2.89.0 — added to give `probe`, `weave` and `anchor` a citation Law 4
+// accepts. Every gate proving those three built its source INLINE, so no file
+// on disk held a program using them, and their rows could only cite an engine.
+//
+// The corpus gate discovers this fixture by directory walk and drives it
+// through BOTH execution paths (sync runner + async dispatcher) under the stub
+// backend, pinning them equal. That is source → dispatch, on a program shaped
+// like one an adopter would write.
+
+anchor GroundedIntake {
+    require: source_citation
+    confidence_floor: 0.75
+    unknown_response: "Insufficient information in the filing"
+}
+
+flow LegalIntakeReview() -> Unit {
+    step Extract {
+        probe filing for [parties, obligations, dates, penalties]
+        output: EntityMap
+    }
+    step Assess {
+        ask: "Assess exposure from the extracted entities"
+        output: Stream<Token>
+    }
+    step Report {
+        weave [Extract.output, Assess.output]
+        include: [summary, risks, recommendations]
+    }
+}
+
+axonendpoint LegalIntakeReviewEndpoint {
+    method: POST
+    path: "/cross/legal-intake-review"
+    execute: LegalIntakeReview
+    transport: sse public: true
+}

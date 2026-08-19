@@ -1,0 +1,214 @@
+# v1.24.0 — Real-provider E2E gated lane.
+#
+# D10 contract: this workflow runs the `axon-rs/tests/real_provider.rs`
+# `#[ignore]`-marked tests against REAL upstream providers (Anthropic /
+# OpenAI / Gemini) to verify the D3 p95 inter-chunk latency invariant
+# (≤100ms wall-clock) against the live wire AND the four vertical
+# canonical patterns (Banking / Government / Legal / Medicine).
+#
+# NO flake on normal PR runs — the workflow only runs when the
+# repository variable `AXON_RUN_REAL_PROVIDER_TEST` is set to "1".
+# Adopters wanting to validate their fork against real providers
+# set the variable + the per-provider API key secrets and the lane
+# runs on the next workflow_dispatch (or scheduled tick if enabled).
+#
+# # Why a separate workflow (not a job in CI)
+#
+# Real-provider tests cost API tokens + add network variance. The
+# canonical `ci.yml` workflow runs on every PR and stays fast +
+# deterministic; this workflow runs ONLY on explicit opt-in so
+# adopter forks aren't charged for token usage on every push.
+#
+# # Setup (one-time, per fork)
+#
+# 1. Set repository variable `AXON_RUN_REAL_PROVIDER_TEST` to "1"
+#    (Settings → Variables → Actions).
+# 2. Set the per-provider secrets that you want to exercise
+#    (Settings → Secrets → Actions):
+#      - `ANTHROPIC_API_KEY`
+#      - `OPENAI_API_KEY`
+#      - `GEMINI_API_KEY`
+#    Lanes for providers whose key isn't set skip cleanly via the
+#    test's `maybe_skip` helper (eprintln in the CI log; no
+#    failure).
+# 3. Trigger via workflow_dispatch (manual) or the optional
+#    weekly schedule below.
+
+name: v1.24.0 — Real-provider E2E (gated)
+
+on:
+  workflow_dispatch:
+    inputs:
+      verbose:
+        description: "Pass --nocapture to cargo test for chunk-by-chunk eprintln output"
+        required: false
+        default: "true"
+        type: string
+  # Optional: weekly health check. Uncomment + set the variable to
+  # enable. Disabled by default so adopter forks don't accumulate
+  # token spend they didn't ask for.
+  # schedule:
+  #   - cron: "0 9 * * MON"  # Monday 09:00 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: Check opt-in variable
+    runs-on: ubuntu-latest
+    outputs:
+      enabled: ${{ steps.check.outputs.enabled }}
+    steps:
+      - id: check
+        run: |
+          if [ "${{ vars.AXON_RUN_REAL_PROVIDER_TEST }}" = "1" ]; then
+            echo "enabled=true" >> $GITHUB_OUTPUT
+            echo "::notice::Real-provider lane enabled (AXON_RUN_REAL_PROVIDER_TEST=1)"
+          else
+            echo "enabled=false" >> $GITHUB_OUTPUT
+            echo "::notice::Real-provider lane DISABLED. Set repository variable AXON_RUN_REAL_PROVIDER_TEST=1 to enable."
+          fi
+
+  anthropic:
+    name: Anthropic — p95 inter-chunk ≤100ms
+    needs: gate
+    if: needs.gate.outputs.enabled == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: axon-rs
+      - name: Run Anthropic real-provider lane
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          cd axon-rs
+          cargo test --test real_provider \
+            anthropic_real_stream_p95_inter_chunk_under_budget \
+            -- --ignored --nocapture
+
+  openai:
+    name: OpenAI — p95 inter-chunk ≤100ms
+    needs: gate
+    if: needs.gate.outputs.enabled == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: axon-rs
+      - name: Run OpenAI real-provider lane
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          cd axon-rs
+          cargo test --test real_provider \
+            openai_real_stream_p95_inter_chunk_under_budget \
+            -- --ignored --nocapture
+
+  gemini:
+    name: Gemini — p95 inter-chunk ≤100ms
+    needs: gate
+    if: needs.gate.outputs.enabled == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: axon-rs
+      - name: Run Gemini real-provider lane
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          cd axon-rs
+          cargo test --test real_provider \
+            gemini_real_stream_p95_inter_chunk_under_budget \
+            -- --ignored --nocapture
+
+  vertical-banking:
+    name: Vertical — Banking (PCI DSS Req 10)
+    needs: gate
+    if: needs.gate.outputs.enabled == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: axon-rs
+      - env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          cd axon-rs
+          cargo test --test real_provider \
+            vertical_banking_pci_dss_loan_decision \
+            -- --ignored --nocapture
+
+  vertical-government:
+    name: Vertical — Government (FedRAMP AU-2)
+    needs: gate
+    if: needs.gate.outputs.enabled == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: axon-rs
+      - env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          cd axon-rs
+          cargo test --test real_provider \
+            vertical_government_fedramp_benefits_eligibility \
+            -- --ignored --nocapture
+
+  vertical-legal:
+    name: Vertical — Legal (FRE 502 waiver-doctrine)
+    needs: gate
+    if: needs.gate.outputs.enabled == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: axon-rs
+      - env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          cd axon-rs
+          cargo test --test real_provider \
+            vertical_legal_fre_502_privilege_assessment \
+            -- --ignored --nocapture
+
+  vertical-medicine:
+    name: Vertical — Medicine (21 CFR Part 11 section 11.10)
+    needs: gate
+    if: needs.gate.outputs.enabled == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: axon-rs
+      - env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          cd axon-rs
+          cargo test --test real_provider \
+            vertical_medicine_21cfr_clinical_decision_support \
+            -- --ignored --nocapture

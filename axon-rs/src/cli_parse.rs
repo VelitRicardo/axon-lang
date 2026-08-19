@@ -1,10 +1,10 @@
-//! §Fase 39.f — `axon parse` subcommand (Rust binary parity).
+//! v2.0.0 — `axon parse` subcommand (Rust binary parity).
 //!
 //! Multi-file diagnostic aggregator. Walks the given file paths /
 //! directories / globs, runs each `.axon` file through
 //! `Parser::parse_with_recovery`, and aggregates every parse error +
 //! type-check error into a single report. Mirrors the Python
-//! `axon.cli.parse_cmd:cmd_parse` from Fase 28.f.
+//! `axon.cli.parse_cmd:cmd_parse` from v1.20.0.
 //!
 //! ## Flags
 //!
@@ -15,7 +15,7 @@
 //!  - `--jobs N` — worker thread count (default: auto). The Rust
 //!    implementation currently runs single-threaded; the flag is
 //!    accepted for Python-parity but the threading is deferred to a
-//!    future fase (honest scope)
+//! future cycle (honest scope)
 //!  - `--json` — emit machine-readable diagnostics (D5)
 //!  - `--format array|ndjson` — JSON framing when --json is set
 //!  - `--strict` — opt into legacy fail-on-first behavior (D8); also
@@ -40,7 +40,7 @@ use axon_frontend::parser::Parser;
 
 /// Per-file diagnostic emitted by the aggregator. Wire-stable JSON
 /// shape for `--json` mode (rustc-compatible field naming per
-/// Fase 28.g D5).
+/// v1.20.0 D5).
 #[derive(Debug, Clone, Serialize)]
 pub struct AggregatedDiagnostic {
     pub file: String,
@@ -73,7 +73,7 @@ pub fn run_parse(config: &ParseConfig) -> (Vec<AggregatedDiagnostic>, Vec<String
     let mut io_errors: Vec<String> = Vec::new();
     let mut truncated = false;
 
-    // ── §1 — Expand patterns into a deterministic file list ──
+    // ── section 1 — Expand patterns into a deterministic file list ──
     let files = match expand_patterns(&config.patterns, &config.ignore_patterns) {
         Ok(f) => f,
         Err(e) => {
@@ -82,14 +82,14 @@ pub fn run_parse(config: &ParseConfig) -> (Vec<AggregatedDiagnostic>, Vec<String
         }
     };
 
-    // ── §2 — Strict mode: honour env var OR flag (OR semantics) ──
+    // ── section 2 — Strict mode: honour env var OR flag (OR semantics) ──
     let strict = config.strict
         || std::env::var("AXON_PARSER_STRICT")
             .ok()
             .map(|v| matches!(v.to_lowercase().as_str(), "1" | "true" | "yes" | "on"))
             .unwrap_or(false);
 
-    // ── §3 — Parse each file ──
+    // ── section 3 — Parse each file ──
     'outer: for path in &files {
         // Honour max_errors cap.
         if let Some(cap) = config.max_errors {
@@ -189,7 +189,7 @@ fn expand_patterns(
         // io_errors when read fails. (Glob expansion is honest
         // scope — Python uses Path.glob; Rust would need an extra
         // crate. For 39.f we accept literal paths + directories
-        // and defer glob to a future fase.)
+        // and defer glob to a future cycle.)
         if path.exists() {
             result.insert(path);
         } else {
@@ -234,7 +234,7 @@ fn is_ignored(path: &Path, ignore: &[String]) -> bool {
     let path_str = path.to_string_lossy();
     for pattern in ignore {
         // Very simple substring match for v2.0.0; fnmatch parity is
-        // a future-fase refinement.
+        // a future-cycle refinement.
         if path_str.contains(pattern) {
             return true;
         }
@@ -277,7 +277,7 @@ pub fn render_human(
 }
 
 /// Format diagnostics as JSON (array or ndjson framing). Rustc-
-/// compatible field shape per Fase 28.g D5.
+/// compatible field shape per v1.20.0 D5.
 pub fn render_json(
     diagnostics: &[AggregatedDiagnostic],
     format: &str,
@@ -315,7 +315,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn fase39f_parse_empty_patterns_returns_clean() {
+    fn parse_empty_patterns_returns_clean() {
         let cfg = ParseConfig::default();
         let (diags, ios, trunc) = run_parse(&cfg);
         assert!(diags.is_empty());
@@ -324,12 +324,12 @@ mod tests {
     }
 
     #[test]
-    fn fase39f_exit_code_zero_on_clean() {
+    fn exit_code_zero_on_clean() {
         assert_eq!(exit_code(&[], &[]), 0);
     }
 
     #[test]
-    fn fase39f_exit_code_one_on_diagnostic() {
+    fn exit_code_one_on_diagnostic() {
         let d = AggregatedDiagnostic {
             file: "x.axon".to_string(),
             line: 1,
@@ -341,12 +341,12 @@ mod tests {
     }
 
     #[test]
-    fn fase39f_exit_code_two_on_io_error() {
+    fn exit_code_two_on_io_error() {
         assert_eq!(exit_code(&[], &["read failed".to_string()]), 2);
     }
 
     #[test]
-    fn fase39f_exit_code_three_on_both() {
+    fn exit_code_three_on_both() {
         let d = AggregatedDiagnostic {
             file: "x.axon".to_string(),
             line: 1,
@@ -358,7 +358,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39f_json_array_format_serializes_diagnostics() {
+    fn json_array_format_serializes_diagnostics() {
         let d = AggregatedDiagnostic {
             file: "x.axon".to_string(),
             line: 1,
@@ -372,7 +372,7 @@ mod tests {
     }
 
     #[test]
-    fn fase39f_json_ndjson_format_one_per_line() {
+    fn json_ndjson_format_one_per_line() {
         let d1 = AggregatedDiagnostic {
             file: "a.axon".to_string(),
             line: 1,
@@ -395,13 +395,13 @@ mod tests {
     }
 
     #[test]
-    fn fase39f_human_render_clean_emits_check() {
+    fn human_render_clean_emits_check() {
         let out = render_human(&[], &[], false, true);
         assert!(out.contains("axon parse: no diagnostics"));
     }
 
     #[test]
-    fn fase39f_human_render_truncated_marker() {
+    fn human_render_truncated_marker() {
         let d = AggregatedDiagnostic {
             file: "x".to_string(),
             line: 1,
@@ -414,9 +414,9 @@ mod tests {
     }
 
     #[test]
-    fn fase39f_strict_env_var_recognized() {
+    fn strict_env_var_recognized() {
         // Verify the AXON_PARSER_STRICT env var truthy alphabet
-        // matches the Fase 28.h Python contract.
+        // matches the v1.20.0 Python contract.
         for truthy in &["1", "true", "yes", "on", "TRUE", "Yes"] {
             std::env::set_var("AXON_PARSER_STRICT", truthy);
             let cfg = ParseConfig::default();

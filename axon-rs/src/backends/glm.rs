@@ -1,4 +1,4 @@
-//! Zhipu GLM backend — Fase 24.g.
+//! Zhipu GLM backend — v1.18.0.
 //!
 //! Thin factory + capability override on top of [`OpenAICompatibleBackend`].
 //! Zhipu's GLM family speaks OpenAI-compat wire shape verbatim (Bearer
@@ -61,7 +61,7 @@ pub struct GLMBackend {
 impl GLMBackend {
     /// Construct from env. `GLM_API_KEY` is read at construction time
     /// (`None` is permitted — the auth check fires at first call). The
-    /// `GLM_BASE_URL` / `GLM_CHAT_PATH` overrides (§Fase 24.g.2, Kivi
+    /// `GLM_BASE_URL` / `GLM_CHAT_PATH` overrides (v1.18.0, Kivi
     /// brief #37) are applied so an adopter on z.ai can redirect the
     /// backend off the bigmodel.cn default without a code change.
     pub fn from_env() -> Self {
@@ -80,7 +80,7 @@ impl GLMBackend {
         }
     }
 
-    /// §Fase 24.g.2 (Kivi brief #37) — construct with a per-tenant key +
+    /// v1.18.0 (Kivi brief #37) — construct with a per-tenant key +
     /// optional explicit base-URL / chat-path overrides. Precedence:
     /// **explicit (per-tenant) > `GLM_BASE_URL`/`GLM_CHAT_PATH` env >
     /// bigmodel.cn default.** `api_key = None` falls back to `GLM_API_KEY`.
@@ -340,7 +340,7 @@ mod tests {
 
     #[tokio::test]
     async fn stream_delegates_to_base_real_sse_implementation() {
-        // §Fase 33.d — GLM delegates to OpenAI-compat which now ships
+        // v1.24.0 — GLM delegates to OpenAI-compat which now ships
         // a real SSE streamer; unreachable-port test exercises the
         // transport-error path.
         let b = GLMBackend::with_api_key(Some("k".into()))

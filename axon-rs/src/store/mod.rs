@@ -1,6 +1,6 @@
-//! §Fase 35 — the `axonstore` cognitive data plane runtime.
+//! v1.30.0 — the `axonstore` cognitive data plane runtime.
 //!
-//! `axonstore` is reframed in Fase 35 from an ignored declaration into
+//! `axonstore` is reframed in v1.30.0 from an ignored declaration into
 //! a load-bearing runtime primitive: a persistent relation that is
 //! epistemically typed, audit-chained by construction, streamable, and
 //! capability-secured (the plan vivo's four pillars).
@@ -9,7 +9,7 @@
 //! direction — the Python `axon/runtime/store_backends/` modules are
 //! the historical reference this cycle learns from, frozen.
 //!
-//! # Sub-module map (sequenced per the plan vivo §5)
+//! # Sub-module map (sequenced per the plan vivo section 5)
 //!
 //! - [`filter`] — 35.b — the parameterized `where`-expression filter
 //!   compiler. SQL-injection-proof by construction (D4).
@@ -22,12 +22,12 @@
 pub mod audit_chain;
 pub mod capability;
 pub mod epistemic;
-/// §Fase 118.b.3 — the axonstore error catalog, dependency-free. See the module
+/// v2.81.0 — the axonstore error catalog, dependency-free. See the module
 /// docs: it lived in `postgres_backend` and the driver gate took it hostage.
 pub mod error;
-/// §Fase 118.b.3 — the row shape + pool sizing, dependency-free. See the docs.
+/// v2.81.0 — the row shape + pool sizing, dependency-free. See the docs.
 pub mod row;
-/// §Fase 118.b.3 — the §96 pooler-mode decision, dependency-free.
+/// v2.81.0 — the v2.51.0 pooler-mode decision, dependency-free.
 pub mod pooler_mode;
 pub mod filter;
 #[cfg(feature = "postgres")]
@@ -35,7 +35,7 @@ pub mod introspect_cli;
 #[cfg(feature = "postgres")]
 pub mod postgres_backend;
 
-/// §Fase 118.b.3 — the absent-driver stand-in.
+/// v2.81.0 — the absent-driver stand-in.
 ///
 /// Without `postgres` there is no backend, and this states it in the type
 /// system: [`PostgresStoreBackend`](postgres_backend::PostgresStoreBackend) is
@@ -49,7 +49,7 @@ pub mod postgres_backend;
 ///
 /// The same trick as [`crate::pinned_conn::PinnedConn`], one level up: say the
 /// impossible thing is impossible, rather than duplicating every signature that
-/// mentions it (D118.2's rejected option (ii)).
+/// mentions it (the design decision's rejected option (ii)).
 #[cfg(not(feature = "postgres"))]
 pub mod postgres_backend {
     /// An `axonstore` Postgres backend — unconstructible in this build.
@@ -65,7 +65,7 @@ pub mod postgres_backend {
     /// The registry calls this before it would build a pool. Without the driver
     /// there is nothing to connect to, so it refuses here, in writing, naming the
     /// exact reinstall command — rather than letting the store resolve and fail
-    /// somewhere less legible. §111 doctrine: the advertised surface stays
+    /// somewhere less legible. v2.67.0 doctrine: the advertised surface stays
     /// advertised and says how to get the implementation back.
     pub fn resolve_dsn(_connection: &str) -> Result<String, super::error::StoreError> {
         Err(super::error::StoreError::Connect {

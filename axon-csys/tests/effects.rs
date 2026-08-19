@@ -1,4 +1,4 @@
-//! §Fase 25.e — Algebraic effects FSM dispatcher test suite.
+//! v1.19.0 — Algebraic effects FSM dispatcher test suite.
 //!
 //! Exercises the C dispatcher (computed gotos on gcc/clang, switch on
 //! MSVC) via the safe Rust shim. Tests are organised into four bands:

@@ -1,11 +1,11 @@
-//! AXON Algebraic Effects Runtime — Fase 23.f
+//! AXON Algebraic Effects Runtime — v1.17.0
 //! ============================================
 //!
-//! Native Rust runtime for AXON algebraic effects (paper §1-§6,
+//! Native Rust runtime for AXON algebraic effects (paper section 1-section 6,
 //! `docs/algebraic_effects_streaming.md`). Implements Plotkin/Pretnar
 //! handlers + one-shot delimited continuations as a deterministic FSM
 //! interpreter that consumes the JSON IR emitted by the Python frontend
-//! (Fase 23.b/c/d).
+//! (v1.17.0).
 //!
 //! # Decisions materialised here
 //!
@@ -56,9 +56,9 @@
 //! closures; they are just the remaining instruction list at the
 //! perform site, which the dispatch loop walks through.
 //!
-//! This is the FSM canonical shape promised by paper §5: the
+//! This is the FSM canonical shape promised by paper section 5: the
 //! `(flow_name, state_id)` coordinate the Python compiler emits is
-//! exactly what the Rust runtime indexes by. A future Fase 24 may
+//! exactly what the Rust runtime indexes by. A future v1.18.0 may
 //! lower this further to native `jmp` instructions via codegen; the
 //! interpreter shipped here is the operational ground truth.
 

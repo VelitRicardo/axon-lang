@@ -1,7 +1,7 @@
 //! Runtime implementation of `Stream<T>` with the four closed
 //! backpressure policies from [`crate::stream_effect`].
 //!
-//! §λ-L-E Fase 11.a — Temporal Algebraic Effects.
+//! v1.4.0 — Temporal Algebraic Effects.
 //!
 //! A [`Stream<T>`] is a bounded async channel with an explicit
 //! backpressure handler. Every producer push goes through the
@@ -9,7 +9,7 @@
 //! point, which is why the compiler makes it mandatory.
 //!
 //! Naming is intentionally generic. The existing [`crate::runtime`]
-//! tree keeps LLM-token streaming (§semantic streaming with
+//! tree keeps LLM-token streaming (semantic streaming with
 //! epistemic gradient) separate — that's higher-level, cognitive.
 //! `Stream<T>` is the byte/frame/event-level primitive that
 //! websocket ingress, microphone taps, and file uploads land into.
@@ -215,7 +215,7 @@ impl<T: Send + 'static> Stream<T> {
             return Err(StreamError::Cancelled);
         }
         let value = if g.buffer.len() >= g.capacity {
-            // §Fase 12.c — the degrader lookup belongs in the overflow
+            // v1.4.2 — the degrader lookup belongs in the overflow
             // branch, not at function entry. A `Stream::new` built
             // without `with_degrader` must still accept pushes while
             // the buffer has room; only when we actually need to

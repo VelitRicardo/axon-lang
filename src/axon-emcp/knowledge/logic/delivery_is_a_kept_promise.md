@@ -1,7 +1,7 @@
 ---
 name: delivery_is_a_kept_promise
-title: "A channel's declared delivery guarantee is enforced, or the program is flagged — never declared and not made (§Fase 74)"
-summary: "The law that a typed `channel`'s declared delivery semantics (`qos` + `persistence`) are ENFORCED by the runtime, or the program is honestly flagged — the language NEVER declares a delivery it does not make. A flow's `emit Channel(payload)` actually DELIVERS to a `daemon`'s `listen Channel`: durably (a `persistent_axonstore` channel appends to an outbox that survives the consumer being down), at-least-once (a failing body is retried then dead-lettered, never silently lost; an `at_most_once` channel is best-effort by declaration), with the qos fan-out honored (`broadcast` → every listener, single-consumer otherwise), and every emit + delivery recorded as a ReplayToken in the §11.c audit chain. A `listen`er on a channel NOTHING emits to is `axon-W009` (it can never fire) + refuted by the PCC `ChannelDeliverySoundness`. Generalises the honesty pillar — `effects_are_linear`, `open_data_is_total` — to message delivery: a declared `at_least_once` the runtime can't back is a lie, and Axon does not ship lies."
+title: "A channel's declared delivery guarantee is enforced, or the program is flagged — never declared and not made (v2.31.0)"
+summary: "The law that a typed `channel`'s declared delivery semantics (`qos` + `persistence`) are ENFORCED by the runtime, or the program is honestly flagged — the language NEVER declares a delivery it does not make. A flow's `emit Channel(payload)` actually DELIVERS to a `daemon`'s `listen Channel`: durably (a `persistent_axonstore` channel appends to an outbox that survives the consumer being down), at-least-once (a failing body is retried then dead-lettered, never silently lost; an `at_most_once` channel is best-effort by declaration), with the qos fan-out honored (`broadcast` → every listener, single-consumer otherwise), and every emit + delivery recorded as a ReplayToken in the v1.4.0 audit chain. A `listen`er on a channel NOTHING emits to is `axon-W009` (it can never fire) + refuted by the PCC `ChannelDeliverySoundness`. Generalises the honesty pillar — `effects_are_linear`, `open_data_is_total` — to message delivery: a declared `at_least_once` the runtime can't back is a lie, and Axon does not ship lies."
 ---
 
 # A channel's declared delivery guarantee is kept, or the program is flagged
@@ -16,11 +16,11 @@ channel SessionHibernated {
 }
 ```
 
-Before §Fase 74, that declaration was a **lie of omission**: the grammar
+Before v2.31.0, that declaration was a **lie of omission**: the grammar
 type-checked `qos: at_least_once  persistence: persistent_axonstore`, but
 the runtime delivered NONE of it — a flow's `emit` buffered in-process and
 never reached a daemon's `listen`, which the supervisor silently dropped
-(the §52.g `axon-W009` honesty boundary named the gap). A guarantee with
+(the v2.4.0 `axon-W009` honesty boundary named the gap). A guarantee with
 no backing is exactly what
 [`no_unwitnessed_advantage`](axon://logic/no_unwitnessed_advantage)
 condemns.
@@ -49,7 +49,7 @@ condemns.
   it says on the delivery path.
 - **Replayable** — every `emit` (Chan-Output) and every delivery
   (Chan-Input) records a `ReplayToken` (effect `emit:`/`deliver:<channel>`,
-  the deterministic `axon.builtin.channel.v1` slug) in the §11.c audit
+  the deterministic `axon.builtin.channel.v1` slug) in the v1.4.0 audit
   chain. Channel delivery is mechanical → it replays bit-for-bit.
 
 ## What "flagged, not silently dead" means (the Philosophy pillar)
@@ -58,14 +58,14 @@ A delivery the runtime CANNOT make is surfaced, never hidden:
 
 - A `daemon` `listen`er on a channel **nothing emits to** can never fire
   (it waits for an event no producer raises — the Kivi brief #39 defect).
-  The compiler says so (**`axon-W009`**, the §52.g diagnostic reworked: it
+  The compiler says so (**`axon-W009`**, the v2.4.0 diagnostic reworked: it
   fires precisely when the channel has no producer, and is SILENT when a
-  producer exists, because §74 delivers that), and the deploy gate proves
+  producer exists, because v2.31.0 delivers that), and the deploy gate proves
   it independently (the PCC **`ChannelDeliverySoundness`** refutes a
   consumed channel with no producer).
 - This is the same posture as
   [`axon://logic/dispatch_vs_cognition`](axon://logic/dispatch_vs_cognition)'s
-  `axon-W004` and the §52.g boundary: the compiler never lets a program
+  `axon-W004` and the v2.4.0 boundary: the compiler never lets a program
   rely on a guarantee the runtime does not back.
 
 ## Relation to the other laws

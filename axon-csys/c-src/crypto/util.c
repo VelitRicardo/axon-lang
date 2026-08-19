@@ -1,9 +1,9 @@
 /*
- * §Fase 25.h — Crypto utilities implementation.
+ * v1.19.0 — Crypto utilities implementation.
  *
  * Constant-time compare: side-channel-free byte equality.
  * Hex codec: lowercase emit, case-insensitive accept.
- * Base64url-no-pad: RFC 4648 §5 with trailing padding omitted.
+ * Base64url-no-pad: RFC 4648 section 5 with trailing padding omitted.
  */
 
 #include "util.h"
@@ -91,7 +91,7 @@ bool axon_csys_hex_decode(const char* hex, size_t hex_len, uint8_t* out) {
 /* ──────────────────────────────────────────────────────────────────────
  * Base64url-no-pad codec
  *
- * RFC 4648 §5 alphabet:
+ * RFC 4648 section 5 alphabet:
  *   index 0..25  → 'A'..'Z'
  *   index 26..51 → 'a'..'z'
  *   index 52..61 → '0'..'9'

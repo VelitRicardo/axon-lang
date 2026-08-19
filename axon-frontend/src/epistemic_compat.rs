@@ -1,11 +1,11 @@
-//! §Fase 115.c — Phase 2 of the Epistemic Module System: the Epistemic
+//! v2.76.0 — Phase 2 of the Epistemic Module System: the Epistemic
 //! Compatibility Check (ECC) — the novel contribution of the EMS paper.
 //!
 //! No existing module system validates *epistemic guarantees* across
 //! import boundaries. The ECC does: every import edge is checked against
-//! the floors of its two modules (§3.4/§3.5 of the paper).
+//! the floors of its two modules (section 3.4/section 3.5 of the paper).
 //!
-//! # The law (D115.4)
+//! # The law
 //!
 //! `gap = floor(importer) − floor(imported)`, on the rank scale
 //! know=4 · believe=3 · doubt=2 · speculate=1 · unspecified=0.
@@ -19,7 +19,7 @@
 //!   acknowledged downgrade is *visible*, never hidden.
 //!
 //! `axon check --strict` escalates warnings to errors at the CLI layer
-//! (the existing §13.e D4 posture) — the CI stance for regulated
+//! (the existing v1.6.0 D4 posture) — the CI stance for regulated
 //! adopters.
 
 use crate::module_interface::{EpistemicFloor, ModuleRegistry};
@@ -65,7 +65,7 @@ pub fn check_compatibility(
 
         for imp in imports {
             if !imp.selective || imp.module_path.is_scoped() {
-                continue; // refused elsewhere (axon-T953, §115.d)
+                continue; // refused elsewhere (axon-T953, v2.76.0)
             }
             let Some(dep_iface) = registry.interface(&imp.module_path) else {
                 continue; // unresolved — axon-T953 owns that diagnostic
@@ -147,7 +147,7 @@ pub fn check_compatibility(
 }
 
 // ════════════════════════════════════════════════════════════════════
-//  Unit tests (integration suite: tests/fase115_c_epistemic_compat.rs)
+//  Unit tests (integration suite: tests/epistemic_compat.rs)
 // ════════════════════════════════════════════════════════════════════
 
 #[cfg(test)]

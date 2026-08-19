@@ -1,8 +1,8 @@
-//! §λ-L-E Fase 13.g — LSP-facing analysis primitives for typed channels.
+//! v1.6.0 — LSP-facing analysis primitives for typed channels.
 //!
 //! Pure functions over the AST that surface the information `axon-lsp`
 //! needs to implement editor features (autocomplete, hover, go-to-def,
-//! find-references) over the Fase 13 typed-channel surface.
+//! find-references) over the v1.6.0 typed-channel surface.
 //!
 //! The LSP itself lives in the sibling `axon-lsp` repo; this module is
 //! its data-extraction layer.  Keeping the analysis here (in
@@ -10,7 +10,7 @@
 //! dependency — no logic duplication, byte-identical with what
 //! `axon check` and the type checker see.
 //!
-//! Contract Fase 12.c stays intact: this module uses only the AST
+//! Contract v1.4.2 stays intact: this module uses only the AST
 //! types from `crate::ast` and `std`; no runtime deps, no I/O.
 
 use crate::ast::{
@@ -25,7 +25,7 @@ use crate::tokens::Trivia;
 ///
 /// Inner doc comments (`//!`, `/*! */`) document the enclosing module
 /// rather than the declaration they precede, so they are intentionally
-/// excluded — see Fase 14.f hover contract on `channel_hover_markdown`.
+/// excluded — see v1.5.2 hover contract on `channel_hover_markdown`.
 fn doc_comment_lines(trivia: &[Trivia]) -> Vec<String> {
     let mut lines: Vec<String> = Vec::new();
     for t in trivia {
@@ -63,7 +63,7 @@ fn doc_comment_lines(trivia: &[Trivia]) -> Vec<String> {
 pub enum ChannelRefKind {
     /// `emit Name(value)` — π-calc output prefix.
     Emit,
-    /// `emit Outer(InnerChannel)` — channel-as-value mobility (paper §3.2).
+    /// `emit Outer(InnerChannel)` — channel-as-value mobility (paper section 3.2).
     EmitMobility,
     /// `listen Name as alias { … }` — typed canonical input (D4).
     Listen,
@@ -244,7 +244,7 @@ fn visit_flow_step(step: &FlowStep, target: &str, refs: &mut Vec<ChannelReferenc
 /// in an LSP `Hover` response.
 ///
 /// Output sections, in order:
-///   1. **Doc comment** (Fase 14.f) — outer doc trivia (`///` /
+/// 1. **Doc comment** (v1.5.2) — outer doc trivia (`///` /
 ///      `/** */`) attached to the channel declaration is rendered as
 ///      the leading paragraph. Inner doc comments (`//!` / `/*! */`)
 ///      document the enclosing module rather than this declaration
@@ -261,7 +261,7 @@ fn visit_flow_step(step: &FlowStep, target: &str, refs: &mut Vec<ChannelReferenc
 pub fn channel_hover_markdown(channel: &ChannelDefinition) -> String {
     let mut buf = String::new();
 
-    // ── §1 Doc comment paragraph (Fase 14.f) ──
+    // ── section 1 Doc comment paragraph (v1.5.2) ──
     let doc_lines = doc_comment_lines(&channel.leading_trivia);
     if !doc_lines.is_empty() {
         buf.push_str(&doc_lines.join("\n"));
@@ -353,7 +353,7 @@ pub fn channel_completion_detail(channel: &ChannelDefinition) -> String {
 // ─────────────────────────────────────────────────────────────────────
 //  Diagnostics extras — duplicate-channel detection.
 //
-//  Most Fase-13 diagnostics already flow through the type checker;
+// Most cycle-13 diagnostics already flow through the type checker;
 //  the only extra the LSP wants is duplicate-name detection that the
 //  type checker currently surfaces as a generic SymbolTable error.
 //  Exposing it here lets the LSP attach a richer related-information
@@ -671,7 +671,7 @@ mod tests {
         assert_eq!(dups[0].1.len(), 2);
     }
 
-    // ── §Fase 14.f — hover enrichment with doc comments ─────────────
+    // ── v1.5.2 — hover enrichment with doc comments ─────────────
 
     #[test]
     fn hover_prepends_outer_doc_line_comment() {

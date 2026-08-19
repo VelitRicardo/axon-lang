@@ -3,7 +3,7 @@ name: heal
 summary: A recovery routine bound to an immune system's level — runs scoped repairs, often human-in-the-loop.
 category: cognitive_io
 top_level: true
-since: Fase 19
+since: v1.14.0
 grammar: |
   heal <Name> {
       source: <ImmuneRef>                                  # required — bound immune
@@ -25,7 +25,7 @@ the **supervised recovery layer** — typically
 human-in-the-loop, with longer SLAs, bounded patch budgets,
 and a defence wrapper on every applied patch.
 
-The §Fase 19 §λ-L-E cognitive immune system uses `immune →
+The v1.14.0 λ-L-E cognitive immune system uses `immune →
 reflex → heal` as the three-tier response chain:
 
 | Tier | Timescale | Human involvement |
@@ -114,7 +114,7 @@ channel.
 
 ## Runtime behaviour
 
-`heal` lowers to a `HealDefinition` IR node. The Fase 19
+`heal` lowers to a `HealDefinition` IR node. The v1.14.0
 supervisor binds the heal to its source immune:
 
 1. Subscribe to the immune's signal stream at the declared
@@ -140,7 +140,7 @@ supervisor binds the heal to its source immune:
   reflex, low-confidence signals → heal.
 - **Not unsupervised.** Production heals carry `shield:` +
   `max_patches:`. Unsupervised heal in regulated
-  environments is a Fase 19 §λ-L-E policy violation.
+  environments is a v1.14.0 λ-L-E policy violation.
 - **Not a substitute for manual operator response.** When
   `max_patches:` is exhausted, the heal escalates to manual.
   Heals are bounded auto-recovery, not infinite retry loops.

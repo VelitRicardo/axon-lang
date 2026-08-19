@@ -3,7 +3,7 @@ name: corpus
 summary: A retrieval-ready collection of documents — backs RAG and grounded retrieval with citation provenance.
 category: data_plane
 top_level: true
-since: Fase 36
+since: v1.31.0
 grammar: |
   # Form (a) — explicit document list (flat corpus, RAG/vector retrieval):
   corpus <Name> {
@@ -13,7 +13,7 @@ grammar: |
   # Form (b) — MCP-bound shorthand (corpus pulls from a foreign MCP server):
   corpus <Name> from mcp("<server>", "<resource-uri>")
 
-  # Form (c) — MDN corpus graph (§Fase 63, embeddings-free structural navigation):
+  # Form (c) — MDN corpus graph (v2.13.0, embeddings-free structural navigation):
   corpus <Name> {
       documents: [<Doc1>, <Doc2>, ...]
       relations: [                          # typed weighted edges → MDN graph
@@ -23,7 +23,7 @@ grammar: |
       adaptive: true                        # optional — enable the memory endofunctor
   }
 
-  # Form (d) — DYNAMIC store-sourced MDN graph (§Fase 64, a LIVING per-tenant graph):
+  # Form (d) — DYNAMIC store-sourced MDN graph (v2.14.0, a LIVING per-tenant graph):
   corpus <Name> from axonstore {
       documents: <DocStore>(<id_col>, <title_col>)              # rows → nodes
       relations: <EdgeStore>(<from_col>, <to_col>, <etype_col>, <weight_col>)  # rows → edges
@@ -70,7 +70,7 @@ single-line declaration — no body required. The runtime
 connects to the named MCP server at deploy time and treats
 its resource URI as the corpus root.
 
-### Form (c) — MDN corpus graph (§Fase 63, embeddings-free)
+### Form (c) — MDN corpus graph (v2.13.0, embeddings-free)
 
 Add `relations:` (typed weighted edges) and the corpus becomes a
 **Multi-Document Navigation (MDN) graph** `C = (D, R, τ, ω, σ)` —
@@ -105,7 +105,7 @@ traversal — paper `multi_document.md`). A corpus **without**
 `relations:` is the flat form (a) above. The two are distinct
 retrieval paradigms under one declaration.
 
-### Form (d) — DYNAMIC store-sourced MDN graph (§Fase 64, a living graph)
+### Form (d) — DYNAMIC store-sourced MDN graph (v2.14.0, a living graph)
 
 Form (c) is fixed at deploy (the documents and edges are literals in
 the `.axon`). A **living** knowledge graph — one that grows every time
@@ -144,7 +144,7 @@ flow Recall(q: String) -> String {
 }
 ```
 
-#### Sub-tenant column scope — `navigate … where:` (§Fase 66)
+#### Sub-tenant column scope — `navigate … where:` (v2.17.0)
 
 The graph is per-tenant by inheritance from the store's RLS scope (by
 **axon-tenant**). When you multiplex many end-clients inside ONE axon-tenant
@@ -163,14 +163,14 @@ flow Recall(q: String, tenant_id: String) -> String {
 }
 ```
 
-`where:` is the same flat filter grammar as `retrieve … where` (§37.d): the
+`where:` is the same flat filter grammar as `retrieve … where` (v1.32.0): the
 column identifiers are SQL structure, the `${name}` references resolve to `$N`
 bind parameters (injection-safe). Omit `where:` for the RLS-only default. Without
 it, a navigate over a column-multiplexed store would source EVERY sub-tenant's
 rows — a cross-client leak. (Reading scope, not writing: a `persist` is already
 column-honest via the row's own `tenant_id` value.)
 
-#### Populating typed edges — `for e in <List<Record>>` + `${e.field}` (§Fase 66)
+#### Populating typed edges — `for e in <List<Record>>` + `${e.field}` (v2.17.0)
 
 The edges are explicit: a step classifies them, then a loop persists one row per
 edge. Field-access on the loop element resolves via `${e.field}` (the element is
@@ -186,7 +186,7 @@ for e in ClassifyEdges.output {
     persist LtmEdges {
         tenant_id: "${tenant_id}"          # flow param
         from_id:   "${summary_id}"         # flow param
-        to_id:     "${e.to_id}"            # §66 — field-access of the loop element
+        to_id: "${e.to_id}" # v2.17.0 — field-access of the loop element
         etype:     "${e.etype}"
         weight:    "${e.weight}"
     }
@@ -225,7 +225,7 @@ The form is recognised by the lexer's `from` + `mcp` token
 sequence; the parser captures both literals and treats the
 corpus as MCP-bound (no body brace).
 
-### `relations:` (optional — §Fase 63, makes the corpus an MDN graph)
+### `relations:` (optional — v2.13.0, makes the corpus an MDN graph)
 
 A **bracketed list of typed weighted edges** `etype(from, to, weight)`.
 `etype` is from the **closed relation catalog** (the type-checker
@@ -242,7 +242,7 @@ G2); `weight ∈ (0, 1]` (G4). The runtime builds an `mdn::Corpus`
 and runs the **signed Epistemic PageRank** + ε-informative
 submodular navigation over it. Embeddings-free.
 
-### `adaptive:` (optional — §Fase 63, enables memory)
+### `adaptive:` (optional — v2.13.0, enables memory)
 
 `adaptive: true` enables the **memory endofunctor**: each
 navigation over this corpus reinforces the edges it traversed
@@ -264,7 +264,7 @@ time, the runtime:
    prefix, and proxies retrieval queries through `resources/read`.
 
 Retrieval is exposed via the `retrieve <Corpus>` flow-step
-verb (Fase 36): a step body can `retrieve` from a declared
+verb (v1.31.0): a step body can `retrieve` from a declared
 corpus, get back the top-K matches with `(content,
 similarity, source_uri)`, and use them to compose an
 evidence-backed answer.

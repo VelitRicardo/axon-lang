@@ -1,8 +1,8 @@
-//! §Fase 33.y.d — Orchestration variant handlers.
+//! v1.24.0 — Orchestration variant handlers.
 //!
 //! Six variants graduated in 33.y.d: `Let` / `Conditional` / `ForIn`
 //! / `Break` / `Continue` / `Return`. Unlike the pure-shape variants
-//! (Fase 33.y.c) these handlers DO NOT call `Backend::stream()`
+//! (v1.24.0) these handlers DO NOT call `Backend::stream()`
 //! directly; they compose child handlers via recursive
 //! [`crate::flow_dispatcher::dispatch_node`] calls and surface
 //! sentinel outcomes that propagate through the orchestration tree.
@@ -27,7 +27,7 @@
 //! - [`run_for_in`] — Iterate over the `iterable` field (resolved
 //!   from `ctx.let_bindings`, comma-split for the OSS scalar-list
 //!   interpretation; collection-typed iteration ships in a future
-//!   sub-fase). For each element: bind `variable` in
+//! step). For each element: bind `variable` in
 //!   `ctx.let_bindings`, push branch_path `"for_in[<index>]"`,
 //!   dispatch body. Break sentinel → terminate loop early;
 //!   LoopContinue → skip to next iter; Return → propagate up.
@@ -62,7 +62,7 @@
 //!   one dispatch-tick of the cancel firing.
 //! - **D6** — `branch_path` segments thread orchestration shape:
 //!   `"conditional.then"`, `"conditional.else"`, `"for_in[N]"`.
-//!   Future Fase 33.y sub-fases that extend `StepAuditRecord` with
+//! Future v1.24.0 steps that extend `StepAuditRecord` with
 //!   `branch_path` will consume this directly.
 //! - **D10** — semantic parity with the sync runner: Let bindings
 //!   resolve identically; Conditional selects the same branch given
@@ -89,7 +89,7 @@ use crate::ir_nodes::{
 /// - `"expression"` — the value is a compound expression. 33.y.d's
 ///   pragmatic interpretation: treat as literal. Full expression
 ///   evaluation requires the AST-level expression evaluator that
-///   ships in a future sub-fase.
+/// ships in a future step.
 pub async fn run_let(
     binding: &IRLetBinding,
     ctx: &mut DispatchCtx,
@@ -99,9 +99,9 @@ pub async fn run_let(
     }
 
     let resolved = if let Some(expr) = &binding.value_ast {
-        // §Fase 70.f — a `value_kind == "expression"` value now carries a
+        // v2.26.0 — a `value_kind == "expression"` value now carries a
         // lowered expression; evaluate it for real (`let total = price * qty`)
-        // instead of the pre-§70.f behaviour that bound the opaque value string.
+        // instead of the pre-v2.26.0 behaviour that bound the opaque value string.
         // Fail-closed (a type/domain error) binds the empty string.
         eval_expr(expr, ctx)
             .map(|v| eval_to_str(&v))
@@ -114,7 +114,7 @@ pub async fn run_let(
                 .cloned()
                 .unwrap_or_default(),
             // "literal" (and a legacy "expression" with no `value_ast`) fall
-            // through to the literal path — byte-identical to pre-§70.f.
+            // through to the literal path — byte-identical to pre-v2.26.0.
             _ => binding.value.clone(),
         }
     };
@@ -129,12 +129,12 @@ pub async fn run_let(
 }
 
 // ────────────────────────────────────────────────────────────────────
-//  Grad — the proof-carrying derivative (§Fase 109.b)
+// Grad — the proof-carrying derivative (v2.65.0)
 // ────────────────────────────────────────────────────────────────────
 
 /// Evaluate the COMPILE-TIME-DERIVED derivatives at the current
 /// bindings. The differentiation already happened (the symbolic
-/// differentiator, §109.a) and was re-proven at deploy (PCC
+/// differentiator, v2.65.0) and was re-proven at deploy (PCC
 /// `GradientSoundness`) — this handler only evaluates closed
 /// expressions with the same total evaluator `let` uses. No LLM, no
 /// I/O, 0 tokens. A stale artifact (missing `original` / mismatched
@@ -263,10 +263,10 @@ pub async fn run_conditional(
 /// Evaluate the closed-catalog predicate over `(condition,
 /// comparison_op, comparison_value, conditions, conjunctor)`.
 fn evaluate_condition(cond: &IRConditional, ctx: &DispatchCtx) -> bool {
-    // §Fase 70.a — a condition the legacy triple cannot express carries a
+    // v2.26.0 — a condition the legacy triple cannot express carries a
     // lowered pure expression; evaluate it with the expression evaluator.
     // Fail-closed on a type error (`None`) → the branch is not taken. The
-    // legacy path below is byte-identical to pre-§70 (only reached when the
+    // legacy path below is byte-identical to pre-v2.26.0 (only reached when the
     // condition fit the legacy shape, i.e. `cond.cond == None`).
     if let Some(expr) = &cond.cond {
         return eval_expr(expr, ctx).map(|v| eval_truthy(&v)).unwrap_or(false);
@@ -296,10 +296,10 @@ fn evaluate_condition(cond: &IRConditional, ctx: &DispatchCtx) -> bool {
     }
 }
 
-/// §Fase 70.f — FROZEN legacy-compatibility path. `eval_expr` is the canonical
+/// v2.26.0 — FROZEN legacy-compatibility path. `eval_expr` is the canonical
 /// expression evaluator (rich conditions + `let` values); this string-triple
 /// evaluator is retained ONLY for legacy-shaped conditions (`cond = None`) to
-/// keep them byte-identical to pre-§70 — full unification onto `eval_expr` would
+/// keep them byte-identical to pre-v2.26.0 — full unification onto `eval_expr` would
 /// change `if a == b` (binding RHS) semantics, which the zero-drift contract
 /// forbids. Do not extend; new evaluation goes through `eval_expr`.
 fn eval_triple(lhs_raw: &str, op: &str, rhs: &str, ctx: &DispatchCtx) -> bool {
@@ -335,7 +335,7 @@ fn numeric_cmp(a: &str, b: &str) -> Option<std::cmp::Ordering> {
 }
 
 // ────────────────────────────────────────────────────────────────────
-//  §Fase 70.a — the pure expression evaluator
+// v2.26.0 — the pure expression evaluator
 // ────────────────────────────────────────────────────────────────────
 
 /// A runtime expression value. The existing runtime is string-typed
@@ -348,7 +348,7 @@ pub(crate) enum EVal {
     Float(f64),
     Bool(bool),
     Str(String),
-    /// §Fase 73.b — a live JSON value. Carries the semi-structured cases
+    /// v2.26.0 — a live JSON value. Carries the semi-structured cases
     /// the scalar variants cannot: a JSON `null` (the value a TOTAL
     /// navigation miss produces — never `None`, never a panic) and the
     /// composite carriers (`object` / `array`) that a further `.field` /
@@ -363,14 +363,14 @@ pub(crate) enum EVal {
 
 /// Evaluate a lowered pure expression. Returns `None` on a type error / domain
 /// error (non-numeric arithmetic, division-by-zero, integer overflow) so the
-/// caller fail-closes. This evaluator runs ONLY for `cond = Some` (rich, post-§70
+/// caller fail-closes. This evaluator runs ONLY for `cond = Some` (rich, post-v2.26.0
 /// conditions), so it defines clean numeric-aware semantics with no obligation
 /// to reproduce the legacy `eval_triple` string quirks.
 pub(crate) fn eval_expr(e: &crate::ir_nodes::IRExpr, ctx: &DispatchCtx) -> Option<EVal> {
     eval_expr_ov(e, ctx, &mut Vec::new())
 }
 
-/// §Fase 119.o — the evaluator, with a LEXICAL SCOPE stack for `let`.
+/// v2.83.0 — the evaluator, with a LEXICAL SCOPE stack for `let`.
 ///
 /// `ov` ("overlay") is the chain of bindings introduced by enclosing `Let`
 /// terms, innermost LAST. `Ref` consults it before `ctx.let_bindings`, so an
@@ -390,7 +390,7 @@ fn eval_expr_ov(
 ) -> Option<EVal> {
     use crate::ir_nodes::{IRExpr, IRExprLit};
     match e {
-        // §Fase 119.o — `let <name> = <value>` scoped over `<body>`.
+        // v2.83.0 — `let <name> = <value>` scoped over `<body>`.
         //
         // The bound term is evaluated ONCE, here, and the result is what every
         // reference in the body reads. Substituting the term into the body
@@ -413,11 +413,11 @@ fn eval_expr_ov(
             IRExprLit::Bool { value } => EVal::Bool(*value),
             IRExprLit::Str { value } => EVal::Str(value.clone()),
         }),
-        // §Fase 70.d — resolve a reference walking nested JSON object fields
+        // v2.26.0 — resolve a reference walking nested JSON object fields
         // (`s.config.level` over a JSON binding), exact-key first. Falls back to
         // the literal path (matching `resolve_lhs`) when neither resolves.
         IRExpr::Ref { path } => {
-            // §Fase 119.o — lexical scope FIRST, innermost binding wins. Searched
+            // v2.83.0 — lexical scope FIRST, innermost binding wins. Searched
             // from the end so an inner `let x` shadows an outer `let x`; only if
             // no enclosing binding owns the name does the lookup fall through to
             // the caller's frame. Reversing this order would let a stale
@@ -464,9 +464,9 @@ fn eval_expr_ov(
                 eval_binop(op, &l, &r)
             }
         },
-        // §Fase 70.c — closed-catalog builtin call.
+        // v2.26.0 — closed-catalog builtin call.
         IRExpr::Call { builtin, args } => eval_builtin(builtin, args, ctx, ov),
-        // §Fase 70.d / §73.b — field access over a JSON value. TOTAL: a
+        // v2.26.0 / v2.26.0 — field access over a JSON value. TOTAL: a
         // non-object base, an absent field, or a null base resolve to JSON
         // null (null-as-a-value), so a chained `doc.a.b.c` keeps walking
         // and only the base sub-expression evaluating to `None` (a hard
@@ -474,7 +474,7 @@ fn eval_expr_ov(
         IRExpr::Field { base, field } => {
             Some(eval_json_field(&eval_expr_ov(base, ctx, ov)?, field))
         }
-        // §Fase 70.d / §73.b — index access over a JSON array or string.
+        // v2.26.0 / v2.26.0 — index access over a JSON array or string.
         // TOTAL: out-of-range / negative / non-array → JSON null. A
         // non-integer index (a type error the frontend rejects) also
         // degrades to null rather than diverging.
@@ -489,7 +489,7 @@ fn eval_expr_ov(
     }
 }
 
-/// Convert a JSON value to an `EVal`. §Fase 73.b — a JSON scalar collapses
+/// Convert a JSON value to an `EVal`. v2.26.0 — a JSON scalar collapses
 /// to the matching scalar variant (so arithmetic + comparison stay
 /// ergonomic); `null` and the composite carriers (`object` / `array`) stay
 /// LIVE `EVal::Json` values — `null` is the navigable null-as-a-value, and a
@@ -507,9 +507,9 @@ fn json_to_eval(v: &serde_json::Value) -> EVal {
     }
 }
 
-/// §Fase 73.b — view an `EVal` as a JSON value for navigation: a live
+/// v2.26.0 — view an `EVal` as a JSON value for navigation: a live
 /// `EVal::Json` is used directly; an `EVal::Str` is parsed as JSON text
-/// (the binding-carried-document path §70.d relied on). Any other scalar
+/// (the binding-carried-document path v2.26.0 relied on). Any other scalar
 /// is not a JSON document. Returns `None` only when there is no JSON to
 /// navigate — the callers turn that into a typed null, never a failure.
 fn as_json(v: &EVal) -> Option<serde_json::Value> {
@@ -520,7 +520,7 @@ fn as_json(v: &EVal) -> Option<serde_json::Value> {
     }
 }
 
-/// §Fase 70.d / §73.b — `base.field` over a JSON value, TOTAL. A non-object
+/// v2.26.0 / v2.26.0 — `base.field` over a JSON value, TOTAL. A non-object
 /// base (a null, an array, a scalar) and an absent field both resolve to
 /// JSON null — never `None`, never a panic (doctrine `open_data_is_total`).
 fn eval_json_field(base: &EVal, field: &str) -> EVal {
@@ -533,7 +533,7 @@ fn eval_json_field(base: &EVal, field: &str) -> EVal {
     }
 }
 
-/// §Fase 70.d / §73.b — `base[i]` over a JSON array (element) or a string
+/// v2.26.0 / v2.26.0 — `base[i]` over a JSON array (element) or a string
 /// (character), TOTAL. Out-of-range, negative, and non-collection bases
 /// resolve to JSON null — never `None`, never a panic.
 fn eval_json_index(base: &EVal, i: i64) -> EVal {
@@ -546,7 +546,7 @@ fn eval_json_index(base: &EVal, i: i64) -> EVal {
             a.get(i as usize).map(json_to_eval).unwrap_or_else(null)
         }
         // Not a JSON array — fall back to character indexing over the raw
-        // string form (preserves §70.d string `[i]`); a miss is null.
+        // string form (preserves v2.26.0 string `[i]`); a miss is null.
         _ => eval_to_str(base)
             .chars()
             .nth(i as usize)
@@ -555,7 +555,7 @@ fn eval_json_index(base: &EVal, i: i64) -> EVal {
     }
 }
 
-/// §Fase 70.c — evaluate a pure builtin call. `args[0]` is the receiver.
+/// v2.26.0 — evaluate a pure builtin call. `args[0]` is the receiver.
 fn eval_builtin(
     name: &str,
     args: &[crate::ir_nodes::IRExpr],
@@ -563,9 +563,9 @@ fn eval_builtin(
     ov: &mut Vec<(String, EVal)>,
 ) -> Option<EVal> {
     // Evaluate the receiver ONCE into an `EVal` — the honest coercion
-    // accessors (§73.c) need the typed value, not its string form.
+    // accessors (v2.26.0) need the typed value, not its string form.
     let rv = eval_expr_ov(args.first()?, ctx, ov)?;
-    // §Fase 73.c — the honest coercion accessors. Each is a TOTAL coercion
+    // v2.26.0 — the honest coercion accessors. Each is a TOTAL coercion
     // that fail-closes to JSON null on a type mismatch — never a panic.
     match name {
         "as_int" => return Some(coerce_as_int(&rv)),
@@ -579,7 +579,7 @@ fn eval_builtin(
         "length" | "count" => Some(EVal::Int(builtin_length(&recv))),
         "is_empty" => Some(EVal::Bool(builtin_length(&recv) == 0)),
         "is_null" => {
-            // §73.c — a JSON null (a navigation miss) is honestly null;
+            // v2.26.0 — a JSON null (a navigation miss) is honestly null;
             // the legacy empty/`"null"` heuristic stays for plain bindings.
             if matches!(rv, EVal::Json(serde_json::Value::Null)) {
                 return Some(EVal::Bool(true));
@@ -603,7 +603,7 @@ fn eval_builtin(
     }
 }
 
-// ── §Fase 73.c — the honest coercion accessors ──────────────────────────────
+// ── v2.26.0 — the honest coercion accessors ──────────────────────────────
 //
 // Each asserts an EXPECTED JSON type and fail-closes to JSON null on a
 // mismatch — the runtime never lies, never panics (doctrine
@@ -654,7 +654,7 @@ fn coerce_as_bool(v: &EVal) -> EVal {
 }
 
 /// `.length` / `.count`: JSON array → element count; a retrieve envelope →
-/// `rows` count; §73.c — a JSON object → key count; any other value →
+/// `rows` count; v2.26.0 — a JSON object → key count; any other value →
 /// character count of the string.
 fn builtin_length(s: &str) -> i64 {
     match serde_json::from_str::<serde_json::Value>(s) {
@@ -667,13 +667,13 @@ fn builtin_length(s: &str) -> i64 {
                 _ => 0,
             }
         }
-        // §73.c — a plain JSON object's length is its key count.
+        // v2.26.0 — a plain JSON object's length is its key count.
         Ok(serde_json::Value::Object(m)) => m.len() as i64,
         _ => s.chars().count() as i64,
     }
 }
 
-/// `.contains(x)`: JSON array → element membership (string-compared); §73.c —
+/// `.contains(x)`: JSON array → element membership (string-compared); v2.26.0 —
 /// JSON object → key membership; any other value → substring containment.
 fn builtin_contains(recv: &str, needle: &str) -> bool {
     match serde_json::from_str::<serde_json::Value>(recv) {
@@ -683,7 +683,7 @@ fn builtin_contains(recv: &str, needle: &str) -> bool {
                 other => other.to_string() == needle,
             })
         }
-        // §73.c — object membership tests the KEYS.
+        // v2.26.0 — object membership tests the KEYS.
         Ok(serde_json::Value::Object(m)) => return m.contains_key(needle),
         _ => {}
     }
@@ -761,7 +761,7 @@ fn eval_coerce_str(s: String) -> EVal {
 fn eval_as_int(v: &EVal) -> Option<i64> {
     match v {
         EVal::Int(i) => Some(*i),
-        // §73.b — a JSON number navigated out of a document is an int when
+        // v2.26.0 — a JSON number navigated out of a document is an int when
         // it is integral; null + composites are not numbers.
         EVal::Json(j) => j.as_i64(),
         _ => None,
@@ -774,7 +774,7 @@ fn eval_as_num(v: &EVal) -> Option<f64> {
         EVal::Float(f) => Some(*f),
         EVal::Str(s) => s.parse::<f64>().ok(),
         EVal::Bool(_) => None,
-        // §73.b — a JSON number is numeric; null + composites are not.
+        // v2.26.0 — a JSON number is numeric; null + composites are not.
         EVal::Json(j) => j.as_f64(),
     }
 }
@@ -785,7 +785,7 @@ fn eval_to_str(v: &EVal) -> String {
         EVal::Float(f) => f.to_string(),
         EVal::Bool(b) => b.to_string(),
         EVal::Str(s) => s.clone(),
-        // §73.b — JSON null renders as the empty string (keeps a missing
+        // v2.26.0 — JSON null renders as the empty string (keeps a missing
         // field falsy + string-equal to `""`); a composite renders as its
         // compact JSON text so the string-based builtins (`.length`,
         // `.contains`, …) can re-parse and walk it.
@@ -824,7 +824,7 @@ fn eval_truthy(v: &EVal) -> bool {
         EVal::Int(i) => *i != 0,
         EVal::Float(f) => *f != 0.0,
         EVal::Str(s) => !s.is_empty() && s != "false" && s != "0",
-        // §73.b — JSON truthiness: null + an empty composite + an empty
+        // v2.26.0 — JSON truthiness: null + an empty composite + an empty
         // string + zero are falsy; a populated value is truthy. A missing
         // field (null-as-a-value) is therefore honestly falsy in a guard.
         EVal::Json(j) => match j {
@@ -898,7 +898,7 @@ pub async fn run_for_in(
         ctx.branch_path.pop();
 
         match iter_outcome {
-            // §Fase 119.d — suspending inside a nested construct is refused.
+            // v2.83.0 — suspending inside a nested construct is refused.
             Ok(NodeOutcome::Hibernated { .. }) => { return Err(DispatchError::BackendError { name: "hibernate".to_string(), message: "hibernate inside a nested construct (for-in / orchestration) has no defined \n                 continuation shape yet; place it at top-level flow position"
                 .to_string() }); }
             Ok(NodeOutcome::Completed {
@@ -919,7 +919,7 @@ pub async fn run_for_in(
             Ok(NodeOutcome::Return { value }) => {
                 return Ok(NodeOutcome::Return { value });
             }
-            // §Fase 120 — an effect sentinel crossing a loop boundary
+            // v2.87.0 — an effect sentinel crossing a loop boundary
             // propagates UNCHANGED. It is not the loop's to interpret: the
             // `perform` or `handle` that owns it is further out, and a
             // `resume` swallowed here would strand the continuation while
@@ -941,10 +941,10 @@ pub async fn run_for_in(
 }
 
 fn resolve_iterable(iterable: &str, ctx: &DispatchCtx) -> Vec<String> {
-    // §Fase 66.1 — resolve the iterable REFERENCE like every other value
+    // v2.17.0 — resolve the iterable REFERENCE like every other value
     // position: `for e in ClassifyEdges.output` is the canonical form, and a
     // step binds its output under its bare NAME — so the `.output` suffix must
-    // map to the step-name key. Pre-§66.1 this was a bare exact-key lookup, so
+    // map to the step-name key. Pre-v2.17.0 this was a bare exact-key lookup, so
     // `ClassifyEdges.output` missed → fell back to the literal string
     // `"ClassifyEdges.output"`, which then comma-split into one bogus item and
     // made every `${e.field}` miss (the kivi brief #28 repro: `${e.to_id}`
@@ -953,12 +953,12 @@ fn resolve_iterable(iterable: &str, ctx: &DispatchCtx) -> Vec<String> {
     collection_elements_of(&raw)
 }
 
-/// §Fase 66/67.g — the canonical "what does this value iterate as" rule, shared
-/// by `for … in` (above) and the §70.c collection builtins (`.length`,
+/// v2.17.0 — the canonical "what does this value iterate as" rule, shared
+/// by `for … in` (above) and the v2.26.0 collection builtins (`.length`,
 /// `.count`, `.is_empty`, `.contains`) so a collection's size/membership is
 /// exactly its iteration set. A JSON ARRAY → its elements; a retrieve EPISTEMIC
 /// ENVELOPE (`{taint, …, rows:[…]}`) → its `rows`; anything else (a plain
-/// string, a comma list) → the pre-§66 comma-split (byte-identical).
+/// string, a comma list) → the pre-v2.17.0 comma-split (byte-identical).
 fn collection_elements_of(raw: &str) -> Vec<String> {
     if raw.trim().is_empty() {
         return Vec::new();
@@ -982,10 +982,10 @@ fn collection_elements_of(raw: &str) -> Vec<String> {
 }
 
 /// Re-serialise each JSON element of an iterable into the per-loop-var string
-/// binding: an object/array element to its compact JSON (so the §66 dotted
+/// binding: an object/array element to its compact JSON (so the v2.17.0 dotted
 /// resolver can parse it back for `${var.field}`), a string element to its
 /// inner text, a scalar to its compact form. Shared by the bare-array (step
-/// `List<T>` output) and the retrieve-envelope `rows` (§67.g) paths so both
+/// `List<T>` output) and the retrieve-envelope `rows` (v2.21.0) paths so both
 /// bind loop vars identically.
 fn iterable_elements(elems: Vec<serde_json::Value>) -> Vec<String> {
     elems
@@ -1026,13 +1026,13 @@ pub async fn run_continue(
 
 /// Emit the Return sentinel with the resolved value.
 ///
-/// `value_expr` is resolved like every other value position (§66.1): `${X}` /
+/// `value_expr` is resolved like every other value position (v2.17.0): `${X}` /
 /// `${Step}` interpolation, a `Step.output` reference (the `.output` maps to the
 /// step-name key), a bare `let`/param/step name, else the literal string.
 ///
-/// §Fase 66.1 — pre-fix this did a bare exact-key lookup, so `return "${Summarize}"`
+/// v2.17.0 — pre-fix this did a bare exact-key lookup, so `return "${Summarize}"`
 /// returned the LITERAL `${Summarize}` and `return Summarize.output` returned the
-/// literal `Summarize.output` (the kivi brief #28 §C bug — interpolation worked in
+/// literal `Summarize.output` (the kivi brief #28 C bug — interpolation worked in
 /// a `persist` value via `store_row` but NOT in `return`). Now both resolve, so a
 /// non-streaming flow returns the actual step output, matching the persist path.
 pub async fn run_return(
@@ -1058,7 +1058,7 @@ pub async fn run_return(
 /// back into this dispatcher (orchestration nested inside
 /// orchestration). The pinned boxed future breaks the otherwise-
 /// infinite type recursion the compiler would otherwise reject.
-/// §Fase 120 — the sequential body walk, exposed so the effect handlers can run
+/// v2.87.0 — the sequential body walk, exposed so the effect handlers can run
 /// a `handle`'s `in` block and a clause body through the SAME walk every other
 /// nested construct uses.
 ///
@@ -1090,7 +1090,7 @@ async fn dispatch_body(
         ctx.branch_path.pop();
 
         match outcome? {
-            // §Fase 119.d — suspending inside a nested construct is refused.
+            // v2.83.0 — suspending inside a nested construct is refused.
             NodeOutcome::Hibernated { .. } => { return Err(DispatchError::BackendError { name: "hibernate".to_string(), message: "hibernate inside a nested construct (for-in / orchestration) has no defined \n                 continuation shape yet; place it at top-level flow position"
                 .to_string() }); }
             NodeOutcome::Completed {
@@ -1106,7 +1106,7 @@ async fn dispatch_body(
             NodeOutcome::Break => return Ok(NodeOutcome::Break),
             NodeOutcome::LoopContinue => return Ok(NodeOutcome::LoopContinue),
             NodeOutcome::Return { value } => return Ok(NodeOutcome::Return { value }),
-            // §Fase 120 — the effect sentinels propagate like `Return`: the
+            // v2.87.0 — the effect sentinels propagate like `Return`: the
             // walk STOPS and the outcome travels to whichever construct owns
             // it. `EffectResumed` is caught by the dispatching `perform`,
             // `EffectAborted` by the `handle` whose `frame_id` it names, and
@@ -1291,7 +1291,7 @@ mod tests {
         assert!(!eval_triple("empty", "", "", &ctx));
     }
 
-    // ── §Fase 70.a — the pure expression evaluator ───────────────────
+    // ── v2.26.0 — the pure expression evaluator ───────────────────
 
     fn lit_int(v: i64) -> Box<IRExpr> {
         Box::new(IRExpr::Lit {
@@ -1388,7 +1388,7 @@ mod tests {
         assert!(evaluate_condition(&cond, &ctx), "9 < 10 → then branch");
     }
 
-    // ── §Fase 70.c — collection / string builtins ────────────────────
+    // ── v2.26.0 — collection / string builtins ────────────────────
 
     fn estr(s: &str) -> Box<IRExpr> {
         Box::new(IRExpr::Lit {
@@ -1471,7 +1471,7 @@ mod tests {
         assert!(evaluate_condition(&cond, &ctx), "8 recent >= limit 5 → then");
     }
 
-    // ── §Fase 70.d — field / index access ────────────────────────────
+    // ── v2.26.0 — field / index access ────────────────────────────
 
     #[test]
     fn index_into_a_json_array() {
@@ -1486,7 +1486,7 @@ mod tests {
 
     #[test]
     fn index_out_of_bounds_resolves_to_null() {
-        // §Fase 73.b — an out-of-range index is now a TOTAL navigation: it
+        // v2.26.0 — an out-of-range index is now a TOTAL navigation: it
         // resolves to JSON null (null-as-a-value), not `None`. The
         // observable guard outcome is unchanged — null is falsy — but the
         // value keeps navigating (`items[9].name` stays total) and `eval_expr`
@@ -1503,7 +1503,7 @@ mod tests {
         assert!(!eval_truthy(&got), "a null miss is falsy in a guard");
     }
 
-    // ── §Fase 73.b — total JSON navigation: a miss is null-as-a-value ────
+    // ── v2.26.0 — total JSON navigation: a miss is null-as-a-value ────
 
     #[test]
     fn missing_field_resolves_to_null_not_failure() {
@@ -1597,7 +1597,7 @@ mod tests {
         ));
     }
 
-    // ── §Fase 73.c — honest coercion accessors + object builtins ────────
+    // ── v2.26.0 — honest coercion accessors + object builtins ────────
 
     #[test]
     fn as_int_succeeds_on_a_json_integer() {
@@ -1724,7 +1724,7 @@ mod tests {
 
     #[test]
     fn ref_walks_nested_json_object_fields() {
-        // §Fase 70.d — a dotted ref resolves nested JSON (rich-condition path).
+        // v2.26.0 — a dotted ref resolves nested JSON (rich-condition path).
         let mut ctx = fresh_ctx_no_rx().0;
         ctx.let_bindings
             .insert("s".into(), r#"{"config":{"outbound":{"level":3}}}"#.into());
@@ -1734,12 +1734,12 @@ mod tests {
         assert!(matches!(eval_expr(&e, &ctx), Some(EVal::Int(3))));
     }
 
-    // ── §Fase 70.f — let-value expression evaluation ─────────────────
+    // ── v2.26.0 — let-value expression evaluation ─────────────────
 
     #[tokio::test]
     async fn run_let_evaluates_an_expression_value() {
         // `let total = price * qty` over bound Ints → "12" (not the literal
-        // string "price * qty", the pre-§70.f bug).
+        // string "price * qty", the pre-v2.26.0 bug).
         let (mut ctx, _rx) = fresh_ctx();
         ctx.let_bindings.insert("price".into(), "4".into());
         ctx.let_bindings.insert("qty".into(), "3".into());
@@ -1756,7 +1756,7 @@ mod tests {
         assert_eq!(ctx.let_bindings.get("total").unwrap(), "12");
     }
 
-    // ── §Fase 70.f — the expression-evaluator parity corpus ──────────
+    // ── v2.26.0 — the expression-evaluator parity corpus ──────────
     //
     // A golden table over the operator + builtin + access surface. Pins
     // `eval_expr`'s semantics (the same the frontend const-folder mirrors).
@@ -2174,7 +2174,7 @@ mod tests {
         }
     }
 
-    // ── §Fase 66 (Q1) — structured iteration of a List<Record> ──────────
+    // ── v2.17.0 (Q1) — structured iteration of a List<Record> ──────────
 
     #[test]
     fn resolve_iterable_iterates_json_array_elements_as_structured_records() {
@@ -2192,7 +2192,7 @@ mod tests {
         let first: serde_json::Value = serde_json::from_str(&items[0]).expect("element is JSON");
         assert_eq!(first["to_id"], "a");
         assert_eq!(first["etype"], "cite");
-        // And it composes with the §66 dotted interpolation: bind `e` = element.
+        // And it composes with the v2.17.0 dotted interpolation: bind `e` = element.
         ctx.let_bindings.insert("e".to_string(), items[1].clone());
         assert_eq!(
             crate::exec_context::interpolate_vars("${e.to_id}", &ctx.let_bindings),
@@ -2202,7 +2202,7 @@ mod tests {
 
     #[test]
     fn resolve_iterable_unwraps_a_retrieve_envelope_into_its_rows() {
-        // §Fase 67.g (kivi brief #35): `for s in to_hibernate` where
+        // v2.21.0 (kivi brief #35): `for s in to_hibernate` where
         // `to_hibernate` is a `retrieve … as: to_hibernate` binding. A retrieve
         // binds an EPISTEMIC ENVELOPE object (not a bare array), so pre-fix the
         // object failed the array check, fell to the comma-split, and shredded
@@ -2239,7 +2239,7 @@ mod tests {
     fn resolve_iterable_empty_retrieve_envelope_yields_zero_iterations() {
         // A retrieve that matched 0 rows binds an envelope with an empty `rows`
         // array — the `for` must run ZERO times (not one comma-shard iteration
-        // over the envelope scaffolding). The §C/Q3 honest-empty contract.
+        // over the envelope scaffolding). The C/Q3 honest-empty contract.
         let (mut ctx, _rx) = fresh_ctx();
         ctx.let_bindings.insert(
             "empty".to_string(),
@@ -2250,7 +2250,7 @@ mod tests {
 
     #[test]
     fn resolve_iterable_non_json_falls_back_to_comma_split() {
-        // Back-compat: a plain comma list iterates byte-identically to pre-§66.
+        // Back-compat: a plain comma list iterates byte-identically to pre-v2.17.0.
         let (mut ctx, _rx) = fresh_ctx();
         ctx.let_bindings
             .insert("xs".to_string(), "a, b, c".to_string());
@@ -2261,12 +2261,12 @@ mod tests {
         assert_eq!(resolve_iterable("ys", &ctx), vec!["x", "y"]);
     }
 
-    // ── §Fase 66.1 — the canonical `for e in Step.output` repro (kivi #28) ─
+    // ── v2.17.0 — the canonical `for e in Step.output` repro (kivi #28) ─
 
     #[test]
     fn resolve_iterable_resolves_a_step_output_reference_to_its_array() {
         // The CANONICAL form: `for e in ClassifyEdges.output`. The step binds its
-        // output under the BARE NAME `ClassifyEdges`; pre-§66.1 `resolve_iterable`
+        // output under the BARE NAME `ClassifyEdges`; pre-v2.17.0 `resolve_iterable`
         // did exact `get("ClassifyEdges.output")` → miss → literal → 1 bogus item.
         let (mut ctx, _rx) = fresh_ctx();
         ctx.let_bindings.insert(
@@ -2285,9 +2285,9 @@ mod tests {
 
     #[tokio::test]
     async fn run_return_resolves_interpolation_and_step_output() {
-        // kivi #28 §C: `return "${Summarize}"` and `return Summarize.output` must
+        // kivi #28 C: `return "${Summarize}"` and `return Summarize.output` must
         // return the step's OUTPUT, not the literal (interpolation worked in a
-        // persist value but not in return pre-§66.1).
+        // persist value but not in return pre-v2.17.0).
         let (mut ctx, _rx) = fresh_ctx();
         ctx.let_bindings
             .insert("Summarize".to_string(), "the real summary".to_string());

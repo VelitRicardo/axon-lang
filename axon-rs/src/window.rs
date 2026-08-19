@@ -1,13 +1,13 @@
-//! §Fase 71.b — the runtime for the `window` temporal execution guard (§71.a).
+//! v2.27.0 — the runtime for the `window` temporal execution guard (v2.27.0).
 //!
 //! Pure, total, timezone-aware functions over an [`IRWindow`]. The frontend
 //! only FORMAT-checks the timezone string (it is zero-dependency); here we do
 //! the authoritative IANA resolution + the DST-correct day/hour membership math
 //! via `chrono-tz`. Every decision is a pure function of `(now, the window, the
-//! tz-database version)` — the §71 doctrine `axon://logic/time_is_an_explicit_input`.
+//! tz-database version)` — the v2.27.0 doctrine `axon://logic/time_is_an_explicit_input`.
 //!
 //! Granularity is the hour (the `window` grammar's `hours: 9..18` are inclusive
-//! 0–23 bounds). §Fase 71.e adds holiday exclusion: a tick whose LOCAL date is
+//! 0–23 bounds). v2.27.0 adds holiday exclusion: a tick whose LOCAL date is
 //! in the window's `exclude` set (ISO `YYYY-MM-DD` literals) is OUTSIDE the
 //! window regardless of the hour spans.
 
@@ -22,7 +22,7 @@ pub fn parse_tz(name: &str) -> Option<Tz> {
     name.trim().parse::<Tz>().ok()
 }
 
-/// §Fase 71.d — the IANA timezone-database release this build resolves against
+/// v2.27.0 — the IANA timezone-database release this build resolves against
 /// (e.g. `"2024a"`). A window decision is a pure function of `(now, the window,
 /// THIS version)` — recording it alongside a deferred/guarded run makes the
 /// decision replayable across a tz-db upgrade (the `time_is_an_explicit_input`
@@ -61,14 +61,14 @@ fn weekday_in_range(wd: Weekday, start: Weekday, end: Weekday) -> bool {
     }
 }
 
-/// §Fase 71.b — is `now` (UTC) inside ANY allowed span of `window`, evaluated in
+/// v2.27.0 — is `now` (UTC) inside ANY allowed span of `window`, evaluated in
 /// the window's timezone? `None` when the timezone is not a valid IANA name
-/// (the caller fail-closes). A malformed span never matches (the §71.a type
+/// (the caller fail-closes). A malformed span never matches (the v2.27.0 type
 /// checker rejects those at compile time).
 pub fn is_in_window(now: DateTime<Utc>, window: &IRWindow) -> Option<bool> {
     let tz = parse_tz(&window.timezone)?;
     let local = now.with_timezone(&tz);
-    // §Fase 71.e — a holiday (an excluded LOCAL date) is OUTSIDE the window
+    // v2.27.0 — a holiday (an excluded LOCAL date) is OUTSIDE the window
     // regardless of the hour spans. The dates are ISO `YYYY-MM-DD` literals
     // (compile-validated, `axon-T826`); compare `now`'s local date the same way.
     if !window.exclude.is_empty() {
@@ -91,8 +91,8 @@ pub fn is_in_window(now: DateTime<Utc>, window: &IRWindow) -> Option<bool> {
     Some(false)
 }
 
-/// §Fase 71.b — the next instant ≥ `now` that is inside the window (the input to
-/// the §71.d defer ledger). Steps hour-by-hour, bounded to one week + a margin
+/// v2.27.0 — the next instant ≥ `now` that is inside the window (the input to
+/// the v2.27.0 defer ledger). Steps hour-by-hour, bounded to one week + a margin
 /// (a non-empty window opens within 7 days). `None` if the timezone is invalid
 /// or — defensively — no span opens within the bound. Hour-granular: the
 /// returned instant is the top of the opening UTC hour.
@@ -111,9 +111,9 @@ pub fn next_window_open(now: DateTime<Utc>, window: &IRWindow) -> Option<DateTim
     None
 }
 
-/// §Fase 71.c — the supervisor's decision for a single scheduled tick under a
+/// v2.27.0 — the supervisor's decision for a single scheduled tick under a
 /// bound `window`. Computed by [`decide`]; honored by the OSS single-process
-/// daemon driver and (for `Defer`) the §71.d enterprise defer-ledger.
+/// daemon driver and (for `Defer`) the v2.27.0 enterprise defer-ledger.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WindowAction {
     /// Inside the window — fire normally.
@@ -126,14 +126,14 @@ pub enum WindowAction {
     /// `window:outside` warning so the breach is observable.
     Warn,
     /// Outside + `on_outside: defer` — the tick should run at the next window
-    /// opening. `open_at` is that instant (the §71.d defer-ledger input), or
+    /// opening. `open_at` is that instant (the v2.27.0 defer-ledger input), or
     /// `None` if no opening was found within the bound. The OSS single-process
     /// supervisor cannot persist a ledger, so it degrades this to a logged skip;
     /// the enterprise supervisor records a coalesced fire-once row.
     Defer { open_at: Option<DateTime<Utc>> },
 }
 
-/// §Fase 71.c — decide what to do with a tick firing at `now` under `window`.
+/// v2.27.0 — decide what to do with a tick firing at `now` under `window`.
 /// Pure + total. An unresolvable timezone fails CLOSED to [`WindowAction::Skip`]
 /// (never fire under a guard we cannot evaluate). `on_outside` has already been
 /// catalog-checked at compile time (`axon-T824`); any non-`warn`/`defer` value

@@ -1,6 +1,6 @@
 //! [`BufferKind`] — content-kind tags for multimodal buffers.
 //!
-//! Unlike the closed catalogues in Fase 11.a (trust proofs,
+//! Unlike the closed catalogues in v1.4.0 (trust proofs,
 //! backpressure policies), the `BufferKind` registry is **open**.
 //! Adopters register domain-specific kinds at startup:
 //!

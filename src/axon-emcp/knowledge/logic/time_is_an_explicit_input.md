@@ -1,7 +1,7 @@
 ---
 name: time_is_an_explicit_input
-title: "Time is an explicit, recorded input — never an ambient read (§Fase 71 scheduling · §Fase 91 cognition)"
-summary: "The law that any decision AXON makes about WHEN something runs — a `window` temporal guard, a deferred tick, a scheduled daemon claim — is a PURE, TOTAL function of explicit inputs: the instant `now` (UTC), the declared window (timezone + allowed day/hour spans + literal holiday dates), and the IANA tz-database version the build resolved against. None of these is read ambiently from inside the decision: `now` is passed in (so the logic is testable with a fixed clock), the timezone + spans + holidays are LITERALS in the verified program, and the tz-db version is recorded in the run's audit. So a temporal decision is fully REPLAYABLE — given the same recorded inputs it yields the same verdict, bit-for-bit, even across a tz-database upgrade. §Fase 91 extends the SAME law to cognition: a step that needs the current date-time DECLARES it (`now: \"<IANA-tz>\"` on the step or its `context` frame, axon-T892); the runtime supplies ONE captured instant per run and renders it deterministically into the prompt; the envelope records (captured_utc, tzdb_version, zones) so the exact prompt the model saw is reconstructible byte-for-byte. The executable form of `total_expressions` for the time domain: scheduling is computed and cognition is time-honest — never a hidden side-read."
+title: "Time is an explicit, recorded input — never an ambient read (v2.27.0 scheduling · v2.46.0 cognition)"
+summary: "The law that any decision AXON makes about WHEN something runs — a `window` temporal guard, a deferred tick, a scheduled daemon claim — is a PURE, TOTAL function of explicit inputs: the instant `now` (UTC), the declared window (timezone + allowed day/hour spans + literal holiday dates), and the IANA tz-database version the build resolved against. None of these is read ambiently from inside the decision: `now` is passed in (so the logic is testable with a fixed clock), the timezone + spans + holidays are LITERALS in the verified program, and the tz-db version is recorded in the run's audit. So a temporal decision is fully REPLAYABLE — given the same recorded inputs it yields the same verdict, bit-for-bit, even across a tz-database upgrade. v2.46.0 extends the SAME law to cognition: a step that needs the current date-time DECLARES it (`now: \"<IANA-tz>\"` on the step or its `context` frame, axon-T892); the runtime supplies ONE captured instant per run and renders it deterministically into the prompt; the envelope records (captured_utc, tzdb_version, zones) so the exact prompt the model saw is reconstructible byte-for-byte. The executable form of `total_expressions` for the time domain: scheduling is computed and cognition is time-honest — never a hidden side-read."
 ---
 
 # Time is an explicit, recorded input
@@ -10,7 +10,7 @@ A scheduler that reads the wall clock *inside* its decision is
 unauditable: you cannot replay "why didn't the 8am job run on the
 24th?" because the inputs to that decision — the current time, the
 operative timezone, the holiday set, the timezone database in
-effect — were ambient, not recorded. §Fase 71 makes the opposite
+effect — were ambient, not recorded. v2.27.0 makes the opposite
 true by construction for AXON's temporal guard, the `window`.
 
 > **The law.** Every decision about WHEN something runs is a
@@ -77,9 +77,9 @@ for replay, audit, and cross-replica agreement.
   tables are non-deterministic across jurisdictions and years; they
   are not an explicit input and are excluded by design.
 
-## §Fase 91 — the cognitive completion
+## v2.46.0 — the cognitive completion
 
-§71 made the *scheduler* time-honest and left the *model* blind: a
+v2.27.0 made the *scheduler* time-honest and left the *model* blind: a
 `window`-gated daemon fires at exactly 9am Bogotá and then prompts a
 model that does not know it is Monday. Every production agent that
 schedules, greets, reasons about "this week" or "before 6pm" needs
@@ -87,7 +87,7 @@ the current date-time — and the folk fix (string-interpolating a
 server timestamp into the `ask:`) is precisely the ambient,
 unrecorded, timezone-naïve clock read this law forbids.
 
-§91 applies the same four-input discipline to cognition:
+v2.46.0 applies the same four-input discipline to cognition:
 
 1. **Declared, never ambient.** A step that carries time says so in
    source: `now: "America/Bogota"` on the step, or on the bound
@@ -105,7 +105,7 @@ unrecorded, timezone-naïve clock read this law forbids.
    chrono-tz machinery as `window`.
 4. **Recorded for replay.** The flow envelope carries
    `temporal_context: {captured_utc, tzdb_version, zones}` (both
-   transports, §55.c parity), so the exact prompt the model saw is
+   transports, v2.7.0 parity), so the exact prompt the model saw is
    reconstructible byte-for-byte.
 
 Fail-closed at every layer: a malformed zone is a compile error

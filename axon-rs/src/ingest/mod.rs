@@ -1,7 +1,7 @@
 //! Network ingest paths that deposit bytes directly into
 //! [`crate::buffer::ZeroCopyBuffer`]s.
 //!
-//! §λ-L-E Fase 11.b. Two primary sources today:
+//! v1.4.0. Two primary sources today:
 //!
 //! - [`multipart`] — `multipart/form-data` from HTTP uploads, parsed
 //!   field-by-field into per-field `BufferMut`s that freeze at end

@@ -3,7 +3,7 @@ name: axpoint
 summary: Lightweight axonendpoint — for simple request/response flows without the full request-binding schema scaffolding.
 category: wire
 top_level: true
-since: Fase 32
+since: v1.23.0
 grammar: |
   # `axpoint` is a LEXER ALIAS for `axonendpoint`. The two share the
   # same parser production and the same field set. See
@@ -77,7 +77,7 @@ axpoint EchoAPI {
   on an `axpoint` are doing so by convention, not because
   the surface lacks them.
 - **Not deprecated.** The alias is a first-class part of the
-  language; it survives across Fase increments.
+  language; it survives across cycle increments.
 
 ## See also
 

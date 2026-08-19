@@ -52,10 +52,10 @@ axonstore PaymentVault
 | PCI DSS req | AXON runtime enforcement |
 |---|---|
 | Req 10.1–10.5 — audit trails | Every access to PCI-tagged data emits an audit row with `(actor, action, target, timestamp, source_ip)`. The chain is hash-linked + signed (Req 10.5.5 integrity). |
-| Req 10.2.1 — individual user accesses | The audit row's `actor` is the authenticated subject from the §40 OIDC layer, not a shared service account. |
+| Req 10.2.1 — individual user accesses | The audit row's `actor` is the authenticated subject from the v2.0.0 OIDC layer, not a shared service account. |
 | Req 10.7 — retain audit history | Audit retention is 12 months online + 12 months archived (configurable per deployment); the default matches the PCI minimum. |
 | Req 11.3 — penetration testing | Out of scope. |
-| Req 11.5 — change-detection | The hash-linked audit chain detects unauthorised modifications to historical rows; the §27.k FIPS-friendly hash makes after-the-fact tampering detectable. |
+| Req 11.5 — change-detection | The hash-linked audit chain detects unauthorised modifications to historical rows; the v1.19.1 FIPS-friendly hash makes after-the-fact tampering detectable. |
 | Req 12.10 — incident response | The compliance event store emits structured incident records consumable by the IR playbook; the playbook itself is operational. |
 
 ## What you still attest manually
@@ -150,7 +150,7 @@ flow QueryAuditForReq10(window: TimeWindow) -> List<AuditRow> {
   iframe (Stripe Elements, Braintree, …) often falls under SAQ A.
   AXON should still annotate the tokenised reference with
   `compliance: [PCI_DSS]` to keep the audit boundary explicit, but
-  the §164 SAD prohibitions only apply if you ever see CHD/SAD.
+  the section 164 SAD prohibitions only apply if you ever see CHD/SAD.
 - **Refund records that contain only the truncated PAN.** Truncated
   PAN (first 6 + last 4 or fewer) is **not** considered cardholder
   data per PCI DSS v4 — the compliance tag is optional.

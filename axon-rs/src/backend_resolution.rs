@@ -1,4 +1,4 @@
-//! §Fase 36.b — the Backend Resolution Contract (D1).
+//! v1.31.0 — the Backend Resolution Contract (D1).
 //!
 //! axon resolves the execution backend of any flow — behind an
 //! `axonendpoint` route or a `/v1/execute` call — through ONE
@@ -24,7 +24,7 @@
 //! environment scan (which keys are present) and the registry scoring
 //! are computed by the caller and passed in; that keeps the contract
 //! exhaustively unit-testable and deterministic. The shared corpus in
-//! the §36.l tests pins it.
+//! the v1.31.0 tests pins it.
 
 /// Is `name` an explicit, concrete backend choice — i.e. a rung that
 /// should FIRE rather than fall through? Empty and `"auto"` are
@@ -112,7 +112,7 @@ pub struct BackendResolutionInputs {
     pub env_available: Vec<String>,
 }
 
-/// §D1 — resolve the execution backend by the precedence ladder.
+/// D1 — resolve the execution backend by the precedence ladder.
 ///
 /// Total and deterministic: the same inputs always produce the same
 /// result. `stub` is returned ONLY when an explicit rung-1/2/3 value
@@ -254,7 +254,7 @@ mod tests {
 
     #[test]
     fn auto_rungs_never_land_on_stub() {
-        // §D5 — even if `stub` somehow appears in the registry / env
+        // D5 — even if `stub` somehow appears in the registry / env
         // lists, the `auto` rungs skip it. A stub entry alone with no
         // real backend is an honest failure.
         let mut i = inputs();

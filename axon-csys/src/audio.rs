@@ -1,4 +1,4 @@
-//! §Fase 25.c — Audio kernels (Rust shim).
+//! v1.19.0 — Audio kernels (Rust shim).
 //!
 //! Safe Rust wrappers around the C23 audio kernels in
 //! `c-src/audio/{mulaw,resample}.c`. Each kernel preserves the OTS

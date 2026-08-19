@@ -1,4 +1,4 @@
-//! §Fase 51.a — the INDEPENDENT proof checker (the consumer side).
+//! v2.4.0 — the INDEPENDENT proof checker (the consumer side).
 //!
 //! This is the trust boundary of Proof-Carrying Code. A consumer who
 //! does NOT trust the axon compiler runs [`check_proof`] against the
@@ -6,7 +6,7 @@
 //! checker is small, total, and never-panics on arbitrary proof input
 //! — it is the only piece a verifier must audit.
 //!
-//! ## D51.2 — independence (the soundness contract)
+//! ## the design decision — independence (the soundness contract)
 //!
 //! The checker RE-DERIVES the property from the artifact and verifies
 //! the witness against that re-derivation. It NEVER accepts a witness
@@ -16,7 +16,7 @@
 //! checker recomputes those facts from the IR and compares. The
 //! adversarial tests (`forged_*_rejected`) are first-class gates.
 //!
-//! ## D51.1 — digest binding
+//! ## the design decision — digest binding
 //!
 //! Before checking any property the checker recomputes the artifact
 //! digest and rejects a mismatch ([`CheckOutcome::DigestMismatch`]).
@@ -56,14 +56,14 @@ pub enum CheckOutcome {
     /// artifact — the proof is about a different program.
     DigestMismatch,
     /// The proof's property/witness pairing is not one this checker
-    /// version understands (forward-compat for §51.b-e classes).
+    /// version understands (forward-compat for v2.4.0-e classes).
     UnknownProperty,
 }
 
-/// §51.a — verify a [`ProofTerm`] against the artifact it claims to be
-/// about. Independent of the producer (D51.2). Total + never-panics.
+/// v2.4.0 — verify a [`ProofTerm`] against the artifact it claims to be
+/// about. Independent of the producer. Total + never-panics.
 pub fn check_proof(proof: &ProofTerm, ir: &IRProgram) -> CheckOutcome {
-    // (1) D51.1 — digest binding. Recompute; reject a mismatch before
+    // (1) the design decision — digest binding. Recompute; reject a mismatch before
     // looking at the witness at all.
     if proof.artifact_digest != artifact_digest(ir) {
         return CheckOutcome::DigestMismatch;
@@ -187,7 +187,7 @@ pub fn check_proof(proof: &ProofTerm, ir: &IRProgram) -> CheckOutcome {
     }
 }
 
-/// §52.a — the result of checking one proof inside a bundle.
+/// v2.4.0 — the result of checking one proof inside a bundle.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProofCheck {
     /// Position of the proof in `ProofBundle::proofs`.
@@ -200,13 +200,13 @@ pub struct ProofCheck {
     pub outcome: CheckOutcome,
 }
 
-/// §52.a — the deployability report for a whole [`ProofBundle`].
+/// v2.4.0 — the deployability report for a whole [`ProofBundle`].
 ///
 /// Aggregates the per-proof [`check_proof`] outcomes so a consumer (the
 /// enterprise deploy gate, the `axon pcc verify` CLI) has ONE trusted
 /// predicate for "is this bundle deployable." The policy — what counts
 /// as deployable — lives HERE, on the checker side, never in consumer
-/// glue (D52.1): a bundle is deployable iff every proof `Verified`.
+/// glue: a bundle is deployable iff every proof `Verified`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BundleReport {
     /// One entry per proof, in bundle order.
@@ -217,7 +217,7 @@ impl BundleReport {
     /// True iff EVERY proof verified. Fail-closed: an empty bundle is
     /// vacuously verified (nothing to refute), and any non-`Verified`
     /// outcome (`Refuted` / `DigestMismatch` / `UnknownProperty`) makes
-    /// the whole bundle non-deployable (D52.2).
+    /// the whole bundle non-deployable.
     pub fn all_verified(&self) -> bool {
         self.results
             .iter()
@@ -234,7 +234,7 @@ impl BundleReport {
     }
 }
 
-/// §52.a — check every proof in a bundle against the artifact,
+/// v2.4.0 — check every proof in a bundle against the artifact,
 /// independently (each proof re-derived via [`check_proof`]). The
 /// bundle's own `artifact_digest` is advisory only — the authoritative
 /// binding is the per-proof digest [`check_proof`] re-verifies, so a
@@ -255,7 +255,7 @@ pub fn check_bundle(bundle: &super::proof_term::ProofBundle, ir: &IRProgram) -> 
     BundleReport { results }
 }
 
-/// §51.a — re-derive the compliance-coverage witness from the artifact
+/// v2.4.0 — re-derive the compliance-coverage witness from the artifact
 /// and verify it against the proof's witness, then render the verdict.
 ///
 /// The order matters for soundness: we recompute the witness FIRST
@@ -280,7 +280,7 @@ fn check_compliance_coverage(
         }
     };
 
-    // Re-derive independently — do NOT trust the witness (D51.2).
+    // Re-derive independently — do NOT trust the witness.
     let actual = derive_compliance_coverage_witness(
         &ep.name,
         &ep.compliance,
@@ -329,9 +329,9 @@ fn check_compliance_coverage(
     CheckOutcome::Verified
 }
 
-/// §51.b — re-derive the effect-row witness from the named tool and
+/// v2.4.0 — re-derive the effect-row witness from the named tool and
 /// verify it against the proof, then render the verdict. Independent
-/// of the producer (D51.2): the checker re-reads `tool.effect_row` from
+/// of the producer: the checker re-reads `tool.effect_row` from
 /// the artifact and recomputes every fact; a forged witness is rejected
 /// because the recomputation disagrees.
 fn check_effect_row_soundness(
@@ -350,7 +350,7 @@ fn check_effect_row_soundness(
         }
     };
 
-    // Re-derive independently — do NOT trust the witness. §Fase 53.d:
+    // Re-derive independently — do NOT trust the witness. v2.5.0:
     // the extension provenance members are re-derived from the SAME
     // artifact (`ir`), so an extension-declared base verifies, while a
     // base no extension declares still refutes. Soundness invariant #1:
@@ -403,10 +403,10 @@ fn check_effect_row_soundness(
     CheckOutcome::Verified
 }
 
-/// §51.c — re-derive the capability-gate witness from the named store
+/// v2.4.0 — re-derive the capability-gate witness from the named store
 /// and verify it against the proof, then render the verdict.
-/// Independent of the producer (D51.2): the checker re-reads
-/// `store.capability` from the artifact and re-runs the §32.g grammar
+/// Independent of the producer: the checker re-reads
+/// `store.capability` from the artifact and re-runs the v1.23.0 grammar
 /// validator; a forged witness (claiming `malformed: false` for a
 /// broken gate) is rejected because the recomputation disagrees.
 fn check_capability_isolation(
@@ -450,9 +450,9 @@ fn check_capability_isolation(
     CheckOutcome::Verified
 }
 
-/// §51.d — re-derive the resource-bound witness from the named subject
+/// v2.4.0 — re-derive the resource-bound witness from the named subject
 /// (endpoint or socket) and verify it against the proof, then render
-/// the verdict. Independent of the producer (D51.2): the checker
+/// the verdict. Independent of the producer: the checker
 /// re-reads `retries` / `backpressure_credit` from the artifact and
 /// recomputes the bound; a forged witness is rejected because the
 /// recomputation disagrees.
@@ -542,9 +542,9 @@ fn check_resource_bounds(
     }
 }
 
-/// §51.e — re-derive the shield breach-policy witness from the named
+/// v2.4.0 — re-derive the shield breach-policy witness from the named
 /// shield and verify it against the proof, then render the verdict.
-/// Independent of the producer (D51.2): the checker re-reads
+/// Independent of the producer: the checker re-reads
 /// `on_breach` + `scan` from the artifact and recomputes both facts; a
 /// forged witness (claiming `vacuous_halt: false` for a halt shield
 /// that scans nothing) is rejected because the recomputation disagrees.
@@ -564,8 +564,8 @@ fn check_shield_halt_guarantee(
         }
     };
 
-    // Re-derive independently — do NOT trust the witness. §77.a: `sign`
-    // participates (a sign-only egress shield is a non-vacuous halt, D77.6).
+    // Re-derive independently — do NOT trust the witness. v2.34.0: `sign`
+    // participates (a sign-only egress shield is a non-vacuous halt, the design decision).
     let actual = derive_shield_halt_witness(
         &shield.name,
         &shield.on_breach,
@@ -599,9 +599,9 @@ fn check_shield_halt_guarantee(
     CheckOutcome::Verified
 }
 
-/// §51.x — re-derive the capability-containment witness from the named
+/// v2.4.0 — re-derive the capability-containment witness from the named
 /// endpoint and verify it against the proof, then render the verdict.
-/// Independent of the producer (D51.2): the checker re-resolves the
+/// Independent of the producer: the checker re-resolves the
 /// `execute_flow`, re-walks its reachable store ops, re-resolves each
 /// gate, and recomputes the uncovered set; a forged witness (e.g.
 /// hiding an uncovered gate) is rejected because the recomputation
@@ -659,9 +659,9 @@ fn check_capability_containment(
     CheckOutcome::Verified
 }
 
-/// §58.i — re-derive the tool-call-soundness witness from the named flow
+/// v2.8.0 — re-derive the tool-call-soundness witness from the named flow
 /// + call site and verify it against the proof, then render the verdict.
-/// Independent of the producer (D51.2): the checker re-walks the SAME
+/// Independent of the producer: the checker re-walks the SAME
 /// digest-bound IR, locates the call at `call_index`, re-reads the called
 /// tool's `parameters:` schema, and recomputes every fact; a forged
 /// witness (e.g. hiding an unknown argument or a type mismatch) is
@@ -739,7 +739,7 @@ fn check_tool_call_soundness(
     CheckOutcome::Verified
 }
 
-/// §72.f — check an [`EffectBudgetedWitness`]. Re-derive the budget facts
+/// v2.28.0 — check an [`EffectBudgetedWitness`]. Re-derive the budget facts
 /// independently from the artifact; refute on disagreement (forgery) or on any
 /// budget defect (an unresolved effect, a non-positive limit, an invalid period,
 /// or an out-of-catalog `on_exhausted`).
@@ -802,7 +802,7 @@ fn check_effect_budgeted(
     CheckOutcome::Verified
 }
 
-/// §73.g — check a [`JsonShapeSoundnessWitness`]. Re-derive the store's
+/// v2.26.0 — check a [`JsonShapeSoundnessWitness`]. Re-derive the store's
 /// lens shapes independently from the artifact; refute on disagreement
 /// (forgery) or on any shape that does not resolve to a declared struct
 /// `type` (the `axon-T840` invariant, now independently verified).
@@ -845,7 +845,7 @@ fn check_json_shape_soundness(
     CheckOutcome::Verified
 }
 
-/// §74.g — check a [`ChannelDeliverySoundnessWitness`]. Re-derive the
+/// v2.31.0 — check a [`ChannelDeliverySoundnessWitness`]. Re-derive the
 /// channel's producer/consumer facts from the artifact; refute on
 /// disagreement (forgery) or when a consumed channel has NO producer (a
 /// `listen`er that can never fire — nothing `emit`s to it).
@@ -885,7 +885,7 @@ fn check_channel_delivery_soundness(
     CheckOutcome::Verified
 }
 
-/// §76.e — check an [`AggregateSoundnessWitness`]. Re-derive ALL aggregate
+/// v2.33.0 — check an [`AggregateSoundnessWitness`]. Re-derive ALL aggregate
 /// sites from the artifact (through the SAME runtime clause parser the
 /// engines execute) and require the claimed witness to be one of them —
 /// a witness about a site the artifact does not contain is a forgery.
@@ -919,12 +919,12 @@ fn check_aggregate_soundness(
     CheckOutcome::Verified
 }
 
-/// §77.b — check a [`ChannelEgressSoundnessWitness`]. Re-derive the
+/// v2.34.0 — check a [`ChannelEgressSoundnessWitness`]. Re-derive the
 /// channel's egress facts from the artifact (publish sites resolved
 /// against the DECLARED shields — never the IR's pre-resolved stamps);
 /// refute on disagreement (a forged `egress_sign` handle), an algorithm
 /// outside the closed signing catalog, or a non-durable egress channel
-/// (D77.6 — a webhook promise backed by an ephemeral buffer dies
+/// (the design decision — a webhook promise backed by an ephemeral buffer dies
 /// unwitnessed with the process).
 fn check_channel_egress_soundness(
     claimed: &super::proof_term::ChannelEgressSoundnessWitness,
@@ -971,8 +971,8 @@ fn check_channel_egress_soundness(
             ),
         };
     }
-    // Verdict 3: durable egress (D77.6) — signed external delivery must
-    // inherit the §74 outbox's at-least-once.
+    // Verdict 3: durable egress — signed external delivery must
+    // inherit the v2.31.0 outbox's at-least-once.
     if !actual.durable {
         return CheckOutcome::Refuted {
             reason: format!(
@@ -986,7 +986,7 @@ fn check_channel_egress_soundness(
     CheckOutcome::Verified
 }
 
-/// §83.c — independent checker for [`PropertyClass::CorsPolicyConsistency`].
+/// v2.38.0 — independent checker for [`PropertyClass::CorsPolicyConsistency`].
 /// Re-derives the whole-program witness and rejects on ANY of: a forged/
 /// stale witness, an unresolved `cors:` reference (T856), a wildcard+
 /// credentials violation (T853), or a cross-method path conflict (T857).
@@ -1040,14 +1040,14 @@ fn check_cors_policy_consistency(
     CheckOutcome::Verified
 }
 
-/// §92.d — independent checker for [`PropertyClass::CredentialAttenuation`].
+/// v2.46.0 — independent checker for [`PropertyClass::CredentialAttenuation`].
 /// Re-derives the whole-program witness (contracts + recursive mint walk)
 /// and rejects on ANY of: a forged/stale witness, a mint of an undeclared
 /// contract (`axon-T895`, re-derived), or an ill-formed contract — empty/
 /// invalid grants (`axon-T893`) or a TTL outside the (0, 24h] ephemeral
 /// ceiling (`axon-T894`). The dynamic attenuation law
 /// (`grants ⊆ capabilities(minter)`) is enforced fail-closed at mint time
-/// (§92.c) — data-dependent, so it is deliberately NOT claimed here.
+/// (v2.46.0) — data-dependent, so it is deliberately NOT claimed here.
 fn check_credential_attenuation(
     claimed: &super::proof_term::CredentialAttenuationWitness,
     ir: &IRProgram,
@@ -1088,16 +1088,16 @@ fn check_credential_attenuation(
     CheckOutcome::Verified
 }
 
-/// §94.e — independent checker for [`PropertyClass::SecretCustodySoundness`].
+/// v2.48.0 — independent checker for [`PropertyClass::SecretCustodySoundness`].
 /// Re-derives the whole-program witness (secrets stores + recursive rotate
 /// walk + write-verb walk) and rejects on ANY of: a forged/stale witness, a
 /// rotate of an undeclared secrets store (`axon-T898`) or an undeclared tool
 /// (`axon-T899`), a missing/shape-invalid `class:` (`axon-T900`), a write
 /// verb against a secrets store (`axon-T897`), or an ill-formed
-/// `secret_partition:` (`axon-T903`, §95 — the injection-key class-containment
+/// `secret_partition:` (`axon-T903`, v2.49.0 — the injection-key class-containment
 /// law). The dynamic halves of
 /// `rotation_without_revelation` (CAS commit, reveal-only-into-the-exchange)
-/// are enforced fail-closed by the §94.d dispatcher + custody port — by
+/// are enforced fail-closed by the v2.48.0 dispatcher + custody port — by
 /// construction of the wire, no term evaluates to a value — data-dependent,
 /// so deliberately NOT claimed here.
 fn check_secret_custody_soundness(
@@ -1169,12 +1169,12 @@ fn check_secret_custody_soundness(
     CheckOutcome::Verified
 }
 
-/// §91.c — independent checker for [`PropertyClass::TemporalContextSoundness`].
+/// v2.46.0 — independent checker for [`PropertyClass::TemporalContextSoundness`].
 /// Re-derives the whole-program witness (contexts + recursive step walk) and
 /// rejects on ANY of: a forged/stale witness, a zone violating the IANA shape
 /// law (`axon-T892`, re-derived), or a shape-valid zone unknown to this
 /// build's tz database (the failure the zero-dep frontend cannot catch —
-/// §91.b fails closed at runtime; this proof catches it before deploy).
+/// v2.46.0 fails closed at runtime; this proof catches it before deploy).
 fn check_temporal_context_soundness(
     claimed: &super::proof_term::TemporalContextSoundnessWitness,
     ir: &IRProgram,
@@ -1218,7 +1218,7 @@ fn check_temporal_context_soundness(
     CheckOutcome::Verified
 }
 
-/// §84.c — independent checker for [`PropertyClass::TechnicianCommandSafety`].
+/// v2.39.0 — independent checker for [`PropertyClass::TechnicianCommandSafety`].
 /// Re-derives the per-tool witness and rejects on ANY of: a forged/stale
 /// witness, a missing argv template on a bash tool (T858), an unbound or
 /// partial argv placeholder (T859), or a destructive command with no reachable
@@ -1295,7 +1295,7 @@ fn check_technician_command_safety(
     CheckOutcome::Verified
 }
 
-/// §86.c — independent checker for [`PropertyClass::ForgeSoundness`]. Finds the
+/// v2.41.0 — independent checker for [`PropertyClass::ForgeSoundness`]. Finds the
 /// forge block by (flow, name), re-derives its witness, and rejects a forged/
 /// stale proof or any structural violation (T868–T872).
 fn check_forge_soundness(
@@ -1365,7 +1365,7 @@ fn check_forge_soundness(
     CheckOutcome::Verified
 }
 
-/// §87.g — independent checker for [`PropertyClass::SavantSoundness`]. Finds the
+/// v2.42.0 — independent checker for [`PropertyClass::SavantSoundness`]. Finds the
 /// savant by name, re-derives its witness, and rejects a forged/stale proof or
 /// any governance violation (T873/T874/T875/T876/T877).
 fn check_savant_soundness(
@@ -1431,7 +1431,7 @@ fn check_savant_soundness(
     CheckOutcome::Verified
 }
 
-/// §88.e — independent checker for [`PropertyClass::WardenSoundness`]. Finds the
+/// v2.43.0 — independent checker for [`PropertyClass::WardenSoundness`]. Finds the
 /// warden block by (flow, target, scope), re-derives its witness, and rejects a
 /// forged/stale proof or any authorization violation (T887/T884/T885/T886).
 fn check_warden_soundness(
@@ -1501,7 +1501,7 @@ fn check_warden_soundness(
     CheckOutcome::Verified
 }
 
-/// §89.c — independent checker for [`PropertyClass::AuthorizationCoverage`].
+/// v2.44.0 — independent checker for [`PropertyClass::AuthorizationCoverage`].
 /// Re-derives the endpoint's coverage from the IR alone and rejects on: a
 /// forged/stale witness (disagrees with re-derivation), an endpoint the
 /// artifact does not contain, or an UNAUTHORIZED boundary (dispatches but is
@@ -1541,13 +1541,13 @@ fn check_authorization_coverage(
     CheckOutcome::Verified
 }
 
-/// §90.b — independent checker for [`PropertyClass::CapabilityGrantability`]
+/// v2.45.0 — independent checker for [`PropertyClass::CapabilityGrantability`]
 /// (doctrine `every_requirement_is_grantable`). Re-derives the whole-program
 /// `requires:` set from the IR (rejecting a forged witness), RE-PROJECTS the
 /// witness's authority catalog through `π` (rejecting a fractured namespace or
 /// an unprojectable authority — never trusting a pre-computed grantable list),
 /// and rejects a DEAD requirement (`required ⊄ π(catalog)`, `axon-T891`) — the
-/// dual of the §89 Modo-2 dead permission.
+/// dual of the v2.44.0 Modo-2 dead permission.
 fn check_capability_grantability(
     claimed: &super::proof_term::CapabilityGrantabilityWitness,
     ir: &IRProgram,
@@ -1616,7 +1616,7 @@ fn check_capability_grantability(
     CheckOutcome::Verified
 }
 
-/// §85.c — independent checker for [`PropertyClass::CacheSoundness`]. Re-derives
+/// v2.40.0 — independent checker for [`PropertyClass::CacheSoundness`]. Re-derives
 /// the whole-program cache witness and rejects on ANY of: a forged/stale
 /// witness, more than one `default: true` (T863), a widened cache without a
 /// finite ttl (T865), or an unresolved reference (T864).
@@ -1667,7 +1667,7 @@ fn check_cache_soundness(
     CheckOutcome::Verified
 }
 
-/// §98.d — verify a [`ScrapeProvenanceSoundnessWitness`]. The checker
+/// v2.52.0 — verify a [`ScrapeProvenanceSoundnessWitness`]. The checker
 /// independently RE-DERIVES the whole-program web-acquisition provenance from
 /// `ir.tools` + `ir.flows` + `ir.agents` and rejects on ANY of: a forged/stale
 /// witness, a scrape tool missing `web` (T904), a `scrape_dom` dishonestly
@@ -1722,7 +1722,7 @@ fn check_scrape_provenance_soundness(
     CheckOutcome::Verified
 }
 
-/// §116.a (D116.9) — verify a [`ScopeCoverageSoundnessWitness`]. The checker
+/// v2.77.0 — verify a [`ScopeCoverageSoundnessWitness`]. The checker
 /// independently RE-DERIVES the whole-program scope coverage from `ir.tools` +
 /// `ir.credentials` + `ir.endpoints` + `ir.daemons` + `ir.flows` and rejects on:
 /// a forged/stale witness, or any `use` of a scope-declaring tool whose required
@@ -1761,7 +1761,7 @@ fn check_scope_coverage_soundness(
     CheckOutcome::Verified
 }
 
-/// §99.d — verify a [`DocumentProvenanceSoundnessWitness`]. The checker
+/// v2.53.0 — verify a [`DocumentProvenanceSoundnessWitness`]. The checker
 /// independently RE-DERIVES the whole-program egress provenance from
 /// `ir.documents` and rejects on ANY of: a forged/stale witness, a bad
 /// `target` (T910), a `sensitive:*` document with no `legal:*` basis (T913), or
@@ -1812,7 +1812,7 @@ fn check_document_provenance_soundness(
     CheckOutcome::Verified
 }
 
-/// §105 — verify a [`DeliveryProvenanceSoundnessWitness`]. The checker
+/// v2.60.0 — verify a [`DeliveryProvenanceSoundnessWitness`]. The checker
 /// independently RE-DERIVES the whole-program egress provenance from
 /// `ir.deliveries` and rejects on ANY of: a forged/stale witness, a bad `target`
 /// (T921), a `sensitive:*` delivery with no `legal:*` basis (T924), or a
@@ -1863,7 +1863,7 @@ fn check_delivery_provenance_soundness(
     CheckOutcome::Verified
 }
 
-/// §110.b — verify a [`NotificationProvenanceSoundnessWitness`]: re-derive
+/// v2.66.0 — verify a [`NotificationProvenanceSoundnessWitness`]: re-derive
 /// the three laws from the artifact; refute disagreement or any surviving
 /// violation. A hand-edited artifact that launders a guess to a human,
 /// drops the window, or smuggles a literal recipient cannot deploy.
@@ -1901,7 +1901,7 @@ fn check_notification_provenance_soundness(
     CheckOutcome::Verified
 }
 
-/// §109.b — verify a [`GradientSoundnessWitness`]: re-differentiate every
+/// v2.65.0 — verify a [`GradientSoundnessWitness`]: re-differentiate every
 /// grad's original expression + simplify + compare; refute disagreement
 /// or any surviving violation. A hand-edited gradient cannot deploy.
 fn check_gradient_soundness(
@@ -1935,7 +1935,7 @@ fn check_gradient_soundness(
     CheckOutcome::Verified
 }
 
-/// §108.d — verify a [`DataspaceSchemaSoundnessWitness`]: re-derive the
+/// v2.63.0 — verify a [`DataspaceSchemaSoundnessWitness`]: re-derive the
 /// schema surface + the T928/T930 laws from the artifact; refute on any
 /// disagreement or surviving violation.
 fn check_dataspace_schema_soundness(
@@ -1969,10 +1969,10 @@ fn check_dataspace_schema_soundness(
     CheckOutcome::Verified
 }
 
-/// §107 — verify a [`QuerySafetySoundnessWitness`]. The checker independently
+/// v2.62.0 — verify a [`QuerySafetySoundnessWitness`]. The checker independently
 /// RE-DERIVES the whole-program QUERY safety from `ir.endpoints` + `ir.flows` +
 /// the egress declarations, and rejects on ANY of: a forged/stale witness, a QUERY
-/// endpoint whose flow reaches a declared write (`axon-T927` — RFC 10008 §2 says a
+/// endpoint whose flow reaches a declared write (`axon-T927` — RFC 10008 section 2 says a
 /// QUERY MUST change no state; caches and proxies are entitled to retry it), or a
 /// program-level `deliver`/`document` egress (which fires for every flow).
 fn check_query_safety_soundness(
@@ -2016,7 +2016,7 @@ fn check_query_safety_soundness(
     CheckOutcome::Verified
 }
 
-/// §100.e — verify a [`DocumentIngestionSoundnessWitness`]. The checker
+/// v2.54.0 — verify a [`DocumentIngestionSoundnessWitness`]. The checker
 /// independently RE-DERIVES the whole-program ingestion provenance from
 /// `ir.tools` + `ir.flows` and rejects on ANY of: a forged/stale witness, a tool
 /// declaring `ingest:inferred` + `epistemic:know` (T1001, the Inferred ceiling),
@@ -2062,10 +2062,10 @@ fn check_document_ingestion_soundness(
     CheckOutcome::Verified
 }
 
-/// §101.b — verify an [`InferredCeilingSoundnessWitness`]. The checker
+/// v2.54.0 — verify an [`InferredCeilingSoundnessWitness`]. The checker
 /// independently RE-DERIVES the inferred-producer set from `ir.tools` + `ir.flows`
 /// and rejects on ANY of: a forged/stale witness, an absent producer set (the
-/// §100 vacuum still holds — no proof was owed), a producer declaring
+/// v2.54.0 vacuum still holds — no proof was owed), a producer declaring
 /// `epistemic:know` (T1001, the ceiling), or a flow feeding an inferred read to
 /// an agent's beliefs unshielded (T908).
 fn check_inferred_ceiling_soundness(
@@ -2109,9 +2109,9 @@ fn check_inferred_ceiling_soundness(
     CheckOutcome::Verified
 }
 
-/// §79.c — verify an [`InterruptibleSessionSoundnessWitness`]. The checker
-/// re-derives every fact from the IR session steps (D51.2) and then applies the
-/// four soundness verdicts of the 79.a paper §6.2: closed-catalog signal, both
+/// v2.36.0 — verify an [`InterruptibleSessionSoundnessWitness`]. The checker
+/// re-derives every fact from the IR session steps and then applies the
+/// four soundness verdicts of the 79.a paper section 6.2: closed-catalog signal, both
 /// arms present, and a two-exit handler.
 fn check_interruptible_session_soundness(
     claimed: &super::proof_term::InterruptibleSessionSoundnessWitness,
@@ -2140,7 +2140,7 @@ fn check_interruptible_session_soundness(
                 .to_string(),
         };
     }
-    // Verdict 1: closed CallInterruptCause catalog (D79.2).
+    // Verdict 1: closed CallInterruptCause catalog.
     if !actual.signal_in_catalog {
         return CheckOutcome::Refuted {
             reason: format!(
@@ -2160,7 +2160,7 @@ fn check_interruptible_session_soundness(
             ),
         };
     }
-    // Verdict 3: two-exit handler (D79.11a).
+    // Verdict 3: two-exit handler.
     if !actual.handler_reaches_exit {
         return CheckOutcome::Refuted {
             reason: format!(
@@ -2173,9 +2173,9 @@ fn check_interruptible_session_soundness(
     CheckOutcome::Verified
 }
 
-/// §79.f — verify a [`ParkedResidualSoundnessWitness`]: the socket's parked κ is
+/// v2.36.0 — verify a [`ParkedResidualSoundnessWitness`]: the socket's parked κ is
 /// AAD-bound + recoverable (`reconnect: cognitive_state`) and its at-rest
-/// retention is governed (`legal_basis`). Re-derived from the IR (D51.2).
+/// retention is governed (`legal_basis`). Re-derived from the IR.
 fn check_parked_residual_soundness(
     claimed: &super::proof_term::ParkedResidualSoundnessWitness,
     ir: &IRProgram,
@@ -2198,7 +2198,7 @@ fn check_parked_residual_soundness(
                 .to_string(),
         };
     }
-    // Verdict 1: the park must be AAD-bound + recoverable (§41.g).
+    // Verdict 1: the park must be AAD-bound + recoverable (v2.3.0).
     if !actual.reconnect_cognitive_state {
         return CheckOutcome::Refuted {
             reason: format!(
@@ -2221,11 +2221,11 @@ fn check_parked_residual_soundness(
     CheckOutcome::Verified
 }
 
-/// §80 — verify an [`UpstreamProjectionSoundnessWitness`]: the upstream's
+/// v2.37.0 — verify an [`UpstreamProjectionSoundnessWitness`]: the upstream's
 /// `map:` projection is a total, unambiguous cover of the bound role's
 /// message set (T849 re-derived) and its `resolve:`/`secret:` values are
 /// policy-shaped config keys (T850 re-derived). Everything is recomputed
-/// from the IR (D51.2); a forged `projection_total: true` cannot survive.
+/// from the IR; a forged `projection_total: true` cannot survive.
 fn check_upstream_projection_soundness(
     claimed: &super::proof_term::UpstreamProjectionSoundnessWitness,
     ir: &IRProgram,
@@ -2247,7 +2247,7 @@ fn check_upstream_projection_soundness(
                 .to_string(),
         };
     }
-    // Verdict 1: no message may fall through untranscoded (§80's core claim).
+    // Verdict 1: no message may fall through untranscoded (v2.37.0's core claim).
     if !actual.projection_total {
         return CheckOutcome::Refuted {
             reason: format!(
@@ -2270,7 +2270,7 @@ fn check_upstream_projection_soundness(
     CheckOutcome::Verified
 }
 
-/// §79.f — the overall verdict for a [`CallSoundnessCertificate`]: EVERY
+/// v2.36.0 — the overall verdict for a [`CallSoundnessCertificate`]: EVERY
 /// composed member must independently verify against `ir`. Returns the first
 /// non-`Verified` member's outcome (so the caller sees *why* a call is not
 /// certified sound), or `Verified` when all hold. An empty certificate (a

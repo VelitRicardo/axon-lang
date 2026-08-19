@@ -86,7 +86,7 @@ A declared shield does nothing until a wire surface binds it. The
 canonical binding sites:
 
 - `axonendpoint { ... shield: <ShieldName> ... }` — HTTP gate.
-- `socket { ... shield: <ShieldName> ... }` — WebSocket gate (Fase 41).
+- `socket { ... shield: <ShieldName> ... }` — WebSocket gate (v2.3.0).
 - `axonstore { ... shield: <ShieldName> ... }` — data-plane gate.
 
 Bind the shield to **every** surface that emits or receives the
@@ -103,7 +103,7 @@ type-checker enforces that:
   declared-but-unused shield gets a `axon-W005` warning).
 - Compliance tags on the shield align with the tags on every bound
   transport (a HIPAA-tagged endpoint with a non-HIPAA shield is
-  rejected by the §40 cross-tag check).
+  rejected by the v2.0.0 cross-tag check).
 
 Never declare the shield finished until the verdict is `ok: true`.
 

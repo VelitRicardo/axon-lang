@@ -1,6 +1,6 @@
 name: axon-frontend Dependency Audit
 
-# §Fase 12.c — invariant guard for the `axon-frontend` crate.
+# v1.4.2 — invariant guard for the `axon-frontend` crate.
 #
 # The design contract is that `axon-frontend` must never gain a
 # runtime dependency (tokio, axum, sqlx, reqwest, aws-*, jsonwebtoken,

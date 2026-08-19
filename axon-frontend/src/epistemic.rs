@@ -30,10 +30,10 @@ pub const PRIMITIVE_TYPES: &[&str] = &[
     "Duration",
     "Float",
     "Integer",
-    // §Fase 73.a — `Json` is a first-class, open, semi-structured value
+    // v2.26.0 — `Json` is a first-class, open, semi-structured value
     // type: the recursive sum `null | bool | number | string | [Json] |
     // {string→Json}`, navigated TOTALLY by the same `.field`/`[i]`
-    // operators §70.d gave the rigid types (a miss is null-as-a-value,
+    // operators v2.26.0 gave the rigid types (a miss is null-as-a-value,
     // never a panic). It is recognized here so a bare `Json` annotation
     // resolves like any builtin; the optional `Json<T>` shape LENS is a
     // compile-time expectation checked separately (see `check_json_lenses`

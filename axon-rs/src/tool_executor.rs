@@ -18,21 +18,21 @@ pub struct ToolResult {
     pub tool_name: String,
 }
 
-/// §Fase 99 — the closed set of stdlib tool names that have a REAL native
+/// v2.53.0 — the closed set of stdlib tool names that have a REAL native
 /// executor here. Distinct from `stdlib::TOOLS`, which also lists LLM-backed
 /// tools (e.g. `WebSearch`) that legitimately fall through to the model. A name
 /// present in `stdlib::TOOLS` but NOT in this set AND not implemented below is
-/// the pre-existing defect (§99 §8): it silently degrades into the model
+/// the pre-existing defect (v2.53.0 section 8): it silently degrades into the model
 /// *hallucinating* the tool's output. `DocumentRenderer` (whose whole premise
 /// is attestable, non-invented artifacts) MUST NOT ship into that behaviour.
 const NATIVE_EXECUTOR_TOOLS: &[&str] = &[
     "Calculator",
     "DateTimeTool",
     "DocumentRenderer",
-    // §Fase 100 — Document Ingestion & Surgical Edit.
+    // v2.54.0 — Document Ingestion & Surgical Edit.
     "DocumentReader",
     "DocumentEditor",
-    // §Fase 101.b — Inferred Ingestion: the extraction tools become real dispatch
+    // v2.54.0 — Inferred Ingestion: the extraction tools become real dispatch
     // arms. With no engine registered they typed-refuse (`no_engine_configured`),
     // NEVER fall through to the model inventing the document's contents.
     "PDFExtractor",
@@ -48,21 +48,21 @@ pub fn dispatch(tool_name: &str, argument: &str) -> Option<ToolResult> {
     match tool_name {
         "Calculator" => Some(calculator_execute(argument)),
         "DateTimeTool" => Some(datetime_execute(argument)),
-        // §Fase 99.e — Native Document Synthesis: render a `document` IR + bound
-        // values into deterministic OOXML bytes (D99.14: returns the artifact
+        // v2.53.0 — Native Document Synthesis: render a `document` IR + bound
+        // values into deterministic OOXML bytes (the design decision: returns the artifact
         // value, never a filesystem write).
         "DocumentRenderer" => Some(document_render_execute(argument)),
-        // §Fase 100.c/d — read an ingested OOXML document into a bounded, born-
+        // v2.54.0 — read an ingested OOXML document into a bounded, born-
         // Untrusted, Parsed text tree.
         "DocumentReader" => Some(document_read_execute(argument)),
-        // §Fase 100.e — surgical edit: touch only the targeted parts, emit the
+        // v2.54.0 — surgical edit: touch only the targeted parts, emit the
         // per-part hash manifest, inherit taint.
         "DocumentEditor" => Some(document_edit_execute(argument)),
-        // §Fase 101.b — Inferred Ingestion. Each routes to the registered
-        // extraction engine (the sidecar client §101.c / the enterprise engine
-        // §101.f); with none registered, each returns a TYPED refusal, never a
-        // hallucinated read (D101.7/D101.8). OCR (`image:text`) and vision
-        // (`image:description`) are distinct transforms (D101.3).
+        // v2.54.0 — Inferred Ingestion. Each routes to the registered
+        // extraction engine (the sidecar client v2.54.0 / the enterprise engine
+        // v2.54.0); with none registered, each returns a TYPED refusal, never a
+        // hallucinated read. OCR (`image:text`) and vision
+        // (`image:description`) are distinct transforms.
         "PDFExtractor" => Some(extraction_execute("pdf:text", argument)),
         "ImageTextExtractor" => Some(extraction_execute("image:text", argument)),
         "ImageAnalyzer" => Some(extraction_execute("image:description", argument)),
@@ -70,7 +70,7 @@ pub fn dispatch(tool_name: &str, argument: &str) -> Option<ToolResult> {
     }
 }
 
-/// §Fase 99 §8 — the honest dispatch: a tool name DECLARED in `stdlib::TOOLS`
+/// v2.53.0 section 8 — the honest dispatch: a tool name DECLARED in `stdlib::TOOLS`
 /// but with no native executor and no LLM provider is a **typed refusal**, not
 /// a silent hand-off to the model. This closes the pre-existing defect where
 /// calling e.g. `PDFExtractor` (declared, unimplemented) returned the model
@@ -105,13 +105,13 @@ pub fn dispatch_or_reject(tool_name: &str, argument: &str) -> Result<Option<Tool
     Ok(None)
 }
 
-/// §Fase 99.e — render a `document` into OOXML bytes. The argument is JSON:
+/// v2.53.0 — render a `document` into OOXML bytes. The argument is JSON:
 /// `{ "document": <IRDocument>, "values": { "<ref>": "<resolved text>" } }`.
 /// Returns a typed artifact descriptor (sha256 + content type + base64 bytes)
-/// as JSON — the HOST decides where the bytes land (D99.14).
-// §Fase 118.b — the OOXML surface lives behind the `documents` feature. The
+/// as JSON — the HOST decides where the bytes land.
+// v2.81.0 — the OOXML surface lives behind the `documents` feature. The
 // tool STAYS REGISTERED and refuses in writing: a capability that silently
-// vanishes from a build is the §111 defect (an advertised primitive that is not
+// vanishes from a build is the v2.67.0 defect (an advertised primitive that is not
 // there), and a runtime that answers "unknown tool" teaches the adopter nothing.
 #[cfg(not(feature = "documents"))]
 fn document_render_execute(_argument: &str) -> ToolResult {
@@ -163,7 +163,7 @@ fn document_render_execute(argument: &str) -> ToolResult {
     }
 }
 
-/// §Fase 101.b — the shared extraction dispatch arm. `transform` is the OTS
+/// v2.54.0 — the shared extraction dispatch arm. `transform` is the OTS
 /// transform the calling tool asked for (`pdf:text` / `image:text` /
 /// `image:description`). The argument is JSON: `{ "bytes_base64": "…",
 /// "format"?: "pdf", "target_field"?: "due_date", "language"?: "en" }`.
@@ -172,7 +172,7 @@ fn document_render_execute(argument: &str) -> ToolResult {
 /// born-`Inferred` result as JSON — spans + measured confidence + provenance
 /// (`inferred`) + taint (`untrusted`) + ceiling (`believe`) + the audit fields.
 /// **On any failure it returns a typed refusal** (`success: false`, the error
-/// slug), never an empty or invented string (D101.7/D101.8).
+/// slug), never an empty or invented string.
 fn extraction_execute(transform: &str, argument: &str) -> ToolResult {
     use base64::Engine;
     let name = match transform {
@@ -217,16 +217,16 @@ fn extraction_execute(transform: &str, argument: &str) -> ToolResult {
                 "engine": result.engine,
                 "engine_version": result.engine_version,
                 "transform": transform,
-                "provenance": "inferred",          // D101.1 — never `parsed`
-                "taint": "untrusted",              // D101.2
-                "epistemic_ceiling": "believe",    // D101.1 — never `know`
+                "provenance": "inferred", // the design decision — never `parsed`
+                "taint": "untrusted", // the design decision
+                "epistemic_ceiling": "believe", // the design decision — never `know`
                 "mean_confidence": result.mean_confidence(),
                 "page_count": result.page_count(),
                 "spans": spans,
             });
             ToolResult { success: true, output: out.to_string(), tool_name: name.to_string() }
         }
-        // Typed refusal — the whole point of §100.a + D101.7: never fiction.
+        // Typed refusal — the whole point of v2.54.0 + the design decision: never fiction.
         Err(e) => err(name, format!("{}: {}", e.slug(), e)),
     }
 }
@@ -239,13 +239,13 @@ fn err(tool: &str, msg: String) -> ToolResult {
     }
 }
 
-/// §Fase 100.c/d — read an ingested OOXML document. The argument is JSON:
+/// v2.54.0 — read an ingested OOXML document. The argument is JSON:
 /// `{ "bytes_base64": "…" }` (the host has already read + sandboxed the file),
-/// OR `{ "path": "…", "roots": ["…"] }` (read through the §100.b path sandbox).
+/// OR `{ "path": "…", "roots": ["…"] }` (read through the v2.54.0 path sandbox).
 /// Returns the born-Untrusted, Parsed text tree + per-part hashes.
-// §Fase 118.b — the OOXML surface lives behind the `documents` feature. The
+// v2.81.0 — the OOXML surface lives behind the `documents` feature. The
 // tool STAYS REGISTERED and refuses in writing: a capability that silently
-// vanishes from a build is the §111 defect (an advertised primitive that is not
+// vanishes from a build is the v2.67.0 defect (an advertised primitive that is not
 // there), and a runtime that answers "unknown tool" teaches the adopter nothing.
 #[cfg(not(feature = "documents"))]
 fn document_read_execute(_argument: &str) -> ToolResult {
@@ -298,7 +298,7 @@ fn document_read_execute(argument: &str) -> ToolResult {
                 .collect();
             let out = serde_json::json!({
                 "format": doc.format,
-                // Born Untrusted, Parsed — the type system carries this (D100.1/2).
+                // Born Untrusted, Parsed — the type system carries this.
                 "taint": doc.taint.as_str(),
                 "provenance": doc.provenance.as_str(),
                 "epistemic_ceiling": doc.provenance.epistemic_ceiling(),
@@ -312,13 +312,13 @@ fn document_read_execute(argument: &str) -> ToolResult {
     }
 }
 
-/// §Fase 100.e — surgical edit. Argument JSON:
+/// v2.54.0 — surgical edit. Argument JSON:
 /// `{ "bytes_base64": "…", "edits": [{ "kind": "replace_text", "part": "…",
 /// "find": "…", "replace": "…" }] }`. Returns the new bytes + the per-part hash
 /// manifest (the proven blast radius) + the inherited taint.
-// §Fase 118.b — the OOXML surface lives behind the `documents` feature. The
+// v2.81.0 — the OOXML surface lives behind the `documents` feature. The
 // tool STAYS REGISTERED and refuses in writing: a capability that silently
-// vanishes from a build is the §111 defect (an advertised primitive that is not
+// vanishes from a build is the v2.67.0 defect (an advertised primitive that is not
 // there), and a runtime that answers "unknown tool" teaches the adopter nothing.
 #[cfg(not(feature = "documents"))]
 fn document_edit_execute(_argument: &str) -> ToolResult {
@@ -382,7 +382,7 @@ fn document_edit_execute(argument: &str) -> ToolResult {
                 .collect();
             let result = serde_json::json!({
                 "sha256": out.sha256_hex,
-                // The edit inherits the input's taint — no laundering (D100.8).
+                // The edit inherits the input's taint — no laundering.
                 "taint": out.taint.as_str(),
                 "touched_parts": out.touched_parts(),
                 "manifest": manifest,

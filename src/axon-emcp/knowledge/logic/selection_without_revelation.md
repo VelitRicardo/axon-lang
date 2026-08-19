@@ -1,7 +1,7 @@
 ---
 name: selection_without_revelation
-title: "Selection without revelation — a flow chooses which borrowed authority to spend, never reads it (§Fase 95)"
-summary: "The law governing `tool { secret: <class> secret_partition: <param> }` (§95), the parametric-injection extension of rotation_without_revelation (§94). One axon-tenant often multiplexes N sub-tenants (a SaaS whose business customers each connect their own CRM). Each sub-tenant's borrowed credential is custodied under a class key with a per-sub-tenant segment (`crm.hubspot.<sub>`). A tool may SELECT which entry to inject at dispatch by naming one of its OWN `String` parameters as the partition — the caller passes the discriminator, the runtime appends it as a single key segment and injects the resolved value under `axon_secret`. Two properties are structural: (1) the value is still never revealed to cognition — the partition chooses WHICH authority, never reads WHAT it is (rotation_without_revelation, unbroken); (2) class containment — the `secret:` class prefix is a compile-time literal and the segment is charset-checked to a single dot-free run, so the resolved key can NEVER leave the tool's declared class (no confused-deputy reach into `llm.*`). Enforced at three layers, all fail-closed: compile (axon-T903 — the partition must be a required String parameter of the same tool, alongside a secret, never on a technician tool), verify/deploy (SecretCustodySoundness re-derives the partition laws from the IR), dispatch (a missing/non-string/ill-charactered segment refuses the call with a witness — the wrong tenant's credential is never spent). What the law does NOT promise: that the segment is the RIGHT sub-tenant. axon does not model the adopter's sub-tenancy, so binding the discriminator to the authenticated principal remains the adopter's authorization — the same honest perimeter as §94's plaintext-at-the-tool-server."
+title: "Selection without revelation — a flow chooses which borrowed authority to spend, never reads it (v2.49.0)"
+summary: "The law governing `tool { secret: <class> secret_partition: <param> }` (v2.49.0), the parametric-injection extension of rotation_without_revelation (v2.48.0). One axon-tenant often multiplexes N sub-tenants (a SaaS whose business customers each connect their own CRM). Each sub-tenant's borrowed credential is custodied under a class key with a per-sub-tenant segment (`crm.hubspot.<sub>`). A tool may SELECT which entry to inject at dispatch by naming one of its OWN `String` parameters as the partition — the caller passes the discriminator, the runtime appends it as a single key segment and injects the resolved value under `axon_secret`. Two properties are structural: (1) the value is still never revealed to cognition — the partition chooses WHICH authority, never reads WHAT it is (rotation_without_revelation, unbroken); (2) class containment — the `secret:` class prefix is a compile-time literal and the segment is charset-checked to a single dot-free run, so the resolved key can NEVER leave the tool's declared class (no confused-deputy reach into `llm.*`). Enforced at three layers, all fail-closed: compile (axon-T903 — the partition must be a required String parameter of the same tool, alongside a secret, never on a technician tool), verify/deploy (SecretCustodySoundness re-derives the partition laws from the IR), dispatch (a missing/non-string/ill-charactered segment refuses the call with a witness — the wrong tenant's credential is never spent). What the law does NOT promise: that the segment is the RIGHT sub-tenant. axon does not model the adopter's sub-tenancy, so binding the discriminator to the authenticated principal remains the adopter's authorization — the same honest perimeter as v2.48.0's plaintext-at-the-tool-server."
 ---
 
 # Selection without revelation
@@ -9,7 +9,7 @@ summary: "The law governing `tool { secret: <class> secret_partition: <param> }`
 The canonical adopter shape: one axon-tenant, N business sub-tenants
 multiplexed by a `tenant_id` that travels as a flow parameter (a SaaS
 that runs as a single deployment while each of its customers connects
-their own CRM). §94 gave this adopter enumeration and rotation of N
+their own CRM). v2.48.0 gave this adopter enumeration and rotation of N
 borrowed credentials under one class (`crm.hubspot.<sub>` — the class
 sweep does not care about the suffix). What it could not give was
 *consumption*: `tool { secret: crm.hubspot }` is a STATIC key
@@ -21,7 +21,7 @@ sub-tenant.
 > by a discriminator it already holds — but selection is not
 > revelation. Choosing WHICH custody entry to inject never evaluates to
 > WHAT the entry is, and never widens the class the tool may reach. The
-> credential value remains, as in §94, a thing no term of the language
+> credential value remains, as in v2.48.0, a thing no term of the language
 > can name.
 
 ## The surface
@@ -79,7 +79,7 @@ dynamic part is a discriminator, never a new class.
    empty, or contains a character outside `[a-z0-9_-]` refuses the
    dispatch with a witness — the program never spends the wrong tenant's
    credential and never reaches for a key outside its class. No custody
-   port ⇒ the same loud missing-dependency error as every §94 surface.
+   port ⇒ the same loud missing-dependency error as every v2.48.0 surface.
 
 ## The honest perimeter
 
@@ -90,7 +90,7 @@ keeps HubSpot out of the language keeps `business tenant` out of it).
 Binding `tenant_id` to the authenticated end-user is the adopter's
 authorization, resolved at its io-layer from the API key or JWT — the
 same trust boundary that already decides which `tenant_id` a request
-carries. What §95 adds is narrow and real: whatever discriminator the
+carries. What v2.49.0 adds is narrow and real: whatever discriminator the
 adopter chooses, the language makes it impossible for that discriminator
 to reveal a value or escape its class.
 
@@ -98,16 +98,16 @@ to reveal a value or escape its class.
 
 - **The parametric extension of
   [`rotation_without_revelation`](axon://logic/rotation_without_revelation)**
-  (§94): §94 made the credential value irrepresentable; §95 makes the
+  (v2.48.0): v2.48.0 made the credential value irrepresentable; v2.49.0 makes the
   *selection* of one credential among N a bounded, class-contained
   operation — without reintroducing a way to read the value. The static
-  key of §94 is the `secret_partition`-less special case.
+  key of v2.48.0 is the `secret_partition`-less special case.
 - **The inbound mirror of
   [`authority_only_attenuates`](axon://logic/authority_only_attenuates)**
-  (§92): §92's `mint` selects an audience to hand authority DOWN to; §95
+  (v2.46.0): v2.46.0's `mint` selects an audience to hand authority DOWN to; v2.49.0
   selects which borrowed authority, lent by one of N third parties, to
   spend — and both refuse to let the selected authority become data.
-- `dispatch_vs_cognition` (§59): the flow decides WHICH credential
+- `dispatch_vs_cognition` (v2.9.0): the flow decides WHICH credential
   (cognition, by a discriminator it holds); the runtime resolves and
   injects the value (dispatch). The `secret_partition` field exists
   precisely so that split survives multiplexing.

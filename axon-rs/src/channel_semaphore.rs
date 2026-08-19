@@ -1,9 +1,9 @@
-//! §Fase 114.e — **`capacity` becomes a real bound: a concurrency semaphore per
+//! v2.69.0 — **`capacity` becomes a real bound: a concurrency semaphore per
 //! channel.**
 //!
-//! §114.d derived `resource.capacity` into `ToolEntry::capacity` — the number
+//! v2.69.0 derived `resource.capacity` into `ToolEntry::capacity` — the number
 //! reached the runtime. But a number that reaches the runtime and bounds nothing
-//! is the nominal link this whole line exists to avoid. §114.e is the semaphore
+//! is the nominal link this whole line exists to avoid. v2.69.0 is the semaphore
 //! that turns the number into a bound.
 //!
 //! # Why it is held on `ServerState`, keyed by resource
@@ -11,14 +11,14 @@
 //! Concurrency is inherently a **cross-request** property: two simultaneous
 //! requests each making a call to the same vendor is exactly what `capacity`
 //! bounds. A per-request semaphore starts full every time and bounds nothing — the
-//! same trap the budget gate faces (§114.a). So the semaphores are built once, at
+//! same trap the budget gate faces (v2.69.0). So the semaphores are built once, at
 //! deploy, and live on `ServerState`.
 //!
 //! Keyed by **resource**, not one global: a single process-wide semaphore would
 //! let one tenant's load exhaust another's channel. OSS is single-tenant so the
 //! scope is the deployment; the enterprise keys by tenant through the same map.
 //!
-//! # Before §114
+//! # Before v2.69.0
 //!
 //! A tool had **no** concurrency bound. A `par` over N items opened N connections
 //! to a vendor that tolerated ten, and nothing in the language could say otherwise.
@@ -62,7 +62,7 @@ impl ChannelSemaphores {
     /// The caller acquires a permit from it and **holds the guard across the
     /// call**, so at most `capacity` calls are in flight against that channel at
     /// once. `None` ⇒ the resource is unbounded (or the tool names no resource) —
-    /// the call proceeds with no wait, byte-identical to pre-§114.
+    /// the call proceeds with no wait, byte-identical to pre-v2.69.0.
     pub fn for_resource(&self, resource_name: &str) -> Option<Arc<Semaphore>> {
         self.by_resource.get(resource_name).cloned()
     }

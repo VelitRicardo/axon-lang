@@ -3,7 +3,7 @@ name: listen
 summary: A flow/daemon-body listener — binds to an event source and dispatches typed messages downstream.
 category: wire
 top_level: false
-since: Fase 16
+since: v1.11.0
 grammar: |
   # Flow-body / daemon-body form:
   listen <ChannelRef|"<topic-string>"> [as <alias>] [{ ... }]
@@ -13,8 +13,8 @@ grammar: |
 
 `listen` declares **a subscription to an event source** inside a
 flow body or a daemon body. It binds either a **typed channel
-reference** (the canonical Fase 13.g+ form) or a **string topic**
-(the pre-Fase 13 legacy form, deprecated but still parsed), and
+reference** (the canonical v1.6.0+ form) or a **string topic**
+(the pre-v1.6.0 legacy form, deprecated but still parsed), and
 optionally aliases the incoming payload to a name visible in the
 listener's body.
 
@@ -62,12 +62,12 @@ The first token after `listen` distinguishes the two forms:
 
 | Form | Token | Semantic |
 |---|---|---|
-| **Typed channel** | identifier | References a declared `channel` (Fase 13). Type-checked. **Canonical.** |
-| **String topic** | string literal | Legacy free-form topic. No type check. Deprecated since Fase 13. |
+| **Typed channel** | identifier | References a declared `channel` (v1.6.0). Type-checked. **Canonical.** |
+| **String topic** | string literal | Legacy free-form topic. No type check. Deprecated since v1.6.0. |
 
 The typed form is **strongly preferred** in new code — it gives
 the type checker visibility into the event payload shape and
-the §13 mobility analysis can reason about capability extrusion.
+the v1.6.0 mobility analysis can reason about capability extrusion.
 
 ### `as <alias>` (optional)
 
@@ -80,11 +80,11 @@ referenceable via positional defaults (the runtime exposes
 
 A braced block of **real flow steps** that run for each arrival.
 **In flows**, the body is the handler that runs per event.
-**In daemons** (§Fase 52), the body is *also* parsed and executed:
+**In daemons** (v2.4.0), the body is *also* parsed and executed:
 for a cron listener (`listen "cron:…"`) it is the work that runs on
 each tick, and an **empty body is `axon-E0792`** — a scheduled
 trigger with no work is a no-op, almost always a mistake. (The
-body is no longer "skipped structurally"; §52.a lowers it to real
+body is no longer "skipped structurally"; v2.4.0 lowers it to real
 `FlowStep`s the supervisor executes.)
 
 ## Runtime behaviour
@@ -103,7 +103,7 @@ isolated handler invocation, and audits per-event under
 For **typed-channel listens**, the type checker enforces:
 - The bound channel's declared payload type matches the
   alias's downstream consumers.
-- Capability extrusion (Fase 13.f) — sending the channel out
+- Capability extrusion (v1.6.0) — sending the channel out
   of scope is rejected unless the receiver carries the same
   capability.
 
@@ -112,13 +112,13 @@ For **typed-channel listens**, the type checker enforces:
 - **Not a top-level declaration.** Outside a flow / daemon
   body the parser rejects `listen` as an unexpected token.
 - **Not a `channel`.** A channel is the declared event
-  **source** (Fase 13.g — typed mobile channels); listen is
+  **source** (v1.6.0 — typed mobile channels); listen is
   the declared **subscription** to a channel.
 - **Not a webhook handler.** For HTTP-incoming events,
   declare an `axonendpoint`. `listen` is for the
   push/pubsub layer (Kafka, NATS, in-process channels).
 - **Not free of capability checks.** A typed-channel listen
-  carries the channel's required capability; the §13 mobility
+  carries the channel's required capability; the v1.6.0 mobility
   analysis enforces extrusion soundness.
 
 ## See also
@@ -128,6 +128,6 @@ For **typed-channel listens**, the type checker enforces:
 - `axon://primitives/flow` — flow-body `listen` for one-shot
   subscriptions.
 - `axon://primitives/channel` — the typed channel primitive
-  (Fase 13.g).
+  (v1.6.0).
 - `axon://primitives/axonendpoint` — HTTP counterpart for
   request-driven events.

@@ -1,10 +1,10 @@
-//! AXON Runtime — HealthReport (§λ-L-E Fase 5, paper_immune_v2.md §5)
+//! AXON Runtime — HealthReport (v1.1.0, paper_immune_v2.md section 5)
 //!
 //! Direct port of `axon/runtime/immune/health_report.py`.
 //!
 //! The typed output of every `immune` sensor. A HealthReport is a ΛD
 //! envelope ψ = ⟨T, V, E⟩; immune is a pure sensor — it emits reports,
-//! never actions. Temporal decay materialises via `c_at(now)` per §5.3.
+//! never actions. Temporal decay materialises via `c_at(now)` per section 5.3.
 
 #![allow(dead_code)]
 
@@ -13,7 +13,7 @@ use serde::Serialize;
 
 use crate::handlers::base::{LambdaEnvelope, now_iso};
 
-/// Epistemic lattice per paper §5.2.
+/// Epistemic lattice per paper section 5.2.
 pub const VALID_LEVELS: &[&str] = &["know", "believe", "speculate", "doubt"];
 
 /// Severity order — higher index = more severe.
@@ -27,7 +27,7 @@ pub fn level_order(level: &str) -> i32 {
     }
 }
 
-/// Map D_KL magnitude to the epistemic lattice per paper §5.2.
+/// Map D_KL magnitude to the epistemic lattice per paper section 5.2.
 pub fn level_from_kl(kl: f64) -> String {
     if kl < 0.3 { return "know".into(); }
     if kl < 0.6 { return "believe".into(); }
@@ -35,7 +35,7 @@ pub fn level_from_kl(kl: f64) -> String {
     "doubt".into()
 }
 
-/// Map D_KL to a certainty c ∈ [0.0, 1.0] using the paper §5.2 bands.
+/// Map D_KL to a certainty c ∈ [0.0, 1.0] using the paper section 5.2 bands.
 pub fn certainty_from_kl(kl: f64) -> f64 {
     if kl < 0.0 || kl <= 0.3 {
         return 1.0;
@@ -55,7 +55,7 @@ pub fn level_at_least(observed: &str, threshold: &str) -> bool {
     level_order(observed) >= level_order(threshold)
 }
 
-/// Immutable ΛD envelope emitted by `immune` per paper §5.
+/// Immutable ΛD envelope emitted by `immune` per paper section 5.
 #[derive(Debug, Clone, Serialize)]
 pub struct HealthReport {
     pub immune_name: String,
@@ -70,7 +70,7 @@ pub struct HealthReport {
 }
 
 impl HealthReport {
-    /// Certainty at `now`, applying paper §5.3 decay.
+    /// Certainty at `now`, applying paper section 5.3 decay.
     pub fn c_at(&self, now: DateTime<Utc>) -> f64 {
         if self.decay == "none" {
             return self.envelope.c;
@@ -93,7 +93,7 @@ impl HealthReport {
         self.envelope.c * factor
     }
 
-    /// Report is considered purged after `purge_multiple × τ` per §5.3.
+    /// Report is considered purged after `purge_multiple × τ` per section 5.3.
     pub fn is_active(&self, now: DateTime<Utc>, purge_multiple: f64) -> bool {
         let emitted = match DateTime::parse_from_rfc3339(&self.envelope.tau) {
             Ok(t) => t.with_timezone(&Utc),
@@ -104,7 +104,7 @@ impl HealthReport {
     }
 }
 
-/// Factory: derive epistemic level + certainty from KL per paper §5.2.
+/// Factory: derive epistemic level + certainty from KL per paper section 5.2.
 pub fn make_health_report(
     immune_name: impl Into<String>,
     kl_divergence: f64,

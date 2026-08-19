@@ -3,7 +3,7 @@ name: reflex
 summary: An automatic-response trigger bound to an immune system's level — fires structured actions on threshold breach.
 category: cognitive_io
 top_level: true
-since: Fase 19
+since: v1.14.0
 grammar: |
   reflex <Name> {
       trigger: <ImmuneRef>                                          # required — bound immune
@@ -100,7 +100,7 @@ The runtime measures actual response time and emits
 
 ## Runtime behaviour
 
-`reflex` lowers to a `ReflexDefinition` IR node. The Fase 19
+`reflex` lowers to a `ReflexDefinition` IR node. The v1.14.0
 supervisor binds the reflex to its trigger immune:
 
 1. Subscribe to the immune's signal stream.

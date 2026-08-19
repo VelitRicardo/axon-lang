@@ -3,7 +3,7 @@ name: agent
 summary: An orchestrated cognitive entity — composes personas, tools, contexts under a coordination strategy.
 category: cognition
 top_level: true
-since: Fase 18
+since: v1.12.0
 grammar: |
   agent <Name> {
       goal: "<string>"                            # optional — declarative target
@@ -22,7 +22,7 @@ grammar: |
 # `agent`
 
 `agent` declares **an orchestrated cognitive entity** — the
-unit of agency a Fase 18+ axon program emits. Where `persona`
+unit of agency a v1.12.0+ axon program emits. Where `persona`
 declares identity and `flow` declares a typed sequence, `agent`
 binds them under a **coordination strategy** (ReAct, plan-
 and-execute, reflexion, custom) and gives the runtime explicit
@@ -117,7 +117,7 @@ runtime tracks all four independently; the first to trip wins.
 
 ## Runtime behaviour
 
-The Fase 16 daemon supervisor mounts each declared agent as a
+The v1.11.0 daemon supervisor mounts each declared agent as a
 supervised process. Each iteration emits audit rows tagged
 `agent:<name>:<phase>` where phase ∈ `{plan, act, observe,
 reflect}`. Budget breach emits `agent:<name>:budget_exhausted`

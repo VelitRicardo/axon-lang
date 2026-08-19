@@ -1,4 +1,4 @@
-//! Typed transport errors for native Rust LLM backends — Fase 24.b.
+//! Typed transport errors for native Rust LLM backends — v1.18.0.
 //!
 //! Mirror of the v1.16.1 named subclasses on the Python side
 //! (`axon.runtime.runtime_errors`):
@@ -102,7 +102,7 @@ impl BackendError {
     /// Translate into the legacy [`BackendErrorKind`] taxonomy so that
     /// existing infra in `resilient_backend.rs` / `circuit_breaker.rs` /
     /// `retry_policy.rs` continues to drive retry / CB decisions without
-    /// changes during the Fase 24 transition (D6 — dual presence).
+    /// changes during the v1.18.0 transition (D6 — dual presence).
     pub fn kind(&self) -> BackendErrorKind {
         match self {
             Self::RateLimit { retry_after_seconds, .. } => BackendErrorKind::RateLimit {

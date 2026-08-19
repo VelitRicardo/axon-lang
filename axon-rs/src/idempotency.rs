@@ -1,4 +1,4 @@
-//! §Fase 32.f — Idempotency-Key store for first-class axonendpoint routes.
+//! v1.23.0 — Idempotency-Key store for first-class axonendpoint routes.
 //!
 //! Stripe-compatible Idempotency-Key semantics for POST/PUT routes,
 //! the banking-grade primitive that makes safe client retries possible
@@ -6,7 +6,7 @@
 //!
 //!   **same_key + same_body ⟹ same_response** (within retention window).
 //!
-//! ## D7 truth table (per plan vivo §7.2)
+//! ## D7 truth table (per plan vivo section 7.2)
 //!
 //! | request key | endpoint method | cache state | response                                |
 //! |-------------|-----------------|-------------|-----------------------------------------|

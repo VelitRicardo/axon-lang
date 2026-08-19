@@ -1,4 +1,4 @@
-//! §Fase 62.A — the PIX retrieval navigator.
+//! v2.12.0 — the PIX retrieval navigator.
 //!
 //! A faithful implementation of `docs/papers/paper_pix_formal_research.md`:
 //! **embeddings-free** structured retrieval by intentional tree navigation.
@@ -10,7 +10,7 @@
 //!
 //! # What the paper guarantees, and how this module honours it
 //!
-//! - **Axiom (§1.3):** `Relevant(section, q) ⟺ I(R; section | q, path) > ε`.
+//! - **Axiom (section 1.3):** `Relevant(section, q) ⟺ I(R; section | q, path) > ε`.
 //!   The branch score is exactly this conditional-MI estimate, supplied by a
 //!   [`RelevanceScorer`] (an LLM in production; a deterministic scorer in tests).
 //! - **Theorem 2 (monotone entropy reduction):** selecting a node reduces the
@@ -25,7 +25,7 @@
 //!   per-level score + the selection threshold. ([`tests::every_leaf_has_a_path`].)
 //!
 //! The tree-construction (indexing) phase and the LLM-backed scorer are wired in
-//! §62.A.2; this module is the algorithm and is fully deterministic + verifiable.
+//! v2.12.0; this module is the algorithm and is fully deterministic + verifiable.
 
 use std::collections::{HashMap, HashSet};
 
@@ -43,7 +43,7 @@ pub struct Location {
 }
 
 /// A node of a PIX document tree. `ρ(n) = ⟨title, summary, location, children⟩`
-/// (paper Definition 1 / §2.2).
+/// (paper Definition 1 / section 2.2).
 ///
 /// Internal nodes carry only the lossy `summary` — a high-salience compression
 /// (target ratio `CR ∈ [0.05, 0.15]`) sufficient to decide *whether to explore
@@ -198,7 +198,7 @@ impl PixTree {
 }
 
 /// The conditional-mutual-information estimator `f_LLM(Q, n.summary) ≈
-/// I(R; n | Q, path) ∈ [0, 1]` (paper §2.3).
+/// I(R; n | Q, path) ∈ [0, 1]` (paper section 2.3).
 ///
 /// A score near `1` means "visiting this node strongly reduces uncertainty about
 /// the answer, given where we are"; near `0` means "uninformative". Production
@@ -270,7 +270,7 @@ pub struct NavResult {
     pub total_gain: f64,
 }
 
-/// `PIX-Navigate(Q, D, b_max, d_max)` — paper §2.5.
+/// `PIX-Navigate(Q, D, b_max, d_max)` — paper section 2.5.
 ///
 /// Bounded breadth-first search with adaptive LLM-heuristic pruning. At each
 /// level every frontier node's children are scored by `scorer`; children with
@@ -374,7 +374,7 @@ pub fn pix_navigate(
     }
 
     // Any nodes still on the frontier when d_max is hit are surfaced as
-    // best-effort leaves (satisficing — paper §3.2 bounded rationality), so a
+    // best-effort leaves (satisficing — paper section 3.2 bounded rationality), so a
     // query that bottoms out at the depth bound still returns its best path.
     for f in frontier {
         let node = &tree.nodes[&f.id];
@@ -392,7 +392,7 @@ pub fn pix_navigate(
     NavResult { leaves, trail, total_gain }
 }
 
-/// `drill` (paper §5.3) — explicit descent into a named subtree. Navigates the
+/// `drill` (paper section 5.3) — explicit descent into a named subtree. Navigates the
 /// subtree rooted at `subtree_root` for `query`, reusing [`pix_navigate`]'s
 /// guarantees within that subtree. Returns `None` if the id is unknown.
 pub fn pix_drill(
@@ -443,7 +443,7 @@ pub fn pix_trail(tree: &PixTree, result: &NavResult) -> Vec<String> {
         .collect()
 }
 
-// ── §Fase 62.A.2 — indexing + the reference scorer ──────────────────────────
+// ── v2.12.0 — indexing + the reference scorer ──────────────────────────
 
 /// Why an outline could not be indexed into a tree.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -454,7 +454,7 @@ pub enum IndexError {
     NoHeadings,
 }
 
-/// §Fase 62.A.2 — build a [`PixTree`] from a markdown-heading outline.
+/// v2.12.0 — build a [`PixTree`] from a markdown-heading outline.
 ///
 /// Deterministic and **embeddings-free**: each `#`-prefixed heading becomes a
 /// node; a deeper heading is a child of the nearest shallower one; the body text
@@ -464,7 +464,7 @@ pub enum IndexError {
 /// single tree (paper T1 unique root).
 ///
 /// This is the structural indexer — the OSS reference. An LLM-summarising indexer
-/// (paper §2.2, `CR ∈ [0.05,0.15]`) is the production enhancement; both yield a
+/// (paper section 2.2, `CR ∈ [0.05,0.15]`) is the production enhancement; both yield a
 /// `PixTree` the navigator consumes identically.
 pub fn index_markdown(text: &str) -> Result<PixTree, IndexError> {
     if text.trim().is_empty() {
@@ -559,8 +559,8 @@ pub fn index_markdown(text: &str) -> Result<PixTree, IndexError> {
     PixTree::new(nodes, 0).map_err(|_| IndexError::NoHeadings)
 }
 
-/// §Fase 62.A.2 — a deterministic, embeddings-free reference [`RelevanceScorer`]:
-/// the **lexical information scent** of a node for a query (paper §3.3 — the
+/// v2.12.0 — a deterministic, embeddings-free reference [`RelevanceScorer`]:
+/// the **lexical information scent** of a node for a query (paper section 3.3 — the
 /// navigator follows the scent of summaries). The score is the fraction of query
 /// terms present in the node's `title + summary`, floored at `epsilon` so every
 /// branch stays navigable (mirrors the ε-floor of an LLM scorer).
@@ -600,9 +600,9 @@ impl RelevanceScorer for LexicalScorer {
     }
 }
 
-/// §Fase 62.A.3 — build the scoring prompt for a node against a query.
+/// v2.12.0 — build the scoring prompt for a node against a query.
 /// Deterministic; the LLM is asked to *reason about the summary*, not to match
-/// embeddings (paper §2.3 — "reasoning about whether a section's summary
+/// embeddings (paper section 2.3 — "reasoning about whether a section's summary
 /// suggests it contains the answer").
 pub fn build_score_prompt(query: &str, node: &PixNode) -> String {
     format!(
@@ -615,7 +615,7 @@ pub fn build_score_prompt(query: &str, node: &PixNode) -> String {
     )
 }
 
-/// §Fase 62.A.3 — parse an LLM score response to `[0, 1]`. Extracts the first
+/// v2.12.0 — parse an LLM score response to `[0, 1]`. Extracts the first
 /// number; a value `> 1` is read as a 0–100 percentage, otherwise as a 0–1
 /// fraction; both are clamped. A response with no number scores `0.0` (the LLM
 /// declined — treat as uninformative). Deterministic.
@@ -633,9 +633,9 @@ pub fn parse_score(response: &str) -> f64 {
     frac.clamp(0.0, 1.0)
 }
 
-/// §Fase 62.A.3 — the PRODUCTION [`RelevanceScorer`]: an LLM estimates
+/// v2.12.0 — the PRODUCTION [`RelevanceScorer`]: an LLM estimates
 /// `f_LLM(Q, summary) ≈ I(R; node | Q, path)` by reasoning about whether a
-/// section's summary suggests it holds the answer (paper §2.3).
+/// section's summary suggests it holds the answer (paper section 2.3).
 ///
 /// The completion call is INJECTED (`complete`): it is async + backend-specific,
 /// while the navigator's `score` is synchronous, so the dispatch handler runs
@@ -658,7 +658,7 @@ where
     }
 }
 
-/// §Fase 62.A.3 — resolve a node by a dotted path of (case-insensitive) titles
+/// v2.12.0 — resolve a node by a dotted path of (case-insensitive) titles
 /// from the root, e.g. `["liability", "limitation"]`. Used by `drill` to locate
 /// the named subtree. Returns the deepest node whose title chain matches; `None`
 /// if the first segment is not a child of the root.
@@ -939,7 +939,7 @@ mod tests {
         assert!(r.trail.is_empty());
     }
 
-    // ── §62.A.2 indexing + lexical scorer ────────────────────────────────────
+    // ── v2.12.0 indexing + lexical scorer ────────────────────────────────────
 
     const DOC: &str = r#"
 # Liability
@@ -1029,7 +1029,7 @@ Either party may terminate with thirty days written notice.
         assert!(find_by_title_path(&tree, &["nonexistent"]).is_none());
     }
 
-    // ── §62.A.3 LLM scorer (prompt + parse + trait impl) ─────────────────────
+    // ── v2.12.0 LLM scorer (prompt + parse + trait impl) ─────────────────────
 
     #[test]
     fn parse_score_normalises_to_unit_interval() {

@@ -1,9 +1,9 @@
-//! §Fase 62.E — papers-as-proofs for the PIX·MDN·Memory trilogy.
+//! v2.12.0 — papers-as-proofs for the PIX·MDN·Memory trilogy.
 //!
 //! Each formal guarantee of the three papers becomes an **independent verifier**
-//! in the Proof-Carrying-Code spirit (Necula 1997, and AXON's §Fase 51 PCC): a
+//! in the Proof-Carrying-Code spirit (Necula 1997, and AXON's v2.4.0 PCC): a
 //! checker that **re-derives the property from a witness without trusting the
-//! algorithm that produced it**. The existing §51 PCC certifies IR-*static*
+//! algorithm that produced it**. The existing v2.4.0 PCC certifies IR-*static*
 //! facts (compliance, effect rows, capabilities) by re-deriving from the IR
 //! bundle; these guarantees are *algorithmic* (properties of a navigation, an
 //! EPR vector, a memory update, a provenance derivation), so the witness is the
@@ -38,7 +38,7 @@ impl ProofVerdict {
     }
 }
 
-/// **PIX navigation soundness** (paper §2.5 + Theorems 2/4). Re-derives, from a
+/// **PIX navigation soundness** (paper section 2.5 + Theorems 2/4). Re-derives, from a
 /// [`NavResult`], that the navigation honoured its guarantees: every retrieved
 /// leaf's reasoning path has length `≤ d_max + 1` (convergence within the depth
 /// bound), ends at the leaf it annotates (well-formed path, Theorem 4), and
@@ -73,7 +73,7 @@ pub fn verify_pix_navigation(result: &NavResult, d_max: usize) -> ProofVerdict {
 /// from an [`EprResult`], the defining properties of the signed Epistemic
 /// PageRank: `EPR⁺` and `EPR⁻` are each strictly-positive distributions
 /// (sum ≈ 1), the net `EPR = EPR⁺ − λ·EPR⁻` is consistent per document, and the
-/// net sums to `≈ 1 − λ` (the signed-reputation identity, §2.3 WARNING).
+/// net sums to `≈ 1 − λ` (the signed-reputation identity, section 2.3 WARNING).
 pub fn verify_epr(result: &EprResult, lambda: f64, tol: f64) -> ProofVerdict {
     const P: &str = "mdn_signed_epr_validity";
     let sum_plus: f64 = result.epr_plus.values().sum();

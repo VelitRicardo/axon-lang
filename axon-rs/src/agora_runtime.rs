@@ -1,4 +1,4 @@
-//! §Fase 116.a — axon-agora governed social connectors: the OSS dispatch arm for
+//! v2.77.0 — axon-agora governed social connectors: the OSS dispatch arm for
 //! the `agora_*` tool providers, and the per-platform `SocialConnector` injection
 //! seam (the [`crate::scrape_tool::register_scrape_fetcher`] /
 //! [`crate::enrichment::register_provider`] shape).
@@ -12,23 +12,23 @@
 //! crate (`docs/papers/paper_axon_agora.md`); this module is the runtime seam.
 //!
 //! **Routing.** A surface `tool` declares `provider: agora_<platform>` (the
-//! CLOSED §114.b catalog) and names its operation in `runtime:` — the same slug
+//! CLOSED v2.69.0 catalog) and names its operation in `runtime:` — the same slug
 //! role the field plays for `http` tools. Dispatch maps the provider to a
 //! [`Platform`], the `runtime:` slug to an [`Operation`], parses the structured
 //! body, and calls the registered connector's **typed** method inside the
 //! caller's `spawn_blocking` (the Brief #63 isolation — this module does no
 //! spawning of its own).
 //!
-//! **The honesty law (D104.6, inherited).** OSS ships NO connector. Every
+//! **The honesty law (the design decision, inherited).** OSS ships NO connector. Every
 //! platform typed-refuses until the host registers one via
 //! [`register_agora_connector`] — never a fabricated comment, metric, or receipt.
-//! The enterprise host registers its cores at boot (§116.c–f); tests register
+//! The enterprise host registers its cores at boot (v2.77.0–f); tests register
 //! in-process connectors that enforce prod invariants
 //! (`feedback_mock_must_enforce_prod_invariants`).
 //!
 //! **Provenance.** Every connector result is born epistemically **Untrusted**
 //! (⊥) — a comment read from a social network is attacker-controlled text
-//! (§98/T908), and a vendor receipt is a vendor's claim. The taint rides
+//! (v2.52.0/T908), and a vendor receipt is a vendor's claim. The taint rides
 //! [`AgoraOutcome`] exactly like [`crate::enrichment::EnrichmentOutcome`].
 
 use std::collections::BTreeMap;
@@ -43,7 +43,7 @@ use crate::tool_executor::ToolResult;
 use crate::tool_registry::ToolEntry;
 
 // ════════════════════════════════════════════════════════════════════════════
-//  The per-platform connector registry (the §98.g / §104.a injection shape)
+// The per-platform connector registry (the v2.52.0 / v2.58.0 injection shape)
 // ════════════════════════════════════════════════════════════════════════════
 
 fn registry() -> &'static RwLock<BTreeMap<Platform, Arc<dyn SocialConnector>>> {
@@ -51,7 +51,7 @@ fn registry() -> &'static RwLock<BTreeMap<Platform, Arc<dyn SocialConnector>>> {
     REG.get_or_init(|| RwLock::new(BTreeMap::new()))
 }
 
-/// Register a platform connector (the host calls this once at boot; §116.c–f
+/// Register a platform connector (the host calls this once at boot; v2.77.0–f
 /// cores, or a test connector). Keyed by [`SocialConnector::platform`] —
 /// replaces any prior registration for that platform.
 pub fn register_agora_connector(connector: Arc<dyn SocialConnector>) {
@@ -76,11 +76,11 @@ pub fn active_agora_connector(platform: Platform) -> Option<Arc<dyn SocialConnec
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-//  Provenance-tagged outcome (the §104 EnrichmentOutcome shape)
+// Provenance-tagged outcome (the v2.58.0 EnrichmentOutcome shape)
 // ════════════════════════════════════════════════════════════════════════════
 
 /// The provenance-tagged outcome. `taint` is ALWAYS [`EpistemicTaint::Untrusted`]
-/// — social content and vendor receipts are born ⊥ (§98/T908). The registry
+/// social content and vendor receipts are born ⊥ (v2.52.0/T908). The registry
 /// integration flattens this to a [`ToolResult`].
 #[derive(Debug, Clone)]
 pub struct AgoraOutcome {
@@ -117,7 +117,7 @@ pub fn dispatch_agora(entry: &ToolEntry, argument: &str) -> ToolResult {
 
 /// The taint-carrying dispatch (used by IFC + tests).
 pub fn dispatch_agora_outcome(entry: &ToolEntry, argument: &str) -> AgoraOutcome {
-    // 1. Provider → platform. The §114.b catalog guarantees membership at
+    // 1. Provider → platform. The v2.69.0 catalog guarantees membership at
     //    compile time; an unmapped provider reaching here is a wiring defect,
     //    refused honestly (never a fallthrough).
     let Some(platform) = Platform::from_provider(&entry.provider) else {
@@ -150,10 +150,10 @@ pub fn dispatch_agora_outcome(entry: &ToolEntry, argument: &str) -> AgoraOutcome
     };
 
     // 3. Structured body (keyword form) or legacy single argument. The reserved
-    //    §94.c `axon_secret` field is stripped BEFORE anything else can see it —
+    // v2.48.0 `axon_secret` field is stripped BEFORE anything else can see it —
     //    a custody value never reaches a connector's typed args, a log line, or
     //    a vendor payload. It rides the per-call CallContext into the core
-    //    (§116.c), where it becomes the Authorization header and nothing else.
+    // (v2.77.0), where it becomes the Authorization header and nothing else.
     let mut body: serde_json::Value = match serde_json::from_str(argument) {
         Ok(v @ serde_json::Value::Object(_)) => v,
         _ => serde_json::Value::Null,
@@ -173,7 +173,7 @@ pub fn dispatch_agora_outcome(entry: &ToolEntry, argument: &str) -> AgoraOutcome
             .or_else(|| (!legacy.is_empty()).then(|| legacy.to_string()))
     };
 
-    // 4. Connector lookup — the D104.6 honesty: no connector, typed refusal.
+    // 4. Connector lookup — the the design decision honesty: no connector, typed refusal.
     let Some(connector) = active_agora_connector(platform) else {
         return AgoraOutcome::err(
             &entry.name,
@@ -188,7 +188,7 @@ pub fn dispatch_agora_outcome(entry: &ToolEntry, argument: &str) -> AgoraOutcome
     };
 
     // 5. Op → typed connector method. A missing required argument is a typed
-    //    refusal naming the parameter (the fail-closed §94/§95 message shape).
+    // refusal naming the parameter (the fail-closed v2.48.0/v2.49.0 message shape).
     let missing = |param: &str| {
         AgoraOutcome::err(
             &entry.name,
@@ -350,7 +350,7 @@ mod tests {
     use crate::tool_registry::ToolSource;
 
     /// Serialises the registry-touching tests — the connector registry is
-    /// process-global (the §101/§104 `REG_LOCK` discipline).
+    /// process-global (the v2.54.0/v2.58.0 `REG_LOCK` discipline).
     static REG_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
     fn entry(provider: &str, runtime: &str) -> ToolEntry {
@@ -491,7 +491,7 @@ mod tests {
         let _g = REG_LOCK.lock().unwrap();
         clear_agora_connectors();
         register_agora_connector(Arc::new(TestConnector { platform: Platform::FacebookPages }));
-        // The §94.c injected field must never reach the connector or the output.
+        // The v2.48.0 injected field must never reach the connector or the output.
         let out = dispatch_agora(
             &entry("agora_facebook", "publish"),
             r#"{"body":"hi","axon_secret":"tok-SENSITIVE"}"#,
@@ -580,7 +580,7 @@ mod tests {
         assert!(matches!(refused.taint, EpistemicTaint::Untrusted));
     }
 
-    /// **The anti-drift gate**: the frontend's §114.b closed catalog and this
+    /// **The anti-drift gate**: the frontend's v2.69.0 closed catalog and this
     /// module's dispatch arm name EXACTLY the same agora providers, and every
     /// [`Platform`] has its catalog row. A platform added to `axon-agora`
     /// without its catalog entry — or a catalog entry without a platform —

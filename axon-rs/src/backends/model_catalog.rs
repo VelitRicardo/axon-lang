@@ -1,21 +1,21 @@
-//! §Fase 68.a — Model capability catalog (declare the cognitive need, not the SKU).
+//! v2.22.0 — Model capability catalog (declare the cognitive need, not the SKU).
 //!
 //! The single source of truth for *what each canonical provider's models can
 //! do* — v1: the **context window** (in tokens). It backs:
 //!
-//!   - the §68.c pure resolver (`model_resolution::resolve_model`): given a
+//! - the v2.22.0 pure resolver (`model_resolution::resolve_model`): given a
 //!     step's declared `requires_context: N`, pick the smallest model whose
 //!     window satisfies it (cost-optimal that-fits), or fail closed;
-//!   - the §68.f `axon check` satisfiability gate (a `requires_context:` no
+//! - the v2.22.0 `axon check` satisfiability gate (a `requires_context:` no
 //!     canonical model could ever serve is a compile error);
-//!   - the enterprise §68.h per-tenant catalog, which layers operator overrides
+//! - the enterprise v2.22.0 per-tenant catalog, which layers operator overrides
 //!     on top of this canonical seed.
 //!
-//! **This is DATA, not a runtime probe (D68.5).** The windows are the documented
+//! **This is DATA, not a runtime probe.** The windows are the documented
 //! provider values as of the knowledge cutoff; an operator running a self-hosted
 //! or fine-tuned model with a different window overrides the catalog per-tenant
 //! (the enterprise half) rather than the resolver guessing. The catalog is
-//! drift-gated by the unit tests below + the §68.f compile check.
+//! drift-gated by the unit tests below + the v2.22.0 compile check.
 //!
 //! Scope note: a provider exposes many models; the catalog lists the ones the
 //! resolver may *choose among* for capability satisfaction. For providers whose
@@ -129,7 +129,7 @@ pub fn context_window(backend: &str, model: &str) -> Option<u32> {
 }
 
 /// The largest context window any canonical model offers (across all providers).
-/// Backs the §68.b/f compile-time ceiling: a `requires_context:` above this can
+/// Backs the v2.22.0 compile-time ceiling: a `requires_context:` above this can
 /// never be satisfied by any canonical backend, so it is a hard `axon check`
 /// error rather than a deploy-time surprise.
 pub fn max_canonical_context_window() -> u32 {
@@ -162,7 +162,7 @@ mod tests {
     fn catalog_default_matches_each_backend_default_model() {
         // The catalog's `is_default` model must equal the live
         // `Backend::default_model()` — else the resolver and the runtime
-        // disagree about the no-requirement model (the §68.a drift guard).
+        // disagree about the no-requirement model (the v2.22.0 drift guard).
         use crate::backends::Backend;
         let pairs: Vec<(&str, Box<dyn Backend>)> = vec![
             ("anthropic", Box::new(crate::backends::AnthropicBackend::with_api_key(Some("k".into())))),
@@ -197,7 +197,7 @@ mod tests {
 
     #[test]
     fn context_window_is_strictly_increasing_within_a_provider_ladder() {
-        // A provider's catalog is ordered smallest-window-first so the §68.c
+        // A provider's catalog is ordered smallest-window-first so the v2.22.0
         // resolver's "smallest that fits" is a single forward scan.
         for p in CANONICAL_PROVIDERS {
             let windows: Vec<u32> = models_for(p).iter().map(|m| m.context_window).collect();

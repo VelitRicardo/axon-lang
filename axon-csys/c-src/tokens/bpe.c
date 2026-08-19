@@ -1,5 +1,5 @@
 /*
- * §Fase 25.g — BPE merge engine implementation.
+ * v1.19.0 — BPE merge engine implementation.
  *
  * See bpe.h for the full pillar / mathematics rationale.
  *

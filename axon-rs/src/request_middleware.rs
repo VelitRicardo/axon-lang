@@ -19,7 +19,7 @@ use std::sync::{Arc, Mutex};
 #[cfg(feature = "server")]
 use std::time::Instant;
 
-// §Fase 118.b.2 — the framework types are needed by exactly one item in this
+// v2.81.0 — the framework types are needed by exactly one item in this
 // module: `request_middleware_fn`, which is an `axum::middleware::from_fn`
 // handler and could not be anything else. Everything above it —
 // `RequestIdGenerator`, `MiddlewareConfig`, `MiddlewareUpdate`, `apply_update`,
@@ -454,8 +454,8 @@ mod tests {
         assert_eq!(json["config"]["enabled"], true);
     }
 
-    // §Fase 118.b.2 — follows `client_key_from_headers` behind the `server`
-    // feature. THIS is the §117.a trap, caught exactly where the plan said it
+    // v2.81.0 — follows `client_key_from_headers` behind the `server`
+    // feature. THIS is the v2.81.0 trap, caught exactly where the plan said it
     // would be: an inline test calling a gated function. `--lib --bins` is
     // perfectly happy with it; `--all-targets` is what fails.
     #[cfg(feature = "server")]

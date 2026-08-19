@@ -1,4 +1,4 @@
-//! Deterministic replay tokens — §λ-L-E Fase 11.c.
+//! Deterministic replay tokens — v1.4.0.
 //!
 //! A [`ReplayToken`] is a compact receipt emitted at every effect
 //! invocation (`call_tool`, `llm_infer`, `db_read`, `http_post`,

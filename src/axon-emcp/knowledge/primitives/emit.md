@@ -3,7 +3,7 @@ name: emit
 summary: The π-calculus output prefix — emits a typed value onto a channel; durable channels append to the at-least-once outbox.
 category: wire
 top_level: false
-since: Fase 13
+since: v1.6.0
 grammar: |
   # Flow-body / daemon-body form:
   emit <ChannelRef>(<value_ref>)
@@ -14,7 +14,7 @@ grammar: |
 `emit` is **the output prefix**: it places a typed value onto a
 declared `channel`. It is the producer half of the delivery
 contract a daemon `listen`er consumes (`delivery_is_a_kept_promise`,
-§74).
+v2.31.0).
 
 ## Surface
 
@@ -30,18 +30,18 @@ flow CompleteSkill(task_id: String) -> Unit {
 
 ## Routing (what the runtime actually does)
 
-In precedence order (§74):
+In precedence order (v2.31.0):
 
 1. **Durable channel** (`persistence: persistent_axonstore`) —
    the event is APPENDED to the durable event outbox: claimed
    with SKIP-LOCKED by the receive driver, delivered to every
    daemon `listen`er, redelivered until acked (**at-least-once**),
-   survives restart, replayable through the §11.c replay log.
+   survives restart, replayable through the v1.4.0 replay log.
 2. **Ephemeral registered channel** — in-process delivery via
    the typed event bus, honouring the channel's declared `qos`
    (`at_least_once` / `at_most_once` / `exactly_once` dedup /
    `broadcast` / `queue`). Fails CLOSED on a bus error.
-3. **Unregistered topic** — the legacy per-flow buffer (pre-§74
+3. **Unregistered topic** — the legacy per-flow buffer (pre-v2.31.0
    compatibility).
 
 The value reference resolves against the flow's bindings (a step
@@ -59,7 +59,7 @@ the literal.
 
 - **Not a webhook send.** `emit` never leaves the runtime; the
   external leg is declared by `publish … within <signing shield>`
-  (§77) and configured by the tenant's webhook registry.
+  (v2.34.0) and configured by the tenant's webhook registry.
 - **Not a return value.** A flow's result is its `return`; an
   emit is a side-band event.
 

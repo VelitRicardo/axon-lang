@@ -1,7 +1,7 @@
 ---
 name: tool_structured_args
 title: Typed tool call with structured keyword arguments
-summary: Shows the flow-level `use <Tool>(k = v, …)` dispatch — a tool with a typed `parameters:` input schema + `output_type:`, called with named, schema-validated arguments (the §Fase 58 canonical multi-field form). For the `apply:` step-backend form, see `tool_use_basic`.
+summary: Shows the flow-level `use <Tool>(k = v, …)` dispatch — a tool with a typed `parameters:` input schema + `output_type:`, called with named, schema-validated arguments (the v2.8.0 canonical multi-field form). For the `apply:` step-backend form, see `tool_use_basic`.
 topic: composition
 primitives:
   - flow
@@ -13,7 +13,7 @@ primitives:
 // `output_type:`. A flow-level `use <Tool>(k = v, …)` calls it with
 // NAMED arguments, each validated against that schema at compile time
 // (an unknown / duplicate / missing-required arg or a literal type
-// mismatch is CALLER blame, before any dispatch — §58.d). At runtime the
+// mismatch is CALLER blame, before any dispatch — v2.8.0). At runtime the
 // args assemble a typed JSON body POSTed to the tool-server, and the
 // typed result binds under `CrmRadar_result` for a later step.
 //

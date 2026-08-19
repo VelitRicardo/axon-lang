@@ -1,6 +1,6 @@
 //! The platforms and governed operations `axon-agora` exposes.
 
-/// A social platform. Owned-only posture (D116.3): every connector acts on an asset the tenant
+/// A social platform. Owned-only posture: every connector acts on an asset the tenant
 /// owns — a Page, a professional account, an organization — never an arbitrary member account.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Platform {
@@ -96,8 +96,8 @@ impl Operation {
         Operation::ALL.into_iter().find(|op| op.as_str() == s)
     }
 
-    /// Whether this operation writes to the platform. Writes are governed egress (§105/§114) and
-    /// carry provenance; reads return data born `Untrusted` (§98/T908).
+    /// Whether this operation writes to the platform. Writes are governed egress (v2.60.0/v2.69.0) and
+    /// carry provenance; reads return data born `Untrusted` (v2.52.0/T908).
     pub fn is_write(self) -> bool {
         matches!(
             self,

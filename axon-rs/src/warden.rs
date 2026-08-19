@@ -1,31 +1,31 @@
-//! §Fase 88.d — the `WardenBackend` port + the OSS reference static analyzer.
+//! v2.43.0 — the `WardenBackend` port + the OSS reference static analyzer.
 //!
 //! This is the OSS half of the `warden` primitive's RUNTIME. It defines:
 //!   - [`Vulnerability`] — the ATTESTED finding type. A finding is NOT LLM prose;
-//!     it is a paraconsistent **contradiction** (paper §5.3) between a system's
+//! it is a paraconsistent **contradiction** (paper section 5.3) between a system's
 //!     declared contract and its observed behaviour, carrying a re-checkable
 //!     [`Witness`] (the concrete input + trace + violated contract). A finding
 //!     without a witness is not a finding — [`verify`] rejects it.
 //!   - [`WardenBackend`] — the **port** (charter split R1). Enterprise mounts the
-//!     real LLM-abduction engine (§88.f) behind this trait; OSS ships only the
+//! real LLM-abduction engine (v2.43.0) behind this trait; OSS ships only the
 //!     bounded, deterministic [`ReferenceStaticWarden`] below.
 //!   - [`ReferenceStaticWarden`] — a real (if minimal) static analyzer over an
 //!     operator-provided, in-scope text artifact. It runs a closed set of
 //!     deterministic pattern checks (unsafe calls, hard-coded secrets, SQL
 //!     concatenation), each emitting a `Vulnerability` whose witness is the exact
-//!     offending line. **Precision over recall** (paper §5.3): it reports only
+//! offending line. **Precision over recall** (paper section 5.3): it reports only
 //!     what it can attest.
 //!
-//! **Authorization is enforced here, not assumed** (paper §5.2): [`analyze`]
+//! **Authorization is enforced here, not assumed** (paper section 5.2): [`analyze`]
 //! refuses evidence whose target is not in the scope's allowlist
 //! ([`WardenError::TargetNotAuthorized`]) and refuses any depth above
 //! `static_artifact` in OSS ([`WardenError::DepthNotSupported`] — the invasive
-//! depths are enterprise-only, §88.h). No unscoped, un-authorized analysis path
-//! exists. No advantage is claimed (§69): the reference is exact pattern
+//! depths are enterprise-only, v2.43.0). No unscoped, un-authorized analysis path
+//! exists. No advantage is claimed (v2.23.0): the reference is exact pattern
 //! matching; the value is the attested-witness discipline + the governance.
 
 /// The re-checkable proof a [`Vulnerability`] carries — the paraconsistent
-/// contradiction made concrete (paper §5.3).
+/// contradiction made concrete (paper section 5.3).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Witness {
     /// The concrete input / offending construct that triggers the finding.
@@ -84,7 +84,7 @@ pub enum WardenError {
     /// The evidence's target is not in the scope's allowlist (fail-closed).
     TargetNotAuthorized { target: String },
     /// The requested depth is above what this backend supports (OSS = only
-    /// `static_artifact`; the invasive depths are enterprise, §88.h).
+    /// `static_artifact`; the invasive depths are enterprise, v2.43.0).
     DepthNotSupported { depth: String },
     /// The scope carries no approver — an unapproved scope authorises nothing.
     Unapproved,
@@ -111,12 +111,12 @@ impl std::fmt::Display for WardenError {
 
 impl std::error::Error for WardenError {}
 
-/// §Fase 122.c — **the deploy gate.** Which declared scopes this backend cannot
+/// v2.89.0 — **the deploy gate.** Which declared scopes this backend cannot
 /// honour.
 ///
 /// # Why this exists at DEPLOY and not only at dispatch
 ///
-/// §88 already refuses a depth above the backend's ceiling, and refuses it
+/// v2.43.0 already refuses a depth above the backend's ceiling, and refuses it
 /// LOUDLY — [`WardenError::DepthNotSupported`], never a silent downgrade. That
 /// was never the defect. The defect is WHEN.
 ///
@@ -127,9 +127,9 @@ impl std::error::Error for WardenError {}
 /// deployment. The program was refused after it had already acted.
 ///
 /// Everything needed to answer this is present at deploy: the compiled `scope`
-/// catalog and the mounted backend arrive at the same call site. §122 opened on
+/// catalog and the mounted backend arrive at the same call site. v2.89.0 opened on
 /// exactly this charge — *"the compiler accepts `depth: live_network`, the OSS
-/// runtime rejects it"* — and the founder's ruling (D122.3) is that the deploy
+/// runtime rejects it"* — and the founder's ruling is that the deploy
 /// gate is the SOURCE OF TRUTH, not a rung below a compile-time check: a
 /// compile-time check is only as honest as the manifest it reads, so if the
 /// build declares a capability and mounts a backend without it, the lie merely
@@ -158,7 +158,7 @@ pub fn unsupported_scope_depths(
         .collect()
 }
 
-/// The paraconsistent finding-validator (paper §5.3): a `Vulnerability` is valid
+/// The paraconsistent finding-validator (paper section 5.3): a `Vulnerability` is valid
 /// iff its witness attests something. An un-witnessed finding is noise and does
 /// not cross the type boundary — the runtime rejects it and (in a flow) retries
 /// via `immune`.
@@ -169,7 +169,7 @@ pub fn verify(v: &Vulnerability) -> bool {
 }
 
 /// The warden analysis port (charter split R1). Enterprise mounts the LLM
-/// abduction engine (§88.f) behind this trait, witness-gated (§69).
+/// abduction engine (v2.43.0) behind this trait, witness-gated (v2.23.0).
 pub trait WardenBackend {
     /// Whether this backend can analyse at the given depth.
     fn can_analyze_depth(&self, depth: &str) -> bool;
@@ -191,7 +191,7 @@ struct StaticCheck {
 }
 
 /// The closed catalog of reference static checks. Real, well-known signals; the
-/// enterprise engine (§88.f) does the open-ended abductive analysis.
+/// enterprise engine (v2.43.0) does the open-ended abductive analysis.
 const STATIC_CHECKS: &[StaticCheck] = &[
     StaticCheck {
         needle: "strcpy(",
@@ -244,7 +244,7 @@ impl WardenBackend for ReferenceStaticWarden {
             });
         }
         // 3. Allowlist: the evidence target MUST be in the scope's allowlist
-        //    (the runtime enforcement the frontend §88.c deferred, fail-closed).
+        // (the runtime enforcement the frontend v2.43.0 deferred, fail-closed).
         if !scope.targets.iter().any(|t| t == &evidence.target) {
             return Err(WardenError::TargetNotAuthorized {
                 target: evidence.target.clone(),

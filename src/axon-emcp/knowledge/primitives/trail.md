@@ -1,9 +1,9 @@
 ---
 name: trail
-summary: "Reads the breadcrumb a navigate seeded — a real provenance trail when navigation was deterministic; inherits §111 F11 on the LLM fallback path."
+summary: "Reads the breadcrumb a navigate seeded — a real provenance trail when navigation was deterministic; inherits v2.67.0 F11 on the LLM fallback path."
 category: data_plane
 top_level: false
-since: Fases 62–65 (PIX·MDN program)
+since: v2.12.0–v2.15.0 (PIX·MDN program)
 grammar: |
   trail <navigate-binding>
 ---
@@ -13,7 +13,7 @@ grammar: |
 `trail` reads the breadcrumb a prior `navigate` seeded — the
 provenance record of the walk.
 
-## Honest scope (§111)
+## Honest scope (v2.67.0)
 
 The breadcrumb is REAL when navigation ran a deterministic engine.
 ⚠️ It **inherits F11**: a trail harvested from the LLM fallback is a

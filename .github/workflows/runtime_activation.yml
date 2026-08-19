@@ -1,0 +1,194 @@
+# v1.24.0 — Dedicated CI workflow for the 33.x cycle.
+#
+# Runs all 33.x test surfaces on every push/PR so the four-pillar
+# contract (D1 + D2 + D3 + D4 + D5 + D6 + D7 phase 1 + D9 + D10 +
+# D12) stays observable across the cycle's deliverables. Separate
+# from `sse_cognitive_primitive.yml` (which runs the
+# v1.24.0-i architectural primitives) so the 33.x activation-
+# cycle's CI surface is coherent + searchable.
+#
+# # What this workflow runs
+#
+# Each step's integration test pack runs in its own job for
+# clear failure attribution. Common setup (checkout + Rust
+# toolchain + cache) shared via composite steps.
+#
+# # What this workflow does NOT run
+#
+# - Real-provider lane (`real_provider.yml`) — opt-in,
+#   gated separately on `AXON_RUN_REAL_PROVIDER_TEST` variable.
+# - v1.24.0-i primitive tests — covered by
+#   `sse_cognitive_primitive.yml`.
+# - Other v1.21.0/31/32 family tests — covered by their dedicated
+#   workflows.
+
+name: v1.24.0 — Runtime activation of algebraic streaming
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  layer-1-bridge:
+    name: 33.x.b — async bridge + 33.x.c plan unification
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: axon-rs
+      - name: 33.x.b integration tests
+        run: |
+          cd axon-rs
+          cargo test --test async_bridge --test real_backend_e2e -- --nocapture
+
+  layer-2-enforcer:
+    name: 33.x.d — StreamPolicyEnforcer activation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: axon-rs
+      - name: 33.x.d enforcer activation tests
+        run: |
+          cd axon-rs
+          cargo test --test enforcer_activation -- --nocapture
+
+  layer-3-cancel:
+    name: 33.x.e — cancel inside reqwest body (D3 p95 ≤100ms)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: axon-rs
+      - name: 33.x.e cancel-in-body tests + p95 invariant
+        run: |
+          cd axon-rs
+          cargo test --test cancel_inside_body -- --nocapture
+
+  layer-4-replay-audit:
+    name: 33.x.f — per-step audit + replay binding
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: axon-rs
+      - name: 33.x.f per-step replay tests
+        run: |
+          cd axon-rs
+          cargo test --test per_step_replay -- --nocapture
+
+  layer-5-warning-catalog:
+    name: 33.x.g — axon-W002 closed-catalog warning
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: axon-rs
+      - name: 33.x.g warning-catalog tests
+        run: |
+          cd axon-rs
+          cargo test --test warning_catalog -- --nocapture
+
+  layer-6-tokenizer-fallback:
+    name: 33.x.h — tokenizer-aware fallback (D9 opt-in)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: axon-rs
+      - name: 33.x.h tokenizer-fallback tests
+        run: |
+          cd axon-rs
+          cargo test --test tokenizer_fallback -- --nocapture
+
+  layer-7-mono-file-retirement:
+    name: 33.x.i — mono-file retirement drift gate (D7 Phase 1)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: axon-rs
+      - name: 33.x.i mono-file retirement drift gate
+        run: |
+          cd axon-rs
+          cargo test --test mono_file_retirement -- --nocapture
+
+  diagnostic-anchor:
+    name: 33.x.a — cycle diagnostic anchor (6 D-letter pins)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: axon-rs
+      - name: 33.x.a diagnostic anchor (D1+D2+D3+D5+D6 wire shape pins)
+        run: |
+          cd axon-rs
+          cargo test --test real_streaming_diagnostic -- --nocapture
+
+  fuzz-d12:
+    name: 33.x.k — D12 robustness fuzz (~2050 LCG iters across 11 surfaces)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: axon-rs
+      - name: 33.x.k fuzz pack
+        run: |
+          cd axon-rs
+          cargo test --test sse_dispatcher_fuzz -- --nocapture
+
+  module-unit-tests:
+    name: 33.x module-level unit tests (runtime_warnings + runtime_flags + flow_plan + stub)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: axon-rs
+      - name: 33.x module unit tests
+        run: |
+          cd axon-rs
+          cargo test --lib runtime_warnings::
+          cargo test --lib runtime_flags::
+          cargo test --lib flow_plan::
+          cargo test --lib backends::stub::
+          cargo test --lib backends::resolver_tests::

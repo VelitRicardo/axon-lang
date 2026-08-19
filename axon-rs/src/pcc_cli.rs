@@ -1,4 +1,4 @@
-//! §Fase 51.f — `axon pcc` CLI: prove + verify.
+//! v2.4.0 — `axon pcc` CLI: prove + verify.
 //!
 //! Two subcommands close the Proof-Carrying Code loop at the command
 //! line:
@@ -13,7 +13,7 @@
 //!
 //! The verifier recompiles the source itself rather than trusting a
 //! supplied IR: the artifact a proof binds to is "the IR THIS source
-//! compiles to," and the digest binding (D51.1) catches a bundle minted
+//! compiles to," and the digest binding catches a bundle minted
 //! for different source. The verdict logic is the small, auditable
 //! [`crate::pcc::checker`] — the trust boundary a third party reviews.
 
@@ -124,8 +124,8 @@ pub fn run_pcc_verify(file: &str, bundle_path: &str) -> i32 {
         return 0;
     }
 
-    // §52.a — dogfood the trusted aggregate: the "deployable?" predicate
-    // (all_verified) lives in the checker, not here (D52.1). This CLI and
+    // v2.4.0 — dogfood the trusted aggregate: the "deployable?" predicate
+    // (all_verified) lives in the checker, not here. This CLI and
     // the enterprise deploy gate render the SAME `BundleReport`.
     let report = check_bundle(&bundle, &ir);
     let total = report.results.len();

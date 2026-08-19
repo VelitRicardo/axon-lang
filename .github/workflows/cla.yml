@@ -96,7 +96,7 @@ jobs:
 
             Or sign offline by emailing
             [legal@bemarking.com.co](mailto:legal@bemarking.com.co)
-            per the instructions in `CLA.md` § C.
+            per the instructions in `CLA.md` C.
 
             The bot will re-check this PR once you comment.
           custom-pr-sign-comment: 'I have read the CLA Document and I hereby sign the CLA'

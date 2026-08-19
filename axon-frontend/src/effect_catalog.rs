@@ -1,5 +1,5 @@
-//! §Fase 120 — the CLOSED catalog of declared algebraic effects, and the
-//! resolution of a bare `perform Op(x)` against it (**D120.2**).
+//! v2.87.0 — the CLOSED catalog of declared algebraic effects, and the
+//! resolution of a bare `perform Op(x)` against it (**the design decision**).
 //!
 //! # Why this is one module and not two implementations
 //!
@@ -16,11 +16,11 @@
 //! `IRProgram::effects`, which is built from `Declaration::Effect`. So that is
 //! the key.
 //!
-//! # The resolution rule (D120.2)
+//! # The resolution rule
 //!
-//! `fase_23` §3.1 publishes the BARE form (`perform Emit(response.token)`)
+//! `the design plan` section 3.1 publishes the BARE form (`perform Emit(response.token)`)
 //! while D9 writes the QUALIFIED one (`perform Effect.Op(...)`), and `IRPerform`
-//! carries both names. Under §119's doctrine — *the published document is the
+//! carries both names. Under v2.83.0's doctrine — *the published document is the
 //! promise, the compiler is what must honour it* — both parse, and the bare
 //! form resolves by lookup:
 //!
@@ -121,7 +121,7 @@ impl EffectCatalog {
         self.effects.keys().map(|s| s.as_str()).collect()
     }
 
-    /// D120.2 — resolve a BARE operation name.
+    /// the design decision — resolve a BARE operation name.
     pub fn resolve_bare(&self, operation: &str) -> OpResolution {
         match self.by_operation.get(operation) {
             None => OpResolution::Undeclared,

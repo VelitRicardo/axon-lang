@@ -15,8 +15,8 @@
 //!   - `PUT /v1/cors` — update CORS configuration (requires server restart to take effect)
 
 use serde::{Deserialize, Serialize};
-// §Fase 118.b.2 — the CONFIG half of this module (`CorsConfig`, `CorsUpdate`,
-// `apply_update` — §83's "CORS as an endpoint property") is pure data and stays
+// v2.81.0 — the CONFIG half of this module (`CorsConfig`, `CorsUpdate`,
+// `apply_update` — v2.38.0's "CORS as an endpoint property") is pure data and stays
 // in every build; only `build_cors_layer`, which materialises a `tower-http`
 // `CorsLayer`, needs the `server` feature. `HeaderName`/`Method` come from the
 // `http` crate directly rather than through `axum::http::…` — same types, one
@@ -91,9 +91,9 @@ impl CorsConfig {
 /// If CORS is disabled, returns a permissive no-op layer (allows everything).
 /// This ensures the middleware is always present in the stack for consistency.
 ///
-/// §Fase 118.b.2 — the one function in this module that needs the `server`
+/// v2.81.0 — the one function in this module that needs the `server`
 /// feature: a `CorsLayer` is a `tower-http` service, and there is no router to
-/// mount it on without one. The §83 declaration (`cors <Name>` on an
+/// mount it on without one. The v2.38.0 declaration (`cors <Name>` on an
 /// `axonendpoint`) still type-checks in a `cli` build — `axon check` validates
 /// the policy; only serving it needs the layer.
 #[cfg(feature = "server")]
@@ -246,8 +246,8 @@ mod tests {
         assert_eq!(config.max_age_secs, 600);
     }
 
-    // §Fase 118.b.2 — the three layer-builder tests follow their subject behind
-    // the `server` feature. §117.a's lesson, paid for once already: an inline
+    // v2.81.0 — the three layer-builder tests follow their subject behind
+    // the `server` feature. v2.81.0's lesson, paid for once already: an inline
     // test that calls a gated function is exactly what makes
     // `--no-default-features` fail to compile while `--lib --bins` says it is
     // fine. Verified here with `--all-targets`.

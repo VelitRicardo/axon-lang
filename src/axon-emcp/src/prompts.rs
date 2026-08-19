@@ -13,7 +13,7 @@
 //!
 //! - `flow_design`    — design an AXON flow from a natural-language intent
 //! - `shield_design`  — design an AXON shield for a given threat/purpose
-//! - `session_design` — design a §41 duality-correct session + socket
+//! - `session_design` — design a v2.3.0 duality-correct session + socket
 //!
 //! Wire layer: `prompts/list` returns the catalogue (name + description
 //! + arguments schema); `prompts/get` renders one prompt with the
@@ -52,7 +52,7 @@ pub fn list(catalog: &Arc<Catalog>) -> Vec<Value> {
 /// Dispatch a `prompts/get` request. Params shape (per MCP spec):
 /// `{ "name": "...", "arguments": { "<arg>": "<value>", ... } }`.
 ///
-/// §Fase 8 — every dispatch records a `prompt_get` event with the
+/// v1.3.0 — every dispatch records a `prompt_get` event with the
 /// prompt name + a `missing_required` boolean (no argument values are
 /// recorded — they're caller-supplied free-form text that may carry
 /// PII).
@@ -232,7 +232,7 @@ mod tests {
     fn list_emits_one_entry_per_embedded_prompt() {
         let cat = embedded();
         let entries = list(&cat);
-        // §Phase 5 ships exactly 3 prompts — the count is a regression
+        // Phase 5 ships exactly 3 prompts — the count is a regression
         // signal more than a hard cap; future phases can grow the set.
         assert!(entries.len() >= 3, "expected ≥ 3 prompts, saw {}", entries.len());
         let names: Vec<&str> = entries

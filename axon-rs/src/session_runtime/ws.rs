@@ -1,6 +1,6 @@
 //! WebSocket carrier for the session-typed dialogue runtime.
 //!
-//! §Fase 41.d — the transport-specific wiring. The pure
+//! v2.3.0 — the transport-specific wiring. The pure
 //! [`crate::session_runtime::state::SessionRuntime`] is the operational
 //! state machine; this module makes it speak RFC 6455 over a `tokio` +
 //! `axum` carrier.
@@ -59,7 +59,7 @@ impl PeerRole {
     }
 }
 
-/// WebSocket close codes used by the runtime (RFC 6455 §7.4). Kept here
+/// WebSocket close codes used by the runtime (RFC 6455 section 7.4). Kept here
 /// as named constants so the protocol-loop body documents its own
 /// closure semantics.
 const CLOSE_NORMAL: u16 = 1000;
@@ -86,7 +86,7 @@ pub async fn drive(
     // The loop alternates: read a peer frame OR (when the cursor is at
     // `Send`/`Select`) wait for the caller to push one via the runtime.
     // For 41.d the carrier is fully driven by peer frames; outgoing
-    // frames are emitted by a future fase (41.f hooks in the enterprise
+    // frames are emitted by a future cycle (41.f hooks in the enterprise
     // server). To keep the runtime exercisable end-to-end now, we
     // operate in **echo mode**: any `Send`/`Select` cursor state is
     // emitted onto the wire using a canonical surrogate value (the
@@ -106,7 +106,7 @@ pub async fn drive(
         if let Some(out) = next_outgoing_frame(&runtime) {
             // Step the runtime over our own outgoing frame first. A
             // failure here means our LOCAL discipline rejected the step
-            // (the §41.c credit-exhausted axiom at runtime is the
+            // (the v2.3.0 credit-exhausted axiom at runtime is the
             // canonical case — the static analyser would have caught it
             // before deploy, but an off-spec config could still ship the
             // exhaustion to runtime, where this runtime safety net fires
@@ -152,7 +152,7 @@ pub async fn drive(
                 }
             }
             Message::Binary(_) => {
-                // Binary frames are reserved for a later fase
+                // Binary frames are reserved for a later cycle
                 // (multimedia mobility over typed channels). Treating
                 // them as malformed here keeps the wire closed.
                 let e = ProtocolError::MalformedFrame(
@@ -184,13 +184,13 @@ pub async fn drive(
 /// - `End`   ⇒ we emit `Frame::End`
 /// - `Recv`  ⇒ peer's turn — we wait
 /// - `Branch`⇒ peer's turn (they `select` an arm) — we wait
-/// - `Select`⇒ this fase the runtime cannot auto-pick an arm; the
+/// - `Select`⇒ this cycle the runtime cannot auto-pick an arm; the
 ///             [`drive`] loop's echo mode emits the first label in
 ///             canonical (BTreeMap) order so the test surface is total.
 ///
 /// Visible to siblings (`session_runtime::sse`) so the SSE-fragment
 /// driver shares the same dispatch — both carriers run the same algebra,
-/// only the framing differs. §Fase 41.e.
+/// only the framing differs. v2.3.0.
 pub(super) fn next_outgoing_frame(runtime: &SessionRuntime) -> Option<Frame> {
     use axon_frontend::session::SessionType;
     match runtime.cursor() {
@@ -219,7 +219,7 @@ pub(super) fn next_outgoing_frame(runtime: &SessionRuntime) -> Option<Frame> {
 /// Visible to siblings (`session_runtime::sse`) — the SSE-fragment
 /// driver advances its runtime via the same primitive so a Send / End
 /// transition is identical at the operational layer regardless of the
-/// carrier (WS frame vs SSE event). §Fase 41.e.
+/// carrier (WS frame vs SSE event). v2.3.0.
 pub(super) async fn apply_outgoing(
     runtime: &mut SessionRuntime,
     frame: &Frame,

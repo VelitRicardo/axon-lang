@@ -4,7 +4,7 @@
 //!   Active:  version, check, compile, run, trace, repl, inspect, ld, serve, deploy, diff, replay, stats, graph
 
 use axon::audit_cli;
-// §Fase 118.b.2 — the HTTP server is behind the `server` feature. The `Serve`
+// v2.81.0 — the HTTP server is behind the `server` feature. The `Serve`
 // subcommand below is NOT gated: it stays in `--help` under every profile and
 // refuses in writing when the feature is absent. See `run_serve_dispatch`.
 #[cfg(feature = "server")]
@@ -559,7 +559,7 @@ fn main() {
     process::exit(exit_code);
 }
 
-// ── §Fase 89.b.2 — `axon fix` AuthorizationCoverage migration ────────────────
+// ── v2.44.0 — `axon fix` AuthorizationCoverage migration ────────────────
 
 /// One uncovered dispatching endpoint that `axon fix` will annotate.
 struct FixSite {
@@ -639,7 +639,7 @@ fn fix_source(src: &str) -> (String, Vec<String>) {
     let mut sites: Vec<FixSite> = Vec::new();
     for decl in &program.declarations {
         if let Declaration::AxonEndpoint(ep) = decl {
-            // Mirror the §89.b rule EXACTLY: a dispatching endpoint that is
+            // Mirror the v2.44.0 rule EXACTLY: a dispatching endpoint that is
             // uncovered and not already `public: true`.
             let dispatches = !ep.execute_flow.is_empty();
             let covered = !ep.requires_capabilities.is_empty()
@@ -819,7 +819,7 @@ fn run_desugar(file: &str) -> i32 {
             return 1;
         }
     };
-    // Parser::parse already ran the §80.g voice + §80.f preset expansions —
+    // Parser::parse already ran the v2.37.0 voice + v2.37.0 preset expansions —
     // what we print IS what the type-checker checked and the IR carries.
     let program = match axon::parser::Parser::new(tokens).parse() {
         Ok(p) => p,
@@ -845,7 +845,7 @@ fn run_desugar(file: &str) -> i32 {
                 print!("{}", axon::upstream_presets::render_upstream(u));
                 println!();
             }
-            // §87.g — `savant` is NOT sugar (it lowers straight to IRSavant), so
+            // v2.42.0 — `savant` is NOT sugar (it lowers straight to IRSavant), so
             // there is no lower-level program to print. Instead show an honest
             // COMPOSITION view: which existing primitives + engines it
             // orchestrates. Clearly labelled so it never masquerades as an
@@ -981,10 +981,10 @@ async fn run_store_introspect(
     output: Option<&str>,
     diff_path: Option<&str>,
 ) -> i32 {
-    // §Fase 118.b.3 — the REFUSAL. `axon store introspect` reads a LIVE database's
+    // v2.81.0 — the REFUSAL. `axon store introspect` reads a LIVE database's
     // catalog, so it is the Postgres analogue of `axon serve`: the subcommand stays
     // in `axon store --help` under every profile and refuses in writing, naming the
-    // exact reinstall command. §111 doctrine — a capability that silently vanishes
+    // exact reinstall command. v2.67.0 doctrine — a capability that silently vanishes
     // from a build is indistinguishable, to the adopter, from one that never
     // existed. Exit code 2, matching `axon serve` and `axon evidence-package`.
     #[cfg(not(feature = "postgres"))]
@@ -1064,7 +1064,7 @@ async fn run_store_introspect(
     }
 }
 
-// ── §Fase 89.b.2 — `axon fix` codemod unit tests ────────────────────────────
+// ── v2.44.0 — `axon fix` codemod unit tests ────────────────────────────
 #[cfg(test)]
 mod fix_tests {
     use super::fix_source;
@@ -1142,13 +1142,13 @@ mod fix_tests {
     }
 }
 
-// ── `axon serve` — the refusal contract (§Fase 118.b.2) ───────────────────────
+// ── `axon serve` — the refusal contract (v2.81.0) ───────────────────────
 //
 // The subcommand is declared UNCONDITIONALLY above: it is in `axon --help`, with
 // all eleven flags, under every build profile. What changes with the `server`
 // feature is what happens when you run it.
 //
-// This is the §111 doctrine applied to packaging. §111 spent a fase proving that
+// This is the v2.67.0 doctrine applied to packaging. v2.67.0 spent a cycle proving that
 // every advertised primitive is REAL; the packaging corollary is that the
 // advertised surface must stay advertised even when the implementation is
 // absent. A subcommand that silently disappears from a build teaches the adopter
@@ -1180,7 +1180,7 @@ fn run_serve_dispatch(
         log_file,
         database_url: database_url.or_else(|| std::env::var("DATABASE_URL").ok()),
         config_path: None,
-        // §Fase 31.f (D6 + D7) — Resolution order for the strict
+        // v1.22.0 (D6 + D7) — Resolution order for the strict
         // flag (highest precedence first):
         //   1. CLI flag `--strict-type-driven-transport` (when
         //      present, always wins — explicit at run-time).
@@ -1197,7 +1197,7 @@ fn run_serve_dispatch(
             || axon::env_flags::parse_truthy_env(
                 "AXON_STRICT_TYPE_DRIVEN_TRANSPORT",
             ),
-        // §Fase 36.g (D7) — server default backend (rung 3 of the
+        // v1.31.0 (D7) — server default backend (rung 3 of the
         // Backend Resolution Contract). Resolution order, highest
         // precedence first:
         //   1. CLI flag `--backend <name>` (explicit at run-time).
@@ -1212,7 +1212,7 @@ fn run_serve_dispatch(
             .or_else(|| std::env::var("AXON_DEFAULT_BACKEND").ok())
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty()),
-        // §Fase 38.j (D3 + D7 + D8) — Resolution order for the
+        // v1.31.0 (D3 + D7 + D8) — Resolution order for the
         // declared store-schema manifest directory (highest
         // precedence first):
         //   1. CLI flag `--schemas-dir <path>` (explicit at run-

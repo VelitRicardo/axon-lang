@@ -1,9 +1,9 @@
 ---
 name: navigate
-summary: "Knowledge navigation — three REAL deterministic engines (MDN store-sourced, MDN in-memory, PIX); with no indexable source in scope it falls back to an LLM prompt (§111 F11, the named gap)."
+summary: "Knowledge navigation — three REAL deterministic engines (MDN store-sourced, MDN in-memory, PIX); with no indexable source in scope it falls back to an LLM prompt (v2.67.0 F11, the named gap)."
 category: data_plane
 top_level: false
-since: Fases 62–65 (PIX·MDN program)
+since: v2.12.0–v2.15.0 (PIX·MDN program)
 grammar: |
   navigate <source> [where "<filter>"]
 ---
@@ -17,7 +17,7 @@ grammar: |
 THREE real deterministic engines: MDN store-sourced, MDN in-memory,
 and PIX (conditional-mutual-information descent, embeddings-free).
 
-⚠️ **§111 F11 (the live gap, named so it cannot rot):** with NO
+⚠️ **v2.67.0 F11 (the live gap, named so it cannot rot):** with NO
 indexable source in scope, `navigate` falls back to an LLM prompt that
 *instructs the model to fabricate a provenance trail*. A trail from the
 fallback is confabulation wearing an audit's clothes. Keep a `corpus`,

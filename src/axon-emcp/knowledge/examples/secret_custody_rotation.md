@@ -1,7 +1,7 @@
 ---
 name: secret_custody_rotation
 title: Secret-custody rotation — a daemon renews OAuth tokens it can never read
-summary: "`backend: secrets` + `rotate` + `tool { secret: }` (§94): the connected-CRM shape. A class-scoped metadata store lets a cron daemon enumerate which tenant credentials near expiry (§67 time-aware `retrieve`); `rotate … with <Tool>` renews each through a runtime-mediated exchange (reveal → tool → CAS commit); the action tool declares `secret:` so the credential injects at dispatch. No term of the program can evaluate to the token — `rotation_without_revelation`."
+summary: "`backend: secrets` + `rotate` + `tool { secret: }` (v2.48.0): the connected-CRM shape. A class-scoped metadata store lets a cron daemon enumerate which tenant credentials near expiry (v2.21.0 time-aware `retrieve`); `rotate … with <Tool>` renews each through a runtime-mediated exchange (reveal → tool → CAS commit); the action tool declares `secret:` so the credential injects at dispatch. No term of the program can evaluate to the token — `rotation_without_revelation`."
 topic: data
 primitives:
   - axonstore
@@ -27,7 +27,7 @@ axonstore CrmTokens {
 // receives the CURRENT bundle under the reserved `axon_rotation`
 // request field, calls the vendor's token endpoint, and answers
 // `axon_rotated: { value, expires_at }`. Endpoint wiring is config,
-// never code (§58.g `tool.base_url`).
+// never code (v2.8.0 `tool.base_url`).
 tool RefreshCrmToken {
     parameters: { provider: String }
     output_type: String

@@ -1,6 +1,6 @@
 ---
 name: open_data_is_total
-title: "Open data is navigated totally; a declared shape is a lens, never a lie (§Fase 73)"
+title: "Open data is navigated totally; a declared shape is a lens, never a lie (v2.26.0)"
 summary: "The law that semi-structured data — a `Json` value — is navigated TOTALLY (every `.field`/`[i]` path terminates to a typed value; an absent field, a wrong-typed base, an out-of-range index resolve to null-as-a-value, never a panic, never divergence) AND that a declared shape over it (`Json<T>`) is a CHECKABLE EXPECTATION the compiler verifies, never a guarantee the runtime enforces as a lie. The compiler may help — resolving a lens field's type, flagging an undeclared field (`axon-T842`) — but a declared-but-absent field still degrades to null at runtime; the runtime never crashes to honor a static claim. Generalises `total_expressions` from rigid types to open data, and carries `no_unwitnessed_advantage`'s honesty into the type system's relationship with messy reality."
 ---
 
@@ -32,7 +32,7 @@ or defers the failure to a crash.
 ## Why total (the Logic pillar)
 
 `Json` is a recursive sum type; field/index access is its eliminator.
-§Fase 73 keeps that elimination **total**: navigation is a finite fold
+v2.26.0 keeps that elimination **total**: navigation is a finite fold
 over the path, and the absence case is a *value* (`null`), not a failure.
 So `doc.a.b.c` keeps walking through a missing hop, `doc.items[99]` is
 `null` not a crash, and a missing field is honestly **falsy** in a guard —
@@ -58,7 +58,7 @@ the shape is an **expectation, not an enforced runtime certainty**:
 
 A static type that the runtime would have to *fake* to honor is a lie. A
 static type that *checks an expectation while the runtime stays total* is
-honest help. §73 ships only the second kind.
+honest help. v2.26.0 ships only the second kind.
 
 ## What this forbids
 

@@ -3,7 +3,7 @@ name: savant
 summary: "The long-horizon autonomous research primitive — a governed ORCHESTRATOR composing memory/corpus, a mandatory compute budget, and the active-inference/topology/holograph engines into a budget-bounded, interruptible, fail-closed, provenance-witnessed research loop."
 category: operators
 top_level: true
-since: Fase 87
+since: v2.42.0
 grammar: |
   savant <Name> {
       domain: "<string>"                    # REQUIRED — the ontological scope
@@ -39,7 +39,7 @@ The load-bearing idea is that a `savant` is **not a new monolithic
 engine — it is a governed ORCHESTRATOR** over primitives Axon
 already ships. Its `memory` block composes an existing
 `memory`/`corpus`; its `budget` binds a linear compute budget (the
-§72 discipline); its research loop runs the active-inference
+v2.28.0 discipline); its research loop runs the active-inference
 (`inference`), topology (`topology`) and holographic-memory
 (`holograph`) engines; and — when it hits a gap it has no tool for —
 it may synthesise one under a `synth` policy. The keyword, its type

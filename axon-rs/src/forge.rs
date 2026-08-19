@@ -1,4 +1,4 @@
-//! §Fase 86 — the mathematical core of Directed Creative Synthesis (`forge`).
+//! v2.41.0 — the mathematical core of Directed Creative Synthesis (`forge`).
 //!
 //! This module is the rigor of the primitive: the pure, deterministic functions
 //! that turn "creativity" from a hopeful prompt into a **measured, enforced
@@ -6,16 +6,16 @@
 //! `flow_dispatcher::cognitive::run_forge`; this module is what it measures and
 //! decides with, and it is fully unit-testable without a model.
 //!
-//! The honest mathematics (see the fase doc §4):
+//! The honest mathematics (see the cycle doc section 4):
 //! - **Boden's creativity taxonomy** (Boden 1990) → a closed catalog of
-//!   sampling parameters (D86.3). A designed operationalization, not a law.
-//! - **Novelty via NCD** (D86.4): Kolmogorov complexity K(x) is UNCOMPUTABLE,
+//! sampling parameters. A designed operationalization, not a law.
+//! - **Novelty via NCD**: Kolmogorov complexity K(x) is UNCOMPUTABLE,
 //!   so novelty cannot be computed exactly. We use the **Normalized Compression
 //!   Distance** — the standard *computable* approximation of the Normalized
 //!   Information Distance, a universal metric grounded in Kolmogorov complexity
 //!   (Li, Chen, Li, Ma, Vitányi, "The similarity metric", IEEE TIT 2004). We
 //!   name the approximation explicitly rather than pretend to compute K.
-//! - **Fail-closed verification** (D86.6): a forge returns a value ONLY if it
+//! - **Fail-closed verification**: a forge returns a value ONLY if it
 //!   provably clears a novelty floor AND its coherence floor. A derivative
 //!   output is NEVER passed off as creative.
 
@@ -23,7 +23,7 @@ use flate2::write::DeflateEncoder;
 use flate2::Compression;
 use std::io::Write;
 
-// ── Boden creativity taxonomy → sampling parameters (D86.3) ──────────────────
+// ── Boden creativity taxonomy → sampling parameters ──────────────────
 
 /// The sampling profile a creativity `mode` maps to. `tau_base` is the base
 /// temperature; `freedom` and `rule_flexibility` are carried for prompt framing
@@ -37,7 +37,7 @@ pub struct BodenProfile {
 
 /// Map a `forge.mode:` to its Boden profile. An unknown/empty mode defaults to
 /// `exploratory` (the type-checker rejects a non-empty unknown mode via T868;
-/// this default covers the omitted-mode case, D86.3).
+/// this default covers the omitted-mode case, the design decision).
 pub fn boden_profile(mode: &str) -> BodenProfile {
     match mode {
         "combinatorial" => BodenProfile {
@@ -60,13 +60,13 @@ pub fn boden_profile(mode: &str) -> BodenProfile {
 }
 
 /// Incubation temperature: τ_eff = τ_base × (0.5 + 0.5·novelty). The novelty
-/// operator blends divergence into the effective temperature (D86.5; matches
+/// operator blends divergence into the effective temperature (the design decision; matches
 /// the README — transformational at novelty 0.85 ⇒ 1.2 × 0.925 = 1.11).
 pub fn incubation_temperature(mode: &str, novelty: f64) -> f64 {
     boden_profile(mode).tau_base * (0.5 + 0.5 * novelty.clamp(0.0, 1.0))
 }
 
-// ── NCD: the computable Kolmogorov-novelty proxy (D86.4) ─────────────────────
+// ── NCD: the computable Kolmogorov-novelty proxy ─────────────────────
 
 /// Compressed length C(x) using deflate — the |·| in the NCD formula. Deflate
 /// is a legitimate NCD compressor (CompLearn/zlib precedent).
@@ -98,18 +98,18 @@ pub fn ncd(x: &[u8], y: &[u8]) -> f64 {
 
 /// Novelty of an output O against the obvious baseline B (the Preparation
 /// phase's conventional reading of the seed): ν(O) = NCD(B, O) — "how much of O
-/// is NOT already implied by the obvious reading of the seed" (D86.4).
+/// is NOT already implied by the obvious reading of the seed".
 pub fn novelty_score(baseline: &str, output: &str) -> f64 {
     ncd(baseline.as_bytes(), output.as_bytes())
 }
 
-// ── Novelty floor from the `novelty:` parameter (D86.5) ──────────────────────
+// ── Novelty floor from the `novelty:` parameter ──────────────────────
 
 /// The calibrated NCD band. On coherent, related text NCD occupies a bounded
 /// range (a value near 1 means the output is unrelated/gibberish), so the
 /// required floor scales the `novelty:` knob across `[MIN, MAX]` — high novelty
 /// demands more divergence-from-the-obvious while staying coherent. Named
-/// calibration, tunable, NOT a derived law (D86.5).
+/// calibration, tunable, NOT a derived law.
 pub const NOVELTY_FLOOR_MIN: f64 = 0.15;
 pub const NOVELTY_FLOOR_MAX: f64 = 0.60;
 
@@ -118,7 +118,7 @@ pub fn novelty_floor(novelty: f64) -> f64 {
     NOVELTY_FLOOR_MIN + (NOVELTY_FLOOR_MAX - NOVELTY_FLOOR_MIN) * n
 }
 
-// ── Illumination selection: argmax over feasible branches (D86.5) ────────────
+// ── Illumination selection: argmax over feasible branches ────────────
 
 /// One illumination branch (a crystallized candidate) with its measured scores.
 #[derive(Debug, Clone, PartialEq)]
@@ -148,7 +148,7 @@ pub fn branch_utility(b: &Branch, nov_floor: f64) -> f64 {
 
 /// Best-of-N: select the index of the argmax-utility branch among the FEASIBLE
 /// set (coherence ≥ floor). `None` if no branch is feasible ⇒ the forge fails
-/// (D86.6, no derivative is smuggled through).
+/// (the design decision, no derivative is smuggled through).
 pub fn select_illumination(
     branches: &[Branch],
     coherence_floor: f64,
@@ -167,7 +167,7 @@ pub fn select_illumination(
     best.map(|(i, _)| i)
 }
 
-// ── Fail-closed verification (D86.6) ─────────────────────────────────────────
+// ── Fail-closed verification ─────────────────────────────────────────
 
 /// The verdict of the Verification phase. `Accepted` carries the MEASURED
 /// novelty + coherence so the runtime can bind the typed value and the audit

@@ -1,4 +1,4 @@
-//! §Fase 33.z.k.d (v1.28.0) — `axon` W3C named-events dialect adapter.
+//! v1.28.0 — `axon` W3C named-events dialect adapter.
 //!
 //! This adapter is the **D6 backwards-compat baseline** — its wire
 //! output is byte-identical to the v1.27.1 inline emission helpers
@@ -56,7 +56,7 @@ pub struct AxonDialectAdapter {
 
 impl AxonDialectAdapter {
     /// Construct a fresh adapter for a request. `trace_id` is the
-    /// request-scoped UUID reserved by the producer (Fase 33.x.c).
+    /// request-scoped UUID reserved by the producer (v1.24.0).
     /// Event ID counter starts at 1 to match v1.27.1's producer
     /// semantics (id=0 reserved for the silently-elided start frame).
     pub fn new(trace_id: u64) -> Self {
@@ -166,7 +166,7 @@ impl AxonDialectAdapter {
 }
 
 impl AxonDialectAdapter {
-    /// §Fase 33.z.k.g — Build the full `axon.complete` event with
+    /// v1.24.0 — Build the full `axon.complete` event with
     /// all the v1.27.1 envelope fields including the optional
     /// algebraic-policy side-channels (stream_policies,
     /// enforcement_summary, warnings). Each side-channel is elided
@@ -183,7 +183,7 @@ impl AxonDialectAdapter {
             "latency_ms": envelope.latency_ms,
             "success": envelope.success,
         });
-        // §Fase 33.e — stream_policies array, elided when empty.
+        // v1.24.0 — stream_policies array, elided when empty.
         if !envelope.effect_policies.is_empty() {
             let arr = envelope
                 .effect_policies
@@ -194,7 +194,7 @@ impl AxonDialectAdapter {
                 .expect("json object")
                 .insert("stream_policies".to_string(), serde_json::Value::Array(arr));
         }
-        // §Fase 33.x.d — enforcement_summary, elided when empty.
+        // v1.24.0 — enforcement_summary, elided when empty.
         if !envelope.enforcement_summaries.is_empty() {
             let mut obj = serde_json::Map::new();
             for (step, summary) in &envelope.enforcement_summaries {
@@ -208,7 +208,7 @@ impl AxonDialectAdapter {
                 serde_json::Value::Object(obj),
             );
         }
-        // §Fase 33.x.g — runtime_warnings, elided when empty.
+        // v1.24.0 — runtime_warnings, elided when empty.
         if !envelope.runtime_warnings.is_empty() {
             let arr = envelope
                 .runtime_warnings
@@ -219,9 +219,9 @@ impl AxonDialectAdapter {
                 .expect("json object")
                 .insert("warnings".to_string(), serde_json::Value::Array(arr));
         }
-        // §Fase 55.b — epistemic_envelopes array, elided when empty. The
+        // v2.7.0 — epistemic_envelopes array, elided when empty. The
         // key + element shape ({base, scope, confidence}) match the sync
-        // `FlowEnvelope.epistemic_envelopes` byte-for-byte (§55.c parity).
+        // `FlowEnvelope.epistemic_envelopes` byte-for-byte (v2.7.0 parity).
         if !envelope.epistemic_envelopes.is_empty() {
             let arr = envelope
                 .epistemic_envelopes
@@ -233,9 +233,9 @@ impl AxonDialectAdapter {
                 serde_json::Value::Array(arr),
             );
         }
-        // §Fase 91.b — temporal_context object, elided when None. The key +
+        // v2.46.0 — temporal_context object, elided when None. The key +
         // shape ({captured_utc, tzdb_version, zones}) match the sync
-        // `FlowEnvelope.temporal_context` byte-for-byte (§55.c parity).
+        // `FlowEnvelope.temporal_context` byte-for-byte (v2.7.0 parity).
         if let Some(temporal) = &envelope.temporal_context {
             data.as_object_mut().expect("json object").insert(
                 "temporal_context".to_string(),

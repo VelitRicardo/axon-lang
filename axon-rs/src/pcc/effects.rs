@@ -1,17 +1,17 @@
-//! §Fase 51.b — the PCC checker's independent effect specification.
+//! v2.4.0 — the PCC checker's independent effect specification.
 //!
 //! Proof-Carrying Code requires the consumer's checker to embed the
 //! PROPERTY SPECIFICATION it verifies — it cannot delegate to the
 //! producer's (compiler's) internal logic, or it would not be
-//! independent (D51.2). This module is the checker's own statement of
+//! independent. This module is the checker's own statement of
 //! "what a well-formed effect row is": the closed base-effect catalog
 //! + the qualifier discipline.
 //!
 //! **Source of truth + drift:** this catalog mirrors
 //! `axon_frontend::type_checker::VALID_EFFECTS` (private const) +
-//! the §λ-L-E Fase 11.a qualifier rules. axon-frontend's catalog is
+//! the v1.4.0 qualifier rules. axon-frontend's catalog is
 //! the canonical compiler-side spec; this is the checker-side spec.
-//! They MUST agree. §51.f (which exposes `VALID_EFFECTS` as `pub` for
+//! They MUST agree. v2.4.0 (which exposes `VALID_EFFECTS` as `pub` for
 //! the `axon pcc verify` CLI) adds the cross-crate drift gate asserting
 //! equality. Until then the equality is maintained by review + the
 //! `EFFECT_BASES` doc-comment pin. The stream-qualifier catalog
@@ -33,12 +33,12 @@ pub const EFFECT_BASES: &[&str] = &[
     "sensitive",
     "legal",
     "ots",
-    // §Fase 98.c — `web` (native web acquisition). Lockstep mirror of the
+    // v2.52.0 — `web` (native web acquisition). Lockstep mirror of the
     // 11th member added to `axon_frontend::type_checker::VALID_EFFECTS`.
-    // A first-class base (D98.10), distinct from `network`: web-acquired
-    // content is born Untrusted (D98.1). Both catalogs MUST agree — if the
+    // A first-class base, distinct from `network`: web-acquired
+    // content is born Untrusted. Both catalogs MUST agree — if the
     // frontend accepts `<web>` but this checker does not, every scrape
-    // tool's proof is wrongly refuted (the §53.c.2 class of drift).
+    // tool's proof is wrongly refuted (the v2.5.0 class of drift).
     "web",
 ];
 
@@ -63,7 +63,7 @@ pub fn is_known_base(base: &str) -> bool {
     EFFECT_BASES.contains(&base)
 }
 
-/// §Fase 53.c.2 — the built-in `epistemic:<level>` provenance axis.
+/// v2.5.0 — the built-in `epistemic:<level>` provenance axis.
 /// Mirror of `axon_frontend::type_checker::VALID_EPISTEMIC_LEVELS`.
 /// `epistemic` is NOT an enforceable base — it is a ΛD confidence
 /// annotation (PROVENANCE-class), carrying no runtime capability. The
@@ -72,9 +72,9 @@ pub fn is_known_base(base: &str) -> bool {
 /// string `epistemic:<level>` (`ir_generator.rs`). So the PCC checker
 /// MUST recognize it as a valid provenance entry — else every tool
 /// declaring an epistemic level is wrongly refuted as an unknown base
-/// (the pre-§53.c.2 bug Kivi brief #15 hit, forcing them to strip the
+/// (the pre-v2.5.0 bug Kivi brief #15 hit, forcing them to strip the
 /// ΛD wedge). This is the built-in analogue of an `extension`-declared
-/// provenance base (§53.d).
+/// provenance base (v2.5.0).
 pub const EPISTEMIC_LEVELS: &[&str] = &["believe", "doubt", "know", "speculate"];
 
 /// Whether `entry` is a built-in `epistemic:<level>` provenance member.

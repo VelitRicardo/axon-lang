@@ -851,7 +851,7 @@ mod tests {
             "sha256=f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8",
         );
 
-        // Vector 2 — RFC 4231 §4.3 Test Case 2 (printable key + data):
+        // Vector 2 — RFC 4231 section 4.3 Test Case 2 (printable key + data):
         //   HMAC-SHA256(key="Jefe", "what do ya want for nothing?")
         assert_eq!(
             WebhookRegistry::compute_signature("Jefe", b"what do ya want for nothing?"),

@@ -1,4 +1,4 @@
-//! §Fase 25.h — crypto kernel test suite.
+//! v1.19.0 — crypto kernel test suite.
 //!
 //! Coverage:
 //!   1. SHA-256 NIST short-message vectors (FIPS 180-4 reference).
@@ -7,7 +7,7 @@
 //!   4. HMAC-SHA256 streaming-equivalence vs one-shot.
 //!   5. Constant-time compare correctness + smoke timing.
 //!   6. Hex round-trip + case-insensitive decode + invalid-input rejection.
-//!   7. Base64url-no-pad RFC 4648 §10 reference vectors + round-trip.
+//! 7. Base64url-no-pad RFC 4648 section 10 reference vectors + round-trip.
 //!   8. Continuity wire sign / verify round-trip.
 //!   9. Continuity wire tamper rejection (session_id, expiry, MAC).
 //!  10. Continuity wire wrong-key rejection.
@@ -126,7 +126,7 @@ fn sha256_streaming_with_block_cross() {
 
 #[test]
 fn hmac_rfc4231_test_case_1() {
-    // RFC 4231 §4.2 Test Case 1: 20-byte key, 8-byte data.
+    // RFC 4231 section 4.2 Test Case 1: 20-byte key, 8-byte data.
     let key = [0x0bu8; 20];
     let data = b"Hi There";
     let expected = "b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7";
@@ -135,7 +135,7 @@ fn hmac_rfc4231_test_case_1() {
 
 #[test]
 fn hmac_rfc4231_test_case_2() {
-    // RFC 4231 §4.3 Test Case 2: 4-byte key, 28-byte data.
+    // RFC 4231 section 4.3 Test Case 2: 4-byte key, 28-byte data.
     let key = b"Jefe";
     let data = b"what do ya want for nothing?";
     let expected = "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843";
@@ -144,7 +144,7 @@ fn hmac_rfc4231_test_case_2() {
 
 #[test]
 fn hmac_rfc4231_test_case_3() {
-    // RFC 4231 §4.4 Test Case 3: 20-byte key (all 0xaa), 50-byte data (all 0xdd).
+    // RFC 4231 section 4.4 Test Case 3: 20-byte key (all 0xaa), 50-byte data (all 0xdd).
     let key = [0xaau8; 20];
     let data = [0xddu8; 50];
     let expected = "773ea91e36800e46854db8ebd09181a72959098b3ef8c122d9635514ced565fe";
@@ -153,7 +153,7 @@ fn hmac_rfc4231_test_case_3() {
 
 #[test]
 fn hmac_rfc4231_test_case_4() {
-    // RFC 4231 §4.5 Test Case 4: 25-byte key (0x01..0x19), 50-byte data.
+    // RFC 4231 section 4.5 Test Case 4: 25-byte key (0x01..0x19), 50-byte data.
     let key: Vec<u8> = (1u8..=25u8).collect();
     let data = [0xcdu8; 50];
     let expected = "82558a389a443c0ea4cc819899f2083a85f0faa3e578f8077a2e3ff46729665b";
@@ -162,9 +162,9 @@ fn hmac_rfc4231_test_case_4() {
 
 #[test]
 fn hmac_rfc4231_test_case_6_long_key() {
-    // RFC 4231 §4.7 Test Case 6: key longer than 64 bytes (131 0xaa
+    // RFC 4231 section 4.7 Test Case 6: key longer than 64 bytes (131 0xaa
     // bytes); the hmac construction pre-hashes such keys per FIPS 198-1
-    // §5. Expected MAC verifies the long-key code path.
+    // section 5. Expected MAC verifies the long-key code path.
     let key = [0xaau8; 131];
     let data = b"Test Using Larger Than Block-Size Key - Hash Key First";
     let expected = "60e431591ee0b67f0d8a26aacbf5b77f8e0bc6213728c5140546040f0ee37f54";

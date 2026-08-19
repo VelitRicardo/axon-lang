@@ -3,7 +3,7 @@ name: cors
 summary: A named, referenced browser-origin policy — a property of the endpoint, not a single process-wide knob.
 category: operators
 top_level: true
-since: Fase 83
+since: v2.38.0
 grammar: |
   cors <Name> {
       allow_origins: [<origin-or-glob>, ...]     # optional — "*" or "https://exact.com" or "https://*.host.com"

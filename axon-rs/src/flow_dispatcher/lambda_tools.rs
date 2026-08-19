@@ -1,9 +1,9 @@
-//! §Fase 33.y.j — Lambda + UseTool. The final 2 variants needed
+//! v1.24.0 — Lambda + UseTool. The final 2 variants needed
 //! to reach 45/45 IRFlowNode graduation.
 //!
 //! Two variants graduated in 33.y.j:
 //!
-//! - **`LambdaDataApply`** (Fase 15 ΛD apply) — apply a named
+//! - **`LambdaDataApply`** (v1.10.0 ΛD apply) — apply a named
 //!   lambda data structure to a target expression. Sync runner
 //!   walks a CPS dispatcher mapping lambda data structures to
 //!   their result expressions. OSS reference impl uses the public
@@ -12,14 +12,14 @@
 //!   (axon_enterprise lambda runtime) wires the real CPS
 //!   dispatcher.
 //!
-//! - **`UseTool`** (Fase 22 mid-step tool dispatch) — invoke a
+//! - **`UseTool`** (v1.16.0 mid-step tool dispatch) — invoke a
 //!   named tool with an argument. The full
 //!   `ChatRequest.tools` cross-cutting plumb-through (D8) lands
 //!   in 33.y.k as a cross-cutting fix that extends the
 //!   `pure_shape` core. 33.y.j ships the OSS reference impl via
 //!   the public helper [`invoke_tool`] which returns a canonical
 //!   `"tool:<name>(<argument>)"` placeholder; enterprise R&D
-//!   wires the real Fase 22 tool registry + dispatch.
+//! wires the real v1.16.0 tool registry + dispatch.
 //!
 //! After 33.y.j: 45/45 IRFlowNode variants graduated. The legacy
 //! `shim` becomes structurally unreachable from `dispatch_node`;
@@ -52,12 +52,12 @@ use crate::ir_nodes::{IRLambdaDataApply, IRUseToolStep};
 //  Public helpers (enterprise hooks override these)
 // ────────────────────────────────────────────────────────────────────
 
-// §Fase 119.c — `apply_lambda_data` was DELETED here.
+// v2.83.0 — `apply_lambda_data` was DELETED here.
 //
-// It returned the string `"lambda:<name>(<target>)"` (§111 F18) while the
+// It returned the string `"lambda:<name>(<target>)"` (v2.67.0 F18) while the
 // REAL evaluator — `lambda_runtime::build_psi`, with Theorem 5.1 enforced at
-// apply time — already existed on the sync runner path (Fase 15.c), which
-// production stopped taking at the §65 unified-executor cutover. The engine
+// apply time — already existed on the sync runner path (v1.10.0), which
+// production stopped taking at the v2.15.0 unified-executor cutover. The engine
 // was real; the live wire bound a placeholder. `run_lambda_data_apply` now
 // drives the same evaluator, with D10 parity: both paths bind the serialized
 // ψ, or refuse.
@@ -65,7 +65,7 @@ use crate::ir_nodes::{IRLambdaDataApply, IRUseToolStep};
 /// Invoke a tool with an argument. OSS default: resolves
 /// `argument` through `ctx.let_bindings` (literal if missing) +
 /// returns canonical `"tool:<name>(<resolved_argument>)"`.
-/// Enterprise overrides hook the Fase 22 tool registry +
+/// Enterprise overrides hook the v1.16.0 tool registry +
 /// per-provider dispatch (Anthropic / OpenAI / etc.). The D8
 /// cross-cutting fix (33.y.k) extends `pure_shape::run_pure_shape`
 /// to plumb `ChatRequest.tools` so `apply: <tool>` on a Step
@@ -80,10 +80,10 @@ pub fn invoke_tool(tool_name: &str, argument: &str, ctx: &DispatchCtx) -> String
 }
 
 // ────────────────────────────────────────────────────────────────────
-//  LambdaDataApply (Fase 15 ΛD apply)
+// LambdaDataApply (v1.10.0 ΛD apply)
 // ────────────────────────────────────────────────────────────────────
 
-/// §Fase 119.c — `lambda <Name> on <target> [-> <binding>]`: ΛD elevation,
+/// v2.83.0 — `lambda <Name> on <target> [-> <binding>]`: ΛD elevation,
 /// REAL on the production dispatch path.
 ///
 /// Resolves the declaration from `ctx.lambda_data_specs` (fail closed —
@@ -131,7 +131,7 @@ pub async fn run_lambda_data_apply(
     })
 }
 
-/// §Fase 119.c — the shared ΛD elevation: declaration → ψ → serialized JSON.
+/// v2.83.0 — the shared ΛD elevation: declaration → ψ → serialized JSON.
 ///
 /// Used by the flow-level node above and by the step-scoped `lambda` guard
 /// in `pure_shape::run_step` (README blocks 46-47's position), which runs it
@@ -205,7 +205,7 @@ pub async fn run_use_tool(
     };
     emit_step_start(ctx, &step_name, step_index, "use_tool")?;
 
-    // ── §Fase 114.a — THE LIVE BUG, CLOSED ───────────────────────────────────
+    // ── v2.69.0 — THE LIVE BUG, CLOSED ───────────────────────────────────
     //
     // This is the canonical tool-call path. It is the one `advertised.rs` cites
     // as PROOF that `tool` is Real (`lambda_tools::dispatch_use_tool_real`).
@@ -219,25 +219,25 @@ pub async fn run_use_tool(
     //
     // An adopter declared a budget over their vendor and the compiler said yes.
     //
-    // ── §Fase 122.d — THE CACHE LOOKUP, AND WHY IT IS ABOVE THIS LINE ────────
+    // ── v2.89.0 — THE CACHE LOOKUP, AND WHY IT IS ABOVE THIS LINE ────────
     //
-    // §85 shipped `cache` complete: grammar, four type-checker laws proving what
+    // v2.40.0 shipped `cache` complete: grammar, four type-checker laws proving what
     // is safe to memoise, a hardened runtime with content-addressed keys, TTL
-    // jitter and LRU eviction — and then deferred wiring it (§85.h, "deferred,
-    // not built"). §122.a measured what that left behind: `CacheRuntime` had
+    // jitter and LRU eviction — and then deferred wiring it (v2.40.0, "deferred,
+    // not built"). v2.89.0 measured what that left behind: `CacheRuntime` had
     // zero production callers, so `ttl:`, `key_params:`, `invalidate_on:` and
     // `backend: redis` were inert. `backend: redis` was not a downgrade to
     // in-process; there was no cache. It shipped as `Real` in 2.88.0.
     //
-    // The lookup sits BEFORE the budget gate, and that ordering is D85.3 — the
+    // The lookup sits BEFORE the budget gate, and that ordering is the design decision — the
     // decision that a cache hit must never consume a `budget { rate: … }`
     // quota. Placed after the gate it would still return the right value while
     // silently spending the adopter's rate limit on work that never happened,
     // which is the kind of defect that only shows up as a bill.
     //
-    // §85's own plan wrote this as *"structurally guaranteed by ordering the
+    // v2.40.0's own plan wrote this as *"structurally guaranteed by ordering the
     // cache lookup before the budget gate"*. This is that structure, and
-    // `fase122_d_cache_hits.rs` asserts it from a real deploy rather than
+    // `cache_hits.rs` asserts it from a real deploy rather than
     // trusting the ordering to survive future edits.
     let cache_slot = match ctx.cache_runtime.clone() {
         None => None,
@@ -295,9 +295,9 @@ pub async fn run_use_tool(
         }
     }
 
-    // §Fase 114.f — charge the tool's channel lease BEFORE the call. A post-expiry
+    // v2.69.0 — charge the tool's channel lease BEFORE the call. A post-expiry
     // vendor call is a CT-2 Anchor Breach (the τ-decaying affine capability was
-    // used past expiry), exactly as a post-expiry store op is in §113.d — a tool
+    // used past expiry), exactly as a post-expiry store op is in v2.67.0 — a tool
     // call is a *use* of the resource just as a store op is. Charged before the
     // dispatch: a breach reported after the vendor was hit bounds nothing.
     if let Some(breach) = charge_tool_lease(node, ctx) {
@@ -314,17 +314,17 @@ pub async fn run_use_tool(
         });
     }
 
-    // §Fase 114.e — hold a channel permit ACROSS the call, so at most
+    // v2.69.0 — hold a channel permit ACROSS the call, so at most
     // `resource.capacity` calls are in flight against this tool's channel at once.
     //
-    // §114.d derived the capacity; this is what turns the number into a bound.
+    // v2.69.0 derived the capacity; this is what turns the number into a bound.
     // Acquired BEFORE the dispatch and held (the guard lives to the end of the
     // scope) until the call returns — a bound applied after the call bounds
     // nothing, the vendor was already hit. A tool whose resource has no capacity
     // (or no resource) acquires nothing and proceeds unbounded, as before.
     let _channel_permit = acquire_channel_permit(node, ctx).await;
 
-    // §Fase 58.f.2 — attempt a real dispatch; honor cancel observed
+    // v2.8.0 — attempt a real dispatch; honor cancel observed
     // while the (potentially blocking, network-bound) call ran.
     let (result, success) = match dispatch_use_tool_real(node, ctx).await {
         Some(tool_result) => (tool_result.output, tool_result.success),
@@ -336,9 +336,9 @@ pub async fn run_use_tool(
         return Err(DispatchError::UpstreamCancelled);
     }
 
-    // §Fase 122.d — fill the slot the probe reserved, but ONLY on success.
+    // v2.89.0 — fill the slot the probe reserved, but ONLY on success.
     //
-    // D85.10: an error is never memoised. A cached failure is the worst
+    // the design decision: an error is never memoised. A cached failure is the worst
     // possible entry — it turns one bad minute at a vendor into `ttl:` minutes
     // of a flow that cannot succeed and never retries, and it does so silently
     // because from the flow's side a cached error is indistinguishable from a
@@ -365,7 +365,7 @@ pub async fn run_use_tool(
     })
 }
 
-/// §Fase 58.f.2 — attempt a REAL tool dispatch on the streaming path.
+/// v2.8.0 — attempt a REAL tool dispatch on the streaming path.
 ///
 /// Returns `Some(ToolResult)` when `ctx.tool_registry` resolves the
 /// tool to a locally-dispatchable provider; `None` when there is no
@@ -374,8 +374,8 @@ pub async fn run_use_tool(
 ///
 /// The structured `use Tool(k = v, …)` body is assembled with the
 /// SAME `(name, type)` coercion the synchronous server path applies
-/// (`runner::build_structured_tool_body`, §58.e), reading the typed
-/// schema carried on the [`crate::tool_registry::ToolEntry`] (§58.f.2
+/// (`runner::build_structured_tool_body`, v2.8.0), reading the typed
+/// schema carried on the [`crate::tool_registry::ToolEntry`] (v2.8.0
 /// piece 1). Interpolation of arg values mirrors the sync path's
 /// [`crate::exec_context::ExecContext::interpolate`] via the shared
 /// `interpolate_vars` helper over `ctx.let_bindings`.
@@ -385,7 +385,7 @@ pub async fn run_use_tool(
 /// runtime would panic, so the dispatch runs on the blocking pool via
 /// `spawn_blocking` (D6). The request-scoped registry is `Arc`-cloned
 /// into the task — never a shared mutable global (D10).
-/// §Fase 114.f — charge a tool's channel lease by tool NAME, so BOTH the
+/// v2.69.0 — charge a tool's channel lease by tool NAME, so BOTH the
 /// canonical `use Tool(…)` path and the streaming step-tool path share it.
 ///
 /// Returns `Some(breach_message)` when the lease over the tool's resource has
@@ -397,7 +397,7 @@ pub fn charge_tool_lease_by_name(tool_name: &str, ctx: &DispatchCtx) -> Option<S
     let entry = registry.get(tool_name)?;
     if entry.resource_ref.is_empty() {
         // An un-resourced tool is ineligible for lease governance — you cannot
-        // govern what you did not declare (§113's ratified posture).
+        // govern what you did not declare (v2.67.0's ratified posture).
         return None;
     }
     match leases.charge(&entry.resource_ref) {
@@ -410,9 +410,9 @@ fn charge_tool_lease(node: &IRUseToolStep, ctx: &DispatchCtx) -> Option<String> 
     charge_tool_lease_by_name(&node.tool_name, ctx)
 }
 
-/// §Fase 114.e — acquire a concurrency permit for a tool's channel by NAME, so
+/// v2.69.0 — acquire a concurrency permit for a tool's channel by NAME, so
 /// both tool paths share it. The returned guard bounds simultaneous calls while it
-/// lives; `None` ⇒ the tool names no capacity-bounded resource (unbounded, pre-§114).
+/// lives; `None` ⇒ the tool names no capacity-bounded resource (unbounded, pre-v2.69.0).
 pub async fn acquire_channel_permit_by_name(
     tool_name: &str,
     ctx: &DispatchCtx,
@@ -436,10 +436,10 @@ async fn acquire_channel_permit(
     acquire_channel_permit_by_name(&node.tool_name, ctx).await
 }
 
-/// §Fase 122.d — the call's bound `(name, value)` pairs, resolved against the
+/// v2.89.0 — the call's bound `(name, value)` pairs, resolved against the
 /// current bindings.
 ///
-/// Extracted because §122.d needs these TWICE and from two places: the cache key
+/// Extracted because v2.89.0 needs these TWICE and from two places: the cache key
 /// is derived from them before the budget gate, and the request body is built
 /// from them inside the dispatch. Deriving a key from a second, similar-looking
 /// interpolation is how a cache starts hitting on calls that are not the same
@@ -449,11 +449,11 @@ async fn acquire_channel_permit(
 /// a positional call still memoises correctly and can never collide with a
 /// keyword argument (`__argument` is not a legal parameter identifier).
 ///
-/// Note this runs BEFORE §94.c secret injection, which is deliberate: the
+/// Note this runs BEFORE v2.48.0 secret injection, which is deliberate: the
 /// injected `axon_secret` must never enter a cache key. It would make the key
 /// change on every rotation (defeating the cache), and it would put credential
 /// material into a hash that names it. Tenant isolation is already in the key
-/// by D85.7, and a `secret_partition:` discriminator IS one of these pairs, so
+/// by the design decision, and a `secret_partition:` discriminator IS one of these pairs, so
 /// two sub-tenants still key apart.
 fn resolved_call_args(node: &IRUseToolStep, ctx: &DispatchCtx) -> Vec<(String, String)> {
     if node.named_args.is_empty() {
@@ -467,7 +467,7 @@ fn resolved_call_args(node: &IRUseToolStep, ctx: &DispatchCtx) -> Vec<(String, S
         .map(|a| {
             (
                 a.name.clone(),
-                // §Fase 60 — resolve by value_kind: a `"reference"` (bare
+                // v2.10.0 — resolve by value_kind: a `"reference"` (bare
                 // identifier / `Step.output`) is a binding lookup, not a
                 // literal name; `"literal"` keeps `${…}` interpolation.
                 crate::exec_context::resolve_named_arg_value(
@@ -485,14 +485,14 @@ async fn dispatch_use_tool_real(
     ctx: &DispatchCtx,
 ) -> Option<crate::tool_executor::ToolResult> {
     let registry = ctx.tool_registry.clone()?;
-    // Resolve the typed input schema for coercion (+ the §94.c secret
+    // Resolve the typed input schema for coercion (+ the v2.48.0 secret
     // key). The borrows end here (cloned) so `registry` can move into
     // `spawn_blocking`.
     let entry = registry.get(&node.tool_name)?;
     let parameters = entry.parameters.clone();
     let secret_key = entry.secret.clone();
-    // §Fase 95.a — the partition parameter name (`selection_without_revelation`).
-    // Empty ⇒ the §94 static-key path, unchanged.
+    // v2.49.0 — the partition parameter name (`selection_without_revelation`).
+    // Empty ⇒ the v2.48.0 static-key path, unchanged.
     let secret_partition = entry.secret_partition.clone();
 
     // Assemble the request argument: a structured JSON body for the
@@ -504,7 +504,7 @@ async fn dispatch_use_tool_real(
         crate::runner::build_structured_tool_body(&resolved_call_args(node, ctx), &parameters)
     };
 
-    // §Fase 94.c — dispatch injection (`rotation_without_revelation`):
+    // v2.48.0 — dispatch injection (`rotation_without_revelation`):
     // a tool declaring `secret: <key>` gets the per-tenant custody value
     // injected under the reserved `axon_secret` field of its structured
     // body. Fail-CLOSED at every fork: no custody port, a custody
@@ -528,10 +528,10 @@ async fn dispatch_use_tool_real(
                 node.tool_name, secret_key
             ));
         };
-        // The body must be a JSON object BEFORE the reveal now: §95 reads the
+        // The body must be a JSON object BEFORE the reveal now: v2.49.0 reads the
         // partition segment out of it to resolve the custody key, and the
         // reveal must target the resolved (per-sub-tenant) key, not the class
-        // key. Non-structured argument ⇒ fail closed (unchanged §94 reason).
+        // key. Non-structured argument ⇒ fail closed (unchanged v2.48.0 reason).
         let mut body: serde_json::Value = match serde_json::from_str(&argument) {
             Ok(serde_json::Value::Object(map)) => serde_json::Value::Object(map),
             _ => {
@@ -544,8 +544,8 @@ async fn dispatch_use_tool_real(
                 ))
             }
         };
-        // §Fase 95.a — resolve the custody KEY (`selection_without_revelation`).
-        // With no partition this is the §94 static class key. With a partition,
+        // v2.49.0 — resolve the custody KEY (`selection_without_revelation`).
+        // With no partition this is the v2.48.0 static class key. With a partition,
         // the caller-supplied value of that parameter is appended as ONE key
         // segment: `crm.hubspot` + `.` + `acme` → `crm.hubspot.acme`. The
         // segment is charset-validated to a single dot-free lowercase run, so
@@ -618,7 +618,7 @@ async fn dispatch_use_tool_real(
     }
 }
 
-/// §Fase 95.a — is `s` a single custody-key SEGMENT? A segment is a
+/// v2.49.0 — is `s` a single custody-key SEGMENT? A segment is a
 /// non-empty run of `[a-z0-9_-]` — deliberately a SUBSET of the T850 key
 /// charset (`[a-z0-9_.-]`) with the dot REMOVED: the dot is the class
 /// separator, so a partition segment that contained one could widen the
@@ -699,10 +699,10 @@ mod tests {
         (ctx, rx)
     }
 
-    // §Fase 119.c — `apply_lambda_data_literal_target` and
+    // v2.83.0 — `apply_lambda_data_literal_target` and
     // `apply_lambda_data_resolves_target_through_bindings` were DELETED
     // here. They pinned the placeholder string "lambda:<name>(<target>)" in
-    // green — the §111 F18 shape, tested and passing — while the real
+    // green — the v2.67.0 F18 shape, tested and passing — while the real
     // evaluator sat unreached on the dead sync path. The elevation suite
     // below replaces them.
 
@@ -723,7 +723,7 @@ mod tests {
 
     #[tokio::test]
     async fn a_declared_lambda_elevates_to_a_real_psi_not_a_placeholder() {
-        // THE §111 F18 regression test for lambda: this used to bind the
+        // THE v2.67.0 F18 regression test for lambda: this used to bind the
         // string "lambda:SensorReading(21.5)".
         let (mut ctx, _rx) = fresh_ctx();
         ctx.lambda_data_specs =
@@ -877,7 +877,7 @@ mod tests {
     // ── LambdaDataApply ──────────────────────────────────────────────
 
     #[tokio::test]
-    /// §Fase 119.c — these two tests used to pin the PLACEHOLDER in green:
+    /// v2.83.0 — these two tests used to pin the PLACEHOLDER in green:
     /// `"lambda:transform(raw)"` bound as if it were an elevation. They now
     /// declare the lambdas they apply and assert the wire shape over a real ψ.
     async fn run_lambda_data_apply_binds_under_output_type() {

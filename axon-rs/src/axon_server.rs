@@ -144,14 +144,14 @@
 //!
 //! This is the Rust-native replacement for the Python AxonServer (uvicorn).
 //!
-//! # §Fase 33.x.i — `crate::backend` deprecation
+//! # v1.24.0 — `crate::backend` deprecation
 //!
 //! This file uses the deprecated synchronous `crate::backend`
 //! surface (`call`, `SUPPORTED_BACKENDS`, `get_api_key`) on the
 //! legacy JSON-mode dispatch path + on backend-management
 //! endpoints. The `#![allow(deprecated)]` below silences the
 //! deprecation warnings while the deeper async migration progresses
-//! under followup sub-fase Fase 33.x.i.2 (sync→async migration
+//! under followup step v1.24.0 (sync→async migration
 //! of the 4 callers, separate cycle).
 
 #![allow(deprecated)]
@@ -205,7 +205,7 @@ pub struct ServerConfig {
     pub database_url: Option<String>,
     /// Optional path for persisted config file.
     pub config_path: Option<String>,
-    /// §Fase 31.d (D6) — Type-Driven Wire Inference activation flag.
+    /// v1.22.0 (D6) — Type-Driven Wire Inference activation flag.
     ///
     /// When `true`, `POST /v1/execute` promotes to SSE for any flow
     /// the type-checker inferred as stream-producing (i.e. the
@@ -214,12 +214,12 @@ pub struct ServerConfig {
     /// the wire's authoritative source.
     ///
     /// When `false` (D6 default in v1.22.x — backwards-compat first),
-    /// the Fase 30.e D4 + D5 negotiation matrix is preserved verbatim.
+    /// the v1.21.0 D4 + D5 negotiation matrix is preserved verbatim.
     /// Only the additive 31.e diagnostic header is observable for
     /// existing clients.
     ///
     /// D9 ratified — this flag flips to default `true` in v2.0.0
-    /// (Fase 35+ candidate) with the full migration guide already
+    /// (v1.30.0+ candidate) with the full migration guide already
     /// published in `docs/MIGRATION_v1.22.md` (31.h).
     ///
     /// Adopters opt in via three converging surfaces (31.f):
@@ -227,9 +227,9 @@ pub struct ServerConfig {
     ///   * Config file: `[server] strict_type_driven_transport = true`
     ///   * Env var:    `AXON_STRICT_TYPE_DRIVEN_TRANSPORT=1`
     pub strict_type_driven_transport: bool,
-    /// §Fase 36.g (D7) — Server-wide default execution backend.
+    /// v1.31.0 (D7) — Server-wide default execution backend.
     ///
-    /// Rung 3 of the Fase 36 Backend Resolution Contract ladder: when
+    /// Rung 3 of the v1.31.0 Backend Resolution Contract ladder: when
     /// a request behind an `axonendpoint` names no backend (rung 1)
     /// and the route declares none (rung 2), this server default is
     /// consulted before the environment-available `auto` rungs.
@@ -251,13 +251,13 @@ pub struct ServerConfig {
     /// (`parser::AXONENDPOINT_BACKEND_VALUES`) at `run_serve` startup —
     /// an unknown name fails fast, before the first request is served.
     pub default_backend: Option<String>,
-    /// §Fase 38.j (D3 + D7 + D8) — Directory containing declared store-
+    /// v1.31.0 (D3 + D7 + D8) — Directory containing declared store-
     /// schema manifests (`*.axon-schema.json` files at the project root
     /// and/or under a `schemas/` subdirectory).
     ///
     /// When `Some(path)`, `POST /v1/deploy` loads and merges every
     /// manifest under the directory before running the deploy-time
-    /// store verification pass. The declared columns of every Fase 38
+    /// store verification pass. The declared columns of every v1.31.0
     /// `schema:` form (a/b/c) are then proven AGAINST the live Postgres
     /// introspection — any drift fails the deploy with structured
     /// axon-T807 (DeclaredVsLiveDrift) diagnostics. axon-T805 (manifest
@@ -266,7 +266,7 @@ pub struct ServerConfig {
     ///
     /// `None` ≡ no manifest loading — the v1.37.0 verify behavior is
     /// preserved verbatim (D5 absolute backwards-compat). An adopter
-    /// who never adopts Fase 38's compile-time schema observes ZERO
+    /// who never adopts v1.31.0's compile-time schema observes ZERO
     /// behavior change at deploy.
     ///
     /// Adopters set it via three converging surfaces (D7 — mirrors the
@@ -293,7 +293,7 @@ impl ServerConfig {
     }
 }
 
-/// §Fase 50.d/2 (v2.4.0) — minimal `ServerConfig` for embedded
+/// v2.4.0/2 (v2.4.0) — minimal `ServerConfig` for embedded
 /// callers (notably `axon-enterprise`'s runtime executor that
 /// constructs `ServerState` to drive `server_execute_streaming`).
 ///
@@ -322,7 +322,7 @@ impl Default for ServerConfig {
     }
 }
 
-// §Fase 118.b.2 — `parse_truthy_env` MOVED to `crate::env_flags`, a leaf module
+// v2.81.0 — `parse_truthy_env` MOVED to `crate::env_flags`, a leaf module
 // with no dependencies. It reads an env var and lowercases a string; it had no
 // business living in the HTTP server, and `main.rs` — which calls it while
 // assembling `ServerConfig` — could not have compiled without `axum` otherwise.
@@ -341,7 +341,7 @@ pub struct ServerState {
     pub event_bus: EventBus,
     pub supervisor: DaemonSupervisor,
     pub versions: VersionRegistry,
-    /// §Fase 32.b — Dynamic HTTP routes registered from axonendpoint
+    /// v1.23.0 — Dynamic HTTP routes registered from axonendpoint
     /// declarations at deploy time (D1, D11). Key is
     /// `(method_uppercase, path)`; value carries the metadata needed
     /// for request-time dispatch (flow name + transport + keepalive +
@@ -358,27 +358,27 @@ pub struct ServerState {
     /// this state via FastAPI route registration; both stacks
     /// produce byte-identical route sets from the same source.
     pub dynamic_routes: HashMap<(String, String), DynamicEndpointRoute>,
-    /// §Fase 32.c — Per-name `type T { … }` snapshot consulted by the
+    /// v1.23.0 — Per-name `type T { … }` snapshot consulted by the
     /// dynamic-route fallback handler at request time to validate the
     /// HTTP request body against the axonendpoint's declared
     /// `body: T`. Populated alongside `dynamic_routes` at every
     /// successful `/v1/deploy`. Last-wins on cross-deploy type name
     /// collision (a known limitation of the 32.c surface; a future
-    /// type-registry fase will add deploy-scoped namespacing).
+    /// type-registry cycle will add deploy-scoped namespacing).
     pub dynamic_types: HashMap<String, crate::route_schema::TypeSchema>,
-    /// §Fase 112.c — the Cognitive-I/O supervisor for the deployed program.
+    /// v2.67.0 — the Cognitive-I/O supervisor for the deployed program.
     ///
     /// `None` ⇒ the program declares no `observe`/`immune`/`ensemble`/`reconcile`,
     /// so there is no graph to drive and nothing is paid for. Built at deploy from
     /// the compiled IR — every kernel takes the declarations directly; nothing had
-    /// ever handed them to one (§112.b).
+    /// ever handed them to one (v2.67.0).
     pub cognitive_io: Option<std::sync::Arc<std::sync::Mutex<crate::cognitive_io_supervisor::CognitiveIoSupervisor>>>,
-    /// §Fase 114.a — the **top-level `budget` gates, HELD ACROSS REQUESTS**, keyed
+    /// v2.69.0 — the **top-level `budget` gates, HELD ACROSS REQUESTS**, keyed
     /// by scope.
     ///
     /// # Why they live here and not in the request
     ///
-    /// This is the difference between §114.a being a wire and being a label. A
+    /// This is the difference between v2.69.0 being a wire and being a label. A
     /// `BudgetGate` is a token bucket. **Build it per request and it starts full
     /// every time — which bounds exactly nothing.** `rate: 100 per minute` would
     /// permit 100 calls *per request*, forever, and every test of it would pass.
@@ -394,19 +394,19 @@ pub struct ServerState {
     ///
     /// `None` ⇒ the program declares no top-level `budget`, and this costs nothing.
     pub budgets: Option<std::sync::Arc<std::sync::Mutex<crate::runtime::budget_kernel::BudgetGate>>>,
-    /// §Fase 114.e — the per-channel concurrency semaphores, built at deploy from
+    /// v2.69.0 — the per-channel concurrency semaphores, built at deploy from
     /// the program's resources and held across requests. Keyed by resource; a
     /// resource with no `capacity:` has no entry (unbounded). `None` ⇒ no bounded
     /// channel in this program.
     pub channel_semaphores: Option<std::sync::Arc<crate::channel_semaphore::ChannelSemaphores>>,
-    /// §Fase 114.f — the leases over tool-held resources, built at deploy and held
+    /// v2.69.0 — the leases over tool-held resources, built at deploy and held
     /// across requests. A post-expiry vendor call is a CT-2 Anchor Breach. `None` ⇒
     /// no lease governs a tool's channel.
     pub tool_leases: Option<std::sync::Arc<crate::resource_lease::ResourceLeaseGuard>>,
-    /// §Fase 112.c — the last supervisor pass, for the ops surface. `refusals` is
+    /// v2.67.0 — the last supervisor pass, for the ops surface. `refusals` is
     /// first-class here: a system we could not observe is NOT a system that is fine.
     pub cognitive_io_last_tick: Option<serde_json::Value>,
-    /// §Fase 111.i — the deployed `socket` declarations, compiled to their
+    /// v2.67.0 — the deployed `socket` declarations, compiled to their
     /// **declared** session schema.
     ///
     /// The OSS server had **no WebSocket route at all** — while the public README
@@ -416,19 +416,19 @@ pub struct ServerState {
     /// and an OSS adopter could not open a socket to evaluate any of it.
     ///
     /// Key = socket name; value = the schema its `protocol:` names, compiled from
-    /// the IR via [`crate::session_runtime::compile`], plus the declared §41.c
+    /// the IR via [`crate::session_runtime::compile`], plus the declared v2.3.0
     /// backpressure credit. A socket whose protocol does not resolve is **not
     /// registered** — the upgrade is refused rather than served a substitute
-    /// shape, which is the defect §111 §13 found in the enterprise path.
+    /// shape, which is the defect v2.67.0 v1.6.0 found in the enterprise path.
     pub socket_schemas: HashMap<String, (crate::session::SessionType, Option<u64>)>,
-    /// §Fase 32.f — Idempotency-Key store for POST/PUT axonendpoint
+    /// v1.23.0 — Idempotency-Key store for POST/PUT axonendpoint
     /// routes. Stripe-compatible. Indexed by `(client_id,
     /// endpoint_path, idempotency_key)`. Cross-tenant isolation is a
     /// property of the composite key — two adopters cannot collide.
     /// Default 24h retention; eviction is lazy on lookup with a
     /// `reap_expired` helper available for periodic background sweeps.
     pub idempotency_store: crate::idempotency::IdempotencyStore,
-    /// §Fase 32.h — Axonendpoint replay log. Append-only, keyed by
+    /// v1.23.0 — Axonendpoint replay log. Append-only, keyed by
     /// trace_id. Populated on every successful 2xx response when the
     /// route's `replay_enabled` is true. Consulted by
     /// `GET /v1/replay/<trace_id>` for regulatory audit.
@@ -470,12 +470,12 @@ pub struct ServerState {
     pub backend_registry: HashMap<String, BackendRegistryEntry>,
     pub axon_stores: HashMap<String, AxonStoreInstance>,
     pub dataspaces: HashMap<String, DataspaceInstance>,
-    /// §Fase 108.b — the deterministic columnar engine holding every
+    /// v2.63.0 — the deterministic columnar engine holding every
     /// DECLARED dataspace (populated by the deploy hook from the compiled
     /// `ir.dataspace_specs`; the injection port the data-plane verbs
     /// execute against). Distinct from `dataspaces` above — that map is
-    /// the pre-§108 REST/MCP surface, re-founded over this engine in
-    /// §108.e (D108.6).
+    /// the pre-v2.63.0 REST/MCP surface, re-founded over this engine in
+    /// v2.63.0.
     pub dataspace_engine: crate::dataspace_engine::SharedDataspaceEngine,
     pub shields: HashMap<String, ShieldInstance>,
     pub corpora: HashMap<String, CorpusInstance>,
@@ -914,7 +914,7 @@ impl ServerMetrics {
 }
 
 impl ServerState {
-    // §Fase 50.d/2 (v2.4.0) — publicized so external crates (notably
+    // v2.4.0/2 (v2.4.0) — publicized so external crates (notably
     // `axon-enterprise`'s runtime executor) can construct a
     // `ServerState` without reimplementing the persistence-recovery
     // dance. The constructor is total + safe for callers without
@@ -994,29 +994,29 @@ impl ServerState {
             event_bus,
             supervisor,
             versions: VersionRegistry::new(),
-            // §Fase 32.b — dynamic_routes is populated lazily by
+            // v1.23.0 — dynamic_routes is populated lazily by
             // deploy_handler. Empty at startup; the legacy fallback
             // handler returns 404 for unrecognized paths until the
             // first /v1/deploy that registers axonendpoints with
             // explicit `path:` declarations.
             dynamic_routes: HashMap::new(),
-            // §Fase 32.c — Per-name type schemas captured alongside the
+            // v1.23.0 — Per-name type schemas captured alongside the
             // dynamic routes for body-schema validation at request time.
             dynamic_types: HashMap::new(),
-            // §Fase 112.c — built at deploy from the compiled Cognitive-I/O decls.
+            // v2.67.0 — built at deploy from the compiled Cognitive-I/O decls.
             cognitive_io: None,
-            // §Fase 114.a — top-level budget gates; built at deploy, held across requests.
+            // v2.69.0 — top-level budget gates; built at deploy, held across requests.
             budgets: None,
             channel_semaphores: None,
             tool_leases: None,
             cognitive_io_last_tick: None,
-            // §Fase 111.i — populated at deploy from the compiled `socket` decls.
+            // v2.67.0 — populated at deploy from the compiled `socket` decls.
             socket_schemas: HashMap::new(),
-            // §Fase 32.f — Idempotency-Key store with 24h default
+            // v1.23.0 — Idempotency-Key store with 24h default
             // retention. Populated on first POST/PUT request bearing
             // the header; consulted on every repeat.
             idempotency_store: crate::idempotency::IdempotencyStore::default(),
-            // §Fase 32.h — Axonendpoint replay log with 30-day default
+            // v1.23.0 — Axonendpoint replay log with 30-day default
             // retention. Populated on every successful 2xx response
             // when route.replay_enabled is true; consulted by
             // `GET /v1/replay/<trace_id>` for regulatory audit.
@@ -1089,7 +1089,7 @@ impl ServerState {
     }
 }
 
-// §Fase 50.d/2 (v2.4.0) — publicized alongside `server_execute_streaming`
+// v2.4.0/2 (v2.4.0) — publicized alongside `server_execute_streaming`
 // so external crates can construct + thread the shared server state
 // into the streaming entry point. The wrapper type stays a `type`
 // alias so adopters that prefer the explicit `Arc<Mutex<ServerState>>`
@@ -1657,11 +1657,11 @@ pub struct DeployRequest {
     /// Optional filename for error messages.
     #[serde(default)]
     pub filename: String,
-    /// Deploy-scoped execution backend. §Fase 36.e (D3) — when set to
+    /// Deploy-scoped execution backend. v1.31.0 (D3) — when set to
     /// an explicit, concrete value this becomes the declared backend
     /// for every deployed `axonendpoint` route that did not declare
     /// its own `backend:`. The default is `"auto"` (transparent — the
-    /// routes resolve down the Fase 36 D1 ladder; D5 forbids a silent
+    /// routes resolve down the v1.31.0 D1 ladder; D5 forbids a silent
     /// degradation to a no-op). Pre-36 the default was `"anthropic"`,
     /// but the dynamic-route execution path never consulted this
     /// field, so the change cannot regress a working deploy (D9).
@@ -1736,13 +1736,13 @@ async fn deploy_handler(
         })));
     }
 
-    // §Fase 31.b — populate AxonEndpoint.implicit_transport on the
+    // v1.22.0 — populate AxonEndpoint.implicit_transport on the
     // AST so downstream consumers (route registration, runtime
     // classifier, audit log) see the type-driven inference. Mutates
     // program in place; idempotent.
     crate::type_checker::compute_implicit_transports(&mut program);
 
-    // §Fase 32.b — Collect dynamic routes from the program's
+    // v1.23.0 — Collect dynamic routes from the program's
     // AxonEndpoint declarations + detect intra-program path
     // collisions (D2 within deploy). The collected table is merged
     // into ServerState.dynamic_routes below; cross-deploy collisions
@@ -1761,10 +1761,10 @@ async fn deploy_handler(
         }
     };
 
-    // §Fase 36.e (D3) — stop discarding `DeployRequest.backend`.
+    // v1.31.0 (D3) — stop discarding `DeployRequest.backend`.
     apply_deploy_backend_default(&mut incoming_routes, &payload.backend);
 
-    // §Fase 36.k (D10) — deploy-time backend resolution check. Run the
+    // v1.31.0 (D10) — deploy-time backend resolution check. Run the
     // D1 ladder for every collected route against the server's CURRENT
     // environment (operator-tuned registry scores + provider API keys
     // + server default). A route whose backend cannot be resolved will
@@ -1829,7 +1829,7 @@ async fn deploy_handler(
         warns
     };
 
-    // §Fase 32.c — Capture every `type T { … }` declaration in the
+    // v1.23.0 — Capture every `type T { … }` declaration in the
     // deployed source. Consulted by the dynamic-route fallback handler
     // to validate request bodies against the axonendpoint's declared
     // `body:` type. Empty programs produce an empty table; routes with
@@ -1839,14 +1839,14 @@ async fn deploy_handler(
 
     let ir = crate::ir_generator::IRGenerator::new().generate(&program);
 
-    // §Fase 108.b — the dataspace deploy hook: instantiate every DECLARED
+    // v2.63.0 — the dataspace deploy hook: instantiate every DECLARED
     // dataspace in the deterministic columnar engine, NOW. Before this hook
     // existed, `dataspace_specs` was `#[serde(skip)]`-hidden and read by
     // nothing — a declared dataspace reached no runtime state at all (the
-    // §108 ground-truth finding). Merge semantics: a new name creates an
+    // v2.63.0 ground-truth finding). Merge semantics: a new name creates an
     // empty store; a re-declared name replaces its store (redeploy is
     // restart-equivalent for that dataspace — the OSS engine is in-memory,
-    // D108.8). An invalid spec refuses the DEPLOY, all-or-nothing: a
+    // the design decision). An invalid spec refuses the DEPLOY, all-or-nothing: a
     // program must never half-exist.
     if !ir.dataspace_specs.is_empty() {
         let engine = {
@@ -1868,7 +1868,7 @@ async fn deploy_handler(
         }
     }
 
-    // §Fase 37.x.g (D8) — eager deploy-time store-schema verification.
+    // v1.32.0 (D8) — eager deploy-time store-schema verification.
     // Every declared `postgresql` axonstore is resolved + introspected
     // NOW, against the live database — the failure of a store schema
     // moves from the first production request to deploy. A store
@@ -1878,7 +1878,7 @@ async fn deploy_handler(
     // brittle). The successful resolutions warm the process schema
     // cache, so the first runtime operation is a cache hit.
     //
-    // §Fase 38.j (D3 + D8) — When `ServerConfig.schemas_dir` is set,
+    // v1.31.0 (D3 + D8) — When `ServerConfig.schemas_dir` is set,
     // load + merge every `*.axon-schema.json` manifest under the
     // directory BEFORE verification, and pass the merged manifest into
     // `verify_postgres_schemas_with_manifest`. This activates the
@@ -1916,7 +1916,7 @@ async fn deploy_handler(
             }
         };
 
-    // §Fase 113 — the deploy-time schema verifier must resolve stores exactly as a
+    // v2.67.0 — the deploy-time schema verifier must resolve stores exactly as a
     // flow run does, or it would verify a DIFFERENT database than the one the flow
     // will talk to. (An un-resourced store keeps its legacy `connection:` path.)
     let store_report = match crate::store::registry::StoreRegistry::build_governed(
@@ -1994,7 +1994,7 @@ async fn deploy_handler(
 
         s.metrics.active_daemons = s.daemons.len() as u32;
 
-        // §Fase 32.b — Merge dynamic routes into live state. Cross-
+        // v1.23.0 — Merge dynamic routes into live state. Cross-
         // deploy path collisions (D2) detected here; on collision we
         // return early before recording the deploy + emitting events
         // so the failed deploy doesn't pollute the audit trail.
@@ -2008,16 +2008,16 @@ async fn deploy_handler(
             })));
         }
 
-        // §Fase 32.c — Merge the per-deploy type table into live state.
+        // v1.23.0 — Merge the per-deploy type table into live state.
         // Last-wins semantics on cross-deploy name conflict (a future
-        // type-registry fase will add deploy-scoped namespacing); routes
+        // type-registry cycle will add deploy-scoped namespacing); routes
         // are atomic above this point, so the type table only updates
         // when route merge succeeded.
         for (name, schema) in &incoming_types {
             s.dynamic_types.insert(name.clone(), schema.clone());
         }
 
-        // §Fase 114.a — build the top-level `budget` gates, ONCE, at deploy.
+        // v2.69.0 — build the top-level `budget` gates, ONCE, at deploy.
         //
         // They must outlive the requests they govern. A `BudgetGate` is a token
         // bucket: rebuilt per request it starts full every time, and `rate: 100 per
@@ -2045,7 +2045,7 @@ async fn deploy_handler(
             s.budgets = merged.map(|g| std::sync::Arc::new(std::sync::Mutex::new(g)));
         }
 
-        // §Fase 114.e — build the channel concurrency semaphores from the
+        // v2.69.0 — build the channel concurrency semaphores from the
         // program's resources, ONCE, at deploy. They must outlive requests: a
         // semaphore rebuilt per request starts full and bounds nothing.
         let sems = crate::channel_semaphore::ChannelSemaphores::from_resources(&ir.resources);
@@ -2055,9 +2055,9 @@ async fn deploy_handler(
             Some(std::sync::Arc::new(sems))
         };
 
-        // §Fase 114.f — acquire the leases over tool-held resources, ONCE, at
+        // v2.69.0 — acquire the leases over tool-held resources, ONCE, at
         // deploy. `axon-T945` guarantees a leased resource has exactly one holder,
-        // so a store-held lease stays in the StoreRegistry guard (§113.d) and a
+        // so a store-held lease stays in the StoreRegistry guard (v2.67.0) and a
         // tool-held lease lives here — the two never charge the same lease.
         match crate::resource_lease::ResourceLeaseGuard::from_ir(&ir.leases, &ir.resources) {
             Ok(guard) => {
@@ -2079,9 +2079,9 @@ async fn deploy_handler(
             }
         }
 
-        // §Fase 122.c — BACKEND CAPABILITY, checked before the program runs.
+        // v2.89.0 — BACKEND CAPABILITY, checked before the program runs.
         //
-        // §122 opened on the charge that `depth: live_network` compiles and the
+        // v2.89.0 opened on the charge that `depth: live_network` compiles and the
         // OSS runtime rejects it. The rejection was never the defect — it is
         // loud and fails closed. WHEN it arrived was: `can_analyze_depth` ran
         // only inside `analyze()`, so a flow whose seventh step is a `warden`
@@ -2089,13 +2089,13 @@ async fn deploy_handler(
         // only then refused. The audit the program was built around could not
         // run here, and the program found out after it had already acted.
         //
-        // D122.3 (ratified): the deploy gate is the SOURCE OF TRUTH, not a rung
+        // the design decision (ratified): the deploy gate is the SOURCE OF TRUTH, not a rung
         // below a compile-time capability check. A compile-time check is only
         // as honest as the manifest it reads — if the build declares a
         // capability and mounts a backend without it, the lie moves earlier
         // rather than disappearing.
         //
-        // Same all-or-nothing discipline as the §112.c graph below: a program
+        // Same all-or-nothing discipline as the v2.67.0 graph below: a program
         // that cannot run here must not half-exist.
         {
             let mut unsupported = crate::warden::unsupported_scope_depths(
@@ -2117,14 +2117,14 @@ async fn deploy_handler(
             }
         }
 
-        // §Fase 112.c — instantiate the Cognitive-I/O graph.
+        // v2.67.0 — instantiate the Cognitive-I/O graph.
         //
         // Every kernel (`AnomalyDetector`, `EnsembleAggregator`, `ReconcileLoop`)
         // takes the compiled declarations DIRECTLY — they were built for exactly
-        // this — and until §112.b nothing had ever handed them to one. The graph
+        // this — and until v2.67.0 nothing had ever handed them to one. The graph
         // was declared, type-checked, carried into the IR, and driven by nobody.
         //
-        // All-or-nothing (the §108 deploy discipline): an invalid graph REFUSES the
+        // All-or-nothing (the v2.63.0 deploy discipline): an invalid graph REFUSES the
         // deploy. A program must never half-exist — and a half-instantiated immune
         // system is worse than none, because it looks like one.
         match crate::cognitive_io_supervisor::CognitiveIoSupervisor::from_ir(&ir) {
@@ -2147,12 +2147,12 @@ async fn deploy_handler(
             }
         }
 
-        // §Fase 111.i — register every declared `socket` with the schema its
+        // v2.67.0 — register every declared `socket` with the schema its
         // `protocol:` actually names. A socket whose protocol does not resolve is
         // NOT registered: the upgrade will be refused rather than served a
         // substitute shape. (The enterprise path used to hand every socket a
         // hardcoded chat schema, so a protocol could be PROVEN dual at compile
-        // time and a different one enforced at runtime — §111 §13.)
+        // time and a different one enforced at runtime — v2.67.0 v1.6.0.)
         for sock in &ir.sockets {
             match crate::session_runtime::schema_for_socket(&ir, &sock.name) {
                 Some(schema) => {
@@ -2218,10 +2218,10 @@ async fn deploy_handler(
         "flow_count": registered.len(),
         "backend": payload.backend,
         "versions": version_results.iter().map(|(n, v)| serde_json::json!({"flow": n, "version": v})).collect::<Vec<serde_json::Value>>(),
-        // §Fase 36.k (D10) — deploy-time backend resolution warnings.
+        // v1.31.0 (D10) — deploy-time backend resolution warnings.
         // Empty when every route has a resolvable backend.
         "warnings": backend_deploy_warnings,
-        // §Fase 37.x.g (D8) — deploy-time store-schema warnings: a
+        // v1.32.0 (D8) — deploy-time store-schema warnings: a
         // declared postgresql store unreachable at deploy. Empty when
         // every declared store verified. Non-fatal — the D9 runtime
         // resolution still applies.
@@ -2248,24 +2248,24 @@ pub struct ExecuteRequest {
     /// Backend for execution (default: "stub").
     #[serde(default = "default_execute_backend")]
     pub backend: String,
-    /// §Fase 37.b (D1) — the parsed HTTP request body, carried so the
+    /// v1.32.0 (D1) — the parsed HTTP request body, carried so the
     /// flow's declared parameters bind from it (the Request Binding
     /// Contract) on the JSON dynamic-route transport. `#[serde(default)]`
     /// ⇒ `None` for a legacy `/v1/execute` RPC hit that sends only
     /// `{flow, backend}` (D5 backwards-compat).
     #[serde(default)]
     pub request_body: Option<serde_json::Value>,
-    /// §Fase 37.y (D3) — URL path captures from the dynamic-route
+    /// v1.32.0 (D3) — URL path captures from the dynamic-route
     /// dispatcher (e.g. `{"tenant_id": "acme"}` for a route
     /// `/api/tenants/{tenant_id}`). Empty for the legacy
     /// `/v1/execute` RPC path (D5 backwards-compat).
     #[serde(default)]
     pub request_path: HashMap<String, String>,
-    /// §Fase 37.y (D3) — URL query string parsed name → value.
+    /// v1.32.0 (D3) — URL query string parsed name → value.
     /// Empty for callers without a query string.
     #[serde(default)]
     pub request_query: HashMap<String, String>,
-    /// §Fase 39.b — the declared output type from the originating
+    /// v2.0.0 — the declared output type from the originating
     /// axonendpoint, propagated through `execute_handler` so the
     /// FlowEnvelope's `ontological_type` slot reflects the endpoint
     /// contract. Empty for legacy `/v1/execute` calls without a
@@ -2282,7 +2282,7 @@ fn default_execute_backend() -> String {
     "stub".to_string()
 }
 
-// §Fase 118.b.2 — `ServerExecutionResult` and `EnforcementSummaryWire` MOVED to
+// v2.81.0 — `ServerExecutionResult` and `EnforcementSummaryWire` MOVED to
 // `crate::execution_result`, a leaf module with no dependencies.
 //
 // THE THIRD INSTANCE OF THE SMELL, and the largest so far: two pure-data structs
@@ -2297,12 +2297,12 @@ fn default_execute_backend() -> String {
 // including `axon-enterprise`'s `axon::axon_server::ServerExecutionResult`.
 pub use crate::execution_result::{EnforcementSummaryWire, ServerExecutionResult};
 
-/// §Fase 120.f — a narrow, DEFAULTED seam onto [`server_execute`] so a gate can
+/// v2.87.0 — a narrow, DEFAULTED seam onto [`server_execute`] so a gate can
 /// drive the real server path from source and observe whether anything ran.
 ///
 /// It exists because the property that matters is not "the envelope carries a
 /// message" but **"not one step executed"**, and that is only observable from
-/// outside if the path is reachable from outside. The §120.e audit's whole
+/// outside if the path is reachable from outside. The v2.87.0 audit's whole
 /// lesson is that a law proved against an internal helper says nothing about
 /// the door the binary opens; a seam onto the door itself is the smallest thing
 /// that avoids repeating it.
@@ -2321,8 +2321,8 @@ pub fn server_execute_for_test(
         source_file,
         flow_name,
         "stub",
-        // §Fase 122.d.1 — a test helper has no verified principal, so it passes
-        // the unscoped tenant VERBATIM rather than inventing one. §95.f's rule:
+        // v2.89.0 — a test helper has no verified principal, so it passes
+        // the unscoped tenant VERBATIM rather than inventing one. v2.49.0's rule:
         // with no scope, custody and mint fail CLOSED, which is the correct
         // answer for a caller that cannot say who it is.
         "",
@@ -2347,12 +2347,12 @@ fn server_execute(
     source_file: &str,
     flow_name: &str,
     backend: &str,
-    // §Fase 122.d.1 — the VERIFIED tenant, now a PARAMETER rather than a
+    // v2.89.0 — the VERIFIED tenant, now a PARAMETER rather than a
     // task-local this function reads for itself.
     //
     // # The measurement that forced this
     //
-    // §95.f bridged the request-scoped tenant task-local to the executor's
+    // v2.49.0 bridged the request-scoped tenant task-local to the executor's
     // explicit `tenant_id`, and did it right here — `let tenant_id =
     // crate::tenant::current_tenant_id();`. The bridge was correct and it was
     // on the WRONG SIDE OF A THREAD BOUNDARY.
@@ -2367,10 +2367,10 @@ fn server_execute(
     // async="acme"   spawn_blocking="default"
     // ```
     //
-    // So §95.f's guarantee — *"custody / mint / session run under the verified
+    // So v2.49.0's guarantee — *"custody / mint / session run under the verified
     // tenant, never ambient downstream"* — held on the enterprise deploy-API
     // path (which passes `route.tenant_id` explicitly) and was silently void on
-    // the OSS HTTP door. `fase95f_executor_tenant_scope.rs` did not catch it
+    // the OSS HTTP door. `executor_tenant_scope.rs` did not catch it
     // because it drives `execute_server_flow` DIRECTLY, never through the
     // handler: a green suite over a path production does not take.
     //
@@ -2378,37 +2378,37 @@ fn server_execute(
     // must now name where the tenant came from, and a caller on the far side of
     // a `spawn_blocking` cannot pretend the ambient value is still there.
     //
-    // §122.d needed this before it could mount a cache: the tenant is a
-    // component of every cache key (D85.7/D85.11) precisely so a mis-namespaced
+    // v2.89.0 needed this before it could mount a cache: the tenant is a
+    // component of every cache key precisely so a mis-namespaced
     // backend cannot leak, and keying every request under `"default"` would
     // have turned a scoping bug into a cross-tenant read.
     tenant_id: &str,
     api_key_override: Option<&str>,
-    // §Fase 37.b (D1) — the parsed request body for the Request
+    // v1.32.0 (D1) — the parsed request body for the Request
     // Binding Contract; `None` for callers with no HTTP request body.
     request_body: Option<&serde_json::Value>,
-    // §Fase 37.y (D3) — URL path captures (from axum's dynamic-route
+    // v1.32.0 (D3) — URL path captures (from axum's dynamic-route
     // `Path<HashMap>` extractor). Empty map for callers without a
     // dynamic route (D5 backwards-compat).
     request_path: &std::collections::HashMap<String, String>,
-    // §Fase 37.y (D3) — URL query string parsed as name → value.
+    // v1.32.0 (D3) — URL query string parsed as name → value.
     // Empty map for callers with no query string.
     request_query: &std::collections::HashMap<String, String>,
-    // §Fase 108.b — the process-wide columnar engine (from ServerState,
+    // v2.63.0 — the process-wide columnar engine (from ServerState,
     // populated by the deploy hook). `None` for callers with no server
-    // state ⇒ the data-plane verbs fail CLOSED (§108.a).
+    // state ⇒ the data-plane verbs fail CLOSED (v2.63.0).
     dataspace_engine: Option<crate::dataspace_engine::SharedDataspaceEngine>,
-    // §Fase 114.a — the program's top-level `budget` gate, HELD ON `ServerState`
+    // v2.69.0 — the program's top-level `budget` gate, HELD ON `ServerState`
     // and therefore alive across requests. `None` ⇒ no budget declared, and tool
-    // dispatch is unconditional (byte-identical to pre-§114).
+    // dispatch is unconditional (byte-identical to pre-v2.69.0).
     //
     // It is passed IN rather than rebuilt here on purpose: a token bucket
     // constructed per request starts full every time, so `rate: 100 per minute`
     // would silently mean "100 per request, forever" — a gate that cannot deny.
     http_budget: Option<std::sync::Arc<std::sync::Mutex<crate::runtime::budget_kernel::BudgetGate>>>,
-    // §Fase 114.e — the per-channel concurrency semaphores, held on ServerState.
+    // v2.69.0 — the per-channel concurrency semaphores, held on ServerState.
     http_channel_sems: Option<std::sync::Arc<crate::channel_semaphore::ChannelSemaphores>>,
-    // §Fase 114.f — the tool-lease guard, held on ServerState.
+    // v2.69.0 — the tool-lease guard, held on ServerState.
     http_tool_leases: Option<std::sync::Arc<crate::resource_lease::ResourceLeaseGuard>>,
 ) -> Result<ServerExecutionResult, String> {
     let start = Instant::now();
@@ -2424,7 +2424,7 @@ fn server_execute(
         .parse()
         .map_err(|e| format!("parse error: {e:?}"))?;
 
-    // §Fase 120.f — **the type check REFUSES here.** It used to be "non-fatal
+    // v2.87.0 — **the type check REFUSES here.** It used to be "non-fatal
     // for execution", and the diagnostics were dropped one line later: the
     // caller got `success: false` and a COUNT, with no way to learn what was
     // wrong, while the flow ran to completion.
@@ -2445,7 +2445,7 @@ fn server_execute(
     // and SCHEDULED DAEMON EXECUTIONS, where nobody is watching and the tick
     // repeats.
     //
-    // Found by the §120.e audit: *which subsystems have two doors, and which
+    // Found by the v2.87.0 audit: *which subsystems have two doors, and which
     // one does the shipped binary open?* The class does not repeat by SHAPE
     // (`IRGenerator` has one door; all twelve production `TypeChecker` sites
     // call `check`). It repeated by DISPOSITION, here.
@@ -2494,9 +2494,9 @@ fn server_execute(
     let ir = crate::ir_generator::IRGenerator::new().generate(&program);
 
     // Execute via runner
-    // §Fase 95.f — the executor takes an EXPLICIT tenant, so custody / mint /
+    // v2.49.0 — the executor takes an EXPLICIT tenant, so custody / mint /
     // session run under the verified one (never ambient downstream).
-    // §Fase 122.d.1 — and it now arrives as an argument. Reading the task-local
+    // v2.89.0 — and it now arrives as an argument. Reading the task-local
     // here was the bug: this function runs inside `spawn_blocking` on the
     // `/v1/execute` path, where the task-local is gone and the read silently
     // yielded `"default"`. See the parameter's own note.
@@ -2510,18 +2510,18 @@ fn server_execute(
         request_body,
         request_path,
         request_query,
-        // §Fase 58.g (D7) — the OSS server resolves relative tool
+        // v2.8.0 (D7) — the OSS server resolves relative tool
         // runtimes against the `AXON_TOOL_BASE_URL` env (single-tenant
         // per-process); the multi-tenant per-tenant override is the
         // enterprise executor's concern. Unset → no resolution (D5).
         std::env::var("AXON_TOOL_BASE_URL").ok().as_deref(),
-        // §Fase 24.g.2 — the OSS server has no per-tenant LLM endpoint
+        // v1.18.0 — the OSS server has no per-tenant LLM endpoint
         // override; the `<PROVIDER>_BASE_URL` / `_CHAT_PATH` process env
         // is applied inside the backend factory. Per-tenant overrides are
         // the enterprise executor's concern.
         None,
         None,
-        // §Fase 114.a — the HTTP path CARRIES ITS BUDGET.
+        // v2.69.0 — the HTTP path CARRIES ITS BUDGET.
         //
         // This argument used to be `None`, under the comment: *"the HTTP path
         // carries no daemon budget (effect budgets are a `daemon` surface). Tool
@@ -2537,27 +2537,27 @@ fn server_execute(
         // `ServerState::budgets`): a token bucket rebuilt per request starts full
         // every time and bounds nothing.
         http_budget,
-        // §Fase 114.e — the channel concurrency semaphores (same ServerState seam).
+        // v2.69.0 — the channel concurrency semaphores (same ServerState seam).
         http_channel_sems,
-        // §Fase 114.f — the tool-lease guard (same seam).
+        // v2.69.0 — the tool-lease guard (same seam).
         http_tool_leases,
-        // §Fase 74.f — the OSS HTTP path carries no durable event outbox (the
+        // v2.31.0 — the OSS HTTP path carries no durable event outbox (the
         // per-tenant Postgres outbox is the enterprise supervisor's concern);
         // `emit` keeps its in-process behavior here.
         None,
-        // §Fase 92.c — the OSS HTTP path owns no credential minter (the
+        // v2.46.0 — the OSS HTTP path owns no credential minter (the
         // PASETO minter is the enterprise executor's concern); a reached
         // `mint` fails closed with a loud missing-dependency error.
         None,
-        // §Fase 94.d — the OSS HTTP path owns no secret custody (the
+        // v2.48.0 — the OSS HTTP path owns no secret custody (the
         // envelope-encrypted Pg custody is the enterprise executor's
         // concern); rotate / secrets-retrieve / secret-bearing tool
         // dispatch fail closed with a loud missing-dependency error.
         None,
-        // §Fase 108.b — the deployment's columnar engine (deploy-hook
+        // v2.63.0 — the deployment's columnar engine (deploy-hook
         // populated); `None` for state-less callers ⇒ fail CLOSED.
         dataspace_engine,
-        None, // §Fase 102 scrape_overrides
+        None, // v2.56.0 scrape_overrides
 )?;
 
     // Count anchors from IR
@@ -2566,7 +2566,7 @@ fn server_execute(
     let latency_ms = start.elapsed().as_millis() as u64;
 
     Ok(ServerExecutionResult {
-        // §Fase 120.f — no `type_errors.is_empty()` conjunct: a type-invalid
+        // v2.87.0 — no `type_errors.is_empty()` conjunct: a type-invalid
         // program returned above, before executing. Reaching here means it
         // type-checked, so success is the RUN's verdict alone.
         success: run_res.success,
@@ -2579,13 +2579,13 @@ fn server_execute(
         tokens_output: run_res.tokens_output,
         anchor_checks: anchor_count,
         anchor_breaches: run_res.anchor_breaches,
-        // §Fase 65.F — a hard node failure (the runner's `error` slot) counts
+        // v2.15.0 — a hard node failure (the runner's `error` slot) counts
         // as one runtime error ON TOP of any compile-time type errors, so the
         // `FlowEnvelope`'s `derived_status`/certainty bound reflects the abort
         // (Theorem 5.1: `errors > 0 ⇒ certainty ≤ 0.99`) instead of a clean
         // `success:false` that read as a happy-path non-success.
         errors: usize::from(run_res.error.is_some()),
-        // §Fase 120.f — empty by construction on this path; the type-invalid
+        // v2.87.0 — empty by construction on this path; the type-invalid
         // case returned above WITH its messages, before any step ran.
         type_errors: Vec::new(),
         step_names: run_res.step_names,
@@ -2594,21 +2594,21 @@ fn server_execute(
         effect_policies: Vec::new(), // populated by server_execute_streaming
         enforcement_summaries: Vec::new(), // populated by 33.x.d async path
         runtime_warnings: Vec::new(), // populated by 33.x.g when LEGACY path chosen
-        // §Fase 39.c.y + 39.c.z — propagate from runtime walk.
+        // v2.0.0 — propagate from runtime walk.
         provenance_events: run_res.provenance_events,
         blame_attribution: run_res.blame_attribution,
-        // §Fase 55.b — propagate the IR-derived epistemic envelopes.
+        // v2.7.0 — propagate the IR-derived epistemic envelopes.
         epistemic_envelopes: run_res.epistemic_envelopes,
-        // §Fase 65.F — the honest hard-failure detail (named node + cause),
+        // v2.15.0 — the honest hard-failure detail (named node + cause),
         // or `None` on the clean path.
         error: run_res.error,
-        // §Fase 91.b — the run's temporal record (`now:` capture + zones).
+        // v2.46.0 — the run's temporal record (`now:` capture + zones).
         temporal_context: run_res.temporal_context,
     })
 }
 
 /// POST /v1/execute — execute a deployed flow and auto-record a trace.
-/// §Brief #63 — the hard wall-clock ceiling for a single server-side flow
+/// Brief #63 — the hard wall-clock ceiling for a single server-side flow
 /// execution. A flow that exceeds it is aborted (its blocking thread is orphaned
 /// but freed shortly by the tool's own reqwest timeout), so the request degrades
 /// to a witnessed error rather than hanging the HTTP runtime forever. Configurable
@@ -2649,7 +2649,7 @@ async fn execute_handler(
         let history = s.versions.get_history(&payload.flow);
         match history.and_then(|h| h.active()) {
             Some(active) => {
-                // §Fase 122.e — resolved on the ASYNC side, before the
+                // v2.89.0 — resolved on the ASYNC side, before the
                 // `spawn_blocking` below; the task-local is real here.
                 let key = resolve_backend_key(&s, &eff, &crate::tenant::current_tenant_id()).ok();
                 (active.source.clone(), active.source_file.clone(), eff, key)
@@ -2664,15 +2664,15 @@ async fn execute_handler(
     };
 
     // Execute with fallback chain support (outside lock — CPU-bound compilation)
-    // §Fase 37.b (D1) — `payload.request_body` carries the parsed
+    // v1.32.0 (D1) — `payload.request_body` carries the parsed
     // request body of a JSON dynamic-route hit; the flow's declared
     // parameters bind from it (the Request Binding Contract). `None`
     // for a legacy `/v1/execute` RPC call (D5 backwards-compat).
-    // §Fase 37.y (D3) — `payload.request_path` + `payload.request_query`
+    // v1.32.0 (D3) — `payload.request_path` + `payload.request_query`
     // carry the URL captures + query string parsed by the dynamic-route
     // dispatcher. Both default to empty (D5 backwards-compat) for the
     // legacy `/v1/execute` RPC path.
-    // §Brief #63 — `execute_with_fallback` calls the SYNCHRONOUS
+    // Brief #63 — `execute_with_fallback` calls the SYNCHRONOUS
     // `execute_server_flow`, which drives its own `block_on_store` runtime and
     // performs blocking `reqwest::blocking` scrape/http fetches. Running it INLINE
     // on this axum async worker means one hung fetch parks the worker and, with
@@ -2691,20 +2691,20 @@ async fn execute_handler(
     let body_owned = payload.request_body.clone();
     let path_owned = payload.request_path.clone();
     let query_owned = payload.request_query.clone();
-    // §Fase 122.d.1 — read the tenant HERE, on the async side, where the
+    // v2.89.0 — read the tenant HERE, on the async side, where the
     // task-local the middleware scoped is still in scope. One line earlier than
     // it used to be read, and it is the whole fix: everything below this point
     // runs on the blocking pool, where `current_tenant_id()` returns
     // `"default"` no matter who authenticated.
     let tenant_owned = crate::tenant::current_tenant_id();
     let exec_join = tokio::task::spawn_blocking(move || {
-        // §Fase 122.e — REBIND the task-local for the whole blocking task, on
+        // v2.89.0 — REBIND the task-local for the whole blocking task, on
         // top of passing it explicitly below.
         //
-        // The parameter fixes the executor, which is the reader §122.d.1 knew
+        // The parameter fixes the executor, which is the reader v2.89.0 knew
         // about. This fixes the ones it did not: `execute_with_fallback`'s
         // fallback-branch key resolution, every `storage_postgres` RLS read, and
-        // whatever the next fase adds in here without thinking about threads.
+        // whatever the next cycle adds in here without thinking about threads.
         // Belt AND braces, deliberately — the parameter makes the boundary
         // visible in the signature, the rebind makes forgetting it survivable.
         let tenant_for_scope = tenant_owned.clone();
@@ -2822,7 +2822,7 @@ async fn execute_handler(
                 "server",
             );
 
-            // §Fase 39.b — wrap the legacy ServerExecutionResult into
+            // v2.0.0 — wrap the legacy ServerExecutionResult into
             // the canonical FlowEnvelope wire shape (ψ-vector
             // serialization). Per D2 the wire IS the FlowEnvelope;
             // the .seal() invariant structurally enforces Theorem 5.1
@@ -5093,17 +5093,17 @@ async fn axonstore_transact_handler(
     })))
 }
 
-// ── Dataspace endpoints — the deterministic data plane (§108.x, D108.6) ─────
+// ── Dataspace endpoints — the deterministic data plane (v2.63.0, the design decision) ─────
 //
 // Re-founded over the DECLARED engine (`ServerState.dataspace_engine`).
-// Pre-§108.x these handlers ran a free-form in-memory CRUD that no
+// Pre-v2.63.0 these handlers ran a free-form in-memory CRUD that no
 // compiled program could reach — two sources of truth for what a
-// dataspace IS. Now: *authority is declared* (§76) — a dataspace exists
+// dataspace IS. Now: *authority is declared* (v2.33.0) — a dataspace exists
 // because a deployed program declares it (axon-T928); this surface is a
 // governed VIEW over those declarations (list / clear / ingest / the
 // relational verbs), never a second creator.
 
-/// POST /v1/dataspace — RETIRED (§108.x, D108.6). A dataspace is a
+/// POST /v1/dataspace — RETIRED (v2.63.0, the design decision). A dataspace is a
 /// DECLARATION, not an API object: free-form creation would mint stores
 /// no compile-time law ever checked. The refusal teaches the grammar.
 async fn dataspace_create_handler(
@@ -5152,7 +5152,7 @@ async fn dataspace_list_handler(
 
 /// DELETE /v1/dataspace/{name} — CLEAR a declared dataspace's batches.
 /// The declaration (and therefore the store + schema) persists — only
-/// the ingested data is dropped (whole-dataspace granularity, D108.2).
+/// the ingested data is dropped (whole-dataspace granularity, the design decision).
 async fn dataspace_delete_handler(
     State(state): State<SharedState>,
     headers: HeaderMap,
@@ -5193,8 +5193,8 @@ async fn dataspace_delete_handler(
 
 /// POST /v1/dataspace/{name}/ingest — governed HTTP ingest into a
 /// DECLARED dataspace, through the SAME deterministic loaders the
-/// `ingest` verb uses: declared format, bounds-BEFORE-parse (§100),
-/// typed refusal (D108.7), born-Untrusted provenance (§98).
+/// `ingest` verb uses: declared format, bounds-BEFORE-parse (v2.54.0),
+/// typed refusal, born-Untrusted provenance (v2.52.0).
 /// Body: { "source": "<raw text>", "format": "csv"|"json",
 ///         "max_bytes"?: N, "max_rows"?: N }
 async fn dataspace_ingest_handler(
@@ -5286,7 +5286,7 @@ fn query_output_json(out: crate::dataspace_engine::QueryOutput) -> serde_json::V
 }
 
 /// POST /v1/dataspace/{name}/focus — σ∘π over a declared dataspace.
-/// Body: { "where"?: "<the §35 filter grammar>", "select"?: [cols] }
+/// Body: { "where"?: "<the v1.30.0 filter grammar>", "select"?: [cols] }
 async fn dataspace_focus_handler(
     State(state): State<SharedState>,
     headers: HeaderMap,
@@ -5380,7 +5380,7 @@ async fn dataspace_aggregate_handler(
 }
 
 /// GET /v1/dataspace/{name}/explore — the deterministic profile
-/// (SHAPE, never content — Text zone bounds suppressed, D108.10).
+/// (SHAPE, never content — Text zone bounds suppressed, the design decision).
 async fn dataspace_explore_handler(
     State(state): State<SharedState>,
     headers: HeaderMap,
@@ -9864,7 +9864,7 @@ pub struct AuditExportQuery {
 fn default_audit_export_format() -> String { "jsonl".into() }
 fn default_audit_export_limit() -> usize { 1000 }
 
-/// §Fase 32.h — `GET /v1/replay/<trace_id>` — return the recorded
+/// v1.23.0 — `GET /v1/replay/<trace_id>` — return the recorded
 /// replay binding for an axonendpoint POST/PUT.
 ///
 /// Auth: `AccessLevel::ReadOnly` (same as `/v1/audit` — auditors
@@ -9893,7 +9893,7 @@ fn default_audit_export_limit() -> usize { 1000 }
 /// ```
 ///
 /// Response header `Replay-Status: deterministic | non_deterministic`
-/// per plan vivo §9.2.
+/// per plan vivo section 9.2.
 async fn replay_get_handler(
     State(state): State<SharedState>,
     headers: HeaderMap,
@@ -9936,9 +9936,9 @@ async fn replay_get_handler(
 
     use base64::engine::general_purpose::STANDARD as B64;
     use base64::Engine;
-    // §Fase 33.x.f — `step_audit` field surfaces the per-step
+    // v1.24.0 — `step_audit` field surfaces the per-step
     // sequence (D6). Empty for legacy JSON 2xx capture entries
-    // (Fase 32.h shape); populated for SSE routes whose
+    // (v1.23.0 shape); populated for SSE routes whose
     // `replay: true` declaration fired the streaming per-step
     // recording. The wire field is elided when empty per the
     // serde `skip_serializing_if` on the entry struct, but here
@@ -9948,7 +9948,7 @@ async fn replay_get_handler(
     let step_audit_json = serde_json::to_value(&entry.step_audit).unwrap_or_else(|_| {
         serde_json::Value::Array(Vec::new())
     });
-    // §Fase 33.x.g — Always include `runtime_warnings` on the GET
+    // v1.24.0 — Always include `runtime_warnings` on the GET
     // payload (possibly `[]`) so adopter dashboards have a stable
     // wire field shape even for legacy JSON-mode entries that
     // never carry warnings.
@@ -13748,26 +13748,26 @@ fn execute_with_fallback(
     source_file: &str,
     flow_name: &str,
     primary_backend: &str,
-    // §Fase 122.d.1 — the verified tenant, captured on the ASYNC side of the
+    // v2.89.0 — the verified tenant, captured on the ASYNC side of the
     // `spawn_blocking` this function runs inside and passed down. See
     // `server_execute`'s parameter note for what reading it here instead cost.
     tenant_id: &str,
     primary_key: Option<&str>,
-    // §Fase 37.b (D1) — the parsed request body for the Request
+    // v1.32.0 (D1) — the parsed request body for the Request
     // Binding Contract, threaded through to `runner::execute_server_flow`.
     request_body: Option<&serde_json::Value>,
-    // §Fase 37.y (D3) — path + query maps threaded alongside the body
+    // v1.32.0 (D3) — path + query maps threaded alongside the body
     // so the runner's binder sees the full three-source set.
     request_path: &std::collections::HashMap<String, String>,
     request_query: &std::collections::HashMap<String, String>,
 ) -> (Result<ServerExecutionResult, String>, String) {
-    // §Fase 108.b — the process engine, resolved ONCE for primary +
+    // v2.63.0 — the process engine, resolved ONCE for primary +
     // every fallback attempt (the engine is backend-independent).
     let ds_engine = {
         let s = state.lock().unwrap();
         s.dataspace_engine.clone()
     };
-    // §Fase 114.a — the top-level `budget` gate, resolved from `ServerState` and
+    // v2.69.0 — the top-level `budget` gate, resolved from `ServerState` and
     // therefore the SAME bucket every request. Cloned Arc, not rebuilt: a fresh
     // gate per request starts full and bounds nothing.
     //
@@ -13793,7 +13793,7 @@ fn execute_with_fallback(
         source_file,
         flow_name,
         primary_backend,
-        // §Fase 122.d.1 — the tenant captured on the async side, forwarded.
+        // v2.89.0 — the tenant captured on the async side, forwarded.
         tenant_id,
         primary_key,
         request_body,
@@ -13825,7 +13825,7 @@ fn execute_with_fallback(
     for fallback_backend in &chain {
         let fb_key = {
             let s = state.lock().unwrap();
-            // §Fase 122.e — the tenant threaded in, not read here. This branch
+            // v2.89.0 — the tenant threaded in, not read here. This branch
             // runs on the blocking pool (see this function's own doc), where
             // an ambient read yields `"default"` and the fallback would resolve
             // a DIFFERENT key than the primary attempt did.
@@ -13836,14 +13836,14 @@ fn execute_with_fallback(
             source_file,
             flow_name,
             fallback_backend,
-            // §Fase 122.d.1 — a fallback backend is still THIS tenant's run.
+            // v2.89.0 — a fallback backend is still THIS tenant's run.
             tenant_id,
             fb_key.as_deref(),
             request_body,
             request_path,
             request_query,
             Some(ds_engine.clone()),
-            // §Fase 114.a — the SAME gate the primary attempt used. A fallback with
+            // v2.69.0 — the SAME gate the primary attempt used. A fallback with
             // its own bucket would make the retry free, and a failing primary
             // backend would silently DOUBLE the adopter's vendor spend.
             http_budget.clone(),
@@ -13889,21 +13889,21 @@ fn server_execute_full(
     // Resolve key from registry
     let resolved_key = {
         let s = state.lock().unwrap();
-        // §Fase 122.e — this entry point is synchronous and has no request
+        // v2.89.0 — this entry point is synchronous and has no request
         // scope of its own; it reports whatever the caller established.
         resolve_backend_key(&s, &effective_backend, &crate::tenant::current_tenant_id()).ok()
     };
 
-    // Execute with fallback chain. §Fase 37.b — `server_execute_full`
+    // Execute with fallback chain. v1.32.0 — `server_execute_full`
     // serves non-dynamic-route callers (CLI-style RPC, batch, pipeline
     // stages); there is no HTTP request body to bind, so `None`.
-    // §Fase 37.y — non-dynamic-route callers also have no path or
+    // v1.32.0 — non-dynamic-route callers also have no path or
     // query captures; empty maps.
     let empty_path = std::collections::HashMap::new();
     let empty_query = std::collections::HashMap::new();
     let (result, actual_backend) = execute_with_fallback(
         state, source, source_file, flow_name, &effective_backend,
-        // §Fase 122.d.1 — this entry point is synchronous and has no request
+        // v2.89.0 — this entry point is synchronous and has no request
         // scope of its own, so it reports whatever the caller established.
         &crate::tenant::current_tenant_id(),
         resolved_key.as_deref(),
@@ -13929,7 +13929,7 @@ fn server_execute_full(
 
 /// Resolve the API key for `backend`, for `tenant_id`.
 ///
-/// # §Fase 122.e — the tenant is a PARAMETER, and used to be ambient
+/// # v2.89.0 — the tenant is a PARAMETER, and used to be ambient
 ///
 /// Tier 2 below is a per-tenant AWS Secrets Manager cache, and it used to key
 /// itself on `crate::tenant::current_tenant_id()` read right here. That is
@@ -14103,7 +14103,7 @@ async fn mcp_handler(
             check_auth_peek(&s, &headers, AccessLevel::ReadOnly)?;
 
             let mut tools: Vec<serde_json::Value> = Vec::new();
-            // Each deployed flow → MCP tool with CSP-derived schema (§5.3)
+            // Each deployed flow → MCP tool with CSP-derived schema (section 5.3)
             for summary in s.versions.list_flows() {
                 if let Some(active) = s.versions.get_active(&summary.flow_name) {
                     // Extract anchor constraints from flow IR for CSP schema
@@ -14128,7 +14128,7 @@ async fn mcp_handler(
                                     "description": "Input data for the flow"
                                 }
                             },
-                            // CSP constraints (§5.3): anchors that bound the output space
+                            // CSP constraints (section 5.3): anchors that bound the output space
                             "_axon_csp": {
                                 "constraints": anchors,
                                 "effect_row": "<io, epistemic:speculate>",
@@ -14139,7 +14139,7 @@ async fn mcp_handler(
                 }
             }
 
-            // AxonStore cognitive tools (CSP §5.3 schemas, Theorem 5.1)
+            // AxonStore cognitive tools (CSP section 5.3 schemas, Theorem 5.1)
             for store in s.axon_stores.values() {
                 // persist tool — raw write, c=1.0, δ=raw
                 tools.push(serde_json::json!({
@@ -14250,7 +14250,7 @@ async fn mcp_handler(
                 }));
             }
 
-            // Dataspace tools (§108.x, D108.6) — generated per DECLARED
+            // Dataspace tools (v2.63.0, the design decision) — generated per DECLARED
             // dataspace (the engine's stores), backed by the deterministic
             // data plane. One tool per verb; every result carries taint +
             // scan stats.
@@ -14323,7 +14323,7 @@ async fn mcp_handler(
                 }
             }
 
-            // Shield cognitive tools (CSP §5.3 schemas)
+            // Shield cognitive tools (CSP section 5.3 schemas)
             for sh in s.shields.values() {
                 // evaluate tool
                 tools.push(serde_json::json!({
@@ -14359,7 +14359,7 @@ async fn mcp_handler(
                 }));
             }
 
-            // Corpus cognitive tools (CSP §5.3 schemas)
+            // Corpus cognitive tools (CSP section 5.3 schemas)
             for corpus in s.corpora.values() {
                 // search tool
                 tools.push(serde_json::json!({
@@ -14433,7 +14433,7 @@ async fn mcp_handler(
                 }));
             }
 
-            // Compute cognitive tool (CSP §5.3 schema)
+            // Compute cognitive tool (CSP section 5.3 schema)
             tools.push(serde_json::json!({
                 "name": "axon_compute_evaluate",
                 "description": "Evaluate arithmetic/symbolic expression — ΛD: c=1.0 exact, c=0.99 approximate",
@@ -14458,7 +14458,7 @@ async fn mcp_handler(
                 }
             }));
 
-            // Mandate cognitive tools (CSP §5.3 schemas)
+            // Mandate cognitive tools (CSP section 5.3 schemas)
             for mandate in s.mandates.values() {
                 tools.push(serde_json::json!({
                     "name": format!("axon_mandate_{}_evaluate", mandate.name),
@@ -14493,7 +14493,7 @@ async fn mcp_handler(
                 }));
             }
 
-            // Forge cognitive tools (CSP §5.3 schemas)
+            // Forge cognitive tools (CSP section 5.3 schemas)
             for forge in s.forges.values() {
                 let template_names: Vec<&str> = forge.templates.keys().map(|k| k.as_str()).collect();
                 tools.push(serde_json::json!({
@@ -14536,7 +14536,7 @@ async fn mcp_handler(
 
             // ── Dataspace tool dispatch (axon_ds_{name}_{op}) ──
             if let Some(ds_suffix) = tool_name.strip_prefix("axon_ds_") {
-                // §108.x (D108.6) — dispatch over the DECLARED engine, through
+                // v2.63.0 — dispatch over the DECLARED engine, through
                 // the same deterministic ops the language verbs use.
                 let (ds_name, op) = if let Some(pos) = ds_suffix.rfind('_') {
                     (&ds_suffix[..pos], &ds_suffix[pos+1..])
@@ -15316,7 +15316,7 @@ async fn mcp_handler(
                 let ts = s.tenant_secrets.clone();
                 match history.and_then(|h| h.active()) {
                     Some(active) => {
-                        // §Fase 122.e - async handler: the task-local is real here.
+                        // v2.89.0 - async handler: the task-local is real here.
                         let key = resolve_backend_key(&s, backend, &crate::tenant::current_tenant_id()).ok();
                         (active.source.clone(), active.source_file.clone(), key, ts)
                     }
@@ -15348,16 +15348,16 @@ async fn mcp_handler(
             };
 
             // Execute
-            // §Fase 37.y — async-fetch path serves non-dynamic-route
+            // v1.32.0 — async-fetch path serves non-dynamic-route
             // callers; empty path + query maps.
             let empty_path = std::collections::HashMap::new();
             let empty_query = std::collections::HashMap::new();
-            // §Fase 108.b — thread the process engine.
+            // v2.63.0 — thread the process engine.
             let ds_engine = {
                 let s = state.lock().unwrap();
                 s.dataspace_engine.clone()
             };
-            // §Fase 114.a — the shared, cross-request budget gate.
+            // v2.69.0 — the shared, cross-request budget gate.
             let http_budget = {
                 let s = state.lock().unwrap();
                 s.budgets.clone()
@@ -15372,7 +15372,7 @@ async fn mcp_handler(
             };
             let result = server_execute(
                 &source, &source_file, flow_name, backend,
-                // §Fase 122.d.1 — this handler is fully async, so the task-local
+                // v2.89.0 — this handler is fully async, so the task-local
                 // the tenant middleware scoped IS genuinely in scope here. The
                 // `/v1/execute` door is the one that was not.
                 &crate::tenant::current_tenant_id(),
@@ -16438,7 +16438,7 @@ async fn mcp_stream_handler(
         let history = s.versions.get_history(flow_name);
         match history.and_then(|h| h.active()) {
             Some(active) => {
-                // §Fase 122.e - async handler: the task-local is real here.
+                // v2.89.0 - async handler: the task-local is real here.
                 let key = resolve_backend_key(&s, backend, &crate::tenant::current_tenant_id()).ok();
                 (active.source.clone(), active.source_file.clone(), key, ts)
             }
@@ -16460,16 +16460,16 @@ async fn mcp_stream_handler(
     };
 
     // Execute
-    // §Fase 37.y — this path serves non-dynamic-route callers; pass
+    // v1.32.0 — this path serves non-dynamic-route callers; pass
     // empty path + query maps.
     let empty_path = std::collections::HashMap::new();
     let empty_query = std::collections::HashMap::new();
-    // §Fase 108.b — thread the process engine.
+    // v2.63.0 — thread the process engine.
     let ds_engine = {
         let s = state.lock().unwrap();
         s.dataspace_engine.clone()
     };
-    // §Fase 114.a — the shared, cross-request budget gate.
+    // v2.69.0 — the shared, cross-request budget gate.
     let http_budget = {
         let s = state.lock().unwrap();
         s.budgets.clone()
@@ -16484,7 +16484,7 @@ async fn mcp_stream_handler(
     };
     match server_execute(
         &source, &source_file, flow_name, backend,
-        // §Fase 122.d.1 — async handler: the task-local is real here.
+        // v2.89.0 — async handler: the task-local is real here.
         &crate::tenant::current_tenant_id(),
         resolved_key.as_deref(), None,
         &empty_path, &empty_query, Some(ds_engine), http_budget, http_channel_sems, http_tool_leases,
@@ -18711,17 +18711,17 @@ pub struct StreamExecuteRequest {
     /// Backend (default "stub").
     #[serde(default = "default_execute_backend")]
     pub backend: String,
-    /// §Fase 37.b (D1) — the parsed HTTP request body, carried so the
+    /// v1.32.0 (D1) — the parsed HTTP request body, carried so the
     /// flow's declared parameters bind from it (the Request Binding
     /// Contract). `#[serde(default)]` ⇒ `None` for a `/v1/execute/sse`
     /// direct hit that sends only `{flow_name, backend}` (D5).
     #[serde(default)]
     pub request_body: Option<serde_json::Value>,
-    /// §Fase 37.y (D3) — URL path captures (same shape as
+    /// v1.32.0 (D3) — URL path captures (same shape as
     /// `ExecuteRequest.request_path`).
     #[serde(default)]
     pub request_path: HashMap<String, String>,
-    /// §Fase 37.y (D3) — URL query string parsed name → value.
+    /// v1.32.0 (D3) — URL query string parsed name → value.
     #[serde(default)]
     pub request_query: HashMap<String, String>,
 }
@@ -18845,7 +18845,7 @@ async fn execute_stream_handler(
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// §Fase 30.d — Single-shot Server-Sent Events response path.
+// v1.21.0 — Single-shot Server-Sent Events response path.
 //
 // Distinct from `execute_stream_handler` above (which is the two-stage
 // pub/sub pattern returning a JSON envelope with `consume_url`; preserved
@@ -18855,7 +18855,7 @@ async fn execute_stream_handler(
 // `POST /v1/execute/sse` — one HTTP call, one stream, terminates with
 // `event: axon.complete`.
 //
-// Wire format (per plan vivo §4):
+// Wire format (per plan vivo section 4):
 //   - Initial `retry: 5000` directive (W3C SSE reconnect hint)
 //   - Per-step `event: axon.token`, `id: <monotonic>`, `data: { ... }`
 //   - Final `event: axon.complete`, `id: <last>`, `data: { final envelope }`
@@ -18869,14 +18869,14 @@ async fn execute_stream_handler(
 // Cancel-safety: axum + hyper drop the Sse response when the client
 // disconnects. The flow executor today is synchronous (runs to
 // completion BEFORE the SSE iterator starts emitting), so there is no
-// background task to abort. A future Fase that refactors the executor
+// background task to abort. A future cycle that refactors the executor
 // to true incremental streaming will add `tokio::task::JoinHandle::abort`
 // on disconnect; the wire format does NOT change.
 // ──────────────────────────────────────────────────────────────────────────
 
 
 // ────────────────────────────────────────────────────────────────────
-//  §Fase 111.i — the session-typed WebSocket route (OSS)
+// v2.67.0 — the session-typed WebSocket route (OSS)
 // ────────────────────────────────────────────────────────────────────
 
 /// `GET /ws/{socket}` — upgrade to a session-typed dialogue.
@@ -18952,7 +18952,7 @@ async fn ws_session_handler(
 
 
 // ────────────────────────────────────────────────────────────────────
-//  §Fase 112.c — the Cognitive-I/O ops surface
+// v2.67.0 — the Cognitive-I/O ops surface
 // ────────────────────────────────────────────────────────────────────
 
 /// `GET /v1/cognitive-io` — what the supervisor last saw.
@@ -18988,7 +18988,7 @@ async fn cognitive_io_handler(State(state): State<SharedState>) -> Json<serde_js
 ///
 /// The ops/diagnostic surface, and the seam that lets the graph be exercised
 /// through the REAL deploy path in a test rather than against a hand-built
-/// supervisor (the §95.f discipline §111 spent itself learning).
+/// supervisor (the v2.49.0 discipline v2.67.0 spent itself learning).
 async fn cognitive_io_tick_handler(State(state): State<SharedState>) -> Json<serde_json::Value> {
     let sup = {
         let s = state.lock().unwrap();
@@ -19012,7 +19012,7 @@ async fn cognitive_io_tick_handler(State(state): State<SharedState>) -> Json<ser
 }
 
 
-/// §Fase 112.f — **the driver. Without it, the supervisor is not a supervisor.**
+/// v2.67.0 — **the driver. Without it, the supervisor is not a supervisor.**
 ///
 /// I documented this before I built it, and that is worth recording rather than
 /// quietly fixing: for one commit, `AXON_COGNITIVE_IO_TICK_SECS` existed **only in
@@ -19021,8 +19021,8 @@ async fn cognitive_io_tick_handler(State(state): State<SharedState>) -> Json<ser
 /// explicitly — but the deployment was not: an `immune` would never have learned a
 /// baseline, never detected anything, and never fired.
 ///
-/// **A documented behaviour the code does not have is the exact defect §111 and
-/// §112 exist to eliminate, and I shipped one into the fase whose whole purpose is
+/// **A documented behaviour the code does not have is the exact defect v2.67.0 and
+/// v2.67.0 exist to eliminate, and I shipped one into the cycle whose whole purpose is
 /// eliminating them.** Caught by re-reading my own claim against the code, which is
 /// the only thing that ever catches it.
 ///
@@ -19065,7 +19065,7 @@ pub fn spawn_cognitive_io_driver(state: SharedState) {
             let Some(sup) = sup else { continue };
 
             // The graph walk is synchronous and can block on a socket probe, so it
-            // runs on the blocking pool — the §Brief-63 lesson: a native blocking
+            // runs on the blocking pool — the Brief-63 lesson: a native blocking
             // call on the async runtime starves the entire server, healthz included.
             let summary = match tokio::task::spawn_blocking(move || {
                 sup.lock()
@@ -19095,7 +19095,7 @@ use axum::response::sse::{Event, Sse};
 use futures::stream::Stream;
 use std::convert::Infallible;
 
-// §Fase 33.z.k.g.2 (v1.28.0) — Wire-format event builders retired.
+// v1.28.0 — Wire-format event builders retired.
 // The v1.27.1 inline helpers `build_token_event` / `build_complete_event`
 // / `build_tool_call_event` / `build_error_event` were replaced by the
 // closed-catalog `WireFormatAdapter` dispatch in the SSE consumer loop
@@ -19118,12 +19118,12 @@ use std::convert::Infallible;
 
 /// Build the initial `retry:` directive event. Per W3C SSE spec, this
 /// tells the client EventSource how long to wait before reconnecting
-/// on stream drop. 5000ms is the published default in plan vivo §4.5.
+/// on stream drop. 5000ms is the published default in plan vivo section 4.5.
 fn build_retry_hint_event() -> Event {
     Event::default().retry(std::time::Duration::from_millis(5000))
 }
 
-/// §Fase 33.c — Live-streaming execution surface.
+/// v1.24.0 — Live-streaming execution surface.
 ///
 /// Spawns the synchronous executor on `tokio::task::spawn_blocking` and
 /// projects its progress onto a `tokio::sync::mpsc::UnboundedReceiver`
@@ -19156,7 +19156,7 @@ fn build_retry_hint_event() -> Event {
 ///   with real per-token streaming from the backend.
 /// - **33.e** (effect dispatcher) eventually owns the chunk-shape
 ///   decision via the declared `<stream:<policy>>` annotation.
-/// §Fase 33.e — Resolve per-step `<stream:<policy>>` effects for a
+/// v1.24.0 — Resolve per-step `<stream:<policy>>` effects for a
 /// flow's source. Returns a list of `(step_name, policy_slug)` pairs
 /// for steps that declare a stream effect.
 ///
@@ -19200,13 +19200,13 @@ fn resolve_stream_policies_for_flow(
     out
 }
 
-/// §Fase 55.b/c — re-derive the flow's epistemic envelopes from source for
+/// v2.7.0 — re-derive the flow's epistemic envelopes from source for
 /// the streaming path. Parses + generates the IR, then DELEGATES to the
 /// single shared `runner::derive_epistemic_envelopes_for_flow` the sync
 /// runner also calls — so the streaming `axon.complete` and the sync
 /// `FlowEnvelope` carry byte-identical `(base, scope, confidence)` triples
 /// by construction (there is exactly one derivation, never two that could
-/// drift — the §55.c parity invariant). Best-effort: a lex / parse failure
+/// drift — the v2.7.0 parity invariant). Best-effort: a lex / parse failure
 /// yields an empty vec and the stream proceeds unchanged (mirrors
 /// `resolve_stream_policies_for_flow`).
 pub fn resolve_epistemic_envelopes_for_flow(
@@ -19226,12 +19226,12 @@ pub fn resolve_epistemic_envelopes_for_flow(
     crate::runner::derive_epistemic_envelopes_for_flow(&ir, flow_name)
 }
 
-/// §Fase 33.f — Handles returned by [`server_execute_streaming`].
+/// v1.24.0 — Handles returned by [`server_execute_streaming`].
 ///
 /// Bundles the [`FlowExecutionEvent`] receiver with an "exited"
 /// signal the consumer can await to confirm the producer task has
 /// terminated (e.g. for cancel-safety budgets in tests / metrics).
-// §Fase 33.f / §Fase 50.d/2 (v2.4.0) — publicized so `axon-enterprise`'s
+// v1.24.0 / v2.4.0/2 (v2.4.0) — publicized so `axon-enterprise`'s
 // runtime executor can drive real per-token SSE streaming via the
 // public `server_execute_streaming` entry point. The fields are read by
 // the SSE consumer (events receiver + per-step side-channels); making
@@ -19246,7 +19246,7 @@ pub struct StreamingExecution {
     /// on a dropped consumer). Pairs with the [`crate::cancel_token::CancellationFlag`]
     /// the producer observes between emits.
     pub exited: std::sync::Arc<tokio::sync::Notify>,
-    /// §Fase 33.x.d — Per-step `EnforcementSummary` side-channel.
+    /// v1.24.0 — Per-step `EnforcementSummary` side-channel.
     ///
     /// Populated by the streaming producer
     /// ([`crate::streaming_via_dispatcher::run_streaming_via_dispatcher`],
@@ -19260,7 +19260,7 @@ pub struct StreamingExecution {
     /// Empty when no step has a declared effect policy — no enforcer is
     /// constructed, so there is no summary to publish.
     ///
-    /// §Fase 119.h — a second bullet here named the v1.24.0 legacy
+    /// v2.83.0 — a second bullet here named the v1.24.0 legacy
     /// synchronous fallback. 33.z.e deleted that path, so the only way this
     /// stays empty today is the reason above.
     ///
@@ -19272,7 +19272,7 @@ pub struct StreamingExecution {
             std::collections::HashMap<String, EnforcementSummaryWire>,
         >,
     >,
-    /// §Fase 33.x.f — Per-step audit record side-channel.
+    /// v1.24.0 — Per-step audit record side-channel.
     ///
     /// Populated by the streaming producer
     /// ([`crate::streaming_via_dispatcher::run_streaming_via_dispatcher`],
@@ -19293,7 +19293,7 @@ pub struct StreamingExecution {
     pub step_audit_records: std::sync::Arc<
         tokio::sync::Mutex<Vec<crate::axonendpoint_replay::StepAuditRecord>>,
     >,
-    /// §Fase 33.x.g — Runtime warning side-channel.
+    /// v1.24.0 — Runtime warning side-channel.
     ///
     /// Populated synchronously by `server_execute_streaming` BEFORE
     /// spawning the producer when the dispatch falls back to the
@@ -19313,24 +19313,24 @@ pub struct StreamingExecution {
     pub runtime_warnings: std::sync::Arc<
         tokio::sync::Mutex<Vec<crate::runtime_warnings::RuntimeWarning>>,
     >,
-    /// §Fase 91.b — the run's shared temporal side-channel (`now:` capture
+    /// v2.46.0 — the run's shared temporal side-channel (`now:` capture
     /// + rendered zones). Populated by the dispatcher's per-step renders;
     /// read by the SSE consumer at completion time and projected onto
     /// `axon.complete.temporal_context` (elided when no `now:` rendered —
-    /// pre-§91 wire byte-identical). `std::sync::Mutex`: the render lock is
-    /// instant and never held across an `.await` (the §67.c row-counts
+    /// pre-v2.46.0 wire byte-identical). `std::sync::Mutex`: the render lock is
+    /// instant and never held across an `.await` (the v2.21.0 row-counts
     /// discipline).
     pub temporal_state: std::sync::Arc<
         std::sync::Mutex<crate::temporal_context::TemporalState>,
     >,
 }
 
-/// §Fase 33.z.e — Single hot path through the per-IRFlowNode dispatcher.
+/// v1.24.0 — Single hot path through the per-IRFlowNode dispatcher.
 ///
 /// After 33.z.e this function has EXACTLY ONE branch: construct
 /// `DispatchCtx` + spawn `streaming_via_dispatcher::run_streaming_via_dispatcher`.
 /// No flag check, no async-vs-legacy fork, no fallback. The dispatcher
-/// (Fase 33.y 45/45 IRFlowNode coverage) is the unified production
+/// (v1.24.0 45/45 IRFlowNode coverage) is the unified production
 /// hot path. D1 invariant: zero `if/match` selecting between paths.
 ///
 /// Prior paths retired in 33.z.e:
@@ -19345,7 +19345,7 @@ pub struct StreamingExecution {
 /// Adopters on v1.26.0 who set `set_streaming_via_dispatcher(false)`
 /// hit a compile error on the missing symbol — explicit failure
 /// shape per the 33.y.l → 33.z.e deprecation cycle.
-// §Fase 33.e/§Fase 50.d/2 (v2.4.0) — publicized so `axon-enterprise`'s
+// v1.24.0/v2.4.0/2 (v2.4.0) — publicized so `axon-enterprise`'s
 // runtime executor can drive real per-token SSE streaming without
 // reimplementing the per-IRFlowNode dispatcher on its side. The
 // function builds the StreamingExecution handle (events channel + per-
@@ -19359,29 +19359,29 @@ pub fn server_execute_streaming(
     flow_name: String,
     backend: String,
     cancel: crate::cancel_token::CancellationFlag,
-    // §Fase 35.j (Pillar IV) — the request's held capability slugs,
+    // v1.30.0 (Pillar IV) — the request's held capability slugs,
     // threaded into the dispatcher so the store handlers re-check
     // capability-gated stores.
     held_capabilities: Option<Vec<String>>,
-    // §Fase 37.b (D1) — the parsed HTTP request body, threaded to the
+    // v1.32.0 (D1) — the parsed HTTP request body, threaded to the
     // dispatcher so the flow's declared parameters bind from it (the
     // Request Binding Contract). `None` for a request with no body.
     request_body: Option<serde_json::Value>,
-    // §Fase 37.y (D3) — URL path captures from the dynamic-route
+    // v1.32.0 (D3) — URL path captures from the dynamic-route
     // dispatcher. Empty map for non-dynamic-route callers.
     request_path: HashMap<String, String>,
-    // §Fase 37.y (D3) — URL query string parsed name → value.
+    // v1.32.0 (D3) — URL query string parsed name → value.
     request_query: HashMap<String, String>,
-    // §Fase 58.g (D7) — optional per-tenant / per-server tool base URL,
+    // v2.8.0 (D7) — optional per-tenant / per-server tool base URL,
     // threaded to the dispatcher so relative program-tool runtimes
     // resolve to `{base}/{slug}` (absolute runtimes stay verbatim, D5).
     // `None` → no resolution.
     tool_base_url: Option<String>,
-    // §Fase 122.d.1 — the VERIFIED tenant this streamed flow runs under.
+    // v2.89.0 — the VERIFIED tenant this streamed flow runs under.
     //
     // # A slot that never existed
     //
-    // §95.f gave `execute_server_flow` an explicit `tenant_id` and threaded it
+    // v2.49.0 gave `execute_server_flow` an explicit `tenant_id` and threaded it
     // through "~9 OSS call sites + 3 ENT". The streaming entry point was not
     // among them, and nothing recorded the omission: no parameter, no comment,
     // no test. `DispatchCtx::with_tenant_id` had exactly ONE caller in the
@@ -19393,12 +19393,12 @@ pub fn server_execute_streaming(
     // value in hand at the call site (`route.tenant_id`, verified against the
     // JWT principal) and no slot to put it in.
     //
-    // This is the same shape as §114's "real-on-sync, inert-on-SSE" finding and
-    // §120's two-doors: a subsystem whose second entry point quietly lost a
-    // guarantee the first one kept. `fase122_d1_tenant_reaches_every_door.rs`
+    // This is the same shape as v2.69.0's "real-on-sync, inert-on-SSE" finding and
+    // v2.87.0's two-doors: a subsystem whose second entry point quietly lost a
+    // guarantee the first one kept. `tenant_reaches_every_door.rs`
     // now asserts both doors, so the pair cannot drift again.
     //
-    // `""` is the honest unscoped value (§95.f: custody then fails CLOSED); it
+    // `""` is the honest unscoped value (v2.49.0: custody then fails CLOSED); it
     // is never a substitute for a tenant the caller actually knows.
     tenant_id: String,
 ) -> StreamingExecution {
@@ -19407,7 +19407,7 @@ pub fn server_execute_streaming(
     let exited = std::sync::Arc::new(tokio::sync::Notify::new());
     let exited_for_task = exited.clone();
 
-    // §Fase 33.x.d — Shared per-step EnforcementSummary side-channel.
+    // v1.24.0 — Shared per-step EnforcementSummary side-channel.
     // The async producer writes one entry per step that has a declared
     // `<stream:<policy>>` effect; the consumer reads the map when
     // emitting `axon.complete` so the wire body includes the summary.
@@ -19417,7 +19417,7 @@ pub fn server_execute_streaming(
         tokio::sync::Mutex<std::collections::HashMap<String, EnforcementSummaryWire>>,
     > = std::sync::Arc::new(tokio::sync::Mutex::new(std::collections::HashMap::new()));
 
-    // §Fase 33.x.f — Shared per-step audit record side-channel.
+    // v1.24.0 — Shared per-step audit record side-channel.
     // The async producer writes one record per step that executes;
     // the SSE handler reads them at FlowComplete and lands them in
     // the AxonendpointReplayEntry when the route declares
@@ -19427,7 +19427,7 @@ pub fn server_execute_streaming(
         tokio::sync::Mutex<Vec<crate::axonendpoint_replay::StepAuditRecord>>,
     > = std::sync::Arc::new(tokio::sync::Mutex::new(Vec::new()));
 
-    // §Fase 33.x.g — Closed-catalog runtime warnings side-channel.
+    // v1.24.0 — Closed-catalog runtime warnings side-channel.
     // The initial Vec is built synchronously below (BEFORE we wrap
     // in Arc<tokio::sync::Mutex>) so we don't need to lock in this
     // sync function context (`tokio::sync::Mutex::blocking_lock`
@@ -19435,7 +19435,7 @@ pub fn server_execute_streaming(
     // Vec empty (no warning — streaming activated correctly).
     let mut initial_warnings: Vec<crate::runtime_warnings::RuntimeWarning> = Vec::new();
 
-    // §Fase 33.x.b + 33.x.d — Resolve `auto` to a concrete backend
+    // v1.24.0 — Resolve `auto` to a concrete backend
     // BEFORE the routing decision. The dynamic-route dispatch path
     // (`dispatch_dynamic_route_handler`) passes `backend: "auto"`
     // unconditionally; the streaming-resolver doesn't recognize
@@ -19459,7 +19459,7 @@ pub fn server_execute_streaming(
         backend.clone()
     };
 
-    // §Fase 33.z.e — Backend visibility check (preserved). Unknown
+    // v1.24.0 — Backend visibility check (preserved). Unknown
     // backends surface `axon-W002 UnknownBackend` on the wire via the
     // dispatcher's BackendError pathway; the warning is pre-populated
     // synchronously so `axon.complete.warnings[*]` carries it even if
@@ -19482,9 +19482,9 @@ pub fn server_execute_streaming(
         tokio::sync::Mutex<Vec<crate::runtime_warnings::RuntimeWarning>>,
     > = std::sync::Arc::new(tokio::sync::Mutex::new(initial_warnings));
 
-    // §Fase 91.b — the shared temporal side-channel: the dispatcher's `now:`
+    // v2.46.0 — the shared temporal side-channel: the dispatcher's `now:`
     // renders populate it; the `axon.complete` envelope reads the record
-    // after the walk (§55.c parity with the sync FlowEnvelope).
+    // after the walk (v2.7.0 parity with the sync FlowEnvelope).
     let temporal_state: std::sync::Arc<
         std::sync::Mutex<crate::temporal_context::TemporalState>,
     > = std::sync::Arc::new(std::sync::Mutex::new(
@@ -19492,13 +19492,13 @@ pub fn server_execute_streaming(
     ));
     let temporal_for_complete = temporal_state.clone();
 
-    // §Fase 33.z.e — Single hot path through the per-IRFlowNode
+    // v1.24.0 — Single hot path through the per-IRFlowNode
     // dispatcher (D1 milestone). The 33.z.b feature-flagged graft +
     // 33.z.c default-on flip + 33.z.d 50-flow parity corpus together
     // proved out the dispatcher path as semantically equivalent for
     // canonical Step + structurally-graduated for orchestration /
     // cognitive / algebraic / wire / PIX / lambda shapes (45 of 45
-    // IRFlowNode variants graduated per Fase 33.y compiler-enforced
+    // IRFlowNode variants graduated per v1.24.0 compiler-enforced
     // exhaustive match).
     //
     // 33.z.e DELETES the flag (no opt-out) + the
@@ -19511,7 +19511,7 @@ pub fn server_execute_streaming(
     // construct DispatchCtx → spawn dispatcher producer. D1
     // invariant: zero `if/match` selecting between paths.
     //
-    // §Fase 65.C — resolve the per-tenant LLM API key (registry → tenant-secrets
+    // v2.15.0 — resolve the per-tenant LLM API key (registry → tenant-secrets
     // cache → env fallback) BEFORE `state` is dropped, and thread it into the
     // dispatcher. Before this, the streaming/SSE path could only ever use the
     // process env key — multi-tenant SSE either shared one key or broke. The
@@ -19519,7 +19519,7 @@ pub fn server_execute_streaming(
     // `.ok()` degrades to `None` (env key) when no key is configured anywhere.
     let resolved_api_key: Option<String> = {
         let s = state.lock().unwrap();
-        // §Fase 122.e — the verified tenant, threaded in as a parameter.
+        // v2.89.0 — the verified tenant, threaded in as a parameter.
         //
         // This is one of the two spawned contexts the parameter exists for:
         // `server_execute_streaming` is called from inside
@@ -19529,14 +19529,14 @@ pub fn server_execute_streaming(
         resolve_backend_key(&s, &effective_backend, &tenant_id).ok()
     };
 
-    // §Fase 114 — the per-deployment channel guards (`resource.capacity`
+    // v2.69.0 — the per-deployment channel guards (`resource.capacity`
     // semaphores + the `lease` decay guard), held on `ServerState` across
     // requests and set at the deploy hook. Cloned here — under the SAME lock
     // discipline as the API key, BEFORE `state` is dropped — and threaded into
     // the dispatcher so the SSE tool path (`pure_shape`) enforces `capacity:`
     // and breaches a post-expiry `lease` EXACTLY as the sync path does. Without
-    // this, the streaming ctx carried `None` and §114 was real on the sync path
-    // and inert on SSE — the "real-on-one-path" defect §111→§114 exists to end.
+    // this, the streaming ctx carried `None` and v2.69.0 was real on the sync path
+    // and inert on SSE — the "real-on-one-path" defect v2.67.0→v2.69.0 exists to end.
     let (channel_semaphores, tool_leases) = {
         let s = state.lock().unwrap();
         (s.channel_semaphores.clone(), s.tool_leases.clone())
@@ -19569,18 +19569,18 @@ pub fn server_execute_streaming(
             temporal_for_dispatcher,
             held_capabilities,
             request_body,
-            // §Fase 37.y — path + query into the dispatcher.
+            // v1.32.0 — path + query into the dispatcher.
             request_path,
             request_query,
-            // §Fase 58.g (D7) — per-tenant tool base URL.
+            // v2.8.0 (D7) — per-tenant tool base URL.
             tool_base_url,
-            // §Fase 65.C — per-tenant LLM API key.
+            // v2.15.0 — per-tenant LLM API key.
             resolved_api_key,
-            // §Fase 114 — the channel semaphores + lease guard, so the SSE tool
+            // v2.69.0 — the channel semaphores + lease guard, so the SSE tool
             // path governs `capacity:` / `lease` at parity with the sync path.
             channel_semaphores,
             tool_leases,
-            // §Fase 122.d.1 — the verified tenant, forwarded to the producer
+            // v2.89.0 — the verified tenant, forwarded to the producer
             // that builds the DispatchCtx. Captured by the caller BEFORE this
             // `tokio::spawn`, because a spawned task does not inherit the
             // request's task-local either — the same boundary that made the
@@ -19597,7 +19597,7 @@ pub fn server_execute_streaming(
         enforcement_summaries,
         step_audit_records,
         runtime_warnings,
-        // §Fase 91.b — the shared temporal side-channel (the dispatcher's
+        // v2.46.0 — the shared temporal side-channel (the dispatcher's
         // clone was moved into the spawn above).
         temporal_state: temporal_for_complete,
     }
@@ -19630,7 +19630,7 @@ pub fn server_execute_streaming(
 /// projecting each event onto the wire AS IT ARRIVES:
 ///
 /// - `FlowStart` / `StepStart` / `StepComplete` are consumed but not
-///   surfaced (preserves the byte-identical wire body that Fase
+/// surfaced (preserves the byte-identical wire body that cycle
 ///   30+31+32 SSE tests depend on — D9).
 /// - `StepToken` becomes one `axon.token` SSE event per chunk.
 /// - `FlowComplete` becomes the `axon.complete` envelope.
@@ -19640,8 +19640,8 @@ pub fn server_execute_streaming(
 /// so every `axon.token` event carries the same id as the eventual
 /// `axon.complete`. The trace entry is recorded with that id once the
 /// `FlowExecutionEvent` channel closes, so the `/v1/replay/<trace_id>`
-/// surface stays valid (D9 + Fase 30.f audit parity).
-/// §Fase 33.x.f — Replay context for dynamic-route SSE responses.
+/// surface stays valid (D9 + v1.21.0 audit parity).
+/// v1.24.0 — Replay context for dynamic-route SSE responses.
 ///
 /// Supplied by `dispatch_dynamic_route_handler` when the route has
 /// `replay: true` declared. Carries the UUID trace_id (correlation
@@ -19671,7 +19671,7 @@ async fn execute_sse_handler(
     headers: HeaderMap,
     Json(payload): Json<StreamExecuteRequest>,
 ) -> Result<Sse<impl Stream<Item = Result<Event, Infallible>>>, StatusCode> {
-    // §Fase 33.z.k.g — `/v1/execute/sse` direct hits default to the
+    // v1.24.0 — `/v1/execute/sse` direct hits default to the
     // axon W3C named-events dialect (D6 backwards-compat for this
     // legacy entrypoint; adopters on `/v1/execute/sse` never expressed
     // a dialect preference + their existing EventSource clients parse
@@ -19679,7 +19679,7 @@ async fn execute_sse_handler(
     execute_sse_handler_inner(state, headers, payload, None, "axon".to_string()).await
 }
 
-/// §Fase 33.x.f — Internal SSE handler with optional replay context.
+/// v1.24.0 — Internal SSE handler with optional replay context.
 ///
 /// Same SSE response shape as `execute_sse_handler` for both
 /// `replay_ctx = None` (direct `/v1/execute/sse` hits) and
@@ -19694,14 +19694,14 @@ async fn execute_sse_handler_inner(
     headers: HeaderMap,
     payload: StreamExecuteRequest,
     replay_ctx: Option<SseReplayContext>,
-    // §Fase 33.z.k.g (v1.28.0) — SSE wire-format dialect. Closed
+    // v1.28.0 — SSE wire-format dialect. Closed
     // catalog `{axon, openai, kimi, glm, anthropic}` (resolved by the
     // caller via `type_checker::resolve_effective_dialect` per the
     // Q1 ratification: explicit `transport: sse(<dialect>)` wins;
     // otherwise algebraic-effect flows default to `openai`, type-
     // annotation-only flows default to `axon`).
     //
-    // §33.z.k.g.2 consumes this value to drive `adapter.translate()`
+    // v1.24.0 consumes this value to drive `adapter.translate()`
     // in the consumer loop below — the producer's event-by-event
     // translation IS the dialect's wire-format projection. Axon
     // dialect emits W3C named events (`event: axon.token` +
@@ -19762,14 +19762,14 @@ async fn execute_sse_handler_inner(
             let backend_owned = payload.backend.clone();
             let client_owned = client.clone();
             let source_file_for_audit = source_file.clone();
-            // §Fase 37.b (D1) — the parsed request body for the
+            // v1.32.0 (D1) — the parsed request body for the
             // Request Binding Contract, moved into the spawned task.
             let request_body_for_task = payload.request_body.clone();
-            // §Fase 37.y — path captures + query string move into the
+            // v1.32.0 — path captures + query string move into the
             // spawned executor task alongside the body.
             let request_path_for_task = payload.request_path.clone();
             let request_query_for_task = payload.request_query.clone();
-            // §Fase 33.z.k.g.2 — clone the wire-format dialect for
+            // v1.24.0 — clone the wire-format dialect for
             // the spawned task. The adapter is constructed inside
             // the spawn closure once `trace_id` is reserved + drives
             // the consumer loop's translation of `FlowExecutionEvent`
@@ -19785,7 +19785,7 @@ async fn execute_sse_handler_inner(
                 s.trace_store.reserve_id()
             };
 
-            // §Fase 122.d.1 — read the tenant HERE, before the spawn.
+            // v2.89.0 — read the tenant HERE, before the spawn.
             //
             // The first version of this fix read it at the
             // `server_execute_streaming` call site below, with a comment
@@ -19794,16 +19794,16 @@ async fn execute_sse_handler_inner(
             // `tokio::spawn`ed task does not inherit task-locals either, so the
             // read returned `"default"` for every tenant.
             //
-            // It is the SAME defect as the `spawn_blocking` one this sub-fase
+            // It is the SAME defect as the `spawn_blocking` one this step
             // exists to fix, one level deeper, and it survived a careful reading
             // that had just finished diagnosing the identical shape. What caught
             // it was `the_sse_door_memoises_and_keys_by_tenant_too`: tenant
             // globex was served acme's memoised result. That is the argument for
-            // gates over comments, made against this very sub-fase.
+            // gates over comments, made against this very step.
             let tenant_for_task = crate::tenant::current_tenant_id();
-            // §Fase 122.e — and REBIND it for the whole spawned task, so the
+            // v2.89.0 — and REBIND it for the whole spawned task, so the
             // ambient readers inside (`resolve_backend_key`'s per-tenant
-            // Secrets Manager cache, and anything a later fase adds) see the
+            // Secrets Manager cache, and anything a later cycle adds) see the
             // real tenant rather than the `"default"` fallback. The explicit
             // parameter below stays: it is what makes the boundary visible.
             let tenant_for_scope = tenant_for_task.clone();
@@ -19817,7 +19817,7 @@ async fn execute_sse_handler_inner(
                 // — no batching after full execution. When real per-
                 // token backends ship in 33.d, this loop will deliver
                 // tokens as the network bytes arrive.
-                // §Fase 33.e — Resolve declared `<stream:<policy>>`
+                // v1.24.0 — Resolve declared `<stream:<policy>>`
                 // effects once per execution so the axon.complete wire
                 // envelope can surface the active policies. Best-effort:
                 // parse failures yield an empty vec; the streaming path
@@ -19831,7 +19831,7 @@ async fn execute_sse_handler_inner(
                 .map(|(step, slug)| (step, slug.to_string()))
                 .collect::<Vec<_>>();
 
-                // §Fase 55.b — resolve the epistemic envelopes once per
+                // v2.7.0 — resolve the epistemic envelopes once per
                 // execution (same derivation as the sync path) so the
                 // axon.complete envelope surfaces the Theorem 5.1 triples.
                 let epistemic_envelopes = resolve_epistemic_envelopes_for_flow(
@@ -19840,7 +19840,7 @@ async fn execute_sse_handler_inner(
                     &flow_name_owned,
                 );
 
-                // §Fase 33.f cancel-safety — bind the executor's
+                // v1.24.0 cancel-safety — bind the executor's
                 // lifetime to this spawned task. If the task is
                 // aborted (e.g. axum drops the Sse response because
                 // the client disconnected), the `CancelOnDrop` guard
@@ -19856,7 +19856,7 @@ async fn execute_sse_handler_inner(
                     enforcement_summaries: enforcement_summaries_for_consumer,
                     step_audit_records: step_audit_records_for_consumer,
                     runtime_warnings: runtime_warnings_for_consumer,
-                    // §Fase 91.b — the temporal side-channel for axon.complete.
+                    // v2.46.0 — the temporal side-channel for axon.complete.
                     temporal_state: temporal_for_complete,
                 } = server_execute_streaming(
                     state_for_task.clone(),
@@ -19865,23 +19865,23 @@ async fn execute_sse_handler_inner(
                     flow_name_owned.clone(),
                     backend_owned.clone(),
                     cancel.clone(),
-                    // §Fase 35.j — the request's held capabilities
+                    // v1.30.0 — the request's held capabilities
                     // (JWT bearer `capabilities` claim) for the store
                     // handlers' Pillar IV runtime re-check.
                     Some(crate::auth_scope::extract_capabilities_from_bearer(
                         &headers,
                     )),
-                    // §Fase 37.b — the parsed request body for the
+                    // v1.32.0 — the parsed request body for the
                     // Request Binding Contract.
                     request_body_for_task,
-                    // §Fase 37.y — path captures + query string.
+                    // v1.32.0 — path captures + query string.
                     request_path_for_task,
                     request_query_for_task,
-                    // §Fase 58.g (D7) — env-driven tool base URL for the
+                    // v2.8.0 (D7) — env-driven tool base URL for the
                     // OSS streaming server (single-tenant per-process);
                     // enterprise threads its per-tenant override.
                     std::env::var("AXON_TOOL_BASE_URL").ok(),
-                    // §Fase 122.d.1 — the verified tenant, captured OUTSIDE the
+                    // v2.89.0 — the verified tenant, captured OUTSIDE the
                     // enclosing `tokio::spawn` (see the note where it is read).
                     // The enterprise SSE caller passes its own
                     // `route.tenant_id`, which was already verified against the
@@ -19889,7 +19889,7 @@ async fn execute_sse_handler_inner(
                     tenant_for_task,
                 );
 
-                // §Fase 33.z.k.g.2 — Construct the wire-format adapter
+                // v1.24.0 — Construct the wire-format adapter
                 // for this request. The adapter owns its own monotonic
                 // event-ID counter + per-dialect state (role-marker
                 // emission flag for openai, content-block boundary
@@ -19954,7 +19954,7 @@ async fn execute_sse_handler_inner(
                             let flow_name = flow_name.clone();
                             let backend = backend.clone();
 
-                            // §Fase 33.x.d — read enforcement_summaries
+                            // v1.24.0 — read enforcement_summaries
                             // from the shared side-channel that the
                             // streaming async producer populates as
                             // each step's enforcer drains. The map
@@ -19972,7 +19972,7 @@ async fn execute_sse_handler_inner(
                                 ordered.sort_by(|a, b| a.0.cmp(&b.0));
                                 ordered
                             };
-                            // §Fase 33.x.g — Read the runtime
+                            // v1.24.0 — Read the runtime
                             // warnings side-channel. Empty on the
                             // happy async-streaming path; carries
                             // one W002 entry when the legacy path
@@ -19982,7 +19982,7 @@ async fn execute_sse_handler_inner(
                                 guard.clone()
                             };
 
-                            // §Fase 33.z.k.h — Read the per-step audit
+                            // v1.24.0 — Read the per-step audit
                             // records UNCONDITIONALLY (was previously
                             // gated behind `replay_ctx.is_some()`).
                             // The records flow into the CompleteEnvelope
@@ -19992,7 +19992,7 @@ async fn execute_sse_handler_inner(
                             // on those wires need per-step provenance
                             // for the vertical-regulator audit trails
                             // (PCI DSS Req 10 / FedRAMP AU-2 / FRE 502 /
-                            // 21 CFR Part 11 §11.10). The replay-log
+                            // 21 CFR Part 11 section 11.10). The replay-log
                             // write below reuses the same already-read
                             // vec to avoid double-locking the mutex.
                             let step_audit_vec: Vec<crate::axonendpoint_replay::StepAuditRecord> = {
@@ -20000,7 +20000,7 @@ async fn execute_sse_handler_inner(
                                 guard.clone()
                             };
 
-                            // §Fase 33.x.f — Write the SSE replay
+                            // v1.24.0 — Write the SSE replay
                             // entry IF the route declared `replay: true`.
                             // Reads the producer's per-step audit
                             // records from the side-channel, builds the
@@ -20038,7 +20038,7 @@ async fn execute_sse_handler_inner(
                                         response_status: 200,
                                         // SSE bodies aren't captured
                                         // server-side (per-event token
-                                        // chain is Fase 34 scope); the
+                                        // chain is v1.29.0 scope); the
                                         // step_audit records are the
                                         // per-step audit trail.
                                         response_body_hash_hex: String::new(),
@@ -20057,7 +20057,7 @@ async fn execute_sse_handler_inner(
                                 s.axonendpoint_replay.append(replay_entry);
                             }
 
-                            // §Fase 33.z.k.g.2 — Build the
+                            // v1.24.0 — Build the
                             // CompleteEnvelope from the accumulated
                             // flow state + algebraic-policy side-
                             // channels, then ask the adapter to project
@@ -20083,7 +20083,7 @@ async fn execute_sse_handler_inner(
                                 runtime_warnings: warnings_vec,
                                 step_audit_records: step_audit_vec,
                                 epistemic_envelopes: epistemic_envelopes.clone(),
-                                // §Fase 91.b — the run's temporal record, read
+                                // v2.46.0 — the run's temporal record, read
                                 // from the shared side-channel after the walk.
                                 temporal_context: crate::temporal_context::record_of(
                                     &temporal_for_complete.lock().unwrap(),
@@ -20108,7 +20108,7 @@ async fn execute_sse_handler_inner(
                         _ => wire_adapter.translate(&event),
                     };
 
-                    // §Fase 33.f cancel-safety — when the SSE tx
+                    // v1.24.0 cancel-safety — when the SSE tx
                     // returns Err the client disconnected (axum
                     // dropped the Sse response → rx dropped). Cancel
                     // the upstream producer so it stops emitting
@@ -20133,7 +20133,7 @@ async fn execute_sse_handler_inner(
                     }
                 }
 
-                // §Fase 33.z.k.g.2 — Emit dialect-specific terminator
+                // v1.24.0 — Emit dialect-specific terminator
                 // frames after the FlowComplete/FlowError translation.
                 // Axon emits nothing (terminator is in-line with the
                 // axon.complete frame); openai emits the Q7
@@ -20207,7 +20207,7 @@ async fn execute_sse_handler_inner(
         }
         None => {
             // Not-deployed: emit a single error event + dialect
-            // terminator + close. §Fase 33.z.k.g.2 — route through the
+            // terminator + close. v1.24.0 — route through the
             // wire-format adapter so EVERY dialect surfaces a well-
             // formed error. Axon emits `event: axon.error`; openai
             // emits a final chunk with finish_reason + `data: [DONE]`;
@@ -20232,7 +20232,7 @@ async fn execute_sse_handler_inner(
 
     // 30.f: wire the configured KeepAlive into the Sse response. The
     // comment text "keepalive" emits as `: keepalive\n\n` per W3C SSE
-    // §"comment line"; EventSource clients silently discard it, but
+    // "comment line"; EventSource clients silently discard it, but
     // intermediate load balancers see it as wire activity and refrain
     // from tearing the TCP connection down.
     Ok(Sse::new(rx).keep_alive(
@@ -20243,7 +20243,7 @@ async fn execute_sse_handler_inner(
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// §Fase 30.e — Content-negotiation fallback (D4 + D5 ratified 2026-05-10)
+// v1.21.0 — Content-negotiation fallback (D4 + D5 ratified 2026-05-10)
 //
 // Adds an opt-in auto-promotion of `POST /v1/execute` from JSON to SSE
 // when the client signals `Accept: text/event-stream` AND the deployed
@@ -20251,7 +20251,7 @@ async fn execute_sse_handler_inner(
 // additive: every existing v1.20.0 client hitting /v1/execute without
 // that Accept header gets the legacy JSON response verbatim (D9).
 //
-// Decision matrix (plan vivo §6.1):
+// Decision matrix (plan vivo section 6.1):
 //
 //   axonendpoint.transport     │ flow has │ Accept:           │ Server
 //   declaration on this flow   │ stream-eff│ text/event-stream │ response
@@ -20287,14 +20287,14 @@ async fn execute_sse_handler_inner(
 // axonendpoint (D5 force-promote here).
 //
 // Per-request source parse is acceptable for initial implementation;
-// a future Fase can cache parsed declarations per deployment if
+// a future cycle can cache parsed declarations per deployment if
 // throughput becomes a constraint.
 // ──────────────────────────────────────────────────────────────────────────
 
 use axum::response::IntoResponse;
 use crate::ast::{Declaration, FlowStep};
 
-/// Negotiation verdicts (plan vivo §6.1).
+/// Negotiation verdicts (plan vivo section 6.1).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum NegotiationDecision {
     /// Force SSE — declared `transport: sse|ndjson` (D5) OR
@@ -20347,7 +20347,7 @@ fn classify_negotiation_for_flow(
         }
     }
 
-    // Decision per plan vivo §6.1.
+    // Decision per plan vivo section 6.1.
     match endpoint_transport.as_deref() {
         Some("sse") | Some("ndjson") => NegotiationDecision::PromoteToSse,
         Some("json") => NegotiationDecision::StayJson,
@@ -20412,7 +20412,7 @@ fn flow_produces_stream_runtime(
 /// fails on the source (e.g. step-body `output: Stream<T>` shape that
 /// the Rust frontend doesn't yet accept). Brittle by design; the
 /// long-term solution is to bring the Rust parser to v1.19.3 shape
-/// (its own sub-fase). Until then, this bridge keeps 30.e robust
+/// (its own step). Until then, this bridge keeps 30.e robust
 /// across the cross-stack parser drift.
 ///
 /// Looks for the canonical streaming evidence on the wire:
@@ -20523,7 +20523,7 @@ fn source_text_axonendpoint_has_transport(
 }
 
 // ═══════════════════════════════════════════════════════════════════
-//  §FASE 32.b — DYNAMIC AXONENDPOINT ROUTES (D1, D2, D3, D11)
+// FASE 32.b — DYNAMIC AXONENDPOINT ROUTES (D1, D2, D3, D11)
 // ═══════════════════════════════════════════════════════════════════
 //
 // Every `axonendpoint` declaration in a deployed program produces
@@ -20557,13 +20557,13 @@ fn source_text_axonendpoint_has_transport(
 //   COMPUTING  — strictly additive when adopter declares paths;
 //                 /v1/execute preserved verbatim per D10.
 
-/// §Fase 32.e (D6) — Wire-format verdict for a dynamic route.
+/// v1.23.0 (D6) — Wire-format verdict for a dynamic route.
 ///
 /// Total enum returned by `classify_dynamic_route_wire`. The dynamic
 /// fallback handler maps each variant to the corresponding downstream
 /// dispatch: `Sse` → `execute_sse_handler` (text/event-stream wire),
 /// `Json` → `execute_handler` (application/json wire) with the
-/// Fase 31.e `X-Axon-Stream-Available` header attached when the
+/// v1.22.0 `X-Axon-Stream-Available` header attached when the
 /// underlying flow has stream effects.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DynamicRouteWire {
@@ -20571,8 +20571,8 @@ pub enum DynamicRouteWire {
     Json,
 }
 
-/// §Fase 32.e (D6) — Per-route negotiation classifier.
-/// §Fase 33.z.k.1 (v1.27.1) — Extended with algebraic-effect override.
+/// v1.23.0 (D6) — Per-route negotiation classifier.
+/// v1.27.1 — Extended with algebraic-effect override.
 ///
 /// Total function over `(transport, transport_explicit,
 /// implicit_transport, has_algebraic_stream_effect, client_wants_sse,
@@ -20600,7 +20600,7 @@ pub enum DynamicRouteWire {
 /// (Last row catches AST that was consumed without running the
 /// `compute_implicit_transports` pass — defensive default to JSON.)
 ///
-/// # §Fase 33.z.k.1 — Algebraic-effect override (v1.27.1)
+/// # v1.24.0 — Algebraic-effect override (v1.27.1)
 ///
 /// When the `execute_flow` references a tool that declares
 /// `effects: <stream:<policy>>` (i.e.,
@@ -20638,14 +20638,14 @@ pub fn classify_dynamic_route_wire(
             _ => DynamicRouteWire::Json,
         };
     }
-    // §Fase 33.z.k.1 — Algebraic-effect override fires BEFORE the
+    // v1.24.0 — Algebraic-effect override fires BEFORE the
     // D9 backwards-compat gate. A declared `effects: <stream:<policy>>`
     // on a tool is part of the language's type system; the wire MUST
     // honor it without client cooperation.
     if has_algebraic_stream_effect {
         return DynamicRouteWire::Sse;
     }
-    // Implicit path — consult Fase 31.b's pre-computed `implicit_transport`.
+    // Implicit path — consult v1.22.0's pre-computed `implicit_transport`.
     if implicit_transport == "sse" {
         // Flow has stream effects.
         if strict_mode || client_wants_sse {
@@ -20662,7 +20662,7 @@ mod dynamic_route_wire_truth_table {
     fn s() -> DynamicRouteWire { DynamicRouteWire::Sse }
     fn j() -> DynamicRouteWire { DynamicRouteWire::Json }
 
-    // §Fase 33.z.k.1 (v1.27.1) — Every assertion below pins the
+    // v1.27.1 — Every assertion below pins the
     // 6-input signature. The algebraic-effect predicate defaults to
     // `false` for the pre-33.z.k.1 truth-table cells (the algebraic
     // override is exercised in the dedicated test block at the end).
@@ -20682,7 +20682,7 @@ mod dynamic_route_wire_truth_table {
 
     #[test]
     fn explicit_ndjson_promotes_to_sse_wire() {
-        // ndjson currently maps onto the SSE handler per Fase 30 D2
+        // ndjson currently maps onto the SSE handler per v1.21.0 D2
         // (the wire format is still text/event-stream framing).
         assert_eq!(
             classify_dynamic_route_wire("ndjson", true, "", false, false, false),
@@ -20695,7 +20695,7 @@ mod dynamic_route_wire_truth_table {
         for strict in [false, true] {
             for accept in [false, true] {
                 for algebraic in [false, true] {
-                    // §Fase 33.z.k.1 — Even when the tool DECLARES a stream
+                    // v1.24.0 — Even when the tool DECLARES a stream
                     // effect (`algebraic = true`), an explicit
                     // `transport: json` on the endpoint STILL wins. D3 is
                     // the only escape valve from the algebraic override.
@@ -20745,7 +20745,7 @@ mod dynamic_route_wire_truth_table {
         assert_eq!(classify_dynamic_route_wire("", false, "", false, true, true), j());
     }
 
-    // §Fase 33.z.k.1 — Algebraic-effect override truth-table.
+    // v1.24.0 — Algebraic-effect override truth-table.
     //
     // The override fires whenever the tool declares
     // `effects: <stream:<policy>>` AND the endpoint does NOT
@@ -20824,7 +20824,7 @@ mod dynamic_route_wire_truth_table {
 /// Closed method enum per D3. Adopter-declarable methods only;
 /// HEAD/OPTIONS/CONNECT/TRACE are runtime-managed (CORS preflight,
 /// etc.) and never registered from source.
-/// §Fase 107.b — the runtime's closed `axonendpoint.method:` catalog. `QUERY`
+/// v2.62.0 — the runtime's closed `axonendpoint.method:` catalog. `QUERY`
 /// (RFC 10008, Proposed Standard, June 2026) is the safe + idempotent + cacheable
 /// method that CARRIES A REQUEST BODY. The dynamic-route handler is mounted as an
 /// axum `.fallback(...)`, so a QUERY request already reaches it — registration is
@@ -20847,24 +20847,24 @@ pub struct DynamicEndpointRoute {
     /// The axonendpoint name (for diagnostic + audit).
     pub endpoint_name: String,
     /// Source file the axonendpoint was deployed from. Used by the
-    /// negotiation classifier (Fase 30.e + Fase 31.d) for source-text
+    /// negotiation classifier (v1.21.0 + v1.22.0) for source-text
     /// dual-signal predicate.
     pub source_file: String,
     /// Full source of the deployed program. Required for runtime
-    /// transport inference (Fase 31.b `produces_stream` predicate).
+    /// transport inference (v1.22.0 `produces_stream` predicate).
     pub source: String,
     /// `transport:` field verbatim — one of `{json, sse, ndjson}` per
-    /// Fase 30 D2; empty string when omitted (Fase 31.b
+    /// v1.21.0 D2; empty string when omitted (v1.22.0
     /// `transport_explicit == false` path).
     pub transport: String,
-    /// Was `transport:` explicitly declared in source (Fase 31.b)?
+    /// Was `transport:` explicitly declared in source (v1.22.0)?
     pub transport_explicit: bool,
-    /// `keepalive:` field per Fase 30 D6; empty when omitted.
+    /// `keepalive:` field per v1.21.0 D6; empty when omitted.
     pub keepalive: String,
-    /// Inferred transport per Fase 31.b D1 (`"sse"` / `"json"` /
+    /// Inferred transport per v1.22.0 D1 (`"sse"` / `"json"` /
     /// empty if pre-compute).
     pub implicit_transport: String,
-    /// §Fase 32.c — Declared body type per `body:` field on the source
+    /// v1.23.0 — Declared body type per `body:` field on the source
     /// axonendpoint. Empty string when omitted (D9 backwards-compat —
     /// the fallback handler skips body-schema validation entirely).
     /// When non-empty, the value is looked up in
@@ -20873,7 +20873,7 @@ pub struct DynamicEndpointRoute {
     /// dispatch. Schema mismatch returns 400 Bad Request with a
     /// structured `BodyValidationError`.
     pub body_type: String,
-    /// §Fase 32.d — Declared output type per `output:` field on the
+    /// v1.23.0 — Declared output type per `output:` field on the
     /// source axonendpoint. Empty string when omitted (D9 backwards-
     /// compat — the fallback handler skips output-schema validation).
     /// When non-empty, the flow's response body is validated against
@@ -20886,9 +20886,9 @@ pub struct DynamicEndpointRoute {
     /// Output validation only fires when the response Content-Type is
     /// `application/json` — SSE/ndjson streams are token-by-token and
     /// cannot be validated against a static type at the wire layer
-    /// (a future fase may add per-event validation for typed streams).
+    /// (a future cycle may add per-event validation for typed streams).
     pub output_type: String,
-    /// §Fase 32.g — Declared capability slugs the request bearer must
+    /// v1.23.0 — Declared capability slugs the request bearer must
     /// hold for the endpoint to dispatch. Empty vec means "no auth
     /// gate" (D9 backwards-compat). The runtime checks
     /// `declared_requires ⊆ token_capabilities` (AND semantics — every
@@ -20897,14 +20897,14 @@ pub struct DynamicEndpointRoute {
     /// `{error: "missing_capability", required, have, ...}` so the
     /// client knows precisely which capability is needed.
     pub requires_capabilities: Vec<String>,
-    /// §Fase 32.h — Effective replay-binding boolean resolved at
+    /// v1.23.0 — Effective replay-binding boolean resolved at
     /// deploy time. `true` ⟹ every successful 2xx POST/PUT response
     /// is recorded in `ServerState.axonendpoint_replay` keyed by
     /// trace_id. Default is method-derived (POST/PUT → true;
     /// GET/DELETE → false); an explicit `replay: true | false`
     /// declaration overrides.
     pub replay_enabled: bool,
-    /// §Fase 33.z.k.b (v1.28.0) — Selected SSE wire-format dialect.
+    /// v1.28.0 — Selected SSE wire-format dialect.
     ///
     /// Populated when the source declares `transport: sse(<dialect>)`.
     /// Closed catalog from `AXONENDPOINT_TRANSPORT_DIALECTS`:
@@ -20919,7 +20919,7 @@ pub struct DynamicEndpointRoute {
     /// drives the Q1 default (openai for tool-streaming flows,
     /// axon for type-annotation-only).
     pub transport_dialect: String,
-    /// §Fase 33.z.k.1 (v1.27.1) — Algebraic-effect override predicate.
+    /// v1.27.1 — Algebraic-effect override predicate.
     ///
     /// `true` when `execute_flow` references a tool that declares
     /// `effects: <stream:<policy>>`. Copied verbatim from
@@ -20935,17 +20935,17 @@ pub struct DynamicEndpointRoute {
     /// runtime flag (D6). D3 explicit `transport: json` opt-out still
     /// wins above this override.
     pub has_algebraic_stream_effect: bool,
-    /// §Fase 36.e (D3) — the route's declared execution backend.
+    /// v1.31.0 (D3) — the route's declared execution backend.
     ///
     /// Resolved at deploy time: the `axonendpoint backend:` field
-    /// (Fase 36.d, `AxonEndpointDefinition.backend`) if the source
+    /// (v1.31.0, `AxonEndpointDefinition.backend`) if the source
     /// declared one; otherwise the deploy-request backend
     /// (`DeployRequest.backend`) when that was set to an explicit,
     /// concrete value (`deploy_handler` fills it as a deploy-scoped
     /// default for every route that did not declare its own).
     ///
     /// Empty string `""` ≡ "not declared" — the route resolves its
-    /// backend at request time down the Fase 36 D1 precedence ladder
+    /// backend at request time down the v1.31.0 D1 precedence ladder
     /// (server default → environment-available `auto`; honest failure
     /// if nothing real resolves). When non-empty this value is rung 2
     /// of that ladder (`EndpointDeclared`).
@@ -20955,7 +20955,7 @@ pub struct DynamicEndpointRoute {
     /// shared with every sibling field — rather than introducing a
     /// lone `Option<String>`.)
     pub backend: String,
-    /// §Fase 37.y (D1) — Path-parameter names extracted from the
+    /// v1.32.0 (D1) — Path-parameter names extracted from the
     /// route's path string (mirrors `AxonEndpointDefinition.path_params`).
     /// Empty Vec when the path has no `{name}` placeholders. Used by
     /// `match_path_template` to (a) gate template matching only on
@@ -20966,7 +20966,7 @@ pub struct DynamicEndpointRoute {
     pub path_params: Vec<String>,
 }
 
-/// §Fase 37.y (D1) — Match a registered axonendpoint path template
+/// v1.32.0 (D1) — Match a registered axonendpoint path template
 /// against an incoming request URL path; on match, return the captured
 /// path-parameter values.
 ///
@@ -20979,7 +20979,7 @@ pub struct DynamicEndpointRoute {
 ///
 /// Returns `Some(captures)` when:
 ///   - segment count matches (no `*` wildcards in v1.38.5; multi-
-///     segment captures are honest-deferred per plan vivo §7);
+/// segment captures are honest-deferred per plan vivo section 7);
 ///   - every non-placeholder segment matches byte-for-byte;
 ///   - every placeholder segment captures a non-empty actual segment.
 ///
@@ -20991,7 +20991,7 @@ pub struct DynamicEndpointRoute {
 /// is also a drop-in replacement for the legacy exact-string lookup
 /// when `path_params` is empty.
 ///
-/// §Fase 78 (Kivi brief #54) — promoted `pub(crate)` → `pub` so the
+/// v2.35.0 (Kivi brief #54) — promoted `pub(crate)` → `pub` so the
 /// enterprise `flow_dispatch::DispatchTable` reuses THIS matcher rather
 /// than forking a parallel `{param}` implementation. The enterprise
 /// catch-all `/api/v1/flows/{*path}` dispatcher was exact-string-match
@@ -21047,10 +21047,10 @@ pub fn match_path_template(
     Some(captures)
 }
 
-/// §Fase 37.y (D2) — Parse a URL query string into a single-value
+/// v1.32.0 (D2) — Parse a URL query string into a single-value
 /// name → value map. Multi-value query keys (`?tag=a&tag=b`) collapse
 /// to the FIRST value per v1.38.5 honest-scope semantics (multi-value
-/// query binding deferred per plan vivo §7).
+/// query binding deferred per plan vivo section 7).
 ///
 /// URL-decoding follows the standard `application/x-www-form-urlencoded`
 /// rules: `+` decodes to space, `%XX` decodes to the byte. Malformed
@@ -21058,7 +21058,7 @@ pub fn match_path_template(
 ///
 /// Returns an empty map when `query` is `None` or empty.
 ///
-/// §Fase 78 (Kivi brief #54) — promoted `pub(crate)` → `pub` alongside
+/// v2.35.0 (Kivi brief #54) — promoted `pub(crate)` → `pub` alongside
 /// [`match_path_template`] so the enterprise dispatcher populates the
 /// `request_query` binding source (previously a hardcoded empty map)
 /// from `request.uri().query()` with identical `x-www-form-urlencoded`
@@ -21205,25 +21205,25 @@ pub fn collect_axonendpoint_routes(
                     replay_enabled: crate::axonendpoint_replay::resolve_replay_enabled(
                         &method, ae.replay_explicit, ae.replay,
                     ),
-                    // §Fase 33.z.k.b (v1.28.0) — wire-format dialect
+                    // v1.28.0 — wire-format dialect
                     // copied verbatim from the AST. Parser already
                     // validated it against the closed catalog.
                     transport_dialect: ae.transport_dialect.clone(),
-                    // §Fase 33.z.k.1 (v1.27.1) — algebraic-effect override
+                    // v1.27.1 — algebraic-effect override
                     // copied verbatim from the AST. The
                     // compute_implicit_transports pass on the frontend
                     // already cross-referenced the flow body against the
                     // program's tool declarations.
                     has_algebraic_stream_effect: ae.has_algebraic_stream_effect,
-                    // §Fase 36.e (D3) — the `axonendpoint backend:`
-                    // declaration (Fase 36.d), copied verbatim from the
+                    // v1.31.0 (D3) — the `axonendpoint backend:`
+                    // declaration (v1.31.0), copied verbatim from the
                     // AST. The parser already validated it against the
                     // closed catalog. Empty when the source omitted
                     // `backend:`; `deploy_handler` may then fill it from
                     // an explicit `DeployRequest.backend` as a
                     // deploy-scoped default.
                     backend: ae.backend.clone(),
-                    // §Fase 37.y (D1) — Path-parameter names extracted
+                    // v1.32.0 (D1) — Path-parameter names extracted
                     // by the parser. Copied verbatim from the AST.
                     path_params: ae.path_params.clone(),
                 },
@@ -21233,15 +21233,15 @@ pub fn collect_axonendpoint_routes(
     Ok(routes)
 }
 
-/// §Fase 36.e (D3) — apply the deploy-scoped backend default to a
+/// v1.31.0 (D3) — apply the deploy-scoped backend default to a
 /// freshly-collected route table.
 ///
 /// A route that did not declare its own `axonendpoint backend:`
-/// (Fase 36.d) inherits `deploy_backend` — the `DeployRequest.backend`
+/// (v1.31.0) inherits `deploy_backend` — the `DeployRequest.backend`
 /// field — as a deploy-scoped default. The fill fires ONLY when
 /// `deploy_backend` is an explicit, concrete choice: `"auto"` and the
 /// empty string are transparent (a route left empty resolves down the
-/// Fase 36 D1 ladder at request time, so D5's no-silent-`stub`
+/// v1.31.0 D1 ladder at request time, so D5's no-silent-`stub`
 /// guarantee is preserved). A route that DID declare its own backend
 /// is never overridden — the per-route source declaration outranks
 /// the per-deploy default.
@@ -21262,7 +21262,7 @@ pub fn apply_deploy_backend_default(
     }
 }
 
-/// §Fase 36.f (D1) — resolve the execution backend for one dynamic
+/// v1.31.0 (D1) — resolve the execution backend for one dynamic
 /// route by the Backend Resolution Contract ladder.
 ///
 /// A thin, pure adapter over [`backend_resolution::resolve_backend`]
@@ -21277,7 +21277,7 @@ pub fn apply_deploy_backend_default(
 ///     `axonendpoint backend:` field, 36.d, carried onto the route by
 ///     36.e). Empty / `"auto"` are transparent.
 ///   - **Rung 3 — server default:** `server_default` (the
-///     `ServerConfig.default_backend`, wired by §Fase 36.g; `None`
+/// `ServerConfig.default_backend`, wired by v1.31.0; `None`
 ///     until then).
 ///   - **Rungs 4a/4b — environment-available `auto`:** the
 ///     operator-tuned `registry_ranked` scores, else `env_available`
@@ -21307,7 +21307,7 @@ pub fn resolve_route_backend(
     )
 }
 
-/// §Fase 36.j (D8) — inject the `backend_resolution` observability
+/// v1.31.0 (D8) — inject the `backend_resolution` observability
 /// object into a dynamic-route JSON response body.
 ///
 /// The resolved backend and the precedence rung that chose it are
@@ -21345,7 +21345,7 @@ pub fn inject_backend_resolution(
     }
 }
 
-/// §Fase 36.h (D5) — build the honest-failure response for a dynamic
+/// v1.31.0 (D5) — build the honest-failure response for a dynamic
 /// route whose execution backend the D1 ladder could not resolve.
 ///
 /// The Backend Resolution Contract is TOTAL: when every rung is empty
@@ -21413,7 +21413,7 @@ pub fn honest_backend_failure_response(
     }
 }
 
-/// §Fase 36.g (D7) — validate a server default backend name against
+/// v1.31.0 (D7) — validate a server default backend name against
 /// the closed catalog.
 ///
 /// The `--backend` CLI flag / `AXON_DEFAULT_BACKEND` env var is
@@ -21476,13 +21476,13 @@ pub fn merge_dynamic_routes(
     Ok(())
 }
 
-/// §Fase 32.b + 32.c — Fallback handler for dynamic axonendpoint routes.
+/// v1.23.0 — Fallback handler for dynamic axonendpoint routes.
 ///
 /// Fires when no static route in `build_router_with_state` matched
 /// the incoming request. Looks up `(method, path)` in
 /// `ServerState.dynamic_routes`; on hit, validates the request body
-/// against the route's declared `body:` type (D4, Fase 32.c) and
-/// dispatches through the existing Fase 30 + 31 negotiation classifier
+/// against the route's declared `body:` type (D4, v1.23.0) and
+/// dispatches through the existing v1.21.0 + v1.22.0 negotiation classifier
 /// with the flow_name from the route. On miss, returns 404 with a
 /// structured error listing all registered dynamic routes (for
 /// adopter triage).
@@ -21497,7 +21497,7 @@ pub fn merge_dynamic_routes(
 /// Body forwarding to the flow itself remains deferred (existing
 /// `/v1/execute` does not pass body data to flows either — flows
 /// currently receive no parameterized HTTP input). Forward-to-flow
-/// wiring lands in a follow-on fase. 32.c establishes the **validation
+/// wiring lands in a follow-on cycle. 32.c establishes the **validation
 /// gate at the boundary**: malformed bodies never reach the flow
 /// runtime.
 async fn dynamic_endpoint_handler(
@@ -21512,7 +21512,7 @@ async fn dynamic_endpoint_handler(
     let method_str = method.as_str().to_ascii_uppercase();
     let path_str = uri.path().to_string();
 
-    // §Fase 37.y (D2) — Parse the URL query string into a HashMap so
+    // v1.32.0 (D2) — Parse the URL query string into a HashMap so
     // query params bind alongside path captures + body fields. The
     // map is empty when the request has no query string. Built ONCE
     // outside the route lookup so the response path can also consult
@@ -21520,7 +21520,7 @@ async fn dynamic_endpoint_handler(
     let request_query: HashMap<String, String> =
         parse_query_string(uri.query());
 
-    // §Fase 37.y (D1) — Two-step route lookup:
+    // v1.32.0 (D1) — Two-step route lookup:
     //   (1) Fast path: exact (method, path) match on a route with no
     //       placeholders. Preserves the v1.38.4 hot-path performance
     //       for legacy endpoints (D5 backwards-compat absolute).
@@ -21543,7 +21543,7 @@ async fn dynamic_endpoint_handler(
             // (2) Template match — iterate routes with the same method
             // and a non-empty `path_params` (placeholder-bearing routes).
             // First match wins; the parser's intra-program collision
-            // check (Fase 32 D2 — same exact `path:` string under the
+            // check (v1.23.0 D2 — same exact `path:` string under the
             // same method is a deploy-time error) means two TEMPLATES
             // that capture the same actual URL is structurally
             // impossible within a single deploy. Cross-deploy collisions
@@ -21595,7 +21595,7 @@ async fn dynamic_endpoint_handler(
         }
     };
 
-    // §Fase 32.c — Body-schema validation gate. Only runs when the
+    // v1.23.0 — Body-schema validation gate. Only runs when the
     // axonendpoint declared `body: T` in source (route.body_type
     // non-empty). For methods with a meaningful request body (POST,
     // PUT, PATCH) the body is parsed as JSON and validated against
@@ -21681,7 +21681,7 @@ async fn dynamic_endpoint_handler(
         }
     }
 
-    // §Fase 32.g (D8) — Auth-scope gate.
+    // v1.23.0 (D8) — Auth-scope gate.
     //
     // When the axonendpoint declared `requires: [a, b.c, …]`, the
     // bearer's `capabilities` JWT claim must contain every listed slug
@@ -21730,7 +21730,7 @@ async fn dynamic_endpoint_handler(
         }
     }
 
-    // §Fase 32.f (D7) — Idempotency-Key gate.
+    // v1.23.0 (D7) — Idempotency-Key gate.
     //
     // Stripe-compatible. When the request carries `Idempotency-Key`
     // AND the axonendpoint declares method ∈ {POST, PUT}, the runtime
@@ -21822,9 +21822,9 @@ async fn dynamic_endpoint_handler(
             None
         };
 
-    // §Fase 32.e (D6) — Per-route transport dispatch.
+    // v1.23.0 (D6) — Per-route transport dispatch.
     //
-    // The Fase 30+31 negotiation matrix is keyed by `(strict_mode ×
+    // The v1.21.0 + v1.22.0 negotiation matrix is keyed by `(strict_mode ×
     // route_declaration × stream_effect × Accept)`. Pre-32.e the
     // classifier read `route_declaration` from a per-FLOW lookup —
     // correct for `/v1/execute` (one entrypoint per flow) but wrong
@@ -21861,7 +21861,7 @@ async fn dynamic_endpoint_handler(
         strict_mode,
     );
 
-    // §Fase 32.h — Capture client identity + capabilities BEFORE
+    // v1.23.0 — Capture client identity + capabilities BEFORE
     // dispatch so the SSE path (which moves `headers` into the
     // streaming handler) doesn't leave the replay binding unable to
     // record them. Cheap clones — both fields are small.
@@ -21869,7 +21869,7 @@ async fn dynamic_endpoint_handler(
     let replay_capabilities_used =
         crate::auth_scope::extract_capabilities_from_bearer(&headers);
 
-    // §Fase 32.h (lifted up in 33.x.f) — trace_id generated BEFORE
+    // v1.23.0 (lifted up in 33.x.f) — trace_id generated BEFORE
     // dispatch so the SSE branch can pass it into
     // `execute_sse_handler_inner`'s ReplayContext. The same UUID
     // surfaces as `X-Axon-Trace-Id` on the response + as the lookup
@@ -21883,7 +21883,7 @@ async fn dynamic_endpoint_handler(
             axum::http::HeaderValue::from_static("unknown")
         });
 
-    // §Fase 36.f (D1, D3) — resolve the execution backend by the
+    // v1.31.0 (D1, D3) — resolve the execution backend by the
     // Backend Resolution Contract ladder (`resolve_route_backend`),
     // retiring the hardcoded `"auto"` that made every deployed route
     // execute against the no-op `stub` on a server with provider keys
@@ -21900,11 +21900,11 @@ async fn dynamic_endpoint_handler(
         &route,
         registry_ranked,
         crate::backends::env_available_backends(),
-        server_default, // §Fase 36.g (D7) — rung 3 of the ladder.
+        server_default, // v1.31.0 (D7) — rung 3 of the ladder.
     ) {
         Ok(r) => (r.backend, r.reason),
         Err(no_backend) => {
-            // §Fase 36.h (D5) — honest failure. Every ladder rung was
+            // v1.31.0 (D5) — honest failure. Every ladder rung was
             // empty (no request backend, no `axonendpoint backend:`,
             // no server default, empty registry, no provider API key
             // in the environment) and `stub` was not explicitly
@@ -21929,7 +21929,7 @@ async fn dynamic_endpoint_handler(
             );
             resp.headers_mut()
                 .insert("x-axon-trace-id", trace_hdr.clone());
-            // §Fase 36.j (D8) — observability even on the honest
+            // v1.31.0 (D8) — observability even on the honest
             // failure: no backend resolved, and the header says why.
             resp.headers_mut().insert(
                 "x-axon-backend",
@@ -21941,7 +21941,7 @@ async fn dynamic_endpoint_handler(
         }
     };
 
-    // §Fase 36.j (D8) — resolution observability. The resolved
+    // v1.31.0 (D8) — resolution observability. The resolved
     // backend AND the precedence rung that chose it travel on the
     // `X-Axon-Backend` response header (`<backend>; reason=<rung>`)
     // and are injected into the JSON wire body as a
@@ -21956,11 +21956,11 @@ async fn dynamic_endpoint_handler(
     ))
     .unwrap_or_else(|_| axum::http::HeaderValue::from_static("unknown"));
 
-    // §Fase 37.b (D1) — parse the request body ONCE for the Request
+    // v1.32.0 (D1) — parse the request body ONCE for the Request
     // Binding Contract. The flow's declared parameters bind from its
     // same-named fields. A request with no body, or a body that is
     // not a JSON object, yields `None` — the flow then runs with only
-    // its own `let` / step bindings (D5 backwards-compat). The §32.c
+    // its own `let` / step bindings (D5 backwards-compat). The v1.23.0
     // body-schema gate above already rejected a malformed body for a
     // route that declared `body: T`; this parse is a best-effort read
     // for the binding and never itself rejects the request.
@@ -21973,13 +21973,13 @@ async fn dynamic_endpoint_handler(
                 flow_name: route.flow_name.clone(),
                 backend: resolved_backend.clone(),
                 request_body: request_body_json.clone(),
-                // §Fase 37.y (D3) — path captures + query string
+                // v1.32.0 (D3) — path captures + query string
                 // travel alongside the body so the runner's binder
                 // sees the full three-source set.
                 request_path: path_captures.clone(),
                 request_query: request_query.clone(),
             };
-            // §Fase 33.x.f — Build the replay context when the
+            // v1.24.0 — Build the replay context when the
             // route declares `replay: true`. The inner handler
             // writes the AxonendpointReplayEntry at FlowComplete
             // time, populated with the per-step audit records.
@@ -21996,7 +21996,7 @@ async fn dynamic_endpoint_handler(
             } else {
                 None
             };
-            // §Fase 33.z.k.g — Resolve the effective SSE dialect for
+            // v1.24.0 — Resolve the effective SSE dialect for
             // this route. The resolver applies the Q1 ratification:
             // explicit `transport: sse(<dialect>)` wins; otherwise
             // algebraic-effect flows default to openai dialect (the
@@ -22022,10 +22022,10 @@ async fn dynamic_endpoint_handler(
                 flow: route.flow_name.clone(),
                 backend: resolved_backend.clone(),
                 request_body: request_body_json.clone(),
-                // §Fase 37.y (D3) — path + query travel alongside body.
+                // v1.32.0 (D3) — path + query travel alongside body.
                 request_path: path_captures.clone(),
                 request_query: request_query.clone(),
-                // §Fase 39.b — propagate the route's declared output
+                // v2.0.0 — propagate the route's declared output
                 // type so the FlowEnvelope's `ontological_type` slot
                 // carries the endpoint contract verbatim. The handler
                 // unwraps an outer `FlowEnvelope<T>` declaration so
@@ -22035,7 +22035,7 @@ async fn dynamic_endpoint_handler(
             let mut resp = execute_handler(State(state.clone()), headers.clone(), Json(exec_req))
                 .await
                 .into_response();
-            // §Fase 31.e (D5) — Diagnostic header on dynamic routes.
+            // v1.22.0 (D5) — Diagnostic header on dynamic routes.
             // When the route serves JSON for a flow that has stream
             // effects (route.implicit_transport == "sse"), attach
             // X-Axon-Stream-Available so the adopter sees the
@@ -22060,7 +22060,7 @@ async fn dynamic_endpoint_handler(
         }
     };
 
-    // §Fase 32.d — Output-schema validation gate (D5).
+    // v1.23.0 — Output-schema validation gate (D5).
     //
     // After the flow executes, validate the response body against the
     // declared `output: T` type. Validation runs ONLY when:
@@ -22070,7 +22070,7 @@ async fn dynamic_endpoint_handler(
     //   - the response Content-Type starts with `application/json`
     //     (SSE/ndjson streams cannot be validated against a static
     //     type at the wire layer; per-event typed-stream validation
-    //     is a candidate for a future fase).
+    // is a candidate for a future cycle).
     //
     // Per OWASP, validation failure returns a GENERIC 500 to the
     // client + records the full diagnostic in `audit_log`. The
@@ -22080,7 +22080,7 @@ async fn dynamic_endpoint_handler(
     let validated =
         apply_output_validation_gate(state.clone(), &route, response, &method_str, &path_str).await;
 
-    // §Fase 32.f (D7) + §Fase 32.h (D9 plan-vivo) — Unified post-
+    // v1.23.0 (D7) + v1.23.0 (D9 plan-vivo) — Unified post-
     // dispatch capture: idempotency cache write + replay-token
     // binding share the same body-read so we never read the response
     // body twice. The trace_id is generated once and attached as
@@ -22091,18 +22091,18 @@ async fn dynamic_endpoint_handler(
     // Body capture fires only when status is 2xx AND Content-Type
     // starts with `application/json`. SSE/ndjson streams pass through
     // unchanged — replay binding for streaming bodies is a candidate
-    // for a future fase (per-event token chain). 4xx/5xx error paths
+    // for a future cycle (per-event token chain). 4xx/5xx error paths
     // skip BOTH caches because the response is not the flow's typed
     // output — replaying a 422 schema violation would be a category
     // error.
     //
-    // §Fase 33.x.f — `trace_id` + `trace_hdr` were lifted above the
+    // v1.24.0 — `trace_id` + `trace_hdr` were lifted above the
     // route_wire match so both SSE and JSON branches share the same
     // UUID. The SSE branch passes it into `execute_sse_handler_inner`
     // via the ReplayContext; the JSON branch uses it for the body-
     // capture replay-binding write + the X-Axon-Trace-Id header.
 
-    // §Fase 36.j (D8) + §Fase 32.f/h — every 2xx application/json
+    // v1.31.0 (D8) + v1.23.0 — every 2xx application/json
     // dynamic-route response is read + rebuilt here: 36.j injects the
     // `backend_resolution` observability object into the body, and —
     // when needed — the idempotency cache + replay-log writes share
@@ -22135,7 +22135,7 @@ async fn dynamic_endpoint_handler(
                     );
                 }
             };
-            // §Fase 36.j (D8) — inject the `backend_resolution`
+            // v1.31.0 (D8) — inject the `backend_resolution`
             // observability object. The injected bytes are what the
             // client sees AND what the caches below persist.
             let body_bytes: axum::body::Bytes = inject_backend_resolution(
@@ -22192,12 +22192,12 @@ async fn dynamic_endpoint_handler(
                     // surfaces layered on top by enterprise).
                     deterministic:
                         crate::axonendpoint_replay::is_backend_deterministic("stub"),
-                    // §Fase 33.x.f — Per-step audit. Empty on the
+                    // v1.24.0 — Per-step audit. Empty on the
                     // JSON 2xx capture path (this branch); SSE path
                     // populates this via the producer side-channel
                     // when route.replay_enabled.
                     step_audit: Vec::new(),
-                    // §Fase 33.x.g — Runtime warnings mirror the
+                    // v1.24.0 — Runtime warnings mirror the
                     // wire `axon.complete.warnings` field. The
                     // JSON 2xx path doesn't traverse
                     // server_execute_streaming so no warnings are
@@ -22224,7 +22224,7 @@ async fn dynamic_endpoint_handler(
     resp
 }
 
-/// §Fase 32.d — Apply the response-side schema validation gate.
+/// v1.23.0 — Apply the response-side schema validation gate.
 ///
 /// Pillar trace per D12:
 ///   - MATHEMATICS — same pure + total `validate_body` primitive as
@@ -22293,7 +22293,7 @@ async fn apply_output_validation_gate(
         let s = state.lock().unwrap();
         s.dynamic_types.clone()
     };
-    // §Fase 39.d — D5 runtime simplification. Pre-39.d the gate
+    // v2.0.0 — D5 runtime simplification. Pre-39.d the gate
     // manually extracted the inner-T from `FlowEnvelope<T>` and
     // pulled the `result` slot out of `parsed`. Post-39.d
     // `validate_body` is the SINGLE canonical entry that knows
@@ -22331,7 +22331,7 @@ async fn apply_output_validation_gate(
     }
 }
 
-/// §Fase 32.d — Build the OWASP-safe 500 response for output
+/// v1.23.0 — Build the OWASP-safe 500 response for output
 /// validation failures. Records the FULL diagnostic in `audit_log` +
 /// emits a `tracing::error!` for adopter-side log tooling; the
 /// CLIENT only sees the generic envelope `{error, trace_id, hint}`.
@@ -22361,7 +22361,7 @@ fn internal_validation_500(
             "expected": v.expected,
             "got": v.got,
             "hint": v.hint,
-            // §Fase 38.x.f (D2) — cardinality diagnostic fields.
+            // v1.31.0 (D2) — cardinality diagnostic fields.
             // Empty strings serialize but adopters can grep
             // `expected_cardinality` / `got_cardinality` / `got_length`
             // / `remediation_url` to detect the cardinality-mismatch
@@ -22408,11 +22408,11 @@ fn internal_validation_500(
         s.metrics.total_errors += 1;
     }
 
-    // §Fase 38.x.f (D4) — opt-in verbose hint surface for dev/staging.
+    // v1.31.0 (D4) — opt-in verbose hint surface for dev/staging.
     // When `AXON_VERBOSE_D5_HINT=1` (truthy alphabet: 1, true, yes, on
     // — case-insensitive) the full diagnostic payload from the audit
     // entry is included in the client response body. Default OFF
-    // preserves OWASP-safe behavior (Fase 32.d D5) — production deploys
+    // preserves OWASP-safe behavior (v1.23.0 D5) — production deploys
     // never accidentally leak server-side type contracts through
     // schema-validation errors.
     let verbose = std::env::var("AXON_VERBOSE_D5_HINT")
@@ -22458,7 +22458,7 @@ fn internal_validation_500(
     (StatusCode::INTERNAL_SERVER_ERROR, Json(client_body)).into_response()
 }
 
-/// Wrapper for `POST /v1/execute` that performs Fase 30.e
+/// Wrapper for `POST /v1/execute` that performs v1.21.0
 /// content-negotiation upstream of the legacy JSON handler.
 ///
 /// Logic:
@@ -22485,7 +22485,7 @@ async fn execute_handler_with_negotiation(
     // any axonendpoint forces SSE. We still need to consult the
     // declaration in case D5 force-promote applies. So we DO parse
     // the source on every /v1/execute request — acceptable for the
-    // initial implementation; future Fase can cache.
+    // initial implementation; future cycle can cache.
     //
     // Optimization: if Accept neither contains text/event-stream nor
     // any obvious streaming hint, AND the source is unavailable, skip
@@ -22524,7 +22524,7 @@ async fn execute_handler_with_negotiation(
     //        shape) — affects disjunct (a)
     //   (ii) `use <tool>("args")` inside step bodies — StepNode in
     //        the Rust AST doesn't carry use_tool — affects disjunct (b)
-    // Both gaps belong to a Rust-frontend completion sub-fase. Until
+    // Both gaps belong to a Rust-frontend completion step. Until
     // that ships, we DEFENSIVELY consult source-text patterns ALONGSIDE
     // the AST walk and OR the verdicts. This makes 30.e robust to
     // cross-stack drift on the predicate while preserving the AST
@@ -22559,11 +22559,11 @@ async fn execute_handler_with_negotiation(
         NegotiationDecision::StayJson
     };
 
-    // §Fase 31.d (D1, D6, D8) — strict-mode flag for type-driven
+    // v1.22.0 (D1, D6, D8) — strict-mode flag for type-driven
     // default transport. When enabled, a `PromoteToSse` verdict
     // (from EITHER the explicit declaration OR the stream-effect
     // inference) is honored regardless of the client's `Accept:`
-    // header. When disabled (D6 default in v1.22.x), Fase 30.e D4
+    // header. When disabled (D6 default in v1.22.x), v1.21.0 D4
     // + D5 negotiation is preserved verbatim.
     //
     // Critically, `decision == StayJson` is sticky in both modes:
@@ -22613,10 +22613,10 @@ async fn execute_handler_with_negotiation(
 
     if promote_sse {
         // Adapt ExecuteRequest → StreamExecuteRequest.
-        // §Fase 37.b — carry the request body across the JSON→SSE
+        // v1.32.0 — carry the request body across the JSON→SSE
         // content-negotiation promotion so the Request Binding
         // Contract holds on the promoted transport too.
-        // §Fase 37.y — path + query carry too so the 3-source binder
+        // v1.32.0 — path + query carry too so the 3-source binder
         // sees the full set on the promoted transport.
         let stream_req = StreamExecuteRequest {
             flow_name: payload.flow,
@@ -22630,7 +22630,7 @@ async fn execute_handler_with_negotiation(
             .into_response();
     }
 
-    // §Fase 31.e (D5) — diagnostic response header for legacy JSON
+    // v1.22.0 (D5) — diagnostic response header for legacy JSON
     // responses on stream-effect flows. The header makes the
     // language's type-driven inference observable at runtime when
     // the wire format is JSON either because the strict flag is off
@@ -22642,7 +22642,7 @@ async fn execute_handler_with_negotiation(
     //   * JSON responses for non-stream-effect flows (no inference
     //     fired; nothing to surface)
     //
-    // Header text per plan vivo §7.2 verbatim:
+    // Header text per plan vivo section 7.2 verbatim:
     //   `X-Axon-Stream-Available: 1; reason=<flag_off|declared_json>;
     //    opt_in=transport:sse,Accept:text/event-stream`
     //
@@ -22678,14 +22678,14 @@ async fn execute_handler_with_negotiation(
     resp
 }
 
-/// §Fase 31.e — Does the flow named `flow_name` have any stream
+/// v1.22.0 — Does the flow named `flow_name` have any stream
 /// effects, regardless of any `transport:` declaration the adopter
 /// may have made? Used by `execute_handler_with_negotiation` to
 /// decide whether to attach the `X-Axon-Stream-Available` header
 /// to a JSON response.
 ///
 /// Dual-signal predicate, matching the architecture of
-/// `classify_negotiation_via_source_text` from Fase 30.e: AST walk
+/// `classify_negotiation_via_source_text` from v1.21.0: AST walk
 /// for the canonical path + source-text patterns as the defensive
 /// fallback (catches the Rust frontend parser gaps for `output:
 /// Stream<T>` inside step bodies + `use Tool()` at flow-body level).
@@ -22701,7 +22701,7 @@ fn flow_has_any_stream_evidence(
     source: &str,
     flow_name: &str,
 ) -> bool {
-    // AST path — uses the Fase 30.e flow_produces_stream_runtime
+    // AST path — uses the v1.21.0 flow_produces_stream_runtime
     // helper which already covers disjuncts (a) + (b).
     if let Some(program) = program_opt {
         for decl in &program.declarations {
@@ -22726,8 +22726,8 @@ fn flow_has_any_stream_evidence(
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// §Fase 30.f — Keepalive comment emission for SSE responses (D6 ratified
-//              2026-05-10 bloque). Plan vivo §2.4 + §6.2.
+// v1.21.0 — Keepalive comment emission for SSE responses (D6 ratified
+// 2026-05-10 bloque). Plan vivo section 2.4 + section 6.2.
 //
 // W3C Server-Sent Events allows comment-only events of the shape
 // `: <text>\n\n` which adopter EventSource clients silently discard but
@@ -22742,7 +22742,7 @@ fn flow_has_any_stream_evidence(
 // is absent): 15s — comfortably below all common LB idle-timeouts while
 // not flooding the wire on quiet flows.
 //
-// Implementation rationale: this sub-fase ALSO refactors
+// Implementation rationale: this step ALSO refactors
 // `execute_sse_handler` from "synchronous-execute-then-emit" to
 // "channel-fed-stream-with-spawn_blocking" so axum's `KeepAlive` has
 // a real inactivity window to fire into. Before 30.f the executor
@@ -22760,7 +22760,7 @@ fn flow_has_any_stream_evidence(
 // response → drops `rx` → the spawned task's `tx.send().await` returns
 // SendError(Disconnected) → all subsequent sends become no-ops via
 // `.ok()`. The spawn_blocking flow execution continues to completion
-// (we don't have an abort signal yet — that's a future sub-fase) but
+// (we don't have an abort signal yet — that's a future step) but
 // the spawned task drops its tx without blocking on the dead client.
 // ──────────────────────────────────────────────────────────────────────────
 
@@ -28551,16 +28551,16 @@ async fn execute_warm_handler(
         }
 
         // Execute to warm
-        // §Fase 37.y — warmup path has no HTTP request; empty path + query.
+        // v1.32.0 — warmup path has no HTTP request; empty path + query.
         let empty_path = std::collections::HashMap::new();
         let empty_query = std::collections::HashMap::new();
-        // §Fase 108.b — thread the process engine (warmup runs the same
+        // v2.63.0 — thread the process engine (warmup runs the same
         // dispatcher as production; the port must match).
         let ds_engine = {
             let s = state.lock().unwrap();
             s.dataspace_engine.clone()
         };
-        // §Fase 114.a — warmup runs the same dispatcher as production, so it must
+        // v2.69.0 — warmup runs the same dispatcher as production, so it must
         // charge the same budget. A warmup that spent freely would silently eat an
         // adopter's vendor quota before their first real request arrived.
         let http_budget = {
@@ -28577,7 +28577,7 @@ async fn execute_warm_handler(
         };
         match server_execute(
             source, source_file, flow_name, "stub",
-            // §Fase 122.d.1 — async handler: the task-local is real here.
+            // v2.89.0 — async handler: the task-local is real here.
             &crate::tenant::current_tenant_id(),
             None, None,
             &empty_path, &empty_query, Some(ds_engine), http_budget, http_channel_sems, http_tool_leases,
@@ -28723,12 +28723,12 @@ pub fn build_router_with_state(config: ServerConfig) -> (Router, SharedState) {
     let state = Arc::new(Mutex::new(ServerState::new(config)));
 
     let router = Router::new()
-        // §Fase 111.i — the session-typed WebSocket wire. The OSS server had NO
+        // v2.67.0 — the session-typed WebSocket wire. The OSS server had NO
         // WebSocket route at all, while this repo's README advertises the language
         // as shipping session-typed WebSocket dialogue. The state machine, the
         // duality proof and the protocol driver all existed; there was no door.
         .route("/ws/{socket}", get(ws_session_handler))
-        // §Fase 112.c — the Cognitive-I/O ops surface. The graph the language
+        // v2.67.0 — the Cognitive-I/O ops surface. The graph the language
         // always declared, finally observable.
         .route("/v1/cognitive-io", get(cognitive_io_handler))
         .route("/v1/cognitive-io/tick", post(cognitive_io_tick_handler))
@@ -28754,7 +28754,7 @@ pub fn build_router_with_state(config: ServerConfig) -> (Router, SharedState) {
         .route("/v1/metrics/export", post(metrics_export_handler))
         .route("/v1/deploy", post(deploy_handler))
         .route("/v1/deploy/reload", post(deploy_reload_handler))
-        // §Fase 30.e — content-negotiation wrapper. Defers to legacy
+        // v1.21.0 — content-negotiation wrapper. Defers to legacy
         // `execute_handler` for JSON path; auto-promotes to SSE when
         // D4/D5 conditions hold. Legacy behavior unchanged for every
         // existing v1.20.0 client that doesn't send Accept: text/event-stream
@@ -28769,7 +28769,7 @@ pub fn build_router_with_state(config: ServerConfig) -> (Router, SharedState) {
         .route("/v1/execute/dry-run", post(execute_dry_run_handler))
         .route("/v1/execute/pipeline", post(execute_pipeline_handler))
         .route("/v1/execute/stream", post(execute_stream_handler))
-        // §Fase 30.d — single-shot SSE: response IS the stream. Distinct
+        // v1.21.0 — single-shot SSE: response IS the stream. Distinct
         // from /v1/execute/stream above (two-stage pub/sub via EventBus
         // topic; preserved per D8). Same ExecuteRequest body shape.
         .route("/v1/execute/sse", post(execute_sse_handler))
@@ -28820,7 +28820,7 @@ pub fn build_router_with_state(config: ServerConfig) -> (Router, SharedState) {
         .route("/v1/audit", get(audit_handler))
         .route("/v1/audit/stats", get(audit_stats_handler))
         .route("/v1/audit/export", get(audit_export_handler))
-        // §Fase 32.h — Replay-token retrieval. Auditors fetch the
+        // v1.23.0 — Replay-token retrieval. Auditors fetch the
         // recorded (request, response, metadata) tuple by trace_id
         // for regulatory replay (PCI DSS Req 10, FedRAMP AU-2,
         // FRE 502, 21 CFR Part 11).
@@ -29032,10 +29032,10 @@ pub fn build_router_with_state(config: ServerConfig) -> (Router, SharedState) {
             state.clone(),
             crate::request_middleware::request_middleware_fn,
         ))
-        // §Fase 32.b — Fallback handler for dynamic axonendpoint
+        // v1.23.0 — Fallback handler for dynamic axonendpoint
         // routes. Fires when no static route above matched. Looks
         // up `(method, path)` in `ServerState.dynamic_routes` and
-        // dispatches through the Fase 30/31 negotiation classifier
+        // dispatches through the v1.21.0/31 negotiation classifier
         // with the flow_name from the route. On miss returns 404
         // with the full registered-routes table for adopter triage.
         //
@@ -29074,7 +29074,7 @@ pub fn run_serve(config: ServerConfig) -> i32 {
         config.log_file.as_deref(),
     );
 
-    // §Fase 36.g (D7) — fail fast on an unknown server default backend.
+    // v1.31.0 (D7) — fail fast on an unknown server default backend.
     // An operator who fat-fingers the provider name learns at server
     // startup, not at the first production request.
     if let Err(msg) = validate_server_default_backend(&config.default_backend) {
@@ -29118,13 +29118,13 @@ pub fn run_serve(config: ServerConfig) -> i32 {
     };
 
     rt.block_on(async {
-        // §Fase 118.b.3 — `server` WITHOUT `postgres` is a real, supported profile:
+        // v2.81.0 — `server` WITHOUT `postgres` is a real, supported profile:
         // a governed HTTP runtime whose storage plane is in-memory. It is the
         // combination an adopter gets from `--features server`, so it must build,
         // and a `--database-url` handed to a binary with no driver must REFUSE IN
         // WRITING rather than be silently ignored — a server that quietly runs on
         // memory when it was pointed at Postgres is exactly the silent degradation
-        // §111 exists to forbid.
+        // v2.67.0 exists to forbid.
         #[cfg(not(feature = "postgres"))]
         if let Some(ref db_url) = database_url {
             let _ = db_url;
@@ -29178,7 +29178,7 @@ pub fn run_serve(config: ServerConfig) -> i32 {
         let signal_coord = coordinator.clone();
         tokio::spawn(crate::graceful_shutdown::listen_signals(signal_coord));
 
-        // §Fase 112.f — walk the declared Cognitive-I/O graph, continuously. Without
+        // v2.67.0 — walk the declared Cognitive-I/O graph, continuously. Without
         // this the supervisor only ever runs when someone POSTs to its endpoint, so
         // an `immune` would never learn a baseline, never detect, and never fire.
         spawn_cognitive_io_driver(shared_state.clone());
@@ -29225,7 +29225,7 @@ mod tests {
     use http_body_util::BodyExt;
     use tower::ServiceExt;
 
-    // ── §Brief #63 — deadlock/hard-deadline regression ─────────────────────
+    // ── Brief #63 — deadlock/hard-deadline regression ─────────────────────
     //
     // The adopter's server hung (CPU 0%, /healthz down, no trace) because a
     // blocking `scrape_http` fetch ran INLINE on the axum async worker and could
@@ -29448,7 +29448,7 @@ run F() as P"#;
 
     #[tokio::test]
     async fn deploy_with_unreachable_store_warns_but_succeeds() {
-        // §Fase 37.x.g (D8) — a declared postgresql store unreachable
+        // v1.32.0 (D8) — a declared postgresql store unreachable
         // at deploy is a NON-fatal warning: the deploy succeeds and the
         // warning is surfaced. "Deploy is honest, never brittle."
         let app = build_router(test_config());

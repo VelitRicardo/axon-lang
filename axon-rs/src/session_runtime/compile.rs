@@ -1,4 +1,4 @@
-//! §Fase 111.i — **the SessionType compiler.** The declared protocol finally
+//! v2.67.0 — **the SessionType compiler.** The declared protocol finally
 //! reaches the runtime.
 //!
 //! # What was missing
@@ -7,7 +7,7 @@
 //! **genuinely checked** at compile time — Honda–Vasconcelos duality is *decided*
 //! in [`crate::session`] (dual involution, capture-avoiding substitution,
 //! coinductive equality), and `check_session_duality` really rejects non-dual
-//! roles. That half is real, and §111's audit confirmed it.
+//! roles. That half is real, and v2.67.0's audit confirmed it.
 //!
 //! And then it was **thrown away.** The type-checker lowered the roles into the
 //! `SessionType` algebra to prove duality and dropped the result on the floor.
@@ -20,14 +20,14 @@
 //!
 //! > *"The `protocol: "ChatProtocol"` string in the IR is treated as an **opaque
 //! > identifier**. **Every deployed socket gets the canonical `chat_schema`**. A
-//! > future Fase will add the session-type declarations to the IR + a SessionType
+//! > future cycle will add the session-type declarations to the IR + a SessionType
 //! > compiler that maps the protocol string to a fully-resolved `SessionType`."*
 //!
 //! So an adopter could declare a protocol, have its duality *proven* at compile
 //! time, deploy it — and the runtime would enforce a **hardcoded chat schema**
 //! instead. The proof was real. It just wasn't about the thing that ran.
 //!
-//! **This module is that future Fase.** The declarations were already in the IR;
+//! **This module is that future cycle.** The declarations were already in the IR;
 //! only the compiler was missing.
 //!
 //! # Fidelity
@@ -37,7 +37,7 @@
 //! ops, same `Interrupt` shape. That is deliberate: if the runtime lowered the
 //! protocol even slightly differently from the checker, the compile-time duality
 //! proof would be a proof about a *different* protocol than the one enforced —
-//! which is exactly the class of defect §111 exists to end.
+//! which is exactly the class of defect v2.67.0 exists to end.
 
 use crate::ir_nodes::{IRProgram, IRSession, IRSessionRole, IRSessionStep};
 use crate::session::{Payload, SessionType};
@@ -57,7 +57,7 @@ fn lower_steps(steps: &[IRSessionStep]) -> SessionType {
         "end" => SessionType::End,
         "select" => SessionType::select(branch_types(first)),
         "branch" => SessionType::branch(branch_types(first)),
-        // §Fase 79 — `interrupt { body } on Sig as sig resumable { handler }`
+        // v2.36.0 — `interrupt { body } on Sig as sig resumable { handler }`
         // lowers to `Intr(sig; B, H)`. Terminal, like select/branch: the region's
         // continuation lives inside its body.
         "interrupt" => {
@@ -139,7 +139,7 @@ pub fn schema_for_socket(ir: &IRProgram, socket_name: &str) -> Option<SessionTyp
     server_schema(ir, &socket.protocol)
 }
 
-/// The socket's declared backpressure credit (§41.c `!ⁿA.S`), if any.
+/// The socket's declared backpressure credit (v2.3.0 `!ⁿA.S`), if any.
 /// `None` ⇒ the unbounded fragment.
 pub fn credit_for_socket(ir: &IRProgram, socket_name: &str) -> Option<u64> {
     ir.sockets
@@ -309,7 +309,7 @@ mod tests {
         assert!(schema_for_socket(&ir, "NoSuchSocket").is_none());
     }
 
-    /// The declared backpressure credit (§41.c) reaches the runtime too.
+    /// The declared backpressure credit (v2.3.0) reaches the runtime too.
     #[test]
     fn the_declared_credit_reaches_the_runtime() {
         let ir = program(vec![], vec![socket("Wire", "P", Some(8))]);

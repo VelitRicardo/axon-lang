@@ -1,4 +1,4 @@
-//! AXON Runtime — ReflexEngine (§λ-L-E Fase 5, paper_immune_v2.md §4.2)
+//! AXON Runtime — ReflexEngine (v1.1.0, paper_immune_v2.md section 4.2)
 //!
 //! Direct port of `axon/runtime/immune/reflex.py`.
 //!
@@ -301,7 +301,7 @@ mod tests {
         let report = mk_report("I", "doubt", "sig-l");
         let out = eng.dispatch(&report).into_iter().next().unwrap();
         assert!(out.latency_us >= 0.0);
-        // Paper §4.2 target is ~few microseconds; allow slack for CI noise.
+        // Paper section 4.2 target is ~few microseconds; allow slack for CI noise.
         assert!(out.latency_us < 5_000.0);
     }
 }

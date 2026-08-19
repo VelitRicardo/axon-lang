@@ -1,9 +1,9 @@
 ---
 name: aggregate
-summary: "The dataspace verb (γ) over the first-party columnar engine (§108.d)."
+summary: "The dataspace verb (γ) over the first-party columnar engine (v2.63.0)."
 category: data_plane
 top_level: false
-since: Fase 108.d (v2.63.0)
+since: v2.63.0
 grammar: |
   aggregate <Dataspace> ...
 ---
@@ -11,7 +11,7 @@ grammar: |
 # `aggregate`
 
 `aggregate` is one of the four **relational query verbs** over a declared
-`dataspace` (§108.d), executed by the first-party columnar engine — no
+`dataspace` (v2.63.0), executed by the first-party columnar engine — no
 LLM in the loop, deterministic by construction.
 
 ## What the runtime actually does
@@ -20,7 +20,7 @@ LLM in the loop, deterministic by construction.
 
 ## Proof
 
-`dataspace_engine::aggregate_query` — the §111 audit verdict: Real.
+`dataspace_engine::aggregate_query` — the v2.67.0 audit verdict: Real.
 
 ## See also
 

@@ -1,16 +1,16 @@
-//! Native Rust LLM backends — Fase 24.
+//! Native Rust LLM backends — v1.18.0.
 //!
 //! Per-provider async backends consumed by the algebraic-effects
-//! runtime (Fase 23.f) and, in upcoming Fase 25+, the general flow
+//! runtime (v1.17.0) and, in upcoming v1.19.0+, the general flow
 //! executor. Each provider lives in its own submodule:
 //!
-//!   * [`anthropic`]   — Claude Messages API (Fase 24.c)
-//!   * [`openai`]      — GPT chat/completions (Fase 24.d)
-//!   * [`gemini`]      — Google generateContent (Fase 24.e)
-//!   * [`kimi`]        — Moonshot K2.x (Fase 24.f, locked params)
-//!   * [`glm`]         — Zhipu GLM-4.x (Fase 24.g)
-//!   * [`ollama`]      — local LLMs via REST (Fase 24.h)
-//!   * [`openrouter`]  — multi-provider gateway (Fase 24.i)
+//! * [`anthropic`] — Claude Messages API (v1.18.0)
+//! * [`openai`] — GPT chat/completions (v1.18.0)
+//! * [`gemini`] — Google generateContent (v1.18.0)
+//! * [`kimi`] — Moonshot K2.x (v1.18.0, locked params)
+//! * [`glm`] — Zhipu GLM-4.x (v1.18.0)
+//! * [`ollama`] — local LLMs via REST (v1.18.0)
+//! * [`openrouter`] — multi-provider gateway (v1.18.0)
 //!
 //! Shared infrastructure ships in 24.b alongside the trait + Registry:
 //!
@@ -37,7 +37,7 @@
 //! println!("{}", response.content);
 //! ```
 //!
-//! # Architecture decisions (see docs/fase/fase_24_native_rust_backends.md)
+//! # Architecture decisions (see docs/cycle/native_rust_backends.md)
 //!
 //! * **D1** — `async_trait` over native async-fn-in-trait so `dyn Backend`
 //!   stays object-safe (Registry uses `HashMap<String, Box<dyn Backend>>`).
@@ -69,10 +69,10 @@ pub mod openai_compat;
 pub mod openrouter;
 pub mod retry;
 pub mod sse_streaming;
-/// §Fase 33.x.b — `StubBackend` implementing the [`Backend`] trait so
+/// v1.24.0 — `StubBackend` implementing the [`Backend`] trait so
 /// the production async streaming path resolves "stub" through the
 /// uniform [`Registry`] surface (no special-cased branches in the
-/// runtime). Excluded from the Fase 24.j cross-stack drift gate
+/// runtime). Excluded from the v1.18.0 cross-stack drift gate
 /// SHARED_INFRA_MODULES because it is not a real provider.
 pub mod stub;
 pub mod tokens;
@@ -188,7 +188,7 @@ pub struct ChatRequest {
     /// `false` → call `complete()`. `true` → call `stream()` and consume
     /// the chunk stream incrementally.
     pub stream: bool,
-    /// §Fase 119.b (Tier 1) — per-token logit bias, token_id → bias in the
+    /// v2.83.0 (Tier 1) — per-token logit bias, token_id → bias in the
     /// OpenAI wire range [-100, 100]. The mandate engine uses −100 BANS for
     /// `Absent` needles: the probability mass of a forbidden lexeme is
     /// collapsed before sampling. Emitted only on the OpenAI-compat wire;
@@ -200,7 +200,7 @@ pub struct ChatRequest {
     /// Trace ID propagated from the calling flow step. Surfaces in
     /// tracing spans so log lines correlate.
     pub trace_id: Option<String>,
-    /// §Fase 33.x.e — Cancellation flag observed INSIDE the reqwest
+    /// v1.24.0 — Cancellation flag observed INSIDE the reqwest
     /// body. Each per-provider `Backend::stream()` impl wraps its
     /// returned chunk stream with `sse_streaming::cancel_aware`
     /// so the next-chunk poll races a `cancel.cancelled()` future
@@ -370,7 +370,7 @@ pub trait Backend: Send + Sync {
 ///
 /// Backends are registered by their canonical short name (the same
 /// string the Python `BACKEND_REGISTRY` uses — verified by the
-/// Fase 24.j drift gate). Lookup is `O(1)` HashMap.
+/// v1.18.0 drift gate). Lookup is `O(1)` HashMap.
 pub struct Registry {
     backends: HashMap<String, Box<dyn Backend>>,
 }
@@ -394,7 +394,7 @@ impl Registry {
     ///
     /// The registry's `provider_names()` returns the sorted list of all
     /// 7 keys: `["anthropic", "gemini", "glm", "kimi", "ollama",
-    /// "openai", "openrouter"]`. The Fase 24.j drift gate
+    /// "openai", "openrouter"]`. The v1.18.0 drift gate
     /// (`tests/test_fase24_backend_parity.py`) asserts this set
     /// matches Python's `BACKEND_REGISTRY` keys exactly.
     pub fn production() -> Self {
@@ -409,12 +409,12 @@ impl Registry {
         registry
     }
 
-    /// §Fase 33.x.b — Production registry PLUS the `stub` backend.
+    /// v1.24.0 — Production registry PLUS the `stub` backend.
     ///
     /// Used by the server streaming path so dispatch through the
     /// uniform `Registry` surface includes the stub. The 7 canonical
     /// production backends are unchanged; `stub` is added as an 8th
-    /// entry. The Fase 24.j cross-stack drift gate continues to pin
+    /// entry. The v1.18.0 cross-stack drift gate continues to pin
     /// the 7 canonical entries exactly via filesystem enumeration of
     /// `axon-rs/src/backends/*.rs` minus the `SHARED_INFRA_MODULES`
     /// set (which includes `stub`).
@@ -430,7 +430,7 @@ impl Registry {
     }
 }
 
-/// §Fase 33.x.b — Owned-backend resolver for the streaming dispatch
+/// v1.24.0 — Owned-backend resolver for the streaming dispatch
 /// path.
 ///
 /// Returns `Some(Box<dyn Backend>)` for the 7 canonical production
@@ -463,12 +463,12 @@ pub fn resolve_streaming_backend(name: &str) -> Option<Box<dyn Backend>> {
     }
 }
 
-/// §Fase 65.C — like [`resolve_streaming_backend`] but pins an EXPLICIT API key
+/// v2.15.0 — like [`resolve_streaming_backend`] but pins an EXPLICIT API key
 /// (the per-tenant key resolved from the tenant secrets manager) onto the
 /// backend via each provider's `with_api_key`, instead of reading the provider
 /// env var through `from_env()`. `None` ⇒ defer to `resolve_streaming_backend`
-/// (the pre-§65.C env behavior). This is what lets the dispatcher's LLM path
-/// honor per-tenant keys — before §65.C the streaming/SSE path could ONLY use
+/// (the pre-v2.15.0 env behavior). This is what lets the dispatcher's LLM path
+/// honor per-tenant keys — before v2.15.0 the streaming/SSE path could ONLY use
 /// the process env key, so multi-tenant SSE either shared one key or broke.
 pub fn resolve_streaming_backend_with_key(
     name: &str,
@@ -492,7 +492,7 @@ pub fn resolve_streaming_backend_with_key(
     }
 }
 
-/// §Fase 24.g.2 (Kivi brief #37) — like [`resolve_streaming_backend_with_key`]
+/// v1.18.0 (Kivi brief #37) — like [`resolve_streaming_backend_with_key`]
 /// but also threads an EXPLICIT per-tenant base-URL / chat-path override onto
 /// the OpenAI-compatible providers (openai, kimi, glm, ollama, openrouter).
 ///
@@ -558,7 +558,7 @@ pub const STREAMING_BACKEND_NAMES: &[&str] = &[
     "stub",
 ];
 
-/// §Fase 33.x.i — Canonical 7-provider set surfaced to adopters.
+/// v1.24.0 — Canonical 7-provider set surfaced to adopters.
 ///
 /// Identical to [`STREAMING_BACKEND_NAMES`] minus `"stub"` (which is
 /// a test/internal backend, not an adopter-facing provider). This is
@@ -569,7 +569,7 @@ pub const STREAMING_BACKEND_NAMES: &[&str] = &[
 ///
 /// Drift-gated by `resolver_tests::canonical_providers_equals_legacy_supported`
 /// (asserts byte-equality with the legacy constant) and
-/// `tests/fase33x_i_mono_file_retirement.rs` (asserts the same plus
+/// `tests/mono_file_retirement.rs` (asserts the same plus
 /// the count + canonical-vs-stub-removed invariant).
 pub const CANONICAL_PROVIDERS: &[&str] = &[
     "anthropic",
@@ -581,7 +581,7 @@ pub const CANONICAL_PROVIDERS: &[&str] = &[
     "openrouter",
 ];
 
-/// §Fase 36.c — Canonical providers with a usable API key present in
+/// v1.31.0 — Canonical providers with a usable API key present in
 /// the environment, in `CANONICAL_PROVIDERS` priority order.
 ///
 /// Feeds the `env_available` rung of the Backend Resolution Contract
@@ -603,7 +603,7 @@ pub fn env_available_backends() -> Vec<String> {
         .collect()
 }
 
-/// §Fase 33.x.i — Canonical API-key env-var resolution.
+/// v1.24.0 — Canonical API-key env-var resolution.
 ///
 /// Same semantics as the legacy `crate::backend::get_api_key`:
 ///   - For known providers, reads `<PROVIDER>_API_KEY` from the
@@ -668,7 +668,7 @@ mod resolver_tests {
 
     #[test]
     fn resolve_with_key_pins_each_provider_and_falls_back_on_none() {
-        // §Fase 65.C — with an explicit key, every streaming provider resolves
+        // v2.15.0 — with an explicit key, every streaming provider resolves
         // (the per-tenant key path), and the backend identity is unchanged.
         for name in STREAMING_BACKEND_NAMES {
             let b = resolve_streaming_backend_with_key(name, Some("sk-tenant-test"))
@@ -715,7 +715,7 @@ mod resolver_tests {
 
     #[test]
     fn canonical_providers_equals_legacy_supported_backends() {
-        // §Fase 33.x.i drift gate: the new
+        // v1.24.0 drift gate: the new
         // `crate::backends::CANONICAL_PROVIDERS` (consolidated
         // single source of truth) MUST equal the legacy
         // `crate::backend::SUPPORTED_BACKENDS` byte-for-byte. The
@@ -732,7 +732,7 @@ mod resolver_tests {
 
     #[test]
     fn canonical_providers_is_streaming_minus_stub() {
-        // §Fase 33.x.i invariant: the canonical 7-provider set
+        // v1.24.0 invariant: the canonical 7-provider set
         // equals the 8-entry streaming dispatch set with `stub`
         // removed. Drift here surfaces if a new provider is added
         // to one set but not the other.
@@ -785,7 +785,7 @@ mod resolver_tests {
 impl Registry {
     /// Internal marker reserved for future expansion of the
     /// streaming-resolver dispatch surface. Currently a no-op; kept
-    /// as a public-crate anchor so future Fase 33.x sub-fases can
+    /// as a public-crate anchor so future v1.24.0 steps can
     /// extend the dispatch table without re-opening the parent impl
     /// block. Untyped const is a zero-cost marker in monomorphisation.
     #[doc(hidden)]
@@ -803,7 +803,7 @@ impl Registry {
     }
 
     /// All registered provider names, sorted alphabetically. Used by
-    /// the cross-stack drift gate (Fase 24.j) to verify the Rust set
+    /// the cross-stack drift gate (v1.18.0) to verify the Rust set
     /// equals the Python `BACKEND_REGISTRY` set.
     pub fn provider_names(&self) -> Vec<String> {
         let mut names: Vec<String> = self.backends.keys().cloned().collect();

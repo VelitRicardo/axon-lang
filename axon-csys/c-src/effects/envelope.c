@@ -1,5 +1,5 @@
 /*
- * §Fase 39.c.x — Epistemic Envelope C23 Kernel implementation.
+ * v2.0.0 — Epistemic Envelope C23 Kernel implementation.
  *
  * Theorem 5.1 enforcement in silicon. The kernel is intentionally
  * tiny — three pure functions, no allocation, no syscalls. The whole
@@ -13,7 +13,7 @@
 #include "envelope.h"
 #include <math.h>
 
-/* §Theorem 5.1 — the ceiling constant. */
+/* Theorem 5.1 — the ceiling constant. */
 #define AXON_CSYS_THEOREM_5_1_CEILING 0.99
 
 /*

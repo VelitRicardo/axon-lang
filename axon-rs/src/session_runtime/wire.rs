@@ -1,8 +1,8 @@
-//! Wire format for the §Fase 41.d session-typed WebSocket dialogue.
+//! Wire format for the v2.3.0 session-typed WebSocket dialogue.
 //!
 //! Every frame is one **text** WebSocket message carrying a JSON envelope
 //! whose `kind` discriminator names one of the five operational actions of
-//! the §41.a algebra: `send`, `recv` (reserved — see note), `select`,
+//! the v2.3.0 algebra: `send`, `recv` (reserved — see note), `select`,
 //! `branch`, `end`, plus an out-of-band `error` carrier for protocol-error
 //! close-frame reasons. The format is **closed** — anything else is a
 //! `MalformedFrame` (no silent toleration; the type checker has already
@@ -53,7 +53,7 @@ pub enum Frame {
         payload_type: String,
         /// The value carried by the step. Opaque at this layer (no
         /// schema enforcement beyond presence + JSON well-formedness);
-        /// payload-shape validation is a future fase (e.g. typed-data
+        /// payload-shape validation is a future cycle (e.g. typed-data
         /// integration with `axonstore`).
         data: JsonValue,
     },

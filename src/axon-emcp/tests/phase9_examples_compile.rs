@@ -1,4 +1,4 @@
-//! §Phase 9 — every example shipped under `knowledge/examples/` must
+//! Phase 9 — every example shipped under `knowledge/examples/` must
 //! compile end-to-end through the same `axon-frontend` pipeline the
 //! `axon` CLI uses, and its frontmatter must parse cleanly.
 //!
@@ -28,16 +28,16 @@ const EXPECTED: &[(&str, ExampleTopic)] = &[
     ("flow_step_basic", ExampleTopic::Composition),
     ("flow_chaining", ExampleTopic::Composition),
     ("tool_use_basic", ExampleTopic::Composition),
-    // §Fase 58.h — the structured `use <Tool>(k = v, …)` dispatch form.
+    // v2.8.0 — the structured `use <Tool>(k = v, …)` dispatch form.
     ("tool_structured_args", ExampleTopic::Composition),
     ("weave_braid", ExampleTopic::Composition),
-    // §Fase 109 — the proof-carrying derivative (grad over the closed Expr).
+    // v2.65.0 — the proof-carrying derivative (grad over the closed Expr).
     ("grad_proof_carrying", ExampleTopic::Composition),
-    // §Fase 51 (v2.19.0) — the quant cognitive primitive feature map.
+    // v2.19.0 — the quant cognitive primitive feature map.
     ("quant_feature_map", ExampleTopic::Composition),
-    // §Fase 91 — declared cognitive time (`now:` on step + context frame).
+    // v2.46.0 — declared cognitive time (`now:` on step + context frame).
     ("temporal_cognitive_context", ExampleTopic::Composition),
-    // §Fase 115 — the Epistemic Module System: multi-file import + ECC + link.
+    // v2.76.0 — the Epistemic Module System: multi-file import + ECC + link.
     ("module_imports", ExampleTopic::Composition),
     // Session types (2)
     ("session_chat_duality", ExampleTopic::SessionTypes),
@@ -51,29 +51,29 @@ const EXPECTED: &[(&str, ExampleTopic)] = &[
     // Data (3)
     ("axonstore_typed", ExampleTopic::Data),
     ("dataspace_basic", ExampleTopic::Data),
-    // §Fase 94 — the secret-custody rotation lifecycle (backend: secrets
+    // v2.48.0 — the secret-custody rotation lifecycle (backend: secrets
     // + rotate + tool secret injection; `rotation_without_revelation`).
     ("secret_custody_rotation", ExampleTopic::Data),
-    // §Fase 95 — parametric secret injection: one tool, N sub-tenants
+    // v2.49.0 — parametric secret injection: one tool, N sub-tenants
     // (`secret_partition:`; `selection_without_revelation`).
     ("secret_partition_multitenant", ExampleTopic::Data),
-    // §Fase 105 — governed CRM delivery (acquire→enrich→deliver, provenance intact).
+    // v2.60.0 — governed CRM delivery (acquire→enrich→deliver, provenance intact).
     ("governed_crm_delivery", ExampleTopic::Data),
-    // §Fase 108 — the deterministic data plane: ingest → σ → γ, every
+    // v2.63.0 — the deterministic data plane: ingest → σ → γ, every
     // number COMPUTED (dataspace + the governed pipeline).
     ("governed_data_pipeline", ExampleTopic::Data),
-    // §Fase 110 — governed human notification (daemon → aggregate → notify).
+    // v2.66.0 — governed human notification (daemon → aggregate → notify).
     ("governed_notification", ExampleTopic::Data),
     // Agents (2)
     ("agent_react", ExampleTopic::Agents),
     ("reflex_to_immune", ExampleTopic::Agents),
     // Endpoints (2)
     ("axonendpoint_rest", ExampleTopic::Endpoints),
-    // §Fase 83.a — the named, referenced browser-origin policy.
+    // v2.38.0 — the named, referenced browser-origin policy.
     ("cors_named_origin_policy", ExampleTopic::Endpoints),
-    // §Fase 92 — the ephemeral widget credential (credential + mint + cors).
+    // v2.46.0 — the ephemeral widget credential (credential + mint + cors).
     ("widget_ephemeral_credential", ExampleTopic::Endpoints),
-    // §Fase 107 — HTTP QUERY (RFC 10008): a complex read, safe by compile-time proof.
+    // v2.62.0 — HTTP QUERY (RFC 10008): a complex read, safe by compile-time proof.
     ("query_safe_search", ExampleTopic::Endpoints),
     // Memory (1)
     ("memory_scopes", ExampleTopic::Memory),
@@ -82,7 +82,7 @@ const EXPECTED: &[(&str, ExampleTopic)] = &[
     ("mandate_policy", ExampleTopic::Validation),
 ];
 
-/// §Phase 9 catalog gate — every expected example is embedded, its
+/// Phase 9 catalog gate — every expected example is embedded, its
 /// frontmatter is well-formed, and the topic matches the closed
 /// catalog. A regression here means a contributor renamed / removed
 /// an example without updating `EXPECTED`.
@@ -113,7 +113,7 @@ fn embedded_corpus_contains_every_phase_9_example() {
     );
 }
 
-/// §Phase 9 compile gate — every embedded example's source compiles
+/// Phase 9 compile gate — every embedded example's source compiles
 /// clean through the same `axon-frontend` pipeline the `axon` CLI
 /// uses. A failure here means the snippet would be returned to the
 /// agent but would NOT compile if the agent tried to use it — the
@@ -136,7 +136,7 @@ fn every_embedded_example_source_compiles_clean() {
     }
 }
 
-/// §Phase 9 topic gate — every closed `ExampleTopic` is represented
+/// Phase 9 topic gate — every closed `ExampleTopic` is represented
 /// by AT LEAST one example. The point of the topic catalogue is to
 /// let the agent navigate the corpus by axis; an empty topic axis
 /// degrades the discovery surface silently.
@@ -153,7 +153,7 @@ fn every_topic_has_at_least_one_example() {
     }
 }
 
-/// §Phase 9 primitive-filter gate — `examples_using(primitive)` is
+/// Phase 9 primitive-filter gate — `examples_using(primitive)` is
 /// the lookup the agent uses to find "how do I use weave?". This test
 /// spot-checks that the canonical primitives an agent asks about
 /// FIRST are reachable through that lookup. Adding a new must-cover
@@ -167,10 +167,10 @@ fn canonical_primitives_are_reachable_via_examples_using() {
         "persona", "flow", "step", "anchor", "tool",
         // Tier 1 — the named "do something distinctive" primitives.
         "shield", "weave", "memory", "lambda", "mandate",
-        // §Phase 9 also surfaces session/socket/agent/axonendpoint —
+        // Phase 9 also surfaces session/socket/agent/axonendpoint —
         // the primitives that anchor the four large topic axes.
         "session", "socket", "agent", "axonendpoint",
-        // §Fase 51 (v2.19.0) — the quant cognitive primitive + its observable.
+        // v2.19.0 — the quant cognitive primitive + its observable.
         // An adopter asking "how do I write a quant block?" MUST hit an example
         // (the brief-#29 failure mode: 0 examples → adopter guesses the grammar).
         "quant", "observable",

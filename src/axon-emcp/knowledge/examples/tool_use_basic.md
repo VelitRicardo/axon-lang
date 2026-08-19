@@ -29,7 +29,7 @@ persona Translator {
 }
 
 tool TranslationBackend {
-    // LLM-routed: the tool IS the model. No `provider:` (§114.b).
+    // LLM-routed: the tool IS the model. No `provider:` (v2.69.0).
     effects:  <network>
     timeout:  30s
 }

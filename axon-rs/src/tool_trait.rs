@@ -1,4 +1,4 @@
-//! §Fase 34.b (v1.29.0) — `Tool` trait + `ToolChunk` closed-catalog
+//! v1.29.0 — `Tool` trait + `ToolChunk` closed-catalog
 //! struct.
 //!
 //! The structural foundation for tools-as-stream-producers. Three
@@ -29,7 +29,7 @@
 //! - **D6** — `ToolChunk` shape supports per-chunk audit:
 //!   `tool_chunks_emitted` counts non-empty deltas;
 //!   `tool_output_hash_hex` is computed over the concatenated
-//!   deltas. The audit-population path lands in Fase 34.i.
+//! deltas. The audit-population path lands in v1.29.0.
 //! - **D9** — default `stream()` makes every existing tool
 //!   automatically a single-chunk stream producer; adopters who
 //!   haven't migrated see ZERO behavioral change in wire body.
@@ -40,12 +40,12 @@
 //! # Pillar trace
 //!
 //! - **MATHEMATICS** — `Tool::stream(args, ctx)` is the categorical
-//!   morphism `Args → Stream<ToolChunk>` the paper §3-§6 defines.
+//! morphism `Args → Stream<ToolChunk>` the paper section 3-section 6 defines.
 //!   Pre-34 the runtime collapsed this to `Args → String`; post-34
 //!   the categorical contract is honored.
 //! - **LOGIC** — `ToolFinishReason` is a closed 3-variant catalog
 //!   (`Stop` / `Error` / `Cancelled`). Adding a 4th requires a
-//!   deliberate sub-fase + cross-stack drift gate update.
+//! deliberate step + cross-stack drift gate update.
 //! - **PHILOSOPHY** — adopters declare `effects: <stream:<policy>>`
 //!   on a tool; post-34 (34.c+) the declaration becomes the
 //!   structural `is_streaming` field on `ToolEntry` and the
@@ -53,7 +53,7 @@
 //!   compile-time annotation — it's the runtime contract.
 //! - **COMPUTING** — `ToolStream` is a `Pin<Box<dyn Stream + Send>>`
 //!   so it can cross the spawn boundary of the producer task in
-//!   the dispatcher's `pure_shape::run_step` (Fase 34.d).
+//! the dispatcher's `pure_shape::run_step` (v1.29.0).
 
 use crate::cancel_token::CancellationFlag;
 use crate::tool_executor::ToolResult;
@@ -87,7 +87,7 @@ pub type ToolStream = Pin<Box<dyn Stream<Item = ToolChunk> + Send + 'static>>;
 ///   mid-stream (HTTP failure, MCP server error, native panic
 ///   caught and wrapped, etc.).
 /// - **`Cancelled`** — the per-tool-invocation cancellation flag
-///   fired and the tool's stream aborted cooperatively (Fase 34.h
+/// fired and the tool's stream aborted cooperatively (v1.29.0
 ///   D5 cancel-into-tool-body discipline).
 ///
 /// Serde tag is `kind`, snake_case payload — adopter SDKs +
@@ -119,7 +119,7 @@ impl ToolFinishReason {
 
 /// Closed-catalog tool stream chunk. Emitted by [`Tool::stream`]
 /// per chunk; consumed by the dispatcher's `unified_stream_handler`
-/// (Fase 34.g) which drains the stream through `StreamPolicyEnforcer`
+/// (v1.29.0) which drains the stream through `StreamPolicyEnforcer`
 /// with the declared backpressure policy + forwards each delivered
 /// chunk to `ctx.tx` as `FlowExecutionEvent::StepToken`.
 ///
@@ -212,7 +212,7 @@ impl ToolChunk {
 
 /// Per-tool-invocation context. The dispatcher's
 /// `pure_shape::run_step` constructs one of these per stream-tool
-/// invocation (Fase 34.d) and passes it through `Tool::stream`.
+/// invocation (v1.29.0) and passes it through `Tool::stream`.
 ///
 /// Carries:
 /// - **`cancel`** — the request-scoped `CancellationFlag`. Tool
@@ -220,7 +220,7 @@ impl ToolChunk {
 ///   propagation. HTTP-tool bodies use this to abort the upstream
 ///   request via `drop(reqwest_response)`; MCP-tool bodies use it
 ///   to send `$/cancelRequest` JSON-RPC notifications.
-/// - **`trace_id`** — the request-scoped UUID (Fase 32.h
+/// - **`trace_id`** — the request-scoped UUID (v1.23.0
 ///   correlation). Tools can attach this to outbound HTTP requests
 ///   for distributed trace propagation, or include it in their own
 ///   audit logs for cross-system correlation.
@@ -232,7 +232,7 @@ pub struct ToolContext {
 
 impl ToolContext {
     /// Construct a new `ToolContext` from its components. The
-    /// dispatcher is the typical caller (Fase 34.d).
+    /// dispatcher is the typical caller (v1.29.0).
     pub fn new(cancel: CancellationFlag, trace_id: u64) -> Self {
         ToolContext { cancel, trace_id }
     }
@@ -266,15 +266,15 @@ impl ToolContext {
 ///
 /// Override `stream()` when the tool's body genuinely produces a
 /// stream — for example:
-/// - An HTTP tool talking to an SSE upstream (Fase 34.e).
+/// - An HTTP tool talking to an SSE upstream (v1.29.0).
 /// - An MCP tool talking to a server that emits partial-response
-///   notifications (Fase 34.f).
+/// notifications (v1.29.0).
 /// - A native Rust tool computing a sequence of chunks over a
 ///   long-running computation.
 ///
 /// When overriding `stream()`, also override `is_streaming()` to
 /// return `true` — this signals the dispatcher to bypass the LLM
-/// upstream and invoke `stream()` directly (Fase 34.d branching).
+/// upstream and invoke `stream()` directly (v1.29.0 branching).
 ///
 /// # Cross-stack mirror
 ///
@@ -308,7 +308,7 @@ pub trait Tool: Send + Sync {
     /// **Overriding** `stream()` lets the tool's body emit multiple
     /// chunks. Implementations that override `stream()` SHOULD
     /// also override `is_streaming()` to return `true` so the
-    /// dispatcher routes through the streaming path (Fase 34.d).
+    /// dispatcher routes through the streaming path (v1.29.0).
     async fn stream(&self, args: String, ctx: ToolContext) -> ToolStream {
         let result = self.execute(args, ctx).await;
         Box::pin(futures::stream::once(async move {
@@ -318,13 +318,13 @@ pub trait Tool: Send + Sync {
 
     /// Whether this tool is a stream producer. Default: `false`.
     ///
-    /// The dispatcher's `pure_shape::run_step` (Fase 34.d) reads
+    /// The dispatcher's `pure_shape::run_step` (v1.29.0) reads
     /// this flag to decide whether to route through the streaming
     /// path (`stream()`) or the synchronous path (`execute()`).
     /// Tools that override `stream()` to emit multiple chunks
     /// SHOULD override `is_streaming()` to return `true`.
     ///
-    /// Tool implementations registered via the registry (Fase 34.c)
+    /// Tool implementations registered via the registry (v1.29.0)
     /// get this flag automatically derived from their declared
     /// `effect_row` — presence of `<stream:<policy>>` sets it to
     /// `true`. Adopters writing direct Rust impls of `Tool`

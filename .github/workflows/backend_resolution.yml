@@ -1,0 +1,208 @@
+name: v1.31.0 — Axonendpoint Production Execution
+
+# v1.31.0 (D12) — Dedicated CI workflow exercising the full Backend
+# Resolution Contract surface on every PR + master push. D1–D12
+# ratificadas 2026-05-17; this workflow locks the contract — the
+# resolution ladder, the closed catalog, honest failure, observability,
+# the deploy/compile signalling, and the D12 fuzz pass — at PR time so
+# the gap report's defect class (a deployed axonendpoint silently
+# running the no-op `stub`) can never regress into a release.
+#
+# Four parallel lanes:
+#
+#   1. rust-frontend — the `axonendpoint backend:` declaration:
+#      parser + closed-catalog validation (36.d), the cross-stack
+#      catalog drift gate, and the `axon-W003` no-backend compile
+#      warning (36.k).
+#
+#   2. rust-runtime — every runtime surface end-to-end through the
+#      real `dynamic_endpoint_handler`: the diagnostic anchor (36.a),
+#      env-aware `auto` (36.c), route backend + deploy (36.e),
+#      handler resolution (36.f), server default (36.g), honest
+#      failure (36.h), tool registry wiring (36.i), observability
+#      (36.j), deploy/compile signalling (36.k), the D9 corpus +
+#      the real-backend E2E capstone (36.l).
+#
+#   3. fuzz-d12 — the 20 000-iteration deterministic property pass
+#      over `resolve_backend`: total, deterministic, never-`stub`-
+#      from-the-auto-rungs, closed reason catalog.
+#
+# 4. regression — v1.23.0/33/34 surfaces v1.31.0 touches
+#      (dynamic-route transport, idempotency, replay, the streaming
+#      dispatcher, the sync/async parity gates). D9 absolute: the
+#      Backend Resolution Contract must not regress any prior wire.
+
+on:
+  push:
+    branches: [master]
+    tags: ["v*"]
+  pull_request:
+    branches: [master]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  # ── 1. Frontend lane: the `backend:` declaration ────────────────────
+  rust-frontend:
+    name: Rust frontend — axonendpoint backend declaration (v1.31.0)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry and build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            axon-frontend/target
+          key: ${{ runner.os }}-cargo-backend-resolution-frontend-${{ hashFiles('axon-frontend/Cargo.lock', 'axon-frontend/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-backend-resolution-frontend-
+
+      - name: v1.31.0 — `axonendpoint backend:` field (parser + type-checker)
+        working-directory: axon-frontend
+        run: cargo test --test axonendpoint_backend_field -- --nocapture
+
+      - name: v1.31.0 — `axon-W003` no-backend compile warning
+        working-directory: axon-frontend
+        run: cargo test --test no_backend_warning -- --nocapture
+
+  # ── 2. Runtime lane: full Backend Resolution Contract surface ───────
+  rust-runtime:
+    name: Rust runtime — full v1.31.0 backend-resolution surface
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry and build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            axon-rs/target
+          key: ${{ runner.os }}-cargo-backend-resolution-runtime-${{ hashFiles('axon-rs/Cargo.lock', 'axon-rs/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-backend-resolution-runtime-
+
+      - name: v1.31.0 — backend-gap diagnostic anchor
+        working-directory: axon-rs
+        run: cargo test --test axonendpoint_backend_gap_diagnostic -- --nocapture
+
+      - name: v1.31.0 — resolve_backend contract (lib unit pack)
+        working-directory: axon-rs
+        run: cargo test --lib backend_resolution -- --nocapture
+
+      - name: v1.31.0 — cross-stack backend-catalog drift gate
+        working-directory: axon-rs
+        run: cargo test --test backend_catalog_drift -- --nocapture
+
+      - name: v1.31.0 — DynamicEndpointRoute.backend + deploy handler
+        working-directory: axon-rs
+        run: cargo test --test route_backend_deploy -- --nocapture
+
+      - name: v1.31.0 — dynamic_endpoint_handler resolution
+        working-directory: axon-rs
+        run: cargo test --test dynamic_handler_resolution -- --nocapture
+
+      - name: v1.31.0 — server default backend
+        working-directory: axon-rs
+        run: cargo test --test server_default_backend -- --nocapture
+
+      - name: v1.31.0 — no-silent-stub honest failure
+        working-directory: axon-rs
+        run: cargo test --test honest_failure -- --nocapture
+
+      - name: v1.31.0 — tool registry wired + per-step provider
+        working-directory: axon-rs
+        run: cargo test --test tool_registry_wired -- --nocapture
+
+      - name: v1.31.0 — resolution observability
+        working-directory: axon-rs
+        run: cargo test --test resolution_observability -- --nocapture
+
+      - name: v1.31.0 — deploy + compile signalling
+        working-directory: axon-rs
+        run: cargo test --test deploy_signalling -- --nocapture
+
+      - name: v1.31.0 — D9 backwards-compat corpus + real-backend E2E
+        working-directory: axon-rs
+        run: |
+          cargo test --test backend_resolution_corpus -- --nocapture
+          cargo test --test backend_resolution_e2e -- --nocapture
+
+  # ── 3. D12 fuzz lane: the resolver property pass ────────────────────
+  fuzz-d12:
+    name: v1.31.0 — resolve_backend D12 fuzz (20 000 iters)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry and build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            axon-rs/target
+          key: ${{ runner.os }}-cargo-backend-resolution-fuzz-${{ hashFiles('axon-rs/Cargo.lock', 'axon-rs/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-backend-resolution-fuzz-
+
+      - name: v1.31.0 — resolver fuzz (total + deterministic + D5)
+        working-directory: axon-rs
+        run: cargo test --test backend_resolver_fuzz -- --nocapture
+
+  # ── 4. Regression lane: D9 — no prior surface regresses ─────────────
+  #
+  # v1.31.0 rewires `dynamic_endpoint_handler` + `run_streaming_via_
+  # dispatcher`. D9 is absolute — every v1.23.0/33/34 wire must be
+  # preserved. This lane pins the contract explicitly at PR time.
+  regression:
+    name: v1.23.0/33/34 regression (D9 — v1.31.0 must not regress)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry and build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            axon-rs/target
+          key: ${{ runner.os }}-cargo-backend-resolution-regression-${{ hashFiles('axon-rs/Cargo.lock', 'axon-rs/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-backend-resolution-regression-
+
+      - name: v1.23.0 dynamic-route surface (routes / transport / idempotency / replay)
+        working-directory: axon-rs
+        run: |
+          cargo test --test routes_drift -- --nocapture
+          cargo test --test dynamic_transport -- --nocapture
+          cargo test --test idempotency -- --nocapture
+          cargo test --test replay_binding -- --nocapture
+          cargo test --test output_schema -- --nocapture
+
+      - name: v1.24.0/34 streaming dispatcher + sync/async parity gates
+        working-directory: axon-rs
+        run: |
+          cargo test --test stub_steps_executed_anchor -- --nocapture
+          cargo test --test default_on_and_tool_call -- --nocapture
+          cargo test --test http_parity_gate -- --nocapture
+          cargo test --test dispatcher_arm -- --nocapture
+          cargo test --test convergence -- --nocapture

@@ -1,14 +1,14 @@
-//! §Fase 118.b.2 — the flow-execution RESULT, in a module that reaches nothing.
+//! v2.81.0 — the flow-execution RESULT, in a module that reaches nothing.
 //!
 //! **THE THIRD INSTANCE OF THE SMELL, and the largest so far.** `AXON_VERSION`
-//! (§118.a.1) lived in the flow executor; `IngestProvenance` (§118.b.1) lived in
+//! (v2.81.0) lived in the flow executor; `IngestProvenance` (v2.81.0) lived in
 //! the OOXML reader; `ServerExecutionResult` and `EnforcementSummaryWire` lived
 //! in `axon_server.rs` — 29,734 lines of `axum` router. Same shape every time: a
 //! general concept parked in the specific module that first needed it, silently
 //! chaining everything downstream to that module's dependencies.
 //!
 //! What it chained here was not a leaf. `ServerExecutionResult` is the input of
-//! [`crate::wire_envelope::FlowEnvelope::from_execution_result`] (§39.b), and
+//! [`crate::wire_envelope::FlowEnvelope::from_execution_result`] (v2.0.0), and
 //! `EnforcementSummaryWire` is threaded through `flow_dispatcher`,
 //! `flow_dispatcher::pure_shape` and `streaming_via_dispatcher` — **the core
 //! execution path**. So `axon run`, which opens no socket, could not compile
@@ -17,9 +17,9 @@
 //!
 //! Neither type is server-specific. `server_execute` was simply the first caller
 //! to need a place to put the answer. The name `ServerExecutionResult` is kept
-//! verbatim — it is crate-public since §39.b and named by
-//! `tests/fase39b_wire_envelope_integration.rs` and
-//! `tests/fase39c_epistemic_ownership_integration.rs` — and `axon_server`
+//! verbatim — it is crate-public since v2.0.0 and named by
+//! `tests/wire_envelope_integration.rs` and
+//! `tests/epistemic_ownership_integration.rs` — and `axon_server`
 //! re-exports both, so every existing call site (including `axon-enterprise`,
 //! which consumes `axon::axon_server::ServerExecutionResult`) keeps resolving.
 //!
@@ -30,7 +30,7 @@ use serde::Serialize;
 
 /// Server-side execution result.
 ///
-/// §Fase 39.b — promoted from `struct` to `pub struct` (and all fields
+/// v2.0.0 — promoted from `struct` to `pub struct` (and all fields
 /// to `pub`) so the new `crate::wire_envelope::FlowEnvelope` module
 /// can consume it as the converter input. Pre-39.b this type was
 /// internal to `axon_server`; v2.0.0 elevates it to a crate-public
@@ -50,7 +50,7 @@ pub struct ServerExecutionResult {
     pub anchor_checks: usize,
     pub anchor_breaches: usize,
     pub errors: usize,
-    /// §Fase 120.f — **the type errors, in words.**
+    /// v2.87.0 — **the type errors, in words.**
     ///
     /// `server_execute` type-checks and then executes anyway ("non-fatal for
     /// execution"), and until this field existed it **collected the diagnostics
@@ -72,7 +72,7 @@ pub struct ServerExecutionResult {
     pub step_names: Vec<String>,
     pub step_results: Vec<String>,
     pub trace_id: u64,
-    /// §Fase 33.e — Per-step stream-effect policies declared in the
+    /// v1.24.0 — Per-step stream-effect policies declared in the
     /// source. Each entry is `(step_name, policy_slug)` where slug is
     /// one of the closed catalog `{drop_oldest, degrade_quality,
     /// pause_upstream, fail}`. Empty when no step in the flow declares
@@ -82,7 +82,7 @@ pub struct ServerExecutionResult {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub effect_policies: Vec<(String, String)>,
 
-    /// §Fase 33.x.d — Per-step `EnforcementSummary` from the
+    /// v1.24.0 — Per-step `EnforcementSummary` from the
     /// `StreamPolicyEnforcer` runs. Empty in two cases:
     ///   1. Legacy synchronous path (deleted in 33.z.e) —
     ///      the enforcer is not run; the wire stays byte-identical
@@ -97,7 +97,7 @@ pub struct ServerExecutionResult {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub enforcement_summaries: Vec<(String, EnforcementSummaryWire)>,
 
-    /// §Fase 33.x.g — Closed-catalog runtime warnings. Populated
+    /// v1.24.0 — Closed-catalog runtime warnings. Populated
     /// only when `server_execute_streaming` falls back to the
     /// legacy synchronous path; carries one `axon-W002
     /// streaming-not-supported` warning with the specific
@@ -107,7 +107,7 @@ pub struct ServerExecutionResult {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub runtime_warnings: Vec<crate::runtime_warnings::RuntimeWarning>,
 
-    /// §Fase 39.c.y — semantic provenance events from the runtime
+    /// v2.0.0 — semantic provenance events from the runtime
     /// walk (`retrieve:<store>`, `shield:<name>`, `mutate:<store>`,
     /// etc.). Merged into the `FlowEnvelope.provenance_chain` by
     /// the converter. Empty for flows with no taxonomy-participating
@@ -115,7 +115,7 @@ pub struct ServerExecutionResult {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub provenance_events: Vec<String>,
 
-    /// §Fase 39.c.z — surfaced blame attribution when the flow
+    /// v2.0.0 — surfaced blame attribution when the flow
     /// proceeded on degraded posture (anchor breach / shield
     /// rejection / store breach / backend soft-fail / type mismatch).
     /// `None` on clean happy path; the converter writes this slot
@@ -123,7 +123,7 @@ pub struct ServerExecutionResult {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub blame_attribution: Option<crate::wire_envelope::BlameContext>,
 
-    /// §Fase 55.b — per-tool epistemic envelopes (`base`, `scope`,
+    /// v2.7.0 — per-tool epistemic envelopes (`base`, `scope`,
     /// `confidence`) for every flow-level `use <Tool>` whose tool declares
     /// an `epistemic:<level>` effect. Propagated from the runner's
     /// IR-derived capture and written into
@@ -134,31 +134,31 @@ pub struct ServerExecutionResult {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub epistemic_envelopes: Vec<crate::epistemic_capture::EpistemicEnvelope>,
 
-    /// §Fase 65.F — the HONEST hard-failure detail when a node's
+    /// v2.15.0 — the HONEST hard-failure detail when a node's
     /// `DispatchError` aborted the non-streaming flow (a failing
     /// `persist`/`mutate`/`purge` store write, a backend error, etc.):
     /// `Some("flow 'F' failed at persist into 'S': <cause>")`, naming the
     /// failing node + the underlying cause. Byte-parity with the streaming
-    /// dispatcher's `FlowError.error` (§37.e/D6). `None` on the clean path;
+    /// dispatcher's `FlowError.error` (v1.32.0/D6). `None` on the clean path;
     /// the converter writes this slot into `FlowEnvelope.error` verbatim and
     /// counts it as one `errors` so the wire envelope's certainty bounds to
-    /// the derived ceiling. Closes the §65.E.2 silent-abort regression (a
+    /// the derived ceiling. Closes the v2.15.0 silent-abort regression (a
     /// pre-insert store failure used to present as `success:false` + empty
     /// result + zero diagnostic). Elided from the wire when `None`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
 
-    /// §Fase 91.b — the run's temporal record when any step rendered a
+    /// v2.46.0 — the run's temporal record when any step rendered a
     /// declared `now:` (`captured_utc` + `tzdb_version` + `zones` — the
-    /// replayability triple of `time_is_an_explicit_input`, §71/§91). The
+    /// replayability triple of `time_is_an_explicit_input`, v2.27.0/v2.46.0). The
     /// converter writes it into `FlowEnvelope.temporal_context` verbatim.
     /// `None` — and elided from the wire — for every `now:`-less flow, so
-    /// every pre-§91 envelope stays byte-identical.
+    /// every pre-v2.46.0 envelope stays byte-identical.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub temporal_context: Option<crate::temporal_context::TemporalRecord>,
 }
 
-/// §Fase 33.x.d — Wire-serializable mirror of
+/// v1.24.0 — Wire-serializable mirror of
 /// [`crate::stream_effect_dispatcher::EnforcementSummary`] published
 /// on `axon.complete` per the D2 contract.
 ///

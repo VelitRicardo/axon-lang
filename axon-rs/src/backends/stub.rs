@@ -1,6 +1,6 @@
-//! §Fase 33.x.b — Production `StubBackend` implementing the
+//! v1.24.0 — Production `StubBackend` implementing the
 //! [`Backend`] trait so the streaming path dispatches through the
-//! Fase 24 [`Registry`] uniformly (no special-cased "if backend ==
+//! v1.18.0 [`Registry`] uniformly (no special-cased "if backend ==
 //! \"stub\"" branches scattered across the runtime).
 //!
 //! # Wire byte-compat with v1.24.0 (D4 invariant)
@@ -16,7 +16,7 @@
 //!
 //! # Why a real `Backend` impl (not a special-case)
 //!
-//! D1 (Fase 33.x plan vivo): `Backend::stream()` is the only production
+//! D1 (v1.24.0 plan vivo): `Backend::stream()` is the only production
 //! path for `output: Stream<T>`. The mono-file `crate::backend` is
 //! retired in 33.x.i. To honor D1 today (33.x.b) without retiring the
 //! mono-file yet, the streaming path resolves through a
@@ -25,7 +25,7 @@
 //!
 //! # Drift-gate placement
 //!
-//! `stub.rs` is excluded from the Fase 24.j cross-stack drift gate
+//! `stub.rs` is excluded from the v1.18.0 cross-stack drift gate
 //! (`tests/test_fase24_backend_parity.py` SHARED_INFRA_MODULES set)
 //! because it is not a real provider — it has no API key, no real
 //! LLM, no Python `BACKEND_REGISTRY` counterpart. The drift gate
@@ -43,7 +43,7 @@ use super::{
 use super::error::BackendError;
 
 /// Canonical short name. The streaming-path resolver matches this
-/// string before consulting the Fase 24 [`super::Registry`] for the
+/// string before consulting the v1.18.0 [`super::Registry`] for the
 /// 7 production providers.
 pub const STUB_PROVIDER_NAME: &str = "stub";
 
@@ -175,7 +175,7 @@ impl Backend for StubBackend {
         // Usage so the downstream `axon.complete` event reports
         // `tokens_output: 0` byte-identically with v1.24.0.
         //
-        // §Fase 33.x.e — Even though stub emits a single chunk that
+        // v1.24.0 — Even though stub emits a single chunk that
         // would deliver fast, the cancel-aware wrap preserves the
         // contract: if cancel fires before the chunk reaches the
         // consumer (rare in stub, common in real backends) the

@@ -1,4 +1,4 @@
-//! §Fase 124.b — **known-answer tests for the vendored FIPS 202 kernel.**
+//! v4.0.0 — **known-answer tests for the vendored FIPS 202 kernel.**
 //!
 //! # Two kinds of proof, because they catch different things
 //!
@@ -13,7 +13,7 @@
 //! absorb/squeeze boundaries fall at 168 and 136 bytes, and a kernel can be
 //! exactly right on the empty string and wrong at the second block.
 //!
-//! Both, or neither is worth much. This is the same posture §25.h took for
+//! Both, or neither is worth much. This is the same posture v1.19.0 took for
 //! SHA-256 and HMAC, applied to the first vendored primitive.
 //!
 //! # Why this matters more than an ordinary drift gate
@@ -27,7 +27,7 @@
 //! # Why this file is `native`-only, deliberately
 //!
 //! Under `--no-default-features` this target compiles to zero tests and cargo
-//! reports `ok. 0 passed` — the §120.g shape, where an empty run is
+//! reports `ok. 0 passed` — the v2.87.0 shape, where an empty run is
 //! indistinguishable from a passing one. It is the right answer here and the
 //! reason is worth stating so nobody mistakes it for the defect.
 //!
@@ -130,7 +130,7 @@ fn the_vendored_kernel_agrees_with_an_independent_implementation() {
 ///
 /// ML-DSA does not use these, but they ship in the same translation unit, and a
 /// primitive inside the cryptographic boundary that nothing verifies is the
-/// shape this project has spent several fases removing.
+/// shape this project has spent several cycles removing.
 #[test]
 fn the_sha3_digests_agree_with_an_independent_implementation() {
     use sha3::Digest;

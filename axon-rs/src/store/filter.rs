@@ -1,4 +1,4 @@
-//! §Fase 35.b (v1.30.0) — Parameterized `where`-expression filter
+//! v1.30.0 — Parameterized `where`-expression filter
 //! compiler for the `axonstore` cognitive data plane.
 //!
 //! # D4 — SQL-injection-proof by construction
@@ -208,7 +208,7 @@ impl fmt::Display for Connector {
 }
 
 // ════════════════════════════════════════════════════════════════════
-//  Time-relative value (§Fase 67.a — closed, structural)
+// Time-relative value (v2.21.0 — closed, structural)
 // ════════════════════════════════════════════════════════════════════
 
 /// A closed catalog of interval units. The whitelist IS the catalog — an
@@ -261,13 +261,13 @@ pub enum TimeSign {
 }
 
 /// A structural time-relative value: `now()`, optionally offset by
-/// `± interval '<amount> <unit>'`. §Fase 67.a.
+/// `± interval '<amount> <unit>'`. v2.21.0.
 ///
 /// **D4 preserved.** This renders DIRECTLY to SQL — but `now()` and `interval`
 /// are KEYWORDS, not adopter values, and the only adopter-varying parts are a
 /// validated `u32` amount + a closed-catalog [`TimeUnit`], both re-emitted
 /// structurally. No adopter string is ever interpolated into SQL text, so the
-/// §35.b "no user value reaches SQL" invariant holds. The grammar admits
+/// v1.30.0 "no user value reaches SQL" invariant holds. The grammar admits
 /// EXACTLY this one function-shaped value (not arbitrary SQL functions) — that
 /// is the line that keeps the compiler total + injection-proof.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -299,8 +299,8 @@ impl TimeValue {
 // ════════════════════════════════════════════════════════════════════
 
 /// The right-hand side of a condition: either a bound literal value (rendered
-/// as a `$N` placeholder — the §35.b D4 path) or a structural time-relative
-/// value (rendered inline; §Fase 67.a).
+/// as a `$N` placeholder — the v1.30.0 D4 path) or a structural time-relative
+/// value (rendered inline; v2.21.0).
 #[derive(Debug, Clone, PartialEq)]
 pub enum Rhs {
     /// A literal value — renders as a `$N` bind.
@@ -316,7 +316,7 @@ pub struct FilterCondition {
     pub column: String,
     /// The comparison operator.
     pub op: Operator,
-    /// The right-hand side: a bound literal or a §67.a time value.
+    /// The right-hand side: a bound literal or a v2.21.0 time value.
     pub value: Rhs,
 }
 
@@ -378,24 +378,24 @@ pub enum FilterError {
     LikeRequiresText { column: String, found: &'static str },
     /// More than [`MAX_CONDITIONS`] conditions in one expression.
     TooManyConditions { limit: usize },
-    /// §Fase 67.a — a malformed `now() ± interval '<n> <unit>'` time value:
+    /// v2.21.0 — a malformed `now() ± interval '<n> <unit>'` time value:
     /// a bad `now()` shape, a non-`u32` amount, or an unknown unit.
     BadTimeValue { detail: String },
-    /// §Fase 67.a — `LIKE` applied to a `now()` time value (nonsensical).
+    /// v2.21.0 — `LIKE` applied to a `now()` time value (nonsensical).
     LikeWithTime,
-    /// §Fase 67.b — a malformed `order_by:` term: an empty term, a column
+    /// v2.21.0 — a malformed `order_by:` term: an empty term, a column
     /// that fails the identifier discipline, or a direction that is not
     /// `asc`/`desc`.
     BadOrderBy { detail: String },
-    /// §Fase 67.b — a malformed `limit:`: not a non-negative integer that
+    /// v2.21.0 — a malformed `limit:`: not a non-negative integer that
     /// fits `u32` (after `${binding}` resolution).
     BadLimit { detail: String },
-    /// §Fase 76.d — a malformed `aggregate:`: not a member of the closed
+    /// v2.33.0 — a malformed `aggregate:`: not a member of the closed
     /// catalog (`count` | `sum(col)` | `avg(col)` | `min(col)` | `max(col)`),
     /// a bad column identifier, or an unsupported combination (v1 rejects
     /// `aggregate:` together with `order_by:`/`limit:`).
     BadAggregate { detail: String },
-    /// §Fase 76.d — a malformed `group_by:`: an invalid column identifier,
+    /// v2.33.0 — a malformed `group_by:`: an invalid column identifier,
     /// an empty term, or a `group_by:` without an `aggregate:`.
     BadGroupBy { detail: String },
 }
@@ -638,7 +638,7 @@ fn tokenize(expr: &str) -> Result<Vec<Token>, FilterError> {
             continue;
         }
 
-        // — §Fase 67.a: parens + interval sign for the `now() ± interval '…'`
+        // v2.21.0: parens + interval sign for the `now() ± interval '…'`
         //   time-value form. `(` `)` `+` and a standalone `-` (a `-` followed
         //   by a digit was already consumed as a negative number above) become
         //   bare symbols the parser interprets ONLY inside the time-value form;
@@ -697,12 +697,12 @@ fn parse_value(tok: &Token) -> Result<SqlValue, FilterError> {
     }
 }
 
-/// §Fase 67.a — parse the right-hand side starting at `tokens[0]`: either a
+/// v2.21.0 — parse the right-hand side starting at `tokens[0]`: either a
 /// structural `now() ± interval '<n> <unit>'` time value (which spans several
 /// tokens) or a single bound literal. Returns the [`Rhs`] + the number of
 /// tokens consumed. The caller guarantees `tokens` is non-empty.
 fn parse_rhs(tokens: &[Token], column: &str, op: Operator) -> Result<(Rhs, usize), FilterError> {
-    // A `now`-led value is the time form (§67.a). `now` is not a valid bare
+    // A `now`-led value is the time form (v2.21.0). `now` is not a valid bare
     // literal otherwise (it would be an `UnquotedValue`), so routing it here
     // does not shadow any pre-67.a behaviour.
     if let Some(Token::Word(w)) = tokens.first() {
@@ -729,7 +729,7 @@ fn parse_rhs(tokens: &[Token], column: &str, op: Operator) -> Result<(Rhs, usize
     Ok((Rhs::Value(value), 1))
 }
 
-/// §Fase 67.a — parse `now` `(` `)` `[ (+|-) interval '<n> <unit>' ]`.
+/// v2.21.0 — parse `now` `(` `)` `[ (+|-) interval '<n> <unit>' ]`.
 /// `tokens[0]` is the `now` word (verified by [`parse_rhs`]).
 fn parse_time_value(tokens: &[Token], op: Operator) -> Result<(TimeValue, usize), FilterError> {
     // `LIKE` against a time value is nonsensical (it is a timestamp, not text).
@@ -772,7 +772,7 @@ fn parse_time_value(tokens: &[Token], op: Operator) -> Result<(TimeValue, usize)
     Ok((TimeValue { offset: Some((sign, amount, unit)) }, 6))
 }
 
-/// §Fase 67.a — parse + validate the `'<n> <unit>'` interval body into a typed
+/// v2.21.0 — parse + validate the `'<n> <unit>'` interval body into a typed
 /// `(u32, TimeUnit)`. Both parts are validated (a `u32` amount, a closed-catalog
 /// unit) so the renderer re-emits them structurally — no adopter string reaches
 /// SQL text (D4).
@@ -804,7 +804,7 @@ fn parse_interval(raw: &str) -> Result<(u32, TimeUnit), FilterError> {
 /// whitespace-only) expression yields an empty filter. Total: every
 /// input yields a `Filter` or a [`FilterError`].
 ///
-/// §Fase 37.d (D3) — `bindings` resolves the Request Binding Contract.
+/// v1.32.0 (D3) — `bindings` resolves the Request Binding Contract.
 /// The `where` expression is tokenized FIRST (raw), so the boundaries
 /// of every string literal are fixed before any value is substituted;
 /// THEN each `Token::Str`'s content is interpolated (`${name}` /
@@ -820,7 +820,7 @@ pub fn parse_filter(
     bindings: &std::collections::HashMap<String, String>,
 ) -> Result<Filter, FilterError> {
     let raw_tokens = tokenize(expr)?;
-    // §Fase 37.d (D3) — resolve `${name}` ONLY inside already-tokenized
+    // v1.32.0 (D3) — resolve `${name}` ONLY inside already-tokenized
     // string literals; the value can never escape the `Token::Str` it
     // sits in.
     let tokens: Vec<Token> = raw_tokens
@@ -875,7 +875,7 @@ pub fn parse_filter(
         };
         i += 1;
 
-        // — value (a bound literal OR a §67.a `now() ± interval` time form,
+        // value (a bound literal OR a v2.21.0 `now() ± interval` time form,
         //   which spans multiple tokens) —
         if i >= n {
             return Err(FilterError::MissingValue { column });
@@ -933,7 +933,7 @@ pub fn parse_filter(
 /// `[A-Za-z_]\w*`, so it cannot carry a quote) and every value is a
 /// `$N` placeholder — no user value is ever interpolated into the SQL.
 ///
-/// §v1.36.4 — when the column's Postgres type is KNOWN (`column_types`,
+/// v1.36.4 — when the column's Postgres type is KNOWN (`column_types`,
 /// the `column → udt_name` map), every comparison renders
 /// `"col" {op} $N::<type>`, casting the **value** to that type: a
 /// `text`-bound value (`uuid`/`int`/`timestamptz` …) compares against
@@ -941,7 +941,7 @@ pub fn parse_filter(
 /// `uuid = uuid` — so equality is exact AND ordering is
 /// numeric/temporal (not lexicographic).
 ///
-/// §Fase 37.x.e (D4) — when the column's type is UNKNOWN (introspection
+/// v1.32.0 (D4) — when the column's type is UNKNOWN (introspection
 /// found nothing), the rendering depends on the operator. An EQUALITY
 /// comparison (`=` / `!=`) renders `"col"::text {op} $N` — casting the
 /// COLUMN to `text` so a `text`-bound value compares `text = text`
@@ -950,7 +950,7 @@ pub fn parse_filter(
 /// lexicographic ordering miscast is worse than an honest `operator
 /// does not exist` failure. The equality cast is a DEGRADED best-effort
 /// backstop (exact for canonical-form inputs) — the load-bearing path
-/// is the §37.x.b/d `pg_catalog` introspection.
+/// is the v1.32.0 `pg_catalog` introspection.
 pub fn build_pg_where(
     expr: &str,
     param_offset: usize,
@@ -988,7 +988,7 @@ pub fn build_pg_where(
                 };
                 clause.push_str(&format!("\"{}\" {tail}", cond.column));
             }
-            // §Fase 67.a — a `now()` / `now() ± interval '…'` time value renders
+            // v2.21.0 — a `now()` / `now() ± interval '…'` time value renders
             // INLINE (now()/interval are keywords) with NO `$N` bind and NO
             // `::text` cast: the column compares against the timestamp
             // expression with its native operator (temporal ordering, not
@@ -1012,12 +1012,12 @@ pub fn build_pg_where(
                         }
                         _ => None,
                     };
-                // §v1.36.4 — KNOWN type → cast the VALUE to it
+                // v1.36.4 — KNOWN type → cast the VALUE to it
                 // (`"tid" = $1::uuid`): a `text`-bound value compares
                 // against its typed column with the native operator —
                 // equality exact, ordering numeric/temporal.
                 //
-                // §Fase 37.x.e (D4) — UNKNOWN type → the rendering
+                // v1.32.0 (D4) — UNKNOWN type → the rendering
                 // depends on the operator:
                 //  - EQUALITY (`=` / `!=`) — cast the COLUMN to `text`
                 //    (`"col"::text = $N`): `text = text` compares
@@ -1025,7 +1025,7 @@ pub fn build_pg_where(
                 //    lexicographic-vs-native distinction, so the cast
                 //    is exact for canonical-form inputs — a DEGRADED
                 //    best-effort backstop; the load-bearing path is the
-                //    §37.x.b/d `pg_catalog` introspection.
+                // v1.32.0 `pg_catalog` introspection.
                 //  - ORDERING (`< > <= >=`) and `LIKE` — keep the bare
                 //    `"col" {op} $N`: they need the real type, and a
                 //    lexicographic ordering miscast is worse than an
@@ -1055,7 +1055,7 @@ pub fn build_pg_where(
 }
 
 // ════════════════════════════════════════════════════════════════════
-//  §Fase 67.b — bounded + ordered retrieve (`ORDER BY … LIMIT …`)
+// v2.21.0 — bounded + ordered retrieve (`ORDER BY … LIMIT …`)
 // ════════════════════════════════════════════════════════════════════
 
 /// A sort direction. The whitelist IS the catalog — an un-listed
@@ -1076,7 +1076,7 @@ impl OrderDir {
 }
 
 /// One `column [asc|desc]` sort key. The column is validated against the
-/// §35.b identifier discipline ([`is_safe_identifier`]) and rendered
+/// v1.30.0 identifier discipline ([`is_safe_identifier`]) and rendered
 /// double-quoted — so, exactly as on the `where:` column surface, no
 /// untrusted identifier ever reaches SQL text (D4).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1166,7 +1166,7 @@ pub fn parse_limit(
     }
 }
 
-/// §Fase 67.b — render the structural `ORDER BY … LIMIT …` suffix that a
+/// v2.21.0 — render the structural `ORDER BY … LIMIT …` suffix that a
 /// bounded/ordered `retrieve` appends after its `WHERE` clause. Returns
 /// the suffix WITH a single leading space (e.g.
 /// `" ORDER BY \"t\" ASC LIMIT 100"`), or the empty string when neither
@@ -1196,10 +1196,10 @@ pub fn render_bounds(
 }
 
 // ════════════════════════════════════════════════════════════════════
-//  §Fase 76.d — the closed aggregate catalog (`aggregate:` + `group_by:`)
+// v2.33.0 — the closed aggregate catalog (`aggregate:` + `group_by:`)
 // ════════════════════════════════════════════════════════════════════
 
-/// §Fase 76.d — the CLOSED aggregate-function catalog. The enum IS the
+/// v2.33.0 — the CLOSED aggregate-function catalog. The enum IS the
 /// whitelist: no path exists by which an un-listed function name reaches
 /// rendered SQL (the same D4 discipline as [`Operator`]).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1244,14 +1244,14 @@ impl AggregateFn {
     }
 
     /// `true` for the aggregates that only make sense over a numeric
-    /// column (`sum`/`avg`). Consumed by the §38.d compile-time proof
+    /// column (`sum`/`avg`). Consumed by the v1.31.0 compile-time proof
     /// (axon-T844) when a typed store schema is declared.
     pub fn requires_numeric(self) -> bool {
         matches!(self, AggregateFn::Sum | AggregateFn::Avg)
     }
 }
 
-/// §Fase 76.d — one parsed `aggregate:` clause: the closed function +
+/// v2.33.0 — one parsed `aggregate:` clause: the closed function +
 /// its column (`None` only for `count`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AggregateSpec {
@@ -1359,7 +1359,7 @@ pub fn parse_group_by(expr: &str) -> Result<Vec<String>, FilterError> {
     Ok(cols)
 }
 
-/// §Fase 76.d — the single validation entry the engines call: parse +
+/// v2.33.0 — the single validation entry the engines call: parse +
 /// cross-validate the whole aggregate surface of one `retrieve`.
 ///
 /// Rules (all total, all typed errors):
@@ -1420,7 +1420,7 @@ pub fn parse_aggregate_clause(
     }
 }
 
-/// §Fase 76.d — render the structural SELECT list for an aggregate
+/// v2.33.0 — render the structural SELECT list for an aggregate
 /// retrieve: the group columns (quoted, declaration order) followed by
 /// the aggregate expression labeled with its closed function name.
 ///
@@ -1456,7 +1456,7 @@ pub fn render_aggregate_select(spec: &AggregateSpec, group_by: &[String]) -> Str
     list
 }
 
-/// §Fase 76.d — render the structural ` GROUP BY "a", "b"` suffix (with
+/// v2.33.0 — render the structural ` GROUP BY "a", "b"` suffix (with
 /// a single leading space), or the empty string when there are no group
 /// columns. Identifiers were validated at parse; re-emitted structurally.
 pub fn render_group_by_suffix(group_by: &[String]) -> String {
@@ -1482,14 +1482,14 @@ mod tests {
     use super::*;
 
     /// Empty bindings — the pre-37.d filter behaviour (no `${name}`
-    /// resolution). The §Fase 37.d resolution is exercised by the
-    /// dedicated `bound` helpers below + `tests/fase37_d_*`.
+    /// resolution). The v1.32.0 resolution is exercised by the
+    /// dedicated `bound` helpers below + `tests/filter_injection.rs`.
     fn nb() -> std::collections::HashMap<String, String> {
         std::collections::HashMap::new()
     }
 
     /// Empty `column_types` — the unknown-schema fallback (a bare
-    /// `"col" {op} $N`, no `::<type>` cast). The §v1.36.4 typed cast is
+    /// `"col" {op} $N`, no `::<type>` cast). The v1.36.4 typed cast is
     /// exercised by the dedicated `typed_*` tests below.
     fn nt() -> std::collections::HashMap<String, String> {
         std::collections::HashMap::new()
@@ -1521,7 +1521,7 @@ mod tests {
 
     #[test]
     fn single_integer_condition() {
-        // §37.x.e (D4) — an unknown-type equality casts the column to
+        // v1.32.0 (D4) — an unknown-type equality casts the column to
         // `text`; the value still rides out as a `$N` bind parameter.
         let (clause, params) = ok("id = 1");
         assert_eq!(clause, "\"id\"::text = $1");
@@ -1571,7 +1571,7 @@ mod tests {
 
     #[test]
     fn every_operator_renders_canonically() {
-        // §37.x.e (D4) — equality on an unknown-type column casts the
+        // v1.32.0 (D4) — equality on an unknown-type column casts the
         // column to `text`; ordering + LIKE keep the bare placeholder.
         assert_eq!(ok("a = 1").0, "\"a\"::text = $1");
         assert_eq!(ok("a != 1").0, "\"a\"::text != $1");
@@ -1595,11 +1595,11 @@ mod tests {
         assert_eq!(ok("a LiKe 'x%'").0, "\"a\" LIKE $1");
     }
 
-    // ── §v1.36.4 — typed-column filter (value cast) ──────────────────
+    // ── v1.36.4 — typed-column filter (value cast) ──────────────────
 
     /// A known column type casts the VALUE placeholder to that type —
     /// `"tid" = $1::uuid` — so a `text`-bound value (e.g. a `${param}`
-    /// resolved from the Fase 37 Request Binding Contract) compares
+    /// resolved from the v1.32.0 Request Binding Contract) compares
     /// against a `uuid` column with the native `uuid = uuid` operator.
     /// This is the read-side mirror of v1.36.2's write cast.
     #[test]
@@ -1630,9 +1630,9 @@ mod tests {
         assert_eq!(clause, "\"age\" >= $1::int4");
     }
 
-    // ── §Fase 37.x.e — D4 equality type-agnostic fallback ────────────
+    // ── v1.32.0 — D4 equality type-agnostic fallback ────────────
 
-    /// §37.x.e (D4) — an unknown-type EQUALITY (`=` / `!=`) casts the
+    /// v1.32.0 (D4) — an unknown-type EQUALITY (`=` / `!=`) casts the
     /// COLUMN to `text`: `"col"::text = $N`. A `text`-bound value then
     /// compares `text = text` against ANY column type (`uuid`, `int`,
     /// `timestamptz`, `bool`, `text`) — equality has no
@@ -1647,7 +1647,7 @@ mod tests {
         assert_eq!(ok("id = 1").0, "\"id\"::text = $1");
     }
 
-    /// §37.x.e (D4) — an unknown-type ORDERING comparison keeps the
+    /// v1.32.0 (D4) — an unknown-type ORDERING comparison keeps the
     /// bare `"col" {op} $N`: ordering genuinely needs the real type (a
     /// lexicographic miscast is worse than an honest failure).
     #[test]
@@ -1658,14 +1658,14 @@ mod tests {
         assert_eq!(ok("age <= 18").0, "\"age\" <= $1");
     }
 
-    /// §37.x.e (D4) — `LIKE` on an unknown-type column keeps the bare
+    /// v1.32.0 (D4) — `LIKE` on an unknown-type column keeps the bare
     /// placeholder (it needs a real text column type).
     #[test]
     fn d4_unknown_type_like_stays_a_bare_placeholder() {
         assert_eq!(ok("name LIKE 'a%'").0, "\"name\" LIKE $1");
     }
 
-    /// §37.x.e (D4) does NOT touch the known-type path — a known
+    /// v1.32.0 (D4) does NOT touch the known-type path — a known
     /// column type still casts the VALUE (`$N::udt`), every operator.
     #[test]
     fn d4_a_known_type_keeps_the_v1_36_4_value_cast() {
@@ -1683,7 +1683,7 @@ mod tests {
         );
     }
 
-    /// §37.x.e (D4) — an unsafe `udt_name` (defensive — `pg_catalog`
+    /// v1.32.0 (D4) — an unsafe `udt_name` (defensive — `pg_catalog`
     /// never yields one) is treated as UNKNOWN: it is never spliced,
     /// and an equality still works via the `"col"::text` fallback.
     #[test]
@@ -1714,7 +1714,7 @@ mod tests {
 
     #[test]
     fn two_conditions_joined_by_and() {
-        // §37.x.e (D4) — each unknown-type equality casts its column to
+        // v1.32.0 (D4) — each unknown-type equality casts its column to
         // `text`; the connector rendering is unchanged.
         let (clause, params) = ok("id = 1 AND name = 'Alice'");
         assert_eq!(clause, "\"id\"::text = $1 AND \"name\"::text = $2");
@@ -1773,7 +1773,7 @@ mod tests {
     #[test]
     fn null_does_not_occupy_a_parameter_slot() {
         // `a` is NULL (folded, no slot) so `b` takes $1, not $2.
-        // §37.x.e (D4) — `b = 5` casts the column to `text`; the NULL
+        // v1.32.0 (D4) — `b = 5` casts the column to `text`; the NULL
         // fold is type-agnostic already and is never cast.
         let (clause, params) = ok("a = null AND b = 5");
         assert_eq!(clause, "\"a\" IS NULL AND \"b\"::text = $1");
@@ -1807,7 +1807,7 @@ mod tests {
     fn injection_payload_inside_a_quoted_string_is_an_inert_bind_param() {
         // The classic payload — fully contained in a string literal —
         // compiles to ONE harmless bound parameter. The SQL structure
-        // is `"name"::text = $1` (§37.x.e D4 equality cast); the
+        // is `"name"::text = $1` (v1.32.0 D4 equality cast); the
         // payload never reaches SQL text.
         let (clause, params) = ok("name = '; DROP TABLE users; --'");
         assert_eq!(clause, "\"name\"::text = $1");
@@ -1828,7 +1828,7 @@ mod tests {
 
     #[test]
     fn injection_via_comment_marker_is_rejected() {
-        // §Fase 67.a — a standalone `-` now lexes as a Symbol (it is the
+        // v2.21.0 — a standalone `-` now lexes as a Symbol (it is the
         // interval sign in the `now() ± interval` time form). So `a = 1 --
         // comment` no longer fails at tokenize with `UnexpectedChar`; instead
         // the `-` after a COMPLETE condition is an unexpected connector. STILL
@@ -2038,7 +2038,7 @@ mod tests {
         );
     }
 
-    // ─── §Fase 67.a — time-relative `where:` values ──────────────────────
+    // ─── v2.21.0 — time-relative `where:` values ──────────────────────
 
     #[test]
     fn time_bare_now_renders_inline_with_no_bind() {
@@ -2181,7 +2181,7 @@ mod tests {
         }
     }
 
-    // ─── §Fase 67.b — bounded + ordered retrieve (`ORDER BY … LIMIT …`) ──
+    // ─── v2.21.0 — bounded + ordered retrieve (`ORDER BY … LIMIT …`) ──
 
     #[test]
     fn order_by_single_column_defaults_to_asc() {
@@ -2279,7 +2279,7 @@ mod tests {
         assert!(render_bounds("", "1; DROP TABLE x", &nb()).is_err());
     }
 
-    // ── §Fase 76.d — the closed aggregate catalog ────────────────────
+    // ── v2.33.0 — the closed aggregate catalog ────────────────────
 
     #[test]
     fn aggregate_count_parses_bare_and_rejects_column() {

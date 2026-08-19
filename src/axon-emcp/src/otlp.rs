@@ -1,9 +1,9 @@
-//! §Fase 10 — OTLP/gRPC exporter follow-up to the §Fase 8 telemetry
+//! v1.4.0 — OTLP/gRPC exporter follow-up to the v1.3.0 telemetry
 //! surface.
 //!
-//! Where §Fase 8 ships an in-process snapshot + JSONL sink that a
+//! Where v1.3.0 ships an in-process snapshot + JSONL sink that a
 //! downstream collector (Vector / Fluent Bit / otel-collector with
-//! the `filelog` receiver) can pick up out-of-band, §Fase 10 closes
+//! the `filelog` receiver) can pick up out-of-band, v1.4.0 closes
 //! the loop with a **direct push to an OTLP/gRPC endpoint** — the
 //! canonical observability wire across the modern stack (Grafana,
 //! Tempo, Honeycomb, Datadog, Lightstep, Splunk Observability, …).
@@ -15,16 +15,16 @@
 //! 1. Background tokio task wakes every `interval` (default 60 s).
 //! 2. Calls [`Telemetry::snapshot`] — the canonical in-process model.
 //! 3. Renders the snapshot into [`ResourceMetrics`] using the same
-//!    OTLP data-model shape §Fase 8's snapshot was already organised
+//! OTLP data-model shape v1.3.0's snapshot was already organised
 //!    around (service → instrumentation scope → metric → datapoint).
 //! 4. Pushes via the auto-generated `MetricsServiceClient` (tonic).
 //! 5. Any failure (collector unreachable, timeout, malformed
 //!    endpoint) is logged at WARN through `tracing` and the loop
 //!    continues — telemetry MUST NOT break the host process.
 //!
-//! # Privacy invariants (extending §Fase 8)
+//! # Privacy invariants (extending v1.3.0)
 //!
-//! §Fase 8 §Privacy invariants 1–5 stay verbatim. §Fase 10 adds:
+//! v1.3.0 Privacy invariants 1–5 stay verbatim. v1.4.0 adds:
 //!
 //! - **#6 — opt-in endpoint**: missing `AXON_EMCP_OTLP_ENDPOINT`
 //!   disables the exporter entirely; no background task is spawned,
@@ -33,7 +33,7 @@
 //! - **#7 — snapshot-derived payload only**: the wire payload is a
 //!   pure function of [`Telemetry::snapshot`]; no additional
 //!   information surface is created. Every value crossing the wire
-//!   came in through one of the §Fase 8 `record_*` entrypoints,
+//! came in through one of the v1.3.0 `record_*` entrypoints,
 //!   which already enforce closed-catalog slugs.
 //!
 //! # Config surface
@@ -273,7 +273,7 @@ impl std::error::Error for PushError {}
 ///
 /// The mapping is deliberate and stable so a downstream operator
 /// can `grep '"name":'` an exported payload and find every metric
-/// the §Fase 8 in-process model carries:
+/// the v1.3.0 in-process model carries:
 ///
 /// | snapshot path | OTLP metric | kind |
 /// |---|---|---|

@@ -1,4 +1,4 @@
-//! §Fase 25.g — BPE tokeniser test suite.
+//! v1.19.0 — BPE tokeniser test suite.
 //!
 //! Coverage:
 //!   1. Vocabulary metadata (size, regex pattern parity).

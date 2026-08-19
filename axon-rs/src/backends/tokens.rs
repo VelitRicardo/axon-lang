@@ -1,5 +1,5 @@
-//! Unified token-counting surface for native Rust LLM backends — Fase 24.b
-//! (§Fase 25.g delegated re-export).
+//! Unified token-counting surface for native Rust LLM backends — v1.18.0
+//! (v1.19.0 delegated re-export).
 //!
 //! Provides a single `count_tokens(model, text) -> usize` entry point that
 //! dispatches by model-name prefix to the right per-provider tokenizer:
@@ -13,7 +13,7 @@
 //!   * `openrouter:<provider>/<model>`                   → strip prefix + recurse
 //!   * unknown / unmapped                                → 4-chars-per-token offline estimate
 //!
-//! As of Fase 25.g (2026-05-08) the BPE merge engine is the C23 kernel
+//! As of v1.19.0 (2026-05-08) the BPE merge engine is the C23 kernel
 //! in `axon-csys/c-src/tokens/bpe.c`; the merges tables for `cl100k_base`
 //! and `o200k_base` are baked at compile time via `#embed` (when the
 //! toolchain supports it) or `include_bytes!` (universal fallback). The
@@ -26,7 +26,7 @@
 //! `tokens.rs` is designed to be extractable as a standalone crate
 //! (`axon-tokens` 0.x.0) in the future — the public surface
 //! (`count_tokens`, `CountKind`, the model-prefix routing) does not
-//! depend on any axon-internal types. With Fase 25.g the BPE
+//! depend on any axon-internal types. With v1.19.0 the BPE
 //! implementation already lives in its own crate (`axon-csys`); the
 //! extraction conversation is now mostly cosmetic.
 
@@ -40,7 +40,7 @@ pub use axon_csys::tokens::{count_tokens, estimate, CountKind, TokenCount};
 mod tests {
     use super::*;
 
-    /// §Fase 119.h — the toolchain-free half of the contract.
+    /// v2.83.0 — the toolchain-free half of the contract.
     ///
     /// The tests above are gated on `csys-native` because they assert
     /// EXACT counts, which only the C23 BPE kernel can produce. Gating

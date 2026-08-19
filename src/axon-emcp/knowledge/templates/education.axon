@@ -62,7 +62,7 @@ anchor SocraticDiscipline {
 // ── Tool — streaming backend ──────────────────────────────────────
 
 tool TutorBackend {
-    // LLM-routed: the tool IS the model. No `provider:` (§114.b). `openai` was not a real provider slug.
+    // LLM-routed: the tool IS the model. No `provider:` (v2.69.0). `openai` was not a real provider slug.
     effects:  <network, stream:drop_oldest>
     timeout:  60s
 }

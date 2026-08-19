@@ -1,13 +1,13 @@
-//! §Fase 87.f — the `SynthBackend` port + the OSS deny-by-default reference.
+//! v2.42.0 — the `SynthBackend` port + the OSS deny-by-default reference.
 //!
-//! `synth` (§87.d) declares the safety envelope under which a `savant` may write
+//! `synth` (v2.42.0) declares the safety envelope under which a `savant` may write
 //! and run a tool at runtime. This module is the RUNTIME port for that: the
-//! enterprise engine (§87.j) mounts a Coder/Reviewer (`par`) → `wasm32-wasi` →
+//! enterprise engine (v2.42.0) mounts a Coder/Reviewer (`par`) → `wasm32-wasi` →
 //! Extism/gVisor zero-trust executor behind [`SynthBackend`]. The OSS crate
 //! ships ONLY [`DenyByDefaultSynth`], which **never executes** — running
 //! untrusted synthesised code needs isolation OSS cannot provide.
 //!
-//! This is the runtime half of the §87.d compile-time `sandbox: wasm`
+//! This is the runtime half of the v2.42.0 compile-time `sandbox: wasm`
 //! deny-by-default gate (`axon-T882`): the checker stops an adopter *declaring*
 //! an unsandboxed policy; this backend stops the OSS runtime *executing* one.
 
@@ -61,7 +61,7 @@ impl std::fmt::Display for SynthError {
 impl std::error::Error for SynthError {}
 
 /// The dynamic tool-synthesis port (charter split R1). Enterprise mounts the
-/// Extism/gVisor executor (§87.j) behind this trait.
+/// Extism/gVisor executor (v2.42.0) behind this trait.
 pub trait SynthBackend {
     /// Whether this backend can execute synthesised code at all. The OSS
     /// reference returns `false`.
@@ -72,7 +72,7 @@ pub trait SynthBackend {
 }
 
 /// The OSS reference: it refuses to execute synthesised code, unconditionally.
-/// Deploying dynamic tool synthesis requires the enterprise flavour (§87.j).
+/// Deploying dynamic tool synthesis requires the enterprise flavour (v2.42.0).
 pub struct DenyByDefaultSynth;
 
 impl SynthBackend for DenyByDefaultSynth {

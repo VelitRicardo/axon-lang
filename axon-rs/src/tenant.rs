@@ -3,7 +3,7 @@
 /// Resolves the active tenant from every inbound HTTP request via:
 ///   1. `X-Tenant-ID` header  (direct, service-to-service calls)
 ///   2. `Authorization: Bearer <jwt>` — **verified** when
-///      `AXON_JWT_JWKS_URL` is configured (§Fase 10.e). Falls back to
+/// `AXON_JWT_JWKS_URL` is configured (v1.4.0). Falls back to
 ///      unverified payload extraction when the verifier is not
 ///      configured (OSS / single-tenant installs).
 ///   3. Fallback → `"default"` (single-tenant / open-source installs)
@@ -14,7 +14,7 @@
 ///     `PostgresBackend` call picks up the tenant automatically without requiring
 ///     any changes to existing handlers.
 ///
-/// §Fase 118.b.2 — tenant IDENTITY (the task-local, [`TenantPlan`],
+/// v2.81.0 — tenant IDENTITY (the task-local, [`TenantPlan`],
 /// [`TenantContext`], [`current_tenant_id`], [`scope_tenant`]) moved to
 /// [`crate::tenant_context`], a leaf module with no dependencies, and is
 /// re-exported below so every call site keeps resolving. What remains here is
@@ -40,7 +40,7 @@ use tokio::sync::OnceCell;
 use crate::jwt_verifier::{JwtVerifier, JwtVerifierConfig};
 use crate::tenant_context::CURRENT_TENANT_ID;
 
-// §Fase 118.b.2 — the identity half, re-exported verbatim. `axon::tenant::
+// v2.81.0 — the identity half, re-exported verbatim. `axon::tenant::
 // current_tenant_id`, `axon::tenant::scope_tenant`, `axon::tenant::TenantPlan`
 // and `axon::tenant::TenantContext` all keep resolving under a `server` build,
 // including for `axon-enterprise`, which names them.
@@ -48,7 +48,7 @@ pub use crate::tenant_context::{
     current_tenant_id, scope_tenant, TenantContext, TenantPlan,
 };
 
-// ── JWT verifier singleton (§Fase 10.e) ──────────────────────────────────────
+// ── JWT verifier singleton (v1.4.0) ──────────────────────────────────────
 
 /// Lazily-initialised verifier. `None` means "no `AXON_JWT_JWKS_URL`
 /// configured" — handlers fall through to the legacy unverified
@@ -117,7 +117,7 @@ pub async fn tenant_extractor_middleware(
     let headers = req.headers().clone();
     let verifier = jwt_verifier().await;
 
-    // ── 1. Verified bearer path (§Fase 10.e) ─────────────────────────────
+    // ── 1. Verified bearer path (v1.4.0) ─────────────────────────────
     //
     // When a verifier is configured we prefer the verified claims over the
     // `X-Tenant-ID` header: a header can be forged by a compromised
@@ -236,7 +236,7 @@ mod tests {
         format!("{}.{}.fakesig", header, payload)
     }
 
-    // §Fase 118.b.2 — the TenantPlan / TenantContext / task-local tests moved
+    // v2.81.0 — the TenantPlan / TenantContext / task-local tests moved
     // with their subjects to `tenant_context.rs`. What stays here is what this
     // module still owns: extracting a tenant from an inbound HTTP request.
 

@@ -1,4 +1,4 @@
-//! §Fase 33.b — Flow execution event stream (Layer 1: data-flow integrity).
+//! v1.24.0 — Flow execution event stream (Layer 1: data-flow integrity).
 //!
 //! D2 ratificada: `ServerExecutionResult` is replaced by an event-stream
 //! return type — the runner emits each event AS IT OCCURS, the SSE
@@ -10,7 +10,7 @@
 //! events. The catalog is **closed** — adding a new variant requires a
 //! D-letter amendment, not a runtime-only patch. Cross-stack drift gate
 //! locks the JSON shape so Python + Rust agree on every field byte-for-
-//! byte (`tests/fixtures/fase33_flow_execution_event/corpus.json`).
+//! byte (`tests/fixtures/flow_execution_event/corpus.json`).
 //!
 //! - **FlowStart** — emitted once before any step. Establishes the
 //!   trace identity + chosen backend.
@@ -53,7 +53,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// Field naming + JSON serde-rename match the Python mirror
 /// (`axon/runtime/flow_execution_event.py`) byte-for-byte. The drift
-/// gate at `tests/fixtures/fase33_flow_execution_event/corpus.json`
+/// gate at `tests/fixtures/flow_execution_event/corpus.json`
 /// asserts both stacks produce byte-identical JSON for each variant.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
@@ -69,14 +69,14 @@ pub enum FlowExecutionEvent {
         step_name: String,
         step_index: usize,
         step_type: String,
-        /// §Fase 65 (D-letter amendment) — the MULTIPLEXING KEY for honest
+        /// v2.15.0 (D-letter amendment) — the MULTIPLEXING KEY for honest
         /// out-of-order SSE. A `par`-block's branches execute concurrently and
         /// emit their events INTERLEAVED on the one stream (reactive, wall-clock
         /// arrival — NOT serialized). This carries the emitting node's
         /// `branch_path` (`"par[0]"`, `"par[1].step[2]"`, …) so the SSE consumer
         /// DEMUXES the concurrent branch streams instead of guessing by arrival.
         /// Empty (`skip_serializing_if`) for a sequential top-level step →
-        /// byte-identical to the pre-§65 wire shape (drift gate stays green).
+        /// byte-identical to the pre-v2.15.0 wire shape (drift gate stays green).
         #[serde(default, skip_serializing_if = "String::is_empty")]
         branch_path: String,
         timestamp_ms: u64,
@@ -95,7 +95,7 @@ pub enum FlowExecutionEvent {
         /// FlowStart. Adopter clients use this to correlate
         /// `Last-Event-ID` resumes (W3C SSE spec).
         token_index: u64,
-        /// §Fase 65 — multiplexing key (see `StepStart::branch_path`): routes a
+        /// v2.15.0 — multiplexing key (see `StepStart::branch_path`): routes a
         /// concurrent `par`-branch's tokens to the right logical stream. Empty
         /// for sequential steps.
         #[serde(default, skip_serializing_if = "String::is_empty")]
@@ -110,13 +110,13 @@ pub enum FlowExecutionEvent {
         full_output: String,
         tokens_input: u64,
         tokens_output: u64,
-        /// §Fase 65 — multiplexing key (see `StepStart::branch_path`): marks the
+        /// v2.15.0 — multiplexing key (see `StepStart::branch_path`): marks the
         /// end of a concurrent `par`-branch's step. Empty for sequential steps.
         #[serde(default, skip_serializing_if = "String::is_empty")]
         branch_path: String,
         timestamp_ms: u64,
     },
-    /// §Fase 33.y.k — Tool invocation chunk. Emitted by per-step
+    /// v1.24.0 — Tool invocation chunk. Emitted by per-step
     /// handlers when the upstream backend's chunk stream signals
     /// `FinishReason::ToolUse` (provider invoked a tool mid-stream).
     /// Closed-catalog event variant; D4 byte-compat preserves
@@ -125,7 +125,7 @@ pub enum FlowExecutionEvent {
     ///
     /// `content` carries the tool-call's structured payload as a
     /// canonical wire-stable string (provider-specific shape today;
-    /// future Fase 33.y.k.2 standardizes per-provider extraction
+    /// future v1.24.0 standardizes per-provider extraction
     /// into a unified `tool_call_id + arguments` schema).
     ToolCall {
         step_name: String,

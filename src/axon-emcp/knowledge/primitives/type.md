@@ -8,7 +8,7 @@ grammar: |
   type <Name>                                   # required
        [(<min>..<max>)]                         # optional — numeric range refinement
        [where <expression>]                     # optional — predicate refinement
-       [compliance [<Tag1>, <Tag2>, ...]]       # optional — §6.1 ESK compliance
+       [compliance [<Tag1>, <Tag2>, ...]] # optional — section 6.1 ESK compliance
        [{ <field>: <TypeExpr>, ... }]           # optional — record body
 
   # Examples:
@@ -93,14 +93,14 @@ type AdultAge(0..150) where s >= 18
 The `s` identifier inside the `where` clause refers to the
 value being checked.
 
-### `compliance [<Tag1>, <Tag2>, ...]` — ESK compliance (optional, Fase 6.1)
+### `compliance [<Tag1>, <Tag2>, ...]` — ESK compliance (optional, v1.2.0)
 
 A **bracketed list of identifiers** from the closed compliance
 catalogue (`HIPAA`, `GDPR`, `GxP`, `PCI_DSS`, `SOX`, `SOC2`,
 `FISMA`, `NIST_800_53`, `FedRAMP_Moderate`, `FedRAMP_High`,
 …). When a type carries a compliance tag, every downstream
 consumer of the type (axonendpoint, shield, axonstore) MUST
-declare at least one of the tagged frameworks — the §40
+declare at least one of the tagged frameworks — the v2.0.0
 cross-tag check is statically enforced.
 
 **Important syntax note:** for `type`, the compliance tag uses
@@ -134,7 +134,7 @@ The runtime ships built-in types that do not need declaration:
 | `Bytes` | Raw byte sequence |
 | `Timestamp` | UTC ISO 8601 |
 | `List<T>` | Generic homogeneous list |
-| `Stream<T>` | Lazy sequence (Fase 33 streaming surface) |
+| `Stream<T>` | Lazy sequence (v1.24.0 streaming surface) |
 | `Optional<T>?` | Nullable / absent |
 
 ## Runtime behaviour
@@ -172,7 +172,7 @@ for endpoint-bound types.
   compiler treats type names as nominal.
 - **Not parameterised** (yet). Generic *application*
   (`List<Email>`) works; declaring `type Pair<A, B> { ... }`
-  is on the §Fase 38+ roadmap.
+  is on the v1.31.0+ roadmap.
 
 ## See also
 

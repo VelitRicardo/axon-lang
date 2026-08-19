@@ -3,7 +3,7 @@ name: synth
 summary: "A dynamic tool-synthesis policy — the safety envelope (risk ceiling, source language, mandatory WASM zero-trust sandbox, Coder/Reviewer consensus) under which a savant may synthesise and run a tool at runtime."
 category: operators
 top_level: true
-since: Fase 87
+since: v2.42.0
 grammar: |
   synth <Name> {
       target: "<string>"                    # REQUIRED — the capability scope

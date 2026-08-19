@@ -16,10 +16,10 @@ name = "axon-emcp"
 path = "src/main.rs"
 
 [dependencies]
-# §ℰMCP — the compiler frontend gives us live validation: `axon.check`
+# ℰMCP — the compiler frontend gives us live validation: `axon.check`
 # returns the same diagnostics `axon check` would print. We consume by
 # path (in-tree development) + a version constraint (so cargo-publish
-# resolves a registry version too, matching the §Fase 40 D1 discipline).
+# resolves a registry version too, matching the v2.0.0 D1 discipline).
 axon-frontend = { path = "../../axon-frontend", version = "=1.59.0" }
 
 # Serde JSON for the MCP wire protocol (JSON-RPC 2.0 over stdio).
@@ -29,11 +29,11 @@ serde_json = "1"
 # Async runtime — MCP servers are I/O-bound + benefit from async stdin/
 # stdout (the agent talks line-by-line); tokio is the de-facto Rust
 # choice + matches the rest of the workspace. The `time` feature
-# powers the §Fase 10 OTLP push loop (interval-driven background
+# powers the v1.4.0 OTLP push loop (interval-driven background
 # task; see `otlp.rs`).
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "io-std", "io-util", "sync", "time"] }
 
-# §Fase 10 — OTLP/gRPC exporter dependencies. We talk the OTLP wire
+# v1.4.0 — OTLP/gRPC exporter dependencies. We talk the OTLP wire
 # directly using `tonic` (gRPC) + `opentelemetry-proto` (proto types
 # + generated tonic client). No `opentelemetry-sdk` couplings — our
 # snapshot model stays the single source of truth and the exporter
@@ -51,7 +51,7 @@ prost = "0.13"
 # Rust crate for this pattern (used by ssg's like zola, mdbook plugins).
 gray_matter = { version = "0.2", default-features = false, features = ["yaml"] }
 
-# §Phase 1 — embed the knowledge corpus into the binary at compile time
+# Phase 1 — embed the knowledge corpus into the binary at compile time
 # so `cargo install --path src/axon-emcp` ships a fully self-contained
 # server (no need for adopters to set AXON_EMCP_KNOWLEDGE_DIR or copy
 # a `share/` directory). At runtime we still prefer (a) the env-var

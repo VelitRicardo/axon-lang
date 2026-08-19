@@ -51,64 +51,64 @@ follows from one row.
 
 | Surface | Top-level | Lives inside | Since |
 |---|:---:|---|---|
-| `resource`  | ✓ | — | Fase 6 |
-| `fabric`    | ✓ | — | Fase 6 |
-| `manifest`  | ✓ | — | Fase 6 |
-| `observe`   | ✓ | — | Fase 6 |
-| `reconcile` | ✓ | — | Fase 6 |
-| `lease`     | ✓ | — | Fase 6 |
-| `ensemble`  | ✓ | — | Fase 6 |
-| `session`   | ✓ | — (referenced by `socket protocol:`) | Fase 41.a |
+| `resource`  | ✓ | — | v1.2.0 |
+| `fabric`    | ✓ | — | v1.2.0 |
+| `manifest`  | ✓ | — | v1.2.0 |
+| `observe`   | ✓ | — | v1.2.0 |
+| `reconcile` | ✓ | — | v1.2.0 |
+| `lease`     | ✓ | — | v1.2.0 |
+| `ensemble`  | ✓ | — | v1.2.0 |
+| `session`   | ✓ | — (referenced by `socket protocol:`) | v2.3.0 |
 
 ## Data plane
 
 | Surface | Top-level | Lives inside | Since |
 |---|:---:|---|---|
-| `axonstore` | ✓ | — | Fase 36 |
-| `dataspace` | ✓ | — | Fase 36 |
-| `corpus`    | ✓ | — | Fase 36 |
-| `pix`       | ✓ | — | Fase 19 |
-| `ledger`    | ✓ | — | Fase 62 |
+| `axonstore` | ✓ | — | v1.31.0 |
+| `dataspace` | ✓ | — | v1.31.0 |
+| `corpus`    | ✓ | — | v1.31.0 |
+| `pix`       | ✓ | — | v1.14.0 |
+| `ledger`    | ✓ | — | v2.12.0 |
 | `type`      | ✓ | — | v0.1.0  |
 
 ## Session types & wire
 
 | Surface | Top-level | Lives inside | Since |
 |---|:---:|---|---|
-| `session`        | ✓ | — | Fase 41.a |
-| `socket`         | ✓ | — | Fase 41.b |
-| `axonendpoint`   | ✓ | — | Fase 32 |
-| `axpoint`        | ✓ | — | Fase 32 |
-| `daemon`         | ✓ | — | Fase 16 |
-| `mcp`            | ✓ | — | Fase 33+ |
-| `listen`         | ✗ | `flow`, `daemon` body | Fase 16 |
-| `channel`        | ✓ | — | Fase 13 |
-| `emit`           | ✗ | `flow`, `daemon` body | Fase 13 |
-| `publish`        | ✗ | `flow`, `daemon` body | Fase 13 |
-| `discover`       | ✗ | `flow`, `daemon` body | Fase 13 |
+| `session`        | ✓ | — | v2.3.0 |
+| `socket`         | ✓ | — | v2.3.0 |
+| `axonendpoint`   | ✓ | — | v1.23.0 |
+| `axpoint`        | ✓ | — | v1.23.0 |
+| `daemon`         | ✓ | — | v1.11.0 |
+| `mcp`            | ✓ | — | v1.24.0+ |
+| `listen`         | ✗ | `flow`, `daemon` body | v1.11.0 |
+| `channel`        | ✓ | — | v1.6.0 |
+| `emit`           | ✗ | `flow`, `daemon` body | v1.6.0 |
+| `publish`        | ✗ | `flow`, `daemon` body | v1.6.0 |
+| `discover`       | ✗ | `flow`, `daemon` body | v1.6.0 |
 
 > The `taint` keyword is a reserved word in the lexer but has no
 > parser production today (it appears in the epistemic-uncertainty
 > lattice in `axon-frontend::epistemic`, not as a top-level
-> declaration). If a future Fase introduces a `taint <Name> { … }`
+> declaration). If a future cycle introduces a `taint <Name> { … }`
 > declaration the registry + this table grow together.
 
 ## Operators
 
 | Surface | Top-level | Lives inside | Since |
 |---|:---:|---|---|
-| `shield`   | ✓ | — | Fase 20 |
-| `mandate`  | ✓ | — | Fase 21 |
-| `compute`  | ✓ | — | Fase 17 |
-| `lambda`   | ✓ | — | Fase 15 |
-| `forge`    | ✗ | `flow` | Fase 18 |
-| `ots`      | ✓ | — | Fase 11 |
-| `psyche`   | ✓ | — | Fase 14 |
-| `agent`    | ✓ | — | Fase 18 |
+| `shield`   | ✓ | — | v1.13.1 |
+| `mandate`  | ✓ | — | v1.13.1 |
+| `compute`  | ✓ | — | v1.12.0 |
+| `lambda`   | ✓ | — | v1.10.0 |
+| `forge`    | ✗ | `flow` | v1.12.0 |
+| `ots`      | ✓ | — | v1.4.0 |
+| `psyche`   | ✓ | — | v1.5.2 |
+| `agent`    | ✓ | — | v1.12.0 |
 
 > The `logic` keyword is a reserved word in the lexer but — like
-> `taint` (Fase 6.c) — has no parser production today. If a future
-> Fase introduces a `logic <Name> { … }` declaration the registry +
+> `taint` (v1.2.0) — has no parser production today. If a future
+> cycle introduces a `logic <Name> { … }` declaration the registry +
 > this table grow together.
 
 ## Statements (not primitives, but parsed at flow body)

@@ -1,6 +1,6 @@
 //! Refinement types — `Trusted<T>` / `Untrusted<T>` + closed Trust Catalog.
 //!
-//! §λ-L-E Fase 11.a — Temporal Algebraic Effects + Trust Types.
+//! v1.4.0 — Temporal Algebraic Effects + Trust Types.
 //!
 //! Axon's type system tracks a payload's *refinement status* at the
 //! type level. An `Untrusted<T>` value — e.g. an HTTP body, a
@@ -34,7 +34,7 @@ pub enum TrustProof {
     /// webhook signature verification (Stripe, GitHub, generic HMAC).
     Hmac,
     /// JWT signature verification (RS256/RS384/RS512) via a JWKS
-    /// endpoint. Shared with Fase 10.e's [`crate::jwt_verifier`].
+    /// endpoint. Shared with v1.4.0's [`crate::jwt_verifier`].
     JwtSig,
     /// OAuth2 authorization-code exchange using PKCE S256. Returns an
     /// access token proof that the bearer controls the code verifier.

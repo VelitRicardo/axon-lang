@@ -1,7 +1,7 @@
-//! §Fase 115.b — Phase 1 of the Epistemic Module System: `.axi` interfaces.
+//! v2.76.0 — Phase 1 of the Epistemic Module System: `.axi` interfaces.
 //!
 //! A [`CognitiveInterface`] is the public surface of one module — every
-//! top-level *named* declaration (D115.3, via [`crate::ast::declaration_surface`])
+//! top-level *named* declaration (the design decision, via [`crate::ast::declaration_surface`])
 //! reduced to its **signature**: what an importer must know to type-check
 //! and to trust, never the implementation (ask text, step bodies, PID
 //! gains, endpoint literals).
@@ -13,12 +13,12 @@
 //! - [`CognitiveInterface::interface_hash`] — SHA-256 of the canonical
 //!   `.axi` JSON (with the hash field itself excluded); changes only when
 //!   the PUBLIC surface changes. A comment-only edit keeps it stable —
-//!   the precondition for early cutoff (§115.f).
+//! the precondition for early cutoff (v2.76.0).
 //!
 //! # Where the soundness line sits (AST-merge architecture)
 //!
 //! Signatures deliberately hide bodies. That is sound because the linked
-//! program is built by **merging the module ASTs** (§115.e): the merged
+//! program is built by **merging the module ASTs** (v2.76.0): the merged
 //! semantic revalidation and the single IR generation always see full
 //! declarations. Per-module validation consumes ONLY what the signature
 //! carries (name + kind + the fields below), so a body-only edit never
@@ -26,7 +26,7 @@
 //! stale, because nothing body-derived is ever cached per-dependent.
 //!
 //! Hashing honors the crate's zero-runtime-dep discipline: SHA-256 is the
-//! §Fase 38 hand-rolled FIPS 180-4 [`crate::store_schema_manifest::sha256_hex`].
+//! v1.31.0 hand-rolled FIPS 180-4 [`crate::store_schema_manifest::sha256_hex`].
 
 use std::collections::BTreeMap;
 
@@ -37,11 +37,11 @@ use crate::module_resolver::ModulePath;
 use crate::store_schema_manifest::sha256_hex;
 
 /// `.axi` format version. Bumping it busts every compilation cache
-/// wholesale (§115.f law 6) — a shape change may never meet stale bytes.
+/// wholesale (v2.76.0 law 6) — a shape change may never meet stale bytes.
 pub const AXI_FORMAT_VERSION: u32 = 1;
 
 // ════════════════════════════════════════════════════════════════════
-//  Epistemic floor (§3.4 of the EMS paper)
+// Epistemic floor (section 3.4 of the EMS paper)
 // ════════════════════════════════════════════════════════════════════
 
 /// The module-level epistemic guarantee, derived from content — never
@@ -147,11 +147,11 @@ pub enum ExportSignature {
         #[serde(skip_serializing_if = "Option::is_none", default)]
         risk: Option<String>,
         provider: String,
-        /// §Fase 116.a (D116.9) — the authorization scopes the tool requires.
+        /// v2.77.0 — the authorization scopes the tool requires.
         /// PUBLIC surface: an importer must see the scope demands (axon-T956
         /// coverage), and the interface_hash must cover it so a `requires:`
-        /// change invalidates every dependent (early-cutoff soundness, §115.7).
-        /// Elided when empty ⇒ every pre-§116 tool's `.axi` is byte-identical.
+        /// change invalidates every dependent (early-cutoff soundness, v2.76.0).
+        /// Elided when empty ⇒ every pre-v2.77.0 tool's `.axi` is byte-identical.
         #[serde(skip_serializing_if = "Vec::is_empty", default)]
         requires: Vec<String>,
     },
@@ -336,8 +336,8 @@ pub fn generate_interface(
 // ════════════════════════════════════════════════════════════════════
 
 /// The resolved interfaces of every module in a compilation, keyed by
-/// module path. What the type-checker's module mode (§115.d) and the ECC
-/// (§115.c) consume. Deterministic by construction.
+/// module path. What the type-checker's module mode (v2.76.0) and the ECC
+/// (v2.76.0) consume. Deterministic by construction.
 #[derive(Debug, Default)]
 pub struct ModuleRegistry {
     modules: BTreeMap<ModulePath, CognitiveInterface>,
@@ -378,7 +378,7 @@ impl ModuleRegistry {
 }
 
 // ════════════════════════════════════════════════════════════════════
-//  Unit tests (integration suite: tests/fase115_b_interfaces.rs)
+//  Unit tests (integration suite: tests/interfaces.rs)
 // ════════════════════════════════════════════════════════════════════
 
 #[cfg(test)]

@@ -1,7 +1,7 @@
-//! §Fase 109.a — the symbolic reverse differentiator over the closed
-//! `Expr` (§70) + the deterministic simplifier.
+//! v2.65.0 — the symbolic reverse differentiator over the closed
+//! `Expr` (v2.26.0) + the deterministic simplifier.
 //!
-//! # The theorem (differential closure, plan §5.1)
+//! # The theorem (differential closure, plan section 5.1)
 //!
 //! Let **D** ⊂ Expr be the differentiable fragment: numeric literals,
 //! `Ref`, `Neg`, and `Add/Sub/Mul/Div` over D (plus the `as_float`
@@ -19,12 +19,12 @@
 //! expression (`axon-T931`), never a silent zero: a fabricated gradient
 //! is the same lie an unstated finite-difference error institutionalizes.
 //!
-//! # The simplifier (plan §5.3)
+//! # The simplifier (plan section 5.3)
 //!
 //! Deterministic bottom-up rewriting to fixpoint over the identity/
 //! absorption rules + literal folding. Terminating (every rule strictly
 //! reduces node count or folds to a literal). The simplifier is PART OF
-//! THE PROOF CONTRACT (D109.4): the PCC prover and verifier both run it
+//! THE PROOF CONTRACT: the PCC prover and verifier both run it
 //! and compare post-simplification — which also keeps the IR gradient
 //! human-readable. An inspectable artifact is the point.
 
@@ -44,7 +44,7 @@ fn lit_f(v: f64) -> Expr {
     Expr::Lit(ExprLit::Float(v))
 }
 
-/// ∂e/∂x — plan §5.2. Derivatives are always Float-valued (D109.3:
+/// ∂e/∂x — plan section 5.2. Derivatives are always Float-valued (the design decision:
 /// differentiation is over ℝ; Int expressions are embedded).
 pub fn differentiate(e: &Expr, wrt: &str) -> Result<Expr, NonDifferentiable> {
     diff_at(e, wrt, String::new())
@@ -62,7 +62,7 @@ fn diff_at(e: &Expr, wrt: &str, path: String) -> Result<Expr, NonDifferentiable>
             path,
         }),
         Expr::Ref(name) => Ok(if name == wrt { lit_f(1.0) } else { lit_f(0.0) }),
-        // §Fase 119.o — `let` is REFUSED here, deliberately.
+        // v2.83.0 — `let` is REFUSED here, deliberately.
         //
         // Differentiating through a binding needs the chain rule applied to the
         // bound term: ∂/∂w [let x = f in g] = ∂g/∂x · ∂f/∂w + ∂g/∂w. The `Ref`
@@ -72,7 +72,7 @@ fn diff_at(e: &Expr, wrt: &str, path: String) -> Result<Expr, NonDifferentiable>
         // WRONG. A wrong gradient does not fail; it converges somewhere else.
         //
         // Refusing names the construct and surfaces as axon-T931, which is the
-        // §108 posture: an adopter is told, not fooled. Landing it properly
+        // v2.63.0 posture: an adopter is told, not fooled. Landing it properly
         // means teaching `diff_at` an environment, which is its own decision.
         Expr::Let { .. } => Err(NonDifferentiable {
             construct: "let binding".into(),
@@ -100,7 +100,7 @@ fn diff_at(e: &Expr, wrt: &str, path: String) -> Result<Expr, NonDifferentiable>
                 )),
                 // Quotient rule: (e₁/e₂)' = (e₁'·e₂ − e₁·e₂') / e₂².
                 // `eval_expr` is already total/fail-closed on division —
-                // the derivative inherits that honesty (D109.6).
+                // the derivative inherits that honesty.
                 BinOp::Div => Ok(Expr::Binary(
                     BinOp::Div,
                     Box::new(Expr::Binary(
@@ -110,7 +110,7 @@ fn diff_at(e: &Expr, wrt: &str, path: String) -> Result<Expr, NonDifferentiable>
                     )),
                     Box::new(Expr::Binary(BinOp::Mul, r.clone(), r.clone())),
                 )),
-                // D109.5 — `mod` is non-differentiable at its integer
+                // the design decision — `mod` is non-differentiable at its integer
                 // boundaries; an "almost-everywhere" derivative is the
                 // hedging we refuse to ship.
                 BinOp::Mod => Err(NonDifferentiable {
@@ -166,10 +166,10 @@ fn as_num(e: &Expr) -> Option<f64> {
     }
 }
 
-/// Plan §5.3 — deterministic bottom-up simplification to fixpoint.
+/// Plan section 5.3 — deterministic bottom-up simplification to fixpoint.
 /// Terminating: every rewrite strictly reduces the node count or folds
 /// two literals into one. Confluent on this rule set (no diverging
-/// critical pairs). Prover and verifier run the SAME function (D109.4).
+/// critical pairs). Prover and verifier run the SAME function.
 pub fn simplify(e: Expr) -> Expr {
     let simplified = simplify_once(e);
     simplified
@@ -309,7 +309,7 @@ mod tests {
 
     #[test]
     fn differential_closure_grad_of_grad_is_well_defined() {
-        // §5.1 corollary: d²(x·x·x)/dx² exists because the first
+        // section 5.1 corollary: d²(x·x·x)/dx² exists because the first
         // derivative is ITSELF in the fragment.
         let e = mul(mul(r("x"), r("x")), r("x"));
         let d1 = grad(&e, "x").unwrap();

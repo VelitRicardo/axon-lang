@@ -3,7 +3,7 @@ name: resource
 summary: The single source of truth for a connection the runtime opens, holds and pools — its address, its size, and how many holders may share it.
 category: cognitive_io
 top_level: true
-since: Fase 6 (governs anything only since Fase 113)
+since: v1.2.0 (governs anything only since v2.67.0)
 grammar: |
   resource <Name> {
       kind:            <http|https|mysql|postgres|redis>   # required — CLOSED catalog
@@ -39,7 +39,7 @@ resource. The derivation is the point — a bare reference would be a label.
 
 ## ⚠️ What this page used to say — and why that matters
 
-Until §Fase 113 this page described a runtime that **did not exist**. Recording
+Until v2.67.0 this page described a runtime that **did not exist**. Recording
 it beats quietly rewriting it, because it is the clearest specimen in the corpus
 of how this failure hides:
 
@@ -55,10 +55,10 @@ at again. And this line —
 
 > *"The two layer: an `axonstore` can sit on top of a `resource`."*
 
-— **is §Fase 113, written in the present tense, years before anyone built it.**
+— **is v2.67.0, written in the present tense, years before anyone built it.**
 
 The declaration was always real. The prose about it was aspiration in the
-indicative mood. §113 made the prose true; this page now describes what runs.
+indicative mood. v2.67.0 made the prose true; this page now describes what runs.
 
 ## Fields
 
@@ -66,7 +66,7 @@ indicative mood. §113 made the prose true; this page now describes what runs.
 
 A **closed catalog**: `http` · `https` · `mysql` · `postgres` · `redis`.
 
-Until §113 this was a *free string that nothing validated* — `kind: postgress`
+Until v2.67.0 this was a *free string that nothing validated* — `kind: postgress`
 compiled clean and produced a resource the runtime could never reach. The catalog
 is exactly what the runtime knows how to *reach*; **adding a kind to it costs an
 implementation**, because a catalog is a promise. (`axon-T942`)
@@ -86,7 +86,7 @@ single source of truth for infrastructure. (`axon-T944`)
 
 **The pool size.** `capacity: 20` ⇒ twenty connections.
 
-Before §113 there was no way to say this at all: every `postgresql` store in
+Before v2.67.0 there was no way to say this at all: every `postgresql` store in
 existence got a hardcoded 10, with no environment variable and no source-level
 knob. This field is that knob — and wiring it is what makes `resource` a **wire**
 rather than a **label**.
@@ -103,7 +103,7 @@ rather than a **label**.
 | `affine` | **At most one** holder. It may go unused; it may not be shared. **Default.** |
 | `persistent` | The `!` exponential. Freely shared — but you have to *say so*. |
 
-Not decoration. Before §113, two stores silently shared one connection pool
+Not decoration. Before v2.67.0, two stores silently shared one connection pool
 whenever their DSNs happened to resolve equal — the registry caches pools keyed
 on the resolved DSN. **Nobody declared that sharing, nobody checked it, and
 nothing told you it happened.** A shared pool that nobody declared shared is how
@@ -127,7 +127,7 @@ resource that is `within: Prod` is refused. (`axon-T947`)
 
 A numeric literal in `[0.0, 1.0]` — the minimum observational certainty
 `observe` requires before treating this resource as healthy. Below the floor the
-observation is **refused**, not downgraded (§112).
+observation is **refused**, not downgraded (v2.67.0).
 
 ### `shield:` (optional)
 
@@ -140,7 +140,7 @@ resource always carries a PHI-redaction shield.
   external state. The address is one of its fields.
 - **Not an `axonstore`.** `axonstore` is the typed, audit-chained data plane
   (columns, isolation, breach policy). `resource` is the connection underneath
-  it. **The two layer** — `axonstore { resource: Db }` — and since §113 that
+  it. **The two layer** — `axonstore { resource: Db }` — and since v2.67.0 that
   sentence is true rather than merely printed.
 - **Not for things that hold nothing.** `deliver`, `document` and `notify` do
   **not** name a resource: they fire and return, and the host lives in the

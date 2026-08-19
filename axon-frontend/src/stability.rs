@@ -1,12 +1,12 @@
-//! §Fase 119.b — the `mandate` stability judgment: one admissibility predicate,
+//! v2.83.0 — the `mandate` stability judgment: one admissibility predicate,
 //! shared by the compiler and the runtime.
 //!
 //! # Why this lives in the frontend
 //!
 //! The band arithmetic was born in `axon-rs/src/pem/density_matrix.rs`, next to
-//! the controller that first needed it. That is the §118 smell — a general
+//! the controller that first needed it. That is the v2.81.0 smell — a general
 //! concept parked in the specific module that first needed it — because the
-//! *type checker* needs the same judgment: README §XV promises that unstable
+//! *type checker* needs the same judgment: README XV promises that unstable
 //! gains are rejected **at compile time**. The frontend has zero dependencies
 //! and `axon-rs` already depends on it, so the mathematics moves here and the
 //! runtime consumes it. One admissibility judgment, two call sites; a mandate
@@ -17,10 +17,10 @@
 //! The two papers bound the control effort `|Kp + Ki + Kd|` in **opposite
 //! directions**, and both theorems are **conditional**:
 //!
-//! - `paper_mandate.md` §3 (Lyapunov): *if* the backend's drift satisfies
+//! - `paper_mandate.md` section 3 (Lyapunov): *if* the backend's drift satisfies
 //!   `sup|drift(t)| ≤ D`, then the cage holds only when the effort **exceeds
 //!   `D`**. Too small, and `V(e) = ½e²` does not decrease.
-//! - `paper_mathematical_prompt_optimization.md` §6.3 (Lipschitz): *if* the
+//! - `paper_mathematical_prompt_optimization.md` section 6.3 (Lipschitz): *if* the
 //!   refinement map is `L`-Lipschitz, convergence requires the effort **below
 //!   `1/L`**. Too large, and the loop oscillates or diverges.
 //!
@@ -34,14 +34,14 @@
 //! It cannot — and this module does not pretend to. `D` and `L` are **measured
 //! properties of a backend**, and the compiler does not know the backend.
 //! Fabricating them (a baked-in table of vendor constants) would make the gate
-//! vacuous, which is precisely the defect §119.b exists to end. Instead:
+//! vacuous, which is precisely the defect v2.83.0 exists to end. Instead:
 //!
 //! **The developer declares the bounds** — `stability { D: 0.3, L: 0.4 }` — and
 //! the compiler verifies the theorem **conditionally on the declaration**. The
 //! declared `(D, L)` travel in the IR as proof obligations: at dispatch, the
 //! runtime must discharge them against the measured backend, or refuse. This is
-//! the same shape as §51's proof-carrying code (a proof checked against stated
-//! axioms, the axioms discharged at the boundary) and §91's `now:` declared
+//! the same shape as v2.4.0's proof-carrying code (a proof checked against stated
+//! axioms, the axioms discharged at the boundary) and v2.46.0's `now:` declared
 //! time. In sequent form:
 //!
 //! ```text
@@ -80,15 +80,15 @@ impl Gains {
 /// acted on by the developer who wrote them.
 #[derive(Debug, Clone, PartialEq)]
 pub enum GainError {
-    /// `Kp ≤ 0`: no restoring force at all. Published in README §XV.
+    /// `Kp ≤ 0`: no restoring force at all. Published in README XV.
     NonPositiveProportional { kp: f64 },
     /// `Ki < 0`: the integral term would amplify accumulated error.
     NegativeIntegral { ki: f64 },
     /// `Kd < 0`: the derivative term would amplify acceleration.
     NegativeDerivative { kd: f64 },
-    /// Below the drift floor — `paper_mandate.md` §3's precondition.
+    /// Below the drift floor — `paper_mandate.md` section 3's precondition.
     BelowDriftFloor { effort: f64, drift_bound: f64 },
-    /// Above the Lipschitz ceiling — `prompt_opt` §6.3.
+    /// Above the Lipschitz ceiling — `prompt_opt` section 6.3.
     AboveLipschitzCeiling { effort: f64, ceiling: f64 },
     /// `D ≥ 1/L`: the band itself is empty. Not a bad configuration — an
     /// uncageable backend.
@@ -233,7 +233,7 @@ impl StabilityBand {
     /// The band for a backend with no measured drift and no measured expansion.
     ///
     /// It admits any gains that pass the sign tests — **which is exactly the
-    /// vacuous check §119.b exists to replace**, so callers must treat an
+    /// vacuous check v2.83.0 exists to replace**, so callers must treat an
     /// uncharacterised backend as a gap to close, not as a pass.
     pub fn uncharacterised() -> Self {
         StabilityBand {
@@ -400,7 +400,7 @@ mod tests {
 
     #[test]
     fn the_band_rejects_gains_that_are_too_small_to_beat_the_drift() {
-        // Every sign test in README §XV passes here; only the paper's
+        // Every sign test in README XV passes here; only the paper's
         // precondition catches it.
         let band = StabilityBand::new(0.8, 0.5).expect("D=0.8 < 1/L=2.0");
         let weak = gains(0.3, 0.1, 0.05); // effort 0.45 ≤ D = 0.8
@@ -522,7 +522,7 @@ mod tests {
 
     #[test]
     fn declared_bounds_turn_readme_legal_gains_into_a_compile_error() {
-        // THE test of the whole sub-fase: gains that pass every published sign
+        // THE test of the whole step: gains that pass every published sign
         // check are refused once the developer states the drift they must beat.
         let s = MandateStatics {
             kp: Some(0.3),
@@ -546,7 +546,7 @@ mod tests {
 
     #[test]
     fn without_declared_bounds_only_the_sign_checks_apply() {
-        // Backwards compatibility: every mandate written before §119.b.3
+        // Backwards compatibility: every mandate written before v2.83.0
         // declares no bounds and must keep compiling.
         let s = MandateStatics {
             drift_bound: None,

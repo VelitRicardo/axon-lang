@@ -1,8 +1,8 @@
-//! §Fase 119.b — the `SemanticValidator`: `e(t)`, the error signal of a `mandate`.
+//! v2.83.0 — the `SemanticValidator`: `e(t)`, the error signal of a `mandate`.
 //!
 //! # Why this file exists
 //!
-//! `mandate` publishes a closed-loop controller (README §XV, the Cybernetic
+//! `mandate` publishes a closed-loop controller (README XV, the Cybernetic
 //! Refinement Calculus):
 //!
 //! ```text
@@ -20,10 +20,10 @@
 //! and its definition is the right one for a `mandate`, because a mandate *is* a
 //! set of constraints:
 //!
-//! - **§5.3** frames the problem as a CSP `(X, D, C)`: `X` the output's
+//! - **section 5.3** frames the problem as a CSP `(X, D, C)`: `X` the output's
 //!   variables, `D` their semantic domains, `C` the constraints. Validation is
 //!   the question `r ⊨ C`.
-//! - **§9.1** defines the **Constraint Satisfaction Rate**:
+//! - **section 9.1** defines the **Constraint Satisfaction Rate**:
 //!
 //!   ```text
 //!   CSR = |{c ∈ C : r ⊨ c}| / |C|
@@ -41,8 +41,8 @@
 //! deterministic function of the response text. That is deliberate: an error
 //! signal produced by asking a model "did you comply?" would put the thing being
 //! controlled in charge of measuring its own deviation, and the loop would close
-//! on nothing. The precedents in this codebase are §69 (Advantage Witness) and
-//! §86 (`forge`'s novelty, measured by NCD): **a number the system MEASURES, not
+//! on nothing. The precedents in this codebase are v2.23.0 (Advantage Witness) and
+//! v2.41.0 (`forge`'s novelty, measured by NCD): **a number the system MEASURES, not
 //! one it asserts.**
 //!
 //! # The refusal that keeps it from going vacuous
@@ -50,7 +50,7 @@
 //! `CSR` is undefined for `|C| = 0`, and the tempting reading — "no constraints
 //! violated, so `e = 0`" — is exactly backwards: a mandate with nothing checkable
 //! is a mandate that **cannot fail**, which is the vacuous guarantee this project
-//! exists to hunt (§111, §113's `lease` with no subject). So an empty or
+//! exists to hunt (v2.67.0, v2.67.0's `lease` with no subject). So an empty or
 //! wholly-unlowerable constraint set is a **compile-time refusal**, not an
 //! `e` of zero. See [`ConstraintSet::new`] and [`ConstraintSet::lower`].
 //!
@@ -71,7 +71,7 @@ use regex::Regex;
 /// about a response. That is not a simplification to be relaxed later: a free
 /// string here would breed an imaginary catalog of constraint kinds that read
 /// plausibly and check nothing, which is a failure mode this codebase has now
-/// seen four separate times (§108, §113 `resource.kind`, §114.b `provider`).
+/// seen four separate times (v2.63.0, v2.67.0 `resource.kind`, v2.69.0 `provider`).
 /// A clause that does not fit one of these arms is not silently approximated —
 /// it is reported as [`Clause::Uncheckable`] and the mandate refuses.
 ///
@@ -99,13 +99,13 @@ pub enum Predicate {
     /// must appear too.
     ///
     /// This arm exists because the shape "no X *without* Y" is the single most
-    /// common form a real mandate takes — README §XV's own example is *"no
+    /// common form a real mandate takes — README XV's own example is *"no
     /// forward-looking statements without safe harbor language"* — and it is
     /// **not** expressible as `Absent` plus `Contains`. `Absent{X}` forbids the
     /// statement outright; `Contains{Y}` demands the disclaimer even when
     /// nothing triggered it. Only the implication says what was meant.
     RequiredWith { trigger: String, required: String },
-    /// §Fase 121 — the response must parse as a JSON **object** carrying a
+    /// v2.88.0 — the response must parse as a JSON **object** carrying a
     /// non-null member named `field`.
     ///
     /// # Why this is a seventh predicate and not `Contains`
@@ -190,7 +190,7 @@ impl Predicate {
                     Err(e) => Err(format!("the response is not valid JSON: {e}")),
                 }
             }
-            // §Fase 121 — structural, never substring. Each failure names its
+            // v2.88.0 — structural, never substring. Each failure names its
             // OWN cause: "not JSON", "not an object" and "no such member" send
             // an author to three different places, and collapsing them into one
             // message would make the CSR uninterpretable.
@@ -215,7 +215,7 @@ impl Predicate {
                     // A declared field present as `null` is ABSENT for this
                     // purpose. Counting it as satisfied would let a response
                     // claim every field of a schema while carrying none of the
-                    // values — the §112 shape (substituting the belief for the
+                    // values — the v2.67.0 shape (substituting the belief for the
                     // evidence) inside the very check that exists to measure it.
                     Some(serde_json::Value::Null) => Err(format!(
                         "the response object carries {field:?} but its value is null"
@@ -238,7 +238,7 @@ impl Predicate {
     }
 
     /// The human-readable obligation, used when a violation is fed back to the
-    /// model as the CSP solver's backtracking step (paper §5.3, step 3:
+    /// model as the CSP solver's backtracking step (paper section 5.3, step 3:
     /// *"identificar `c_j` violado → inyectar `c_j` como feedback"*).
     fn obligation(&self) -> String {
         match self {
@@ -477,7 +477,7 @@ pub struct Violation {
 /// The outcome of `r ⊨ C`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Verdict {
-    /// `CSR = |{c ∈ C : r ⊨ c}| / |C|` — paper §9.1.
+    /// `CSR = |{c ∈ C: r ⊨ c}| / |C|` — paper section 9.1.
     pub csr: f64,
     /// `e = 1 − CSR ∈ [0, 1]`. The error signal the controller acts on.
     pub error: f64,
@@ -492,13 +492,13 @@ impl Verdict {
     }
 
     /// Whether the response is inside the mandate's convergence band,
-    /// `|e| < ε` (README §XV's `∃t ≤ N : |e(t)| < ε`).
+    /// `|e| < ε` (README XV's `∃t ≤ N: |e(t)| < ε`).
     pub fn within(&self, epsilon: f64) -> bool {
         self.error.abs() < epsilon
     }
 
     /// The violated constraints rendered as corrective feedback — the CSP
-    /// solver's backtracking step (paper §5.3).
+    /// solver's backtracking step (paper section 5.3).
     pub fn feedback(&self) -> String {
         self.violated
             .iter()
@@ -1048,7 +1048,7 @@ mod tests {
 
     #[test]
     fn within_is_a_strict_band_matching_the_published_convergence_test() {
-        // README §XV: `∃t ≤ N : |e(t)| < ε` — strict, so e == ε is NOT inside.
+        // README XV: `∃t ≤ N: |e(t)| < ε` — strict, so e == ε is NOT inside.
         let v = set(vec![
             Predicate::Contains {
                 needle: "a".into(),

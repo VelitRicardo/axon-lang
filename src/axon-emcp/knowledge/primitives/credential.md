@@ -3,7 +3,7 @@ name: credential
 summary: A named ephemeral-credential contract — TTL-bounded, capability-attenuated bearer minting for anonymous surfaces (chat widgets, visitor sessions).
 category: operators
 top_level: true
-since: Fase 92
+since: v2.46.0
 grammar: |
   credential <Name> {
       ttl:    <duration>                # required — bearer lifetime, > 0 and ≤ 24h (axon-T894)
@@ -20,7 +20,7 @@ grammar: |
 
 `credential` declares **an ephemeral-credential contract**: the
 capabilities a short-lived bearer carries (`grants:`) and how long
-it lives (`ttl:`). The `mint` flow verb (§92.b) turns the contract
+it lives (`ttl:`). The `mint` flow verb (v2.46.0) turns the contract
 into a real bearer at runtime — the canonical shape for a **chat
 widget on any origin**: the SaaS backend's bootstrap flow mints a
 minutes-TTL token scoped to exactly `[chat.invoke]`, the browser
@@ -28,7 +28,7 @@ presents it, and every other capability stays out of hostile
 territory.
 
 This is the **delegation dual** of the enterprise service account
-(§81): a service account is long-lived, admin-minted machine
+(v2.46.0): a service account is long-lived, admin-minted machine
 identity; a credential is short-lived, flow-minted, per-visitor
 identity. The pairing law is the doctrine
 `axon://logic/authority_only_attenuates`:
@@ -42,12 +42,12 @@ identity. The pairing law is the doctrine
 1. **Compile** — grants are validated dotted slugs and non-empty
    (`axon-T893`); the TTL parses, is positive, and respects the
    24h ephemeral ceiling (`axon-T894` — longer-lived machine
-   identity is the §81 surface, not this one).
+   identity is the v2.46.0 surface, not this one).
 2. **Verify/deploy** — the `CredentialAttenuation` proof re-derives
    the contract laws + every `mint` reference from the IR
    (`axon-T895` for a ghost contract), so a stale or hand-edited
    artifact is refuted before it mounts. The enterprise deploy gate
-   additionally checks every grant is *grantable* (the §90
+   additionally checks every grant is *grantable* (the v2.45.0
    composition — you cannot deploy a flow that mints dead
    capabilities).
 3. **Mint (runtime, fail-closed)** — the dispatch handler AND the

@@ -1,4 +1,4 @@
-//! §Fase 6.b — drift gate for the Tier 1 primitive docs.
+//! v1.2.0 — drift gate for the Tier 1 primitive docs.
 //!
 //! Every primitive doc shipped under `src/knowledge/primitives/`
 //! must be backed by a canonical `.axon` program that round-trips
@@ -148,7 +148,7 @@ type Rating(1..5)
 
 #[test]
 fn type_canonical_program_with_compliance_and_body_compiles() {
-    // `type X compliance [...] { fields }` — the §6.1 ESK form.
+    // `type X compliance [...] { fields }` — the section 6.1 ESK form.
     // Note `compliance` is a PREFIX (no colon) — the historical
     // type-specific grammar.
     let src = r#"

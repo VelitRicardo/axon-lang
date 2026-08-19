@@ -1,4 +1,4 @@
-//! AXON Runtime — AnomalyDetector (§λ-L-E Fase 5, paper_immune_v2.md §3 + §4.1)
+//! AXON Runtime — AnomalyDetector (v1.1.0, paper_immune_v2.md section 3 + section 4.1)
 //!
 //! Direct port of `axon/runtime/immune/detector.py`.
 //!
@@ -71,7 +71,7 @@ impl KLDistribution {
     /// The Laplace-smoothed probability this distribution assigns to a symbol it
     /// has **never seen**.
     ///
-    /// §Fase 112.d — **this replaces a bug that made the anomaly detector
+    /// v2.67.0 — **this replaces a bug that made the anomaly detector
     /// structurally blind.**
     ///
     /// `kl_against` used to fall back to `q.values().min()` — the *minimum observed*
@@ -95,7 +95,7 @@ impl KLDistribution {
     ///
     /// An **empty** distribution has seen nothing, so everything is unseen: it
     /// returns 1.0, and the divergence against it is 0 rather than infinite. The
-    /// supervisor never classifies against an untrained baseline anyway (§112.d) —
+    /// supervisor never classifies against an untrained baseline anyway (v2.67.0) —
     /// this is belt to that brace.
     pub fn unseen_probability(&self, laplace: f64) -> f64 {
         let mut counts: HashMap<String, i64> = HashMap::new();
@@ -259,7 +259,7 @@ impl AnomalyDetector {
 mod tests {
     use super::*;
 
-    /// §Fase 112.d — **the regression guard for the bug that made this detector
+    /// v2.67.0 — **the regression guard for the bug that made this detector
     /// structurally blind.**
     ///
     /// The IDEAL baseline — a stable system that always reports the same thing — is
@@ -268,7 +268,7 @@ mod tests {
     /// anomaly, ever.** The better your baseline, the blinder the sensor.
     ///
     /// It was never caught because the kernel had **zero production instantiations**
-    /// (§111 F14). Nobody ever ran it. Wiring it up (§112.b) exposed this on the
+    /// (v2.67.0 F14). Nobody ever ran it. Wiring it up (v2.67.0) exposed this on the
     /// first real tick.
     #[test]
     fn a_novel_symbol_diverges_from_a_perfectly_homogeneous_baseline() {

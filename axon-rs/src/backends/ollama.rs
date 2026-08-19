@@ -1,4 +1,4 @@
-//! Ollama (local) backend — Fase 24.h.
+//! Ollama (local) backend — v1.18.0.
 //!
 //! Thin factory + capability override on top of [`OpenAICompatibleBackend`].
 //! Ollama exposes an OpenAI-compatible chat-completions surface at
@@ -22,7 +22,7 @@
 //!
 //! # Streaming
 //!
-//! §Fase 33.d — Ollama streams via its OpenAI-compatible surface
+//! v1.24.0 — Ollama streams via its OpenAI-compatible surface
 //! (`POST <base>/v1/chat/completions` with `stream: true`), inheriting
 //! the SSE wire format directly from the shared
 //! [`OpenAICompatibleBackend::stream`] implementation. Ollama also
@@ -108,7 +108,7 @@ impl OllamaBackend {
         Self::with_api_key(None)
     }
 
-    /// §Fase 24.g.2 — construct with a per-tenant key + optional explicit
+    /// v1.18.0 — construct with a per-tenant key + optional explicit
     /// base-URL / chat-path overrides. Precedence: **explicit (per-tenant)
     /// > `OLLAMA_HOST` env > localhost default.** Lets a tenant point at a
     /// remote / containerised Ollama without a code change.
@@ -171,7 +171,7 @@ impl Backend for OllamaBackend {
     }
 
     async fn stream(&self, request: ChatRequest) -> Result<ChatStream, BackendError> {
-        // §Fase 33.d — Ollama streams via its OpenAI-compatible
+        // v1.24.0 — Ollama streams via its OpenAI-compatible
         // /v1/chat/completions surface; the shared
         // OpenAICompatibleBackend::stream impl handles the SSE wire
         // shape. Ollama-native ndjson (/api/chat) is a 33.x follow-up
@@ -399,7 +399,7 @@ mod tests {
 
     #[tokio::test]
     async fn stream_delegates_to_base_real_sse_implementation() {
-        // §Fase 33.d — Ollama streams via OpenAI-compat SSE; unreachable
+        // v1.24.0 — Ollama streams via OpenAI-compat SSE; unreachable
         // port exercises the transport-error path.
         let b = OllamaBackend::local().with_base_url("http://127.0.0.1:1");
         match b.stream(ChatRequest::default()).await {

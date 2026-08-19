@@ -44,7 +44,7 @@ src/
 ├── knowledge/          ← the canonical source of truth — diff-reviewed
 │   ├── primitives/         one markdown file per primitive (Phase 2 ships 7)
 │   │   ├── persona.md     anchor.md   flow.md     reason.md
-│   │   ├── step.md        tool.md     socket.md   (Fase 41 newest)
+│ │   ├── step.md tool.md socket.md (v2.3.0 newest)
 │   │   └── …
 │   ├── grammar/            Phase 3 — top_level + composition + ebnf
 │   ├── logic/              Phase 3 — flow_composition + session_duality
@@ -105,7 +105,7 @@ agent), the agent has access to:
 | `axon://grammar/top_level` | The full top-level vs. nested table |
 | `axon://grammar/ebnf` | The EBNF grammar |
 | `axon://logic/flow_composition` | When do you nest in `flow` vs. declare top-level? |
-| `axon://logic/session_duality` | The §Fase 41 algebra rules for dual sessions |
+| `axon://logic/session_duality` | The v2.3.0 algebra rules for dual sessions |
 | `axon://compliance/{framework}` | What `compliance: [...]` annotations cover which framework |
 
 ### Prompts (the host surfaces these as slash-commands / chat-menu entries)
@@ -114,7 +114,7 @@ agent), the agent has access to:
 |---|---|---|
 | `flow_design` | **5 ✅** | Turn a natural-language flow intent into a typed, anchored, optionally-streaming AXON program. Drives the agent through `axon.compose` → `axon.primitive_doc` → `axon.check`. Arguments: `intent` (required), `domain`, `streaming`, `compliance`. |
 | `shield_design` | **5 ✅** | Turn a shield purpose (PHI redaction, jailbreak defence, financial scrubbing) into a typed `shield` declaration with the right scan list, on_breach policy, and compliance tags. Arguments: `purpose` (required), `severity`, `compliance`. |
-| `session_design` | **5 ✅** | Turn a dialogue intent (chat, RPC, multiparty) into a §41 duality-correct `session` + `socket` pair honouring linearity + credit-refined backpressure + multiparty projection. Arguments: `intent` (required), `parties`, `backpressure`, `reconnect`. |
+| `session_design` | **5 ✅** | Turn a dialogue intent (chat, RPC, multiparty) into a v2.3.0 duality-correct `session` + `socket` pair honouring linearity + credit-refined backpressure + multiparty projection. Arguments: `intent` (required), `parties`, `backpressure`, `reconnect`. |
 
 ## Install
 
@@ -179,18 +179,18 @@ env var → in-tree dev path (`<crate>/../knowledge`) → embedded corpus.
 |---|---|---|
 | **0** | Server spine (stdio JSON-RPC 2.0), knowledge loader, `axon.primitives` + `axon.primitive_doc`, `axon://primitives/{name}` resources, `socket` primitive documented end-to-end | ✅ |
 | **1** | `axon.check` (live validation) + `axon.parse` (IR introspection) + embedded corpus (`cargo install` ships self-contained) | ✅ |
-| **2** | The 6 **core cognitive primitives** — `persona`, `flow`, `step`, `anchor`, `tool`, `reason` — each backed by a canonical `.axon` example that round-trips through `axon-frontend` end-to-end. Tier 0 baseline (followed by Tier 1/2/3 in §Fase 6.b/c/d for full coverage). | ✅ |
+| **2** | The 6 **core cognitive primitives** — `persona`, `flow`, `step`, `anchor`, `tool`, `reason` — each backed by a canonical `.axon` example that round-trips through `axon-frontend` end-to-end. Tier 0 baseline (followed by Tier 1/2/3 in v1.2.0 for full coverage). | ✅ |
 | **3** | **Reference resources** — `axon://grammar/{top_level\|composition\|ebnf}`, `axon://logic/{flow_composition\|session_duality}`, `axon://compliance/{hipaa\|gdpr\|pci_dss\|sox\|soc2\|fedramp\|gxp\|fisma\|nist_800_53}`. The Catalog now loads `grammar/`, `logic/`, `compliance/` markdown alongside `primitives/`; the resource dispatcher serves all four URI families with structured errors. | ✅ |
 | **4** | **`axon.compose(intent)`** — natural-language brief → typed scaffold. Closed-domain classifier (keyword scoring + explainable scoreboard) over 8 domains (`generic`, `healthcare`, `banking`, `government`, `legal`, `chat`, `retrieval`, `multi_agent`); each scaffold is a hand-authored `.axon` template proven to compile end-to-end through the live `axon-frontend` pipeline. Returns `{scaffold, domain, alternatives, primitives_used, compliance_applied, next_steps, axon_check_verdict}`. | ✅ |
 | **5** | **MCP prompts** — `flow_design`, `shield_design`, `session_design` exposed via `prompts/list` + `prompts/get`. Each prompt is a hand-authored markdown body with declared `arguments:` schema; `{{arg}}` placeholders render at `get` time from user-supplied values. The `initialize` handshake now advertises the `prompts` capability so hosts surface the recipes as slash-commands. | ✅ |
 | **6.a** | **The fórmula** — `axon_frontend::PRIMITIVE_REGISTRY` is the closed catalogue of every named language construct (47 entries). A coverage gate test enforces the closed pair: every `Documented` registry entry has a `.md`, every `.md` has a `Documented` registry entry. The `axon-emcp scaffold-primitive <name>` subcommand stamps frontmatter-correct skeletons from the registry — drift impossible by construction. | ✅ |
 | **6.b** | **Tier 1 — 10 primitives documented** (`context`, `intent`, `memory`, `agent`, `probe`, `validate`, `refine`, `weave`, `type`, `run`) + 12 canonical `.axon` examples drift-gated. The drift gate caught 3 first-draft schema bugs (`memory.store:` is the lifecycle catalog, not store-kind). | ✅ |
 | **6.c** | **Tier 2 — 12 primitives documented** (`resource`, `fabric`, `manifest`, `observe`, `reconcile`, `lease`, `ensemble`, `session`, `axonstore`, `dataspace`, `corpus`, `pix`) + 15 canonical examples. **Registry honesty rebaseline**: `taint` removed (47→46 entries) because it has a lexer token but no parser production. Drift gate caught 4 schema bugs (axonstore column types are the closed v1.38.0 catalog, AXON comments are `//` not `#`, session duality on recursive loop+select+branch is computationally heavy → simpler RPC + finite-select shapes for the canonical test). Coverage now **29/46 Documented (63%)**. | ✅ |
-| **6.d** | **Tier 3 — 16 primitives documented** (`axonendpoint`, `axpoint`, `daemon`, `mcp`, `listen`, `shield`, `mandate`, `compute`, `lambda`, `forge`, `ots`, `psyche`, `immune`, `reflex`, `heal`, `transact`) + 16 canonical examples. **Second registry honesty rebaseline**: `logic` removed (46→45) — lexer token, no parser production, same as `taint` in 6.c. Drift gate caught 2 psyche-specific bugs (`inference_mode` closed catalog is `{active, passive}`; `safety_constraints` must include `non_diagnostic` per Dependent Type Safety §4). **🎉 Coverage achieves 45/45 — 100%.** | ✅ |
-| **6.e** | Release tag + cross-stack publish (batched with §Fase 7 / 8) | |
+| **6.d** | **Tier 3 — 16 primitives documented** (`axonendpoint`, `axpoint`, `daemon`, `mcp`, `listen`, `shield`, `mandate`, `compute`, `lambda`, `forge`, `ots`, `psyche`, `immune`, `reflex`, `heal`, `transact`) + 16 canonical examples. **Second registry honesty rebaseline**: `logic` removed (46→45) — lexer token, no parser production, same as `taint` in 6.c. Drift gate caught 2 psyche-specific bugs (`inference_mode` closed catalog is `{active, passive}`; `safety_constraints` must include `non_diagnostic` per Dependent Type Safety section 4). **🎉 Coverage achieves 45/45 — 100%.** | ✅ |
+| **6.e** | Release tag + cross-stack publish (batched with v1.2.0 / 8) | |
 | **7.a** | **Verticals — 4 new templates** (`legaltech`, `fintech`, `pharmatech`, `medic_research`) + Domain enum 8→12. Drift gate caught the `severity` reserved-keyword collision. Coverage: 12/33. | ✅ |
 | **7.b** | **Agent patterns — 8 new templates** (`chat_research`, `chat_tools`, `chat_skills`, `whatsapp`, `voice`, `dev`, `sales_consultive`, `sales_widget`) + Domain enum 12→20 + classifier curation. Drift gate caught the `on_breach: redact` bug — `redact` is the `redact:` field's name, NOT a value in the closed `on_breach` catalog `{deflect, escalate, halt, quarantine, sanitize_and_retry}`. Coverage: 20/33 (61%). | ✅ |
-| **7.c** | **Application patterns — 13 new templates** (`workflow_automation`, `business_intelligence`, `corporate_integration`, `self_learning`, `document_analysis`, `ticket_triage`, `content_moderation`, `knowledge_extraction`, `compliance_monitoring`, `recruitment`, `education`, `financial_advisor`, `data_pipeline`) + Domain enum 20→33. Drift gate caught 3 bugs (`retrieve:` is a flow-step SIBLING not a step body field; `mandate.on_violation` closed catalog is `{coerce, halt, retry}`). **🎉 Coverage 33/33 — Fase 7 CLOSED.** | ✅ |
+| **7.c** | **Application patterns — 13 new templates** (`workflow_automation`, `business_intelligence`, `corporate_integration`, `self_learning`, `document_analysis`, `ticket_triage`, `content_moderation`, `knowledge_extraction`, `compliance_monitoring`, `recruitment`, `education`, `financial_advisor`, `data_pipeline`) + Domain enum 20→33. Drift gate caught 3 bugs (`retrieve:` is a flow-step SIBLING not a step body field; `mandate.on_violation` closed catalog is `{coerce, halt, retry}`). **🎉 Coverage 33/33 — v1.2.0 CLOSED.** | ✅ |
 | **8** | **Telemetry OTLP-grade + privacy-first**. New [telemetry.rs](src/axon-emcp/src/telemetry.rs) records per-tool/resource/prompt/compose/check events with p50/p95/p99 latency histograms. Always-on in-memory aggregates surfaced via `snapshot()`; opt-in JSONL sink via `AXON_EMCP_TELEMETRY_FILE` (downstream pipelines convert to OTLP wire). **Five hard privacy invariants** enforced by construction (never log source content / intent strings / error messages / unintended egress / unknown deployment-ID). New `axon-emcp telemetry summarize <file>` subcommand for offline aggregation. **🎉 ℰMCP roadmap CLOSED.** | ✅ |
 
 The discipline: every primitive added to `src/knowledge/primitives/` is

@@ -1,4 +1,4 @@
-//! §Fase 124.b — Ed25519 (RFC 8032), bound from the vendored kernel.
+//! v4.0.0 — Ed25519 (RFC 8032), bound from the vendored kernel.
 //!
 //! Thin bindings over `c-src/vendor/orlp-ed25519/` — **this module implements
 //! nothing**, the same posture as [`crate::shake`] and [`crate::mldsa`].
@@ -95,7 +95,7 @@ pub fn generate_seed() -> Option<[u8; ED25519_SEED_BYTES]> {
     (rc == 0).then_some(seed)
 }
 
-/// Derive the keypair a seed determines. Deterministic — RFC 8032 §5.1.5.
+/// Derive the keypair a seed determines. Deterministic — RFC 8032 section 5.1.5.
 #[cfg(feature = "native")]
 pub fn keypair_from_seed(seed: &[u8; ED25519_SEED_BYTES]) -> Ed25519Keypair {
     let mut pk = [0u8; ED25519_PUBLICKEY_BYTES];

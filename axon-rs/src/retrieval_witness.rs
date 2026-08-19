@@ -1,8 +1,8 @@
-//! §Fase 69.d — the SECOND Advantage-Witness instance: retrieval / navigate.
+//! v2.23.0 — the SECOND Advantage-Witness instance: retrieval / navigate.
 //!
-//! This is the transversality proof. The §69.a `AdvantageWitness` protocol is NOT
+//! This is the transversality proof. The v2.23.0 `AdvantageWitness` protocol is NOT
 //! quant-shaped: the *same* trait, the *same* fail-closed verdict, a *different*
-//! metric. A sophisticated retrieval (e.g. the §62 MDN signed-EPR navigator) claims
+//! metric. A sophisticated retrieval (e.g. the v2.12.0 MDN signed-EPR navigator) claims
 //! to beat **flat cosine retrieval**; the witness measures the **`ranking_lift`** —
 //! does the sophisticated ranking surface relevant items higher than the baseline,
 //! on the adopter's REAL labelled queries? If not, it degrades, honestly, to flat

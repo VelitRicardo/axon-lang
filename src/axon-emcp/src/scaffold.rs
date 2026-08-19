@@ -6,7 +6,7 @@
 //!
 //! # Why this exists
 //!
-//! The §Fase 6 plan calls for 40 new primitive docs (Tier 1–3) to
+//! The v1.2.0 plan calls for 40 new primitive docs (Tier 1–3) to
 //! land in 6.b/c/d. Without tooling, each doc starts from copy-paste
 //! drift: a contributor copies `persona.md`, edits the name, the
 //! category, the summary, the body — and inevitably forgets to flip
@@ -22,7 +22,7 @@
 //! # Discipline
 //!
 //! 1. The registry entry must exist BEFORE running scaffold —
-//!    "registry first, doc second" is the §Fase 6.a discipline.
+//! "registry first, doc second" is the v1.2.0 discipline.
 //! 2. Scaffold refuses to overwrite an existing `.md` (so a
 //!    contributor cannot accidentally clobber a documented
 //!    primitive by typo-ing a name).
@@ -43,7 +43,7 @@ pub fn run(name: &str, knowledge_dir: &Path) -> Result<String, String> {
     let info = find_primitive(name).ok_or_else(|| {
         format!(
             "unknown primitive `{name}` — not in axon_frontend::PRIMITIVE_REGISTRY.\n\
-             If this is a NEW primitive, the §Fase 6.a discipline is registry-first:\n\
+             If this is a NEW primitive, the v1.2.0 discipline is registry-first:\n\
              1. Add an entry to `axon-frontend/src/primitive_registry.rs` with \
                 `doc_status: Pending`.\n\
              2. Re-run this command — it will stamp the skeleton.\n\
@@ -142,7 +142,7 @@ grammar: |
 
 TODO: 2–3 sentence introduction. What is this primitive? Why does it
 exist? What problem does it solve that the surrounding primitives do
-not? Reference the introducing cycle (`{since}`) and the paper / Fase
+not? Reference the introducing cycle (`{since}`) and the paper / cycle
 if there is one.
 
 ## Surface
@@ -281,7 +281,7 @@ mod tests {
         assert!(body.contains("name: axonendpoint"));
         assert!(body.contains("category: wire"));
         assert!(body.contains("top_level: true"));
-        assert!(body.contains("since: Fase 32"));
+        assert!(body.contains("since: v1.23.0"));
         // The body's H1 header matches the slug.
         assert!(body.contains("# `axonendpoint`"));
         // Skeleton sections are present.
@@ -296,7 +296,7 @@ mod tests {
 
     #[test]
     fn skeleton_for_nested_primitive_uses_nested_polarity_paragraph() {
-        // §Fase 111 — this used to scaffold `transact`, which has been RETRACTED
+        // v2.67.0 — this used to scaffold `transact`, which has been RETRACTED
         // (axon-T938: it never opened a transaction) and is therefore no longer
         // in PRIMITIVE_REGISTRY. `forge` is a live nested primitive and serves
         // the same purpose here: the test is about the `top_level: false`
@@ -336,7 +336,7 @@ mod tests {
         assert!(s.contains("name: daemon"));
         assert!(s.contains("category: wire"));
         assert!(s.contains("top_level: true"));
-        assert!(s.contains("since: Fase 16"));
+        assert!(s.contains("since: v1.11.0"));
         // The skeleton must NOT carry an unrendered template token.
         assert!(!s.contains("{name}"));
         assert!(!s.contains("{summary}"));

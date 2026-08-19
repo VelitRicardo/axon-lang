@@ -1,4 +1,4 @@
-//! §Fase 33.y.f — Cognitive primitives (Fase 11 neuro-symbolic).
+//! v1.24.0 — Cognitive primitives (v1.4.0 neuro-symbolic).
 //!
 //! Ten variants graduated in 33.y.f:
 //!
@@ -20,14 +20,14 @@
 //!
 //! 4-10. **`Focus`, `Associate`, `Aggregate`, `Explore`, `Ingest`,
 //!    `Navigate`, `Corroborate`** — historically all seven reused the
-//!    pure-shape async core. **§Fase 108.a re-founded the five
+//! pure-shape async core. **v2.63.0 re-founded the five
 //!    data-plane verbs** (`focus` / `associate` / `aggregate` /
 //!    `explore` / `ingest`): they are relational-algebra operations
 //!    over a declared `dataspace`, and an LLM fallthrough would
 //!    HALLUCINATE their results — the model *narrating* a load or an
 //!    aggregate that never ran (the `mint`/`rotate` argument,
 //!    verbatim). Until the deterministic columnar engine port lands
-//!    (§108.b–d) each fails CLOSED with
+//! (v2.63.0–d) each fails CLOSED with
 //!    `MissingDependency { name: "dataspace_engine" }` after emitting
 //!    its attributable `StepStart` — a refusal, never a narration.
 //!    `Navigate` and `Corroborate` (genuinely cognitive) keep the
@@ -285,9 +285,9 @@ async fn resolve_recall_value(node: &IRRecallStep, ctx: &DispatchCtx) -> String 
 /// Forge handler. In v1.25.0 the IR variant is payload-free so
 /// this emits the canonical `step_type: "forge"` wire shape
 /// (StepStart + StepComplete, 0 tokens). Future IR extensions
-/// (a Fase 33.y.f.2 follow-up that adds a body via the AST/IR)
+/// (a v1.24.0 follow-up that adds a body via the AST/IR)
 /// wire a recursive `dispatch_body` call from `run_forge`.
-/// §Fase 86 — one LLM pass of the forge pipeline at an explicit temperature.
+/// v2.41.0 — one LLM pass of the forge pipeline at an explicit temperature.
 /// Returns the phase's produced text (empty on a non-Completed outcome).
 async fn forge_phase(
     ctx: &mut DispatchCtx,
@@ -316,9 +316,9 @@ async fn forge_phase(
     }
 }
 
-/// §Fase 86 — Directed Creative Synthesis. The real Poincaré-Hadamard-Wallas
-/// four-phase pipeline (replacing the pre-§86 no-op stub), with a **measured,
-/// fail-closed novelty guarantee** (D86.4/D86.6):
+/// v2.41.0 — Directed Creative Synthesis. The real Poincaré-Hadamard-Wallas
+/// four-phase pipeline (replacing the pre-v2.41.0 no-op stub), with a **measured,
+/// fail-closed novelty guarantee**:
 ///
 /// 1. **Preparation** — expand the seed into its OBVIOUS reading `B` (low τ) —
 ///    the "known" we measure novelty against.
@@ -330,10 +330,10 @@ async fn forge_phase(
 ///    novelty floor **fail-closed**: a derivative result (ν < floor) is NEVER
 ///    returned as creative — the forge fails with a structured error.
 ///
-/// Honest v1 scope (D86.7): the runtime hard gate is the measured novelty
+/// Honest v1 scope: the runtime hard gate is the measured novelty
 /// floor; the `constraints:` anchor is statically validated (T871) and its
 /// coherence floor is read here, with per-branch coherence set to 1.0 pending
-/// the live anchor-confidence judge (§5 deferred). The novelty guarantee — the
+/// the live anchor-confidence judge (section 5 deferred). The novelty guarantee — the
 /// genuinely novel contribution — is fully enforced.
 pub async fn run_forge(
     node: &IRForgeBlock,
@@ -421,7 +421,7 @@ pub async fn run_forge(
         let novelty = crate::forge::novelty_score(&baseline, &output);
         candidates.push(crate::forge::Branch {
             output,
-            coherence: 1.0, // §5 deferred: live per-branch anchor-confidence judge
+            coherence: 1.0, // section 5 deferred: live per-branch anchor-confidence judge
             novelty,
         });
     }
@@ -439,7 +439,7 @@ pub async fn run_forge(
         } => {
             emit_step_start(ctx, "Forge", step_index, "forge")?;
             emit_step_complete(ctx, "Forge", step_index, &output, 0)?;
-            let _ = novelty; // measured; surfaced via the enterprise audit (§86.g)
+            let _ = novelty; // measured; surfaced via the enterprise audit (v2.41.0)
             Ok(NodeOutcome::Completed {
                 output,
                 tokens_emitted: 0,
@@ -458,7 +458,7 @@ pub async fn run_forge(
                 }
             };
             // Fail-closed: a forge that cannot clear its floor errors LOUDLY —
-            // never a silent derivative/empty result (D86.6).
+            // never a silent derivative/empty result.
             Err(DispatchError::BackendError {
                 name: "forge".to_string(),
                 message: format!("{}: {}", reason.slug(), detail),
@@ -473,8 +473,8 @@ pub async fn run_forge(
 
 /// Focus handler — narrow attention to an expression. Reuses the
 /// pure-shape async core with the focus framing addendum.
-/// §Fase 108.d — shared plumbing for the four query verbs: resolve the
-/// engine port (fail CLOSED — the §108.a floor), run the CPU-bound
+/// v2.63.0 — shared plumbing for the four query verbs: resolve the
+/// engine port (fail CLOSED — the v2.63.0 floor), run the CPU-bound
 /// query under `spawn_blocking` (Brief #63), bind the result envelope
 /// under the step's output name, and emit the completion event.
 /// The envelope is DETERMINISTIC: `{rows, taint, stats}` — pruning is
@@ -530,13 +530,13 @@ where
     })
 }
 
-/// §Fase 108.a — the honesty floor. `focus` is a DATA-PLANE verb:
-/// σ_φ ∘ π_v over a declared `dataspace` (§108.d). The previous
+/// v2.63.0 — the honesty floor. `focus` is a DATA-PLANE verb:
+/// σ_φ ∘ π_v over a declared `dataspace` (v2.63.0). The previous
 /// behaviour prompted the model to "narrow scope … surface what
 /// matters most" — i.e. to NARRATE a selection that never scanned a
 /// row. No engine port ⇒ fail CLOSED, never narrate (the
 /// `mint`/`rotate` posture). The real relational handler replaces
-/// this refusal in §108.d.
+/// this refusal in v2.63.0.
 pub async fn run_focus(
     node: &IRFocusStep,
     ctx: &mut DispatchCtx,
@@ -573,12 +573,12 @@ pub async fn run_focus(
     .await
 }
 
-/// §Fase 108.a — the honesty floor. `associate` is a DATA-PLANE verb:
-/// a hash equi-join across two declared dataspaces (§108.d). The
+/// v2.63.0 — the honesty floor. `associate` is a DATA-PLANE verb:
+/// a hash equi-join across two declared dataspaces (v2.63.0). The
 /// previous behaviour prompted the model to "find the meaningful
 /// relationship" — a join whose matches were INVENTED, not computed.
 /// No engine port ⇒ fail CLOSED, never narrate. The real join handler
-/// replaces this refusal in §108.d.
+/// replaces this refusal in v2.63.0.
 pub async fn run_associate(
     node: &IRAssociateStep,
     ctx: &mut DispatchCtx,
@@ -618,12 +618,12 @@ pub async fn run_associate(
     .await
 }
 
-/// §Fase 108.a — the honesty floor. `aggregate` is a DATA-PLANE verb:
+/// v2.63.0 — the honesty floor. `aggregate` is a DATA-PLANE verb:
 /// γ (group + the closed aggregate catalog) over a declared dataspace
-/// (§108.d). The previous behaviour prompted the model to "group +
+/// (v2.63.0). The previous behaviour prompted the model to "group +
 /// summarize" — an aggregate is a NUMBER, and a narrated number is a
 /// fabricated one. No engine port ⇒ fail CLOSED, never narrate. The
-/// real γ handler replaces this refusal in §108.d.
+/// real γ handler replaces this refusal in v2.63.0.
 pub async fn run_aggregate(
     node: &IRAggregateStep,
     ctx: &mut DispatchCtx,
@@ -671,12 +671,12 @@ pub async fn run_aggregate(
     .await
 }
 
-/// §Fase 108.a — the honesty floor. `explore` is a DATA-PLANE verb: a
+/// v2.63.0 — the honesty floor. `explore` is a DATA-PLANE verb: a
 /// deterministic profile (row/null counts, per-column min/max, schema)
-/// over a declared dataspace (§108.d). The previous behaviour prompted
+/// over a declared dataspace (v2.63.0). The previous behaviour prompted
 /// the model to "sample broadly" over data it had never seen. No
 /// engine port ⇒ fail CLOSED, never narrate. The real profile handler
-/// replaces this refusal in §108.d.
+/// replaces this refusal in v2.63.0.
 pub async fn run_explore(
     node: &IRExploreStep,
     ctx: &mut DispatchCtx,
@@ -704,21 +704,21 @@ pub async fn run_explore(
     .await
 }
 
-/// §Fase 108.c — governed ingest, REAL. Loads source bytes (resolved
+/// v2.63.0 — governed ingest, REAL. Loads source bytes (resolved
 /// from the flow's in-scope bindings) into a DECLARED dataspace through
 /// the deterministic loaders:
 ///
-/// 1. **Fail CLOSED without the engine port** (the §108.a honesty
+/// 1. **Fail CLOSED without the engine port** (the v2.63.0 honesty
 ///    floor — never an LLM narration; pre-108.a this handler literally
 ///    prompted the model to "map the source's structure… preserve
 ///    fidelity").
-/// 2. **Bounds BEFORE parse** (§100): `limits { max_bytes, max_rows }`
+/// 2. **Bounds BEFORE parse** (v2.54.0): `limits { max_bytes, max_rows }`
 ///    (or the conservative defaults) are enforced on the raw stream
 ///    before a byte is interpreted.
-/// 3. **Type refusal, not coercion** (D108.7): a value that does not
+/// 3. **Type refusal, not coercion**: a value that does not
 ///    fit its declared column refuses the whole batch, naming
 ///    row + column.
-/// 4. **Born-Untrusted provenance** (§98): the batch is stamped
+/// 4. **Born-Untrusted provenance** (v2.52.0): the batch is stamped
 ///    source + sha256 + ingested_at + `EpistemicTaint::Untrusted`
 ///    at construction — no unstamped batch can exist.
 /// 5. **CPU work off the async runtime** (Brief #63): parse + typing
@@ -805,7 +805,7 @@ pub async fn run_ingest(
 
     // (4) Provenance — stamped before the batch exists. `ingested_at`
     // is wall-clock bookkeeping (the same audit surface as the wire
-    // events' now_ms), NOT a cognitive input (§91 stays intact).
+    // events' now_ms), NOT a cognitive input (v2.46.0 stays intact).
     let provenance = crate::dataspace_engine::BatchProvenance {
         source: node.source.clone(),
         source_sha256: {
@@ -873,7 +873,7 @@ pub async fn run_ingest(
     })
 }
 
-/// §Fase 62.A — resolve the source document a `navigate`/`drill` indexes, from
+/// v2.12.0 — resolve the source document a `navigate`/`drill` indexes, from
 /// the in-scope bindings (the established PIX convention — the document/corpus
 /// content lives under a binding seeded by a prior `ingest`/`let`, the same way
 /// `drill` reads `__pix_<ref>_<path>`). Tries the corpus binding, the explicit
@@ -900,7 +900,7 @@ pub(crate) fn resolve_pix_source(corpus_ref: &str, pix_ref: &str, ctx: &Dispatch
 /// Navigate handler — the PIX retrieval navigator (paper
 /// `paper_pix_formal_research.md`).
 ///
-/// §Fase 62.A.2: when the referenced document/corpus is in scope, this runs the
+/// v2.12.0: when the referenced document/corpus is in scope, this runs the
 /// REAL navigator (`crate::pix_navigator`): index the source into a tree, then a
 /// bounded BFS whose branch selection approximates `I(R; node | Q, path)` —
 /// embeddings-free, with a recorded reasoning path. It binds the retrieved leaf
@@ -909,7 +909,7 @@ pub(crate) fn resolve_pix_source(corpus_ref: &str, pix_ref: &str, ctx: &Dispatch
 /// leaf (so a later `drill` resolves it).
 ///
 /// When NO indexable source is in scope, it falls back (D5 graceful) to the
-/// cognitive-framing shape so pre-§62 flows keep working unchanged.
+/// cognitive-framing shape so pre-v2.12.0 flows keep working unchanged.
 pub async fn run_navigate(
     node: &IRNavigateStep,
     ctx: &mut DispatchCtx,
@@ -920,7 +920,7 @@ pub async fn run_navigate(
 
     let query = crate::exec_context::interpolate_vars(&node.query, &ctx.let_bindings);
 
-    // ── §Fase 64.B — DYNAMIC store-sourced MDN corpus-graph navigation ─────
+    // ── v2.14.0 — DYNAMIC store-sourced MDN corpus-graph navigation ─────
     // When the navigate ref names a `corpus … from axonstore { … }`, build the
     // MDN graph from the LIVE store rows (tenant-scoped) at navigate-time and
     // navigate it. The graph grows as the stores grow — no redeploy. Tenant
@@ -937,10 +937,10 @@ pub async fn run_navigate(
         emit_step_start(ctx, &out_name, step_index, "navigate")?;
 
         // Read both backing stores tenant-scoped (RLS scopes to the axon-tenant).
-        // §Fase 66 (Q2) — the SAME `where:` column-scope filter is applied to
+        // v2.17.0 (Q2) — the SAME `where:` column-scope filter is applied to
         // BOTH the documents and edges stores, so the sourced MDN graph (docs +
         // edges) is scoped to one sub-tenant column. Empty `where_expr` keeps the
-        // §64 behavior byte-identical (RLS scope only).
+        // v2.14.0 behavior byte-identical (RLS scope only).
         let doc_rows = crate::flow_dispatcher::wire_integrations::read_all_store_rows(
             ctx,
             &src.doc_store,
@@ -954,7 +954,7 @@ pub async fn run_navigate(
         )
         .await?;
 
-        // §Fase 64.C — when this store-sourced corpus is `adaptive`, the memory
+        // v2.14.0 — when this store-sourced corpus is `adaptive`, the memory
         // endofunctor's ω reinforcement is PERSISTED back to the edge store after
         // the navigation (the plan is computed in the arm below, then written via
         // the atomic relative UPDATE once the read borrows are released).
@@ -994,7 +994,7 @@ pub async fn run_navigate(
                         ctx.let_bindings
                             .insert(format!("__navigate_{out_name}_trail"), trail);
 
-                        // §Fase 64.C — record this navigation's outcome into the
+                        // v2.14.0 — record this navigation's outcome into the
                         // corpus's in-flow history and plan the per-edge ω
                         // reinforcement to persist. `Δ = η·(s_o − s̄)` (relative,
                         // paper Def 6): a single outcome ⇒ s_o = s̄ ⇒ Δ = 0 ⇒ no
@@ -1042,7 +1042,7 @@ pub async fn run_navigate(
             ctx.let_bindings.insert(node.output_name.clone(), content.clone());
         }
 
-        // §Fase 64.C — persist the endofunctor's reinforcement to the edge store
+        // v2.14.0 — persist the endofunctor's reinforcement to the edge store
         // via the atomic, relative UPDATE (tenant-scoped, best-effort).
         if !reinforcement.is_empty() {
             let eps = crate::mdn_memory::MemoryParams::default().epsilon;
@@ -1067,7 +1067,7 @@ pub async fn run_navigate(
         });
     }
 
-    // ── §Fase 63.B — MDN corpus-graph navigation ──────────────────────────
+    // ── v2.13.0 — MDN corpus-graph navigation ──────────────────────────
     // When the navigate ref names a built MDN corpus graph (a `corpus` with
     // `relations:`), navigate the GRAPH: ε-informative greedy over reachable
     // documents, scored by the deterministic LexicalGain (signed EPR rides the
@@ -1083,7 +1083,7 @@ pub async fn run_navigate(
             };
             emit_step_start(ctx, &out_name, step_index, "navigate")?;
 
-            // §Fase 63.C — when the corpus is `adaptive`, deform it by the memory
+            // v2.13.0 — when the corpus is `adaptive`, deform it by the memory
             // endofunctor over the accumulated history (semantic ω reinforcement
             // + procedural bias) BEFORE navigating; otherwise navigate the base.
             let adaptive = ctx.mdn_adaptive.contains(&node.pix_ref);
@@ -1128,7 +1128,7 @@ pub async fn run_navigate(
                 .join(" → ");
             ctx.let_bindings.insert(format!("__navigate_{out_name}_trail"), trail);
 
-            // §Fase 63.C — record this navigation into the adaptive corpus's
+            // v2.13.0 — record this navigation into the adaptive corpus's
             // memory (episodic trajectory + an outcome scored by the information
             // gained), so subsequent navigations learn from it.
             if adaptive {
@@ -1166,9 +1166,9 @@ pub async fn run_navigate(
             };
             emit_step_start(ctx, &out_name, step_index, "navigate")?;
 
-            // §Fase 119.f — the declared per-navigation `depth:` DECIDES the
+            // v2.83.0 — the declared per-navigation `depth:` DECIDES the
             // bounded-rationality depth bound. A field consumed by nothing
-            // would be the §111 defect; this is the consumer.
+            // would be the v2.67.0 defect; this is the consumer.
             let cfg = crate::pix_navigator::NavConfig {
                 d_max: node
                     .depth
@@ -1504,11 +1504,11 @@ mod tests {
 
     // ── Forge ─────────────────────────────────────────────────────────
 
-    /// §Fase 86 — the fail-closed guarantee. The `stub` backend returns the
+    /// v2.41.0 — the fail-closed guarantee. The `stub` backend returns the
     /// SAME `"(stub)"` for every phase, so every illumination branch is
     /// identical to the obvious baseline ⇒ measured novelty NCD ≈ 0, below the
     /// floor. The forge MUST refuse to pass off a derivative result as creative
-    /// and fail loudly (D86.6) — never a silent empty/derivative output.
+    /// and fail loudly — never a silent empty/derivative output.
     #[tokio::test]
     async fn run_forge_fails_closed_on_derivative_output() {
         let (mut ctx, _rx) = fresh_ctx();
@@ -1540,7 +1540,7 @@ mod tests {
 
     #[tokio::test]
     async fn run_focus_refuses_without_dataspace_engine() {
-        // §Fase 108.a — the honesty floor: a `focus` with no engine port
+        // v2.63.0 — the honesty floor: a `focus` with no engine port
         // REFUSES (MissingDependency), it does not narrate a selection.
         // The refusal is attributable: StepStart is emitted first.
         let (mut ctx, mut rx) = fresh_ctx();
@@ -1568,7 +1568,7 @@ mod tests {
 
     #[tokio::test]
     async fn run_associate_refuses_without_dataspace_engine() {
-        // §Fase 108.a — a join whose matches would be invented is refused.
+        // v2.63.0 — a join whose matches would be invented is refused.
         let (mut ctx, mut rx) = fresh_ctx();
         let node = IRAssociateStep {
             node_type: "associate",
@@ -1587,7 +1587,7 @@ mod tests {
         match rx.try_recv().unwrap() {
             FlowExecutionEvent::StepStart { step_type, step_name, .. } => {
                 assert_eq!(step_type, "associate");
-                // §108.d — the default output binding is `<L>_<R>` (a
+                // v2.63.0 — the default output binding is `<L>_<R>` (a
                 // BINDABLE identifier, unlike the old display arrow).
                 assert_eq!(step_name, "A_B");
             }
@@ -1597,7 +1597,7 @@ mod tests {
 
     #[tokio::test]
     async fn run_aggregate_refuses_without_dataspace_engine() {
-        // §Fase 108.a — an aggregate is a NUMBER; a narrated number is a
+        // v2.63.0 — an aggregate is a NUMBER; a narrated number is a
         // fabricated one. No engine ⇒ refusal.
         let (mut ctx, mut rx) = fresh_ctx();
         let node = IRAggregateStep {
@@ -1625,7 +1625,7 @@ mod tests {
 
     #[tokio::test]
     async fn run_explore_refuses_without_dataspace_engine() {
-        // §Fase 108.a — a profile over data never seen is a fabrication.
+        // v2.63.0 — a profile over data never seen is a fabrication.
         let (mut ctx, mut rx) = fresh_ctx();
         let node = IRExploreStep {
             node_type: "explore",
@@ -1648,7 +1648,7 @@ mod tests {
         }
     }
 
-    // ── §108.c — governed ingest, REAL ─────────────────────────────
+    // ── v2.63.0 — governed ingest, REAL ─────────────────────────────
 
     fn engine_with_leads() -> crate::dataspace_engine::SharedDataspaceEngine {
         let spec = axon_frontend::ir_nodes::IRDataspace {
@@ -1796,7 +1796,7 @@ mod tests {
 
     #[tokio::test]
     async fn run_ingest_refuses_without_dataspace_engine() {
-        // §Fase 108.a — the load-bearing refusal: an `ingest` with no
+        // v2.63.0 — the load-bearing refusal: an `ingest` with no
         // engine port MUST NOT ask the model to pretend it loaded the
         // data (assertion-laundering; the mint/rotate argument verbatim).
         let (mut ctx, mut rx) = fresh_ctx();
@@ -1825,7 +1825,7 @@ mod tests {
 
     #[tokio::test]
     async fn run_navigate_mdn_graph_when_ref_is_a_corpus() {
-        // §Fase 63.B — a `navigate <corpus>` over a built MDN graph runs real
+        // v2.13.0 — a `navigate <corpus>` over a built MDN graph runs real
         // ε-informative graph navigation: from the seed, follow the edge to the
         // query-relevant document, not the irrelevant one. No LLM, no embeddings.
         use std::collections::HashMap;
@@ -1877,7 +1877,7 @@ mod tests {
 
     #[tokio::test]
     async fn run_navigate_store_sourced_degrades_gracefully_without_postgres() {
-        // §Fase 64.B — a `corpus … from axonstore` registered in
+        // v2.14.0 — a `corpus … from axonstore` registered in
         // `mdn_store_sources`, navigated WITHOUT a Postgres backend, must
         // degrade to an empty result (no rows to read) rather than panic, and
         // still bind its output + complete the step. The full live-graph path is
@@ -1929,7 +1929,7 @@ mod tests {
 
     #[tokio::test]
     async fn run_navigate_adaptive_corpus_accumulates_memory() {
-        // §Fase 63.C — navigations over an `adaptive` corpus apply the memory
+        // v2.13.0 — navigations over an `adaptive` corpus apply the memory
         // endofunctor and record their trajectory, so the corpus learns.
         use std::collections::{HashMap, HashSet};
         use std::sync::Arc;
@@ -2005,7 +2005,7 @@ mod tests {
 
     #[tokio::test]
     async fn run_navigate_real_indexes_and_retrieves_embeddings_free() {
-        // §Fase 62.A.2 — with the source document in scope, `navigate` runs the
+        // v2.12.0 — with the source document in scope, `navigate` runs the
         // REAL navigator: index → bounded BFS → retrieve the answering section,
         // bind it, and seed the reasoning trail. No LLM, no embeddings.
         let (mut ctx, _rx) = fresh_ctx();

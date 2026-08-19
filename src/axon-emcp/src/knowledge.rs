@@ -58,8 +58,8 @@ pub struct Primitive {
     /// grammar). Empty string is allowed for primitives whose grammar
     /// is delegated to a parent construct.
     pub grammar: String,
-    /// The cycle that introduced this primitive (e.g. `"Fase 4"`,
-    /// `"Fase 41.b"`). Lets the agent answer "since when has this
+    /// The cycle that introduced this primitive (e.g. `"v1.1.0"`,
+    /// `"v2.3.0"`). Lets the agent answer "since when has this
     /// existed?" honestly.
     pub since: String,
     /// The prose body — the full markdown that follows the frontmatter.
@@ -82,7 +82,7 @@ pub enum Category {
     /// `axonstore`, `dataspace`, `corpus`, `pix`, the four-pillar
     /// persistence layer.
     DataPlane,
-    /// `socket`, `session` choice grammar, the §Fase 41 session-type
+    /// `socket`, `session` choice grammar, the v2.3.0 session-type
     /// algebra surface (post-v2.3.0).
     SessionTypes,
     /// `daemon`, `listen`, `axonendpoint`, `axpoint`, `mcp`, `taint`,
@@ -416,11 +416,11 @@ pub struct Catalog {
     /// pipeline (the verification round-trips through
     /// `compiler_pipeline::run`).
     templates: BTreeMap<String, Template>,
-    /// §Phase 5 — MCP prompts keyed by `name`. Surfaced via
+    /// Phase 5 — MCP prompts keyed by `name`. Surfaced via
     /// `prompts/list` + `prompts/get` so the host can offer them
     /// as slash-commands or chat-menu entries.
     prompts: BTreeMap<String, Prompt>,
-    /// §Phase 9 — `axon.examples` corpus keyed by slug. The body of
+    /// Phase 9 — `axon.examples` corpus keyed by slug. The body of
     /// every entry is pure AXON source that compiles end-to-end
     /// through `axon-frontend` (see `tests/phase9_examples_compile.rs`
     /// — the drift gate that runs on every `cargo test`).
@@ -499,7 +499,7 @@ impl Catalog {
                 ));
             }
         }
-        // §Phase 3 — load reference docs (grammar/, logic/, compliance/).
+        // Phase 3 — load reference docs (grammar/, logic/, compliance/).
         // Each kind is OPTIONAL at the corpus root: a stripped-down
         // distribution that ships only `primitives/` still loads. The
         // server logs a debug-level note when a kind is absent so
@@ -529,7 +529,7 @@ impl Catalog {
                 }
             }
         }
-        // §Phase 4 — load scaffold templates from `templates/*.axon`.
+        // Phase 4 — load scaffold templates from `templates/*.axon`.
         // Templates carry no frontmatter; the file stem IS the slug
         // and the entire file is the AXON source. The directory is
         // optional (catalogs without templates still load).
@@ -558,7 +558,7 @@ impl Catalog {
                 }
             }
         }
-        // §Phase 5 — load MCP prompts from `prompts/*.md`.
+        // Phase 5 — load MCP prompts from `prompts/*.md`.
         let mut prompts = BTreeMap::new();
         if let Some(dir) = EMBEDDED_KNOWLEDGE.get_dir("prompts") {
             for file in dir.files() {
@@ -580,7 +580,7 @@ impl Catalog {
                 }
             }
         }
-        // §Phase 9 — load examples from `examples/*.md`. Each file
+        // Phase 9 — load examples from `examples/*.md`. Each file
         // carries YAML frontmatter (metadata) followed by raw AXON
         // source (the body). The directory is optional — catalogs
         // without examples still load.
@@ -631,7 +631,7 @@ impl Catalog {
                 return Err(LoadError::DuplicateName(prim.name, path));
             }
         }
-        // §Phase 3 — reference docs live in sibling directories.
+        // Phase 3 — reference docs live in sibling directories.
         // Each is optional; if `grammar/` does not exist the catalog
         // simply has no grammar references (a minimal corpus with
         // only `primitives/` still loads).
@@ -659,7 +659,7 @@ impl Catalog {
                 }
             }
         }
-        // §Phase 4 — templates directory (optional).
+        // Phase 4 — templates directory (optional).
         let mut templates = BTreeMap::new();
         let tpl_dir = root.join("templates");
         if tpl_dir.is_dir() {
@@ -681,7 +681,7 @@ impl Catalog {
                 }
             }
         }
-        // §Phase 5 — prompts directory (optional).
+        // Phase 5 — prompts directory (optional).
         let mut prompts = BTreeMap::new();
         let pr_dir = root.join("prompts");
         if pr_dir.is_dir() {
@@ -699,7 +699,7 @@ impl Catalog {
                 }
             }
         }
-        // §Phase 9 — examples directory (optional). Same shape as
+        // Phase 9 — examples directory (optional). Same shape as
         // the embedded-path loader above: frontmatter + raw AXON body.
         let mut examples = BTreeMap::new();
         let ex_dir = root.join("examples");
@@ -786,46 +786,46 @@ impl Catalog {
         self.templates.values()
     }
 
-    /// §Phase 5 — total prompt count.
+    /// Phase 5 — total prompt count.
     pub fn prompt_count(&self) -> usize {
         self.prompts.len()
     }
 
-    /// §Phase 5 — lookup one prompt by name. `None` if absent.
+    /// Phase 5 — lookup one prompt by name. `None` if absent.
     pub fn prompt(&self, name: &str) -> Option<&Prompt> {
         self.prompts.get(name)
     }
 
-    /// §Phase 5 — iterate every prompt (in BTreeMap order — alphabetical,
+    /// Phase 5 — iterate every prompt (in BTreeMap order — alphabetical,
     /// stable). Used by `prompts/list` so the host's render of the
     /// available recipes does not jitter across runs.
     pub fn prompts(&self) -> impl Iterator<Item = &Prompt> {
         self.prompts.values()
     }
 
-    /// §Phase 9 — total example count across every topic.
+    /// Phase 9 — total example count across every topic.
     pub fn example_count(&self) -> usize {
         self.examples.len()
     }
 
-    /// §Phase 9 — lookup one example by slug. `None` if absent.
+    /// Phase 9 — lookup one example by slug. `None` if absent.
     pub fn example(&self, name: &str) -> Option<&Example> {
         self.examples.get(name)
     }
 
-    /// §Phase 9 — iterate every example (in BTreeMap order — alphabetical,
+    /// Phase 9 — iterate every example (in BTreeMap order — alphabetical,
     /// stable). `axon.examples` walks this for the unfiltered listing.
     pub fn examples(&self) -> impl Iterator<Item = &Example> {
         self.examples.values()
     }
 
-    /// §Phase 9 — iterate every example of one topic (in slug order).
+    /// Phase 9 — iterate every example of one topic (in slug order).
     /// Used by `axon.examples(topic: ...)` filtering.
     pub fn examples_of(&self, topic: ExampleTopic) -> impl Iterator<Item = &Example> {
         self.examples.values().filter(move |e| e.topic == topic)
     }
 
-    /// §Phase 9 — iterate every example that exercises a given
+    /// Phase 9 — iterate every example that exercises a given
     /// primitive. Case-sensitive (primitive names are canonical
     /// lowercase). Used by `axon.examples(primitive: "weave")`.
     pub fn examples_using<'a>(&'a self, primitive: &'a str) -> impl Iterator<Item = &'a Example> + 'a {
@@ -910,7 +910,7 @@ fn parse_primitive(raw: &str, path: &Path) -> Result<Primitive, LoadError> {
     })
 }
 
-/// §Phase 5 — parse one MCP prompt document. Frontmatter shape:
+/// Phase 5 — parse one MCP prompt document. Frontmatter shape:
 /// `name`, `title`, `summary`, optional `arguments: [{ name,
 /// description, required }, ...]`. The body is the rendered prompt
 /// template with `{{name}}` placeholders (substitution happens at
@@ -947,7 +947,7 @@ fn parse_prompt(raw: &str, path: &Path) -> Result<Prompt, LoadError> {
     })
 }
 
-/// §Phase 9 — parse one example document. Frontmatter shape: `name`,
+/// Phase 9 — parse one example document. Frontmatter shape: `name`,
 /// `title`, `summary`, `topic` (closed enum), optional `primitives`
 /// (list of primitive name strings). The body after the frontmatter
 /// is the raw AXON source returned verbatim — the drift gate
@@ -1008,7 +1008,7 @@ fn parse_reference(
         .ok_or_else(|| LoadError::NoFrontmatter(path.to_path_buf()))?
         .deserialize()
         .map_err(|e| LoadError::BadFrontmatter(path.to_path_buf(), e.to_string()))?;
-    // §Phase 3 invariant — the frontmatter `name:` MUST match the
+    // Phase 3 invariant — the frontmatter `name:` MUST match the
     // file's base name (stem). Without this guard, a document
     // declaring `name: hipaa` but stored as `pci_dss.md` would shadow
     // the *real* pci_dss entry on next load. We catch this early so
@@ -1059,12 +1059,12 @@ mod tests {
             "socket",
             r#"---
 name: socket
-summary: typed WebSocket transport (Fase 41)
+summary: typed WebSocket transport (v2.3.0)
 category: session_types
 top_level: true
 grammar: |
   socket Name { protocol: SessionRef, ... }
-since: Fase 41.b
+since: v2.3.0
 ---
 
 # `socket`
@@ -1075,7 +1075,7 @@ Body prose.
         let cat = Catalog::load_from(&tmp).unwrap();
         assert_eq!(cat.primitive_count(), 1);
         let p = cat.primitive("socket").unwrap();
-        assert_eq!(p.summary, "typed WebSocket transport (Fase 41)");
+        assert_eq!(p.summary, "typed WebSocket transport (v2.3.0)");
         assert!(p.top_level);
         assert_eq!(p.category, Category::SessionTypes);
         assert!(p.body.contains("Body prose"));
@@ -1109,7 +1109,7 @@ Body prose.
 
     #[test]
     fn embedded_corpus_loads_and_contains_at_least_the_socket_primitive() {
-        // §Phase 1 — the `include_dir!` macro bakes `src/knowledge/`
+        // Phase 1 — the `include_dir!` macro bakes `src/knowledge/`
         // into the binary at compile time. `load_embedded` must
         // round-trip every entry through the same frontmatter parser
         // the FS loader uses, so the wire shape an MCP client sees
@@ -1132,7 +1132,7 @@ Body prose.
         assert!(socket.body.contains("WebSocket"));
     }
 
-    /// §Fase 6.a — **the coverage gate**.
+    /// v1.2.0 — **the coverage gate**.
     ///
     /// The closed contract between `axon-frontend::PRIMITIVE_REGISTRY`
     /// and `src/knowledge/primitives/*.md`:
@@ -1144,13 +1144,13 @@ Body prose.
     ///
     /// `Pending` entries are visible in the registry (the catalogue
     /// is honestly complete) but the gate does NOT require their
-    /// docs — that is the §Fase 6.b–d roadmap. When a primitive's
+    /// docs — that is the v1.2.0–d roadmap. When a primitive's
     /// `.md` lands, its registry entry flips Pending → Documented;
     /// the gate then enforces the new pairing.
     ///
     /// A failure here is structured: it names every missing doc + every
     /// orphan doc, so the contributor knows exactly which side of the
-    /// pair to fix. This is the "formula" §Fase 6.a promised — the
+    /// pair to fix. This is the "formula" v1.2.0 promised — the
     /// corpus cannot drift from the language by omission or by
     /// accidental orphan.
     #[test]
@@ -1184,7 +1184,7 @@ Body prose.
         if !missing_docs.is_empty() || !orphan_docs.is_empty() {
             let summary = axon_frontend::coverage_summary();
             panic!(
-                "§Fase 6.a coverage gate failed:\n\
+                "v1.2.0 coverage gate failed:\n\
                  \n\
                  missing docs (in registry as Documented, no .md):\n  \
                    {missing_docs:?}\n\
@@ -1221,52 +1221,52 @@ Body prose.
         }
     }
 
-    /// §Fase 6.a — informational coverage statistics. Logged as a
-    /// stable observation so future telemetry (§Fase 8) can pin the
+    /// v1.2.0 — informational coverage statistics. Logged as a
+    /// stable observation so future telemetry (v1.3.0) can pin the
     /// regression surface here. Not strict: only asserts the counts
     /// agree internally.
     #[test]
     fn registry_coverage_summary_is_internally_consistent() {
         let s = axon_frontend::coverage_summary();
         assert_eq!(s.total, s.documented + s.pending);
-        // §Fase 6.d closes the coverage cycle: 45 total (47 - taint -
+        // v1.2.0 closes the coverage cycle: 45 total (47 - taint -
         // logic, both lex-only with no parser production), 45
         // Documented, 0 Pending. **100% coverage achieved**. Any
         // future drop is a regression the gate catches.
-        // §Fase 62.0: 45 → 46 with `ledger` (audit chain) split from `pix`.
-        // §Fase 51 (v2.19.0): 46 → 48 with `observable` + `quant`.
-        // §Fase 71: 48 → 49 with `window` (the temporal execution guard).
-        // §Fase 73: 49 → 50 with `json` (the open semi-structured value type).
-        // §Fase 77: 50 → 54 with the π-calc channel quartet
-        // (`channel` / `emit` / `publish` / `discover`, Kivi brief #51 §B.2).
-        // §Fase 80.b: 54 → 55 with `upstream` (the outbound vendor connection).
-        // §Fase 80.g: 55 → 56 with `voice` (the inspectable voice-agent sugar).
-        // §Fase 83: 56 → 57 with `cors` (the named browser-origin policy).
-        // §Fase 85: 57 → 58 with `cache` (the result-memoization policy).
-        // §Fase 87: 58 → 60 with `savant` + `synth`.
-        // §Fase 88: 60 → 62 with `warden` + `scope`.
-        // §Fase 92: 62 → 64 with `credential` + `mint`.
-        // §Fase 94: 64 → 65 with `rotate` (mediated secret renewal).
-        // §Fase 99: 65 → 66 with `document` (native OOXML synthesis). §100 adds
-        // NO primitive — read/edit are tool providers (D100.10), so the count
+        // v2.12.0: 45 → 46 with `ledger` (audit chain) split from `pix`.
+        // v2.19.0: 46 → 48 with `observable` + `quant`.
+        // v2.27.0: 48 → 49 with `window` (the temporal execution guard).
+        // v2.26.0: 49 → 50 with `json` (the open semi-structured value type).
+        // v2.34.0: 50 → 54 with the π-calc channel quartet
+        // (`channel` / `emit` / `publish` / `discover`, Kivi brief #51 B.2).
+        // v2.37.0: 54 → 55 with `upstream` (the outbound vendor connection).
+        // v2.37.0: 55 → 56 with `voice` (the inspectable voice-agent sugar).
+        // v2.38.0: 56 → 57 with `cors` (the named browser-origin policy).
+        // v2.40.0: 57 → 58 with `cache` (the result-memoization policy).
+        // v2.42.0: 58 → 60 with `savant` + `synth`.
+        // v2.43.0: 60 → 62 with `warden` + `scope`.
+        // v2.46.0: 62 → 64 with `credential` + `mint`.
+        // v2.48.0: 64 → 65 with `rotate` (mediated secret renewal).
+        // v2.53.0: 65 → 66 with `document` (native OOXML synthesis). v2.54.0 adds
+        // NO primitive — read/edit are tool providers, so the count
         // holds at 66; this reconciles the gate to the registry.
-        // §Fase 105: 66 → 67 with `deliver` (Governed CRM Delivery, egress-dual).
-        // §Fase 111: 67 → 66 — `transact` RETRACTED (axon-T938). It never opened
+        // v2.60.0: 66 → 67 with `deliver` (Governed CRM Delivery, egress-dual).
+        // v2.67.0: 67 → 66 — `transact` RETRACTED (axon-T938). It never opened
         // a transaction: the runtime set an unread marker string, the block's
         // body was never lowered into the IR, and nothing was rolled back. A
         // retracted primitive leaves the closed set and its corpus doc is
         // deleted, so the coverage gate stays in lockstep on both sides.
-        // §Fase 114.z: 66 → 91 — the CENSUS BACKFILL. Twenty-five constructs
+        // v2.69.0: 66 → 91 — the CENSUS BACKFILL. Twenty-five constructs
         // with live parser productions (sharpest: `budget`, tracked in NO
         // table while its dead runtime survived every green build) entered
-        // the registry as `Pending`; the §114.z docs-tier then landed all 25
+        // the registry as `Pending`; the v2.69.0 docs-tier then landed all 25
         // corpus docs (verified against the runtime audit — several honestly
         // document a refusal or a KNOWN_DEBT gap), restoring 100% coverage
         // at the new, honest denominator of 91.
         assert_eq!(s.total, 91);
     }
 
-    /// §Phase 5 — every MCP prompt shipped under
+    /// Phase 5 — every MCP prompt shipped under
     /// `src/knowledge/prompts/` must be embedded with a non-empty
     /// title, summary, body, and at least one declared argument.
     /// Hosts (Claude Code, Cursor, Continue) gate their slash-command
@@ -1301,7 +1301,7 @@ Body prose.
         );
     }
 
-    /// §Phase 4 — every scaffold template shipped under
+    /// Phase 4 — every scaffold template shipped under
     /// `src/knowledge/templates/` must be embedded into the binary
     /// (so `cargo install --path src/axon-emcp` keeps `axon.compose`
     /// fully self-contained), with the file stem as the slug.
@@ -1309,22 +1309,22 @@ Body prose.
     fn embedded_corpus_contains_every_phase_4_template() {
         let cat = Catalog::load_embedded().expect("embedded corpus must load");
         let expected = [
-            // Fase 4 baseline (8):
+            // v1.1.0 baseline (8):
             "generic", "healthcare", "banking", "government",
             "legal", "chat", "retrieval", "multi_agent",
-            // §Fase 7.a — vertical extensions (4):
+            // v1.2.0 — vertical extensions (4):
             "legaltech", "fintech", "pharmatech", "medic_research",
-            // §Fase 7.b — agent patterns (8):
+            // v1.2.0 — agent patterns (8):
             "chat_research", "chat_tools", "chat_skills", "whatsapp",
             "voice", "dev", "sales_consultive", "sales_widget",
-            // §Fase 7.c — application patterns (13):
+            // v1.2.0 — application patterns (13):
             "workflow_automation", "business_intelligence",
             "corporate_integration", "self_learning",
             "document_analysis", "ticket_triage",
             "content_moderation", "knowledge_extraction",
             "compliance_monitoring", "recruitment",
             "education", "financial_advisor", "data_pipeline",
-            // §Fase 80.h — the blessed voice-preset template (the whole
+            // v2.37.0 — the blessed voice-preset template (the whole
             // program is one `voice` declaration).
             "voice_preset",
         ];
@@ -1339,7 +1339,7 @@ Body prose.
             );
             // Every template carries at least one `flow` declaration — the
             // canonical agent-facing surface — EXCEPT `voice_preset`
-            // (§Fase 80.g/h), whose whole program is one `voice`
+            // (v2.37.0), whose whole program is one `voice`
             // declaration that desugars to a flow-shaped session; `axon
             // desugar` is how an adopter inspects the expansion.
             assert!(
@@ -1354,7 +1354,7 @@ Body prose.
         );
     }
 
-    /// §Phase 3 — every reference doc shipped under
+    /// Phase 3 — every reference doc shipped under
     /// `src/knowledge/{grammar,logic,compliance}/` must be embedded
     /// and round-trip through the same frontmatter parser the FS
     /// loader uses. The `(kind, slug)` table is the canonical list
@@ -1370,61 +1370,61 @@ Body prose.
             (ReferenceKind::Grammar, "ebnf"),
             (ReferenceKind::Logic, "flow_composition"),
             (ReferenceKind::Logic, "session_duality"),
-            // §Fase 59 — the use/apply law (dispatch vs cognitive delegation).
+            // v2.9.0 — the use/apply law (dispatch vs cognitive delegation).
             (ReferenceKind::Logic, "dispatch_vs_cognition"),
-            // §Fase 65 — effects execute structurally, independent of the
+            // v2.15.0 — effects execute structurally, independent of the
             // output mode (`navigate` is not LLM-conditioned).
             (ReferenceKind::Logic, "effect_execution_is_mode_invariant"),
-            // §Fase 69.a — the Advantage Witness transversal law.
+            // v2.23.0 — the Advantage Witness transversal law.
             (ReferenceKind::Logic, "no_unwitnessed_advantage"),
-            // §Fase 70.e — total/pure expression law.
+            // v2.26.0 — total/pure expression law.
             (ReferenceKind::Logic, "total_expressions"),
-            // §Fase 71.e — time is an explicit, recorded input.
+            // v2.27.0 — time is an explicit, recorded input.
             (ReferenceKind::Logic, "time_is_an_explicit_input"),
-            // §Fase 72.f — an effect under a budget is a linear resource.
+            // v2.28.0 — an effect under a budget is a linear resource.
             (ReferenceKind::Logic, "effects_are_linear"),
-            // §Fase 73.e — open data is navigated totally; a shape is a lens.
+            // v2.26.0 — open data is navigated totally; a shape is a lens.
             (ReferenceKind::Logic, "open_data_is_total"),
-            // §Fase 74 — a channel's declared delivery is enforced or flagged.
+            // v2.31.0 — a channel's declared delivery is enforced or flagged.
             (ReferenceKind::Logic, "delivery_is_a_kept_promise"),
-            // §Fase 89 — every dispatching boundary is covered or explicitly public.
+            // v2.44.0 — every dispatching boundary is covered or explicitly public.
             (ReferenceKind::Logic, "every_boundary_is_guarded"),
-            // §Fase 90 — every declared guard is satisfiable (the completeness dual).
+            // v2.45.0 — every declared guard is satisfiable (the completeness dual).
             (ReferenceKind::Logic, "every_requirement_is_grantable"),
-            // §Fase 92 — delegation is attenuation: grants ⊆ minter, TTL-bounded, depth-1.
+            // v2.46.0 — delegation is attenuation: grants ⊆ minter, TTL-bounded, depth-1.
             (ReferenceKind::Logic, "authority_only_attenuates"),
-            // §Fase 93 — every granted authority projects (the dead-authority
+            // v2.47.0 — every granted authority projects (the dead-authority
             // closure: the converse quantifier of every_requirement_is_grantable).
             (ReferenceKind::Logic, "every_granted_authority_projects"),
-            // §Fase 94 — rotation without revelation: custodied secrets have
-            // lifecycles, not readers (the inbound dual of §92).
+            // v2.48.0 — rotation without revelation: custodied secrets have
+            // lifecycles, not readers (the inbound dual of v2.46.0).
             (ReferenceKind::Logic, "rotation_without_revelation"),
-            // §Fase 95 — selection without revelation: a flow chooses which
+            // v2.49.0 — selection without revelation: a flow chooses which
             // borrowed authority to spend (parametric injection) without
-            // reading it or leaving the tool's class (the §94 extension).
+            // reading it or leaving the tool's class (the v2.48.0 extension).
             (ReferenceKind::Logic, "selection_without_revelation"),
-            // §Fase 96 — connections release across cognition: a pooled DB
+            // v2.51.0 — connections release across cognition: a pooled DB
             // connection is never held idle across an LLM step (pooler-aware
             // pinning; the resource-lifetime dual of dispatch_vs_cognition).
             (ReferenceKind::Logic, "connections_release_across_cognition"),
-            // §Fase 105 — delivery is assertion egress: a value written into a
+            // v2.60.0 — delivery is assertion egress: a value written into a
             // system of record carries its epistemic origin, or the author vouched
-            // (the egress-dual of §98 acquisition + the §99 document T916 barrier).
+            // (the egress-dual of v2.52.0 acquisition + the v2.53.0 document T916 barrier).
             (ReferenceKind::Logic, "delivery_is_assertion_egress"),
-            // §Fase 107 — a safe method is PROVEN safe: RFC 10008's normative
+            // v2.62.0 — a safe method is PROVEN safe: RFC 10008's normative
             // "QUERY MUST be safe and idempotent" made a compile-time proof
             // (axon-T927) instead of a convention nobody enforces.
             (ReferenceKind::Logic, "a_safe_method_is_proven_safe"),
-            // §Fase 108 — analysis is algebra, not conversation: the
+            // v2.63.0 — analysis is algebra, not conversation: the
             // deterministic data plane (dataspace/ingest/focus/aggregate/
             // associate/explore made REAL; a narrated number is a
             // fabricated one).
             (ReferenceKind::Logic, "analysis_is_algebra_not_conversation"),
-            // §Fase 109 — the proof-carrying derivative: differentiation is
+            // v2.65.0 — the proof-carrying derivative: differentiation is
             // a compile-time derivation over the closed Expr, re-proven at
             // deploy, never a tape or a finite difference.
             (ReferenceKind::Logic, "a_derivative_is_derived_not_sampled"),
-            // §Fase 110 — attention is a governed resource: the third
+            // v2.66.0 — attention is a governed resource: the third
             // egress dual (notify spends human attention; evidence labels,
             // recipient custody, mandatory windows).
             (ReferenceKind::Logic, "attention_is_a_governed_resource"),
@@ -1471,14 +1471,14 @@ Body prose.
         );
         assert_eq!(
             cat.reference_count_of(ReferenceKind::Logic),
-            // §Fase 94: 14 → 15 with `rotation_without_revelation`.
-            // §Fase 95: 15 → 16 with `selection_without_revelation`.
-            // §Fase 96: 16 → 17 with `connections_release_across_cognition`.
-            // §Fase 105: 17 → 18 with `delivery_is_assertion_egress`.
-            // §Fase 107: 18 → 19 with `a_safe_method_is_proven_safe` (RFC 10008 QUERY).
-            // §Fase 108: 19 → 20 with `analysis_is_algebra_not_conversation`.
-            // §Fase 109: 20 → 21 with `a_derivative_is_derived_not_sampled`.
-            // §Fase 110: 21 → 22 with `attention_is_a_governed_resource`.
+            // v2.48.0: 14 → 15 with `rotation_without_revelation`.
+            // v2.49.0: 15 → 16 with `selection_without_revelation`.
+            // v2.51.0: 16 → 17 with `connections_release_across_cognition`.
+            // v2.60.0: 17 → 18 with `delivery_is_assertion_egress`.
+            // v2.62.0: 18 → 19 with `a_safe_method_is_proven_safe` (RFC 10008 QUERY).
+            // v2.63.0: 19 → 20 with `analysis_is_algebra_not_conversation`.
+            // v2.65.0: 20 → 21 with `a_derivative_is_derived_not_sampled`.
+            // v2.66.0: 21 → 22 with `attention_is_a_governed_resource`.
             22,
             "logic family count drift"
         );
@@ -1489,7 +1489,7 @@ Body prose.
         );
     }
 
-    /// §Phase 2 — the 6 core cognitive primitives an agent touches
+    /// Phase 2 — the 6 core cognitive primitives an agent touches
     /// before anything else (`persona`, `flow`, `step`, `anchor`,
     /// `tool`, `reason`). Verifies each one is embedded, well-typed
     /// against the `Category` discriminator, and carries the

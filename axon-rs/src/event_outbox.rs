@@ -1,12 +1,12 @@
-//! §Fase 74.c — the durable event outbox.
+//! v2.31.0 — the durable event outbox.
 //!
-//! §74.a wired `emit` → a daemon `listen` through the §13 `TypedEventBus`;
-//! §74.b made delivery at-least-once WHILE THE PROCESS LIVES (retry over
-//! the ephemeral mpsc queue). §74.c adds the DURABLE substrate: an `emit`
+//! v2.31.0 wired `emit` → a daemon `listen` through the v1.6.0 `TypedEventBus`;
+//! v2.31.0 made delivery at-least-once WHILE THE PROCESS LIVES (retry over
+//! the ephemeral mpsc queue). v2.31.0 adds the DURABLE substrate: an `emit`
 //! to a `persistent_axonstore` channel APPENDS to an outbox — an
 //! append-only log keyed by channel, with a per-channel processed cursor.
 //! The receive driver DRAINS the unprocessed tail, delivers each event
-//! (at-least-once, §74.b), and MARKS it processed. An event stays
+//! (at-least-once, v2.31.0), and MARKS it processed. An event stays
 //! redeliverable until acked + marked — so a consumer that was DOWN when
 //! the event was emitted picks it up when it returns. This is the Q3
 //! guarantee over a persisted log rather than an ephemeral queue.
@@ -16,11 +16,11 @@
 //!
 //! - **Crash durability** — the in-memory reference survives the *consumer*
 //!   being down, but not a *process restart*. The per-tenant **Postgres**
-//!   outbox that survives a crash is §74.f (the [`EventOutbox`] trait is
+//! outbox that survives a crash is v2.31.0 (the [`EventOutbox`] trait is
 //!   the seam the enterprise `PgEventOutbox` implements).
 //! - **Transactional atomicity** — the outbox row committed in the SAME
 //!   store transaction as the producing flow's `mutate`/`persist`, so the
-//!   event is written IFF the state change committed. The §35/§37 store
+//! event is written IFF the state change committed. The v1.30.0/v1.32.0 store
 //!   ops are per-op transactions today (no flow-level tx), so this is a
 //!   documented refinement: it closes the small lost-/phantom-event window
 //!   between the two separate commits. Until it lands, `emit` appends to
@@ -42,7 +42,7 @@ pub struct OutboxEntry {
 /// The durable event outbox seam. `append` records an emitted event;
 /// `unprocessed` returns the not-yet-acked tail for a channel (in offset
 /// order — the redelivery set); `mark_processed` acks an offset so it is
-/// never redelivered. The enterprise `PgEventOutbox` (§74.f) implements
+/// never redelivered. The enterprise `PgEventOutbox` (v2.31.0) implements
 /// this over a per-tenant Postgres table; the in-memory reference below is
 /// the OSS default + the test double.
 pub trait EventOutbox: Send + Sync {
@@ -66,7 +66,7 @@ struct ChannelLog {
 
 /// In-memory reference [`EventOutbox`]. Durable WITHIN the process (an
 /// event survives the consumer being down → it stays unprocessed +
-/// redelivers); NOT across a process restart (that is the §74.f Postgres
+/// redelivers); NOT across a process restart (that is the v2.31.0 Postgres
 /// outbox). Thread-safe (one `Mutex` over the per-channel logs).
 #[derive(Default)]
 pub struct InMemoryEventOutbox {

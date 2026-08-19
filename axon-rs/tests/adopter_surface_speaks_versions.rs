@@ -23,8 +23,11 @@
 //!   whole files. NOT `migrations/`: a shipped sqlx migration is checksummed
 //!   and therefore immutable (see the body).
 //!
-//! Plain comments (`//`, `///`, `//!`), test file names, fixtures and the C
-//! sources are a separate sweep; this gate widens to them when that lands.
+//! In the monorepo the scan is WHOLE-FILE over every shipped `src/`, the test
+//! suites and their fixtures (file and directory names included — a
+//! `faseNNN_*.rs` travels in the crate), the C kernels, benches, build scripts,
+//! the CI workflows and the MCP server crate. The literal-only scanner remains
+//! for the packaged-crate layout, where only `src/` is present.
 //!
 //! # What is banned
 //!
@@ -266,6 +269,11 @@ fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
             if matches!(name, "target" | "node_modules" | ".git" | ".terraform" | "vendor") {
                 continue;
             }
+            assert!(
+                !banned(name),
+                "adopter-surface gate: directory `{}` is named with internal phase vocabulary",
+                p.display()
+            );
             walk(&p, out);
         } else {
             out.push(p);
@@ -279,13 +287,12 @@ fn has_ext(p: &Path, exts: &[&str]) -> bool {
 
 // ───────────────────────────── the surface ─────────────────────────────
 
-/// Files whose string literals are FILE PATHS into `tests/` and
-/// `tests/fixtures/` — the attestation table's `fixture:` / `gate:` citations.
-/// Those paths still carry the old test-file names; they are rewritten in the
-/// same commit that renames the files (the source-comment / test-name sweep),
-/// and this list goes back to empty there. Nothing in these files is printed
-/// to an adopter; the gate that consumes them is the attestation gate itself.
-const SWEEP_PENDING: &[&str] = &["axon-frontend/src/advertised.rs"];
+/// The one file that necessarily carries the banned vocabulary: this gate,
+/// which has to spell out what it refuses. Nothing else is exempt — the sweep
+/// that widened the scan to whole files renamed every `faseNNN_*` test and
+/// fixture and rewrote every comment, so the carve-out that used to sit here
+/// for `advertised.rs` is gone.
+const SELF: &str = "adopter_surface_speaks_versions.rs";
 
 fn must_exist(p: &Path) -> &Path {
     assert!(p.exists(), "adopter-surface gate: expected {} to exist — the surface list is out of date, not the repo", p.display());
@@ -345,25 +352,66 @@ fn the_adopter_surface_carries_no_phase_numbers() {
         }
     }
 
-    // 3. shipped source — string literals; main.rs additionally its doc comments (clap --help)
-    let mut src_trees: Vec<PathBuf> = vec![crate_dir.join("src")];
+    // 3. shipped source, tests, C kernels, benches, build scripts and the CI
+    //    workflows — WHOLE files. Comments included: an adopter who opens the
+    //    crate reads them, docs.rs renders the `///` ones, and a test file name
+    //    travels in the package. The string-literal-only scanner that used to
+    //    run here is kept (below) for the packaged-crate layout, where only
+    //    `src/` ships; in the monorepo every byte is on the surface.
+    let mut whole_trees: Vec<PathBuf> = vec![crate_dir.join("src"), crate_dir.join("tests")];
     if monorepo {
         for krate in ["axon-frontend", "axon-csys", "axon-agora"] {
-            src_trees.push(root.join(krate).join("src"));
+            for sub in ["src", "tests", "benches", "c-src", "tools"] {
+                let p = root.join(krate).join(sub);
+                if p.is_dir() {
+                    whole_trees.push(p);
+                }
+            }
+            let b = root.join(krate).join("build.rs");
+            if b.exists() {
+                whole_trees.push(b);
+            }
+        }
+        whole_trees.push(root.join(".github"));
+        whole_trees.push(root.join("src").join("axon-emcp"));
+        whole_trees.push(root.join("tests"));
+    }
+    for tree in &whole_trees {
+        let mut files = Vec::new();
+        if tree.is_file() {
+            files.push(tree.clone());
+        } else {
+            walk(must_exist(tree), &mut files);
+        }
+        for f in files {
+            if f.file_name().and_then(|n| n.to_str()) == Some(SELF) {
+                continue;
+            }
+            if !has_ext(&f, &["rs", "c", "h", "yml", "yaml", "toml", "md", "axon", "axi", "json", "pinned", "js", "sh", "ps1", "txt"]) {
+                continue;
+            }
+            // the file NAME is surface too (a `faseNNN_*.rs` travels in the crate)
+            if let Some(name) = f.file_name().and_then(|n| n.to_str()) {
+                if banned(name) {
+                    hits.push(Hit { path: f.clone(), line: 0, excerpt: format!("(file name) {name}") });
+                }
+            }
+            if fs::read_to_string(&f).is_err() {
+                continue;
+            }
+            scan_whole_file(&f, &mut hits);
         }
     }
-    let main_rs = crate_dir.join("src").join("main.rs");
-    for tree in &src_trees {
+    if !monorepo {
+        // packaged crate: the string-literal scanner over src/ (comments are
+        // swept upstream; this layout only needs to catch a message regression)
+        let main_rs = crate_dir.join("src").join("main.rs");
         let mut files = Vec::new();
-        walk(must_exist(tree), &mut files);
+        walk(must_exist(&crate_dir.join("src")), &mut files);
         for f in files {
-            if !has_ext(&f, &["rs", "c", "h"]) {
-                continue;
+            if has_ext(&f, &["rs"]) {
+                scan_source(&f, f == main_rs, &mut hits);
             }
-            if SWEEP_PENDING.iter().any(|suffix| f.ends_with(suffix)) {
-                continue;
-            }
-            scan_source(&f, f == main_rs, &mut hits);
         }
     }
 

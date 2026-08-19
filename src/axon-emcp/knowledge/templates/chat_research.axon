@@ -54,7 +54,7 @@ anchor MustCiteCorpus {
 
 tool ResearchBackend {
     // LLM-routed: this tool IS the model (streaming). No `provider:` —
-    // validated by its absence (§114.b). `openai` was never a real provider slug.
+    // validated by its absence (v2.69.0). `openai` was never a real provider slug.
     effects:  <network, stream:drop_oldest>
     timeout:  60s
 }

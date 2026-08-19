@@ -1,25 +1,25 @@
-//! §Fase 84.d — Remote Hands runtime: the pure, verifiable dispatch core for a
+//! v2.39.0 — Remote Hands runtime: the pure, verifiable dispatch core for a
 //! `target:`-bound technician `tool`, plus the wire protocol exchanged with a
 //! local agent over the bound `socket`.
 //!
 //! **What lives here (OSS):** the security-critical, side-effect-free logic —
-//! rendering the argv template with bound arguments as *opaque* values (D84.1),
-//! computing the template hash (the agent-side allowlist key, D84.9) and the
-//! rendered-command hash (the confirmation binding, D84.7), verifying an
-//! approval against that hash, and bounding the returned output (D84.10). None
+//! rendering the argv template with bound arguments as *opaque* values,
+//! computing the template hash (the agent-side allowlist key, the design decision) and the
+//! rendered-command hash (the confirmation binding, the design decision), verifying an
+//! approval against that hash, and bounding the returned output. None
 //! of this executes anything: the compiler/runtime never runs a shell.
 //!
 //! **What lives elsewhere:** the live WebSocket that carries these frames to a
 //! connected agent is the enterprise data plane (it owns the connection state);
 //! the actual `execve` of the rendered argv is the reference local agent
-//! (§84.g). Both sides speak the frames defined below, and both re-check the
-//! hashes — trust is mutual (D84.9), not one-directional.
+//! (v2.39.0). Both sides speak the frames defined below, and both re-check the
+//! hashes — trust is mutual, not one-directional.
 //!
 //! The injection-safety property is realised HERE at runtime, not just at
 //! compile time: `render_argv` substitutes each `${param}` as exactly one argv
 //! element and never re-tokenises the value, so an argument like
 //! `"; rm -rf /"` is a single inert argument to the program, not new syntax —
-//! the same discipline `retrieve.where:` uses for SQL parameters (§76.b).
+//! the same discipline `retrieve.where:` uses for SQL parameters (v2.33.0).
 
 use crate::esk::provenance::to_hex;
 use serde::{Deserialize, Serialize};
@@ -30,24 +30,24 @@ use axon_frontend::ir_nodes::IRToolSpec;
 use axon_frontend::technician::{classify_argv_token, ArgvToken, RISK_DESTRUCTIVE};
 
 /// Default per-stream output ceiling (1 MiB) — a command that floods stdout can
-/// neither OOM the runtime nor the agent (D84.10). Overridable per enrollment.
+/// neither OOM the runtime nor the agent. Overridable per enrollment.
 pub const DEFAULT_OUTPUT_LIMIT: usize = 1024 * 1024;
 
 /// Everything that can go wrong turning a technician tool + bound arguments
 /// into a dispatchable command. Every variant is a *refusal to dispatch* — the
-/// fail-closed posture the whole fase depends on.
+/// fail-closed posture the whole cycle depends on.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TechError {
     /// An `${x}` in argv has no bound argument (should be impossible after
     /// `axon-T859`, re-checked here as defence in depth).
     UnboundPlaceholder(String),
     /// An argv element is a partial/fused placeholder (`"${x}.txt"`) — rejected
-    /// so a value can never fuse with surrounding text (D84.1; `axon-T859`).
+    /// so a value can never fuse with surrounding text (the design decision; `axon-T859`).
     PartialToken(String),
-    /// A destructive command reached dispatch without an approval (D84.2).
+    /// A destructive command reached dispatch without an approval.
     ApprovalRequired,
     /// The approval's command hash does not match the rendered argv — a
-    /// different command than the one the human approved (D84.7, anti-TOCTOU).
+    /// different command than the one the human approved (the design decision, anti-TOCTOU).
     ApprovalHashMismatch { approved: String, actual: String },
     /// The tool is not a technician tool (no `target:`), so it cannot dispatch
     /// over a socket.
@@ -100,10 +100,10 @@ pub struct DispatchPlan {
     /// argument. This is what the agent execs (never a shell string).
     pub argv: Vec<String>,
     /// Hex SHA-256 of the *template* argv (pre-substitution) — the key the
-    /// agent checks against its enrollment allowlist (D84.9).
+    /// agent checks against its enrollment allowlist.
     pub template_hash: String,
     /// Hex SHA-256 of the *rendered* argv — the value an approval binds to
-    /// (D84.7). The runtime refuses to run anything whose rendered argv does
+    ///. The runtime refuses to run anything whose rendered argv does
     /// not hash to what was approved.
     pub command_hash: String,
     /// `true` iff `risk == destructive`: dispatch must be gated on an approval.
@@ -154,7 +154,7 @@ pub fn plan_dispatch(
 
 /// Verify that a plan is cleared to dispatch. A safe command always is; a
 /// destructive command needs an approval whose `command_hash` matches the plan
-/// exactly (D84.7). `approved_hash == None` on a destructive command is a
+/// exactly. `approved_hash == None` on a destructive command is a
 /// refusal, not a default-allow (fail-closed).
 pub fn authorize_dispatch(
     plan: &DispatchPlan,
@@ -174,7 +174,7 @@ pub fn authorize_dispatch(
 }
 
 /// Bound one output stream to `limit` bytes, returning the (possibly truncated)
-/// text and whether truncation occurred (D84.10). Truncation respects UTF-8
+/// text and whether truncation occurred. Truncation respects UTF-8
 /// char boundaries so the result is always valid text.
 pub fn bound_output(raw: &str, limit: usize) -> (String, bool) {
     if raw.len() <= limit {
@@ -190,7 +190,7 @@ pub fn bound_output(raw: &str, limit: usize) -> (String, bool) {
 // ── Wire protocol (axon ⇄ local agent) ───────────────────────────────────────
 
 /// axon → agent: run this exact argv. Carries the `template_hash` so the agent
-/// can check its allowlist (D84.9) and the `command_id` so the result can be
+/// can check its allowlist and the `command_id` so the result can be
 /// correlated. NO shell string is ever transmitted — only the argv vector.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TechDispatchFrame {
@@ -211,12 +211,12 @@ pub struct TechResultFrame {
     pub stdout: String,
     pub stderr: String,
     pub exit_code: i32,
-    /// `true` iff either stream was truncated to its limit (D84.10).
+    /// `true` iff either stream was truncated to its limit.
     pub truncated: bool,
 }
 
 /// agent → axon: an explicit refusal (e.g. the template hash was not in the
-/// agent's allowlist — D84.9). A refusal is a first-class outcome, never
+/// agent's allowlist — the design decision). A refusal is a first-class outcome, never
 /// silence.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TechRefusalFrame {
@@ -342,13 +342,13 @@ mod tests {
         assert_ne!(a.command_hash, b.command_hash, "confirmation binds the value");
     }
 
-    /// §Fase 84 KNOWN-ANSWER VECTOR — the canonical argv hash. The enterprise
+    /// v2.39.0 KNOWN-ANSWER VECTOR — the canonical argv hash. The enterprise
     /// data plane and the reference agent recompute this scheme independently
     /// (NUL-separated argv → SHA-256 → lowercase hex); this exact vector is
     /// duplicated in `axon-enterprise/crates/server/src/technician.rs` so any
     /// drift between the two implementations fails a test in one repo. DO NOT
     /// change without updating the enterprise copy (they must agree byte-for-
-    /// byte or a confirmation hash would never match — D84.7).
+    /// byte or a confirmation hash would never match — the design decision).
     #[test]
     fn canonical_argv_hash_known_answer_vector() {
         assert_eq!(

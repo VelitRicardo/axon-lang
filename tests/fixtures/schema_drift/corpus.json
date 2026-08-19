@@ -1,0 +1,70 @@
+{
+  "_comment": "v1.31.0 — Cross-stack drift gate for the schema: declaration. Both stacks parse each `source` and assert the produced IRAxonStore.schema matches `expected`. Format ratified 2026-05-19. Run BOTH lanes after editing this file: tests/test_fase38_b_schema_drift.py (Python) and axon-frontend/tests/schema_drift_gate.rs (Rust).",
+  "entries": [
+    {
+      "name": "form_a_inline_minimal",
+      "source": "axonstore tenants {\n    backend: postgresql\n    connection: \"env:DB\"\n    schema {\n        id: Uuid primary_key\n    }\n}\n",
+      "expected": {
+        "form": "inline",
+        "columns": [
+          {"name": "id", "type": "Uuid", "primary_key": true, "auto_increment": false, "not_null": false, "unique": false, "default_value": ""}
+        ]
+      }
+    },
+    {
+      "name": "form_a_inline_constraints_matrix",
+      "source": "axonstore claims {\n    backend: postgresql\n    connection: \"env:DB\"\n    schema {\n        claim_id: Uuid primary_key\n        amount: Numeric not_null\n        ref: Text unique\n        created_at: Timestamptz default now\n    }\n}\n",
+      "expected": {
+        "form": "inline",
+        "columns": [
+          {"name": "claim_id", "type": "Uuid", "primary_key": true, "auto_increment": false, "not_null": false, "unique": false, "default_value": ""},
+          {"name": "amount", "type": "Numeric", "primary_key": false, "auto_increment": false, "not_null": true, "unique": false, "default_value": ""},
+          {"name": "ref", "type": "Text", "primary_key": false, "auto_increment": false, "not_null": false, "unique": true, "default_value": ""},
+          {"name": "created_at", "type": "Timestamptz", "primary_key": false, "auto_increment": false, "not_null": false, "unique": false, "default_value": "now"}
+        ]
+      }
+    },
+    {
+      "name": "form_a_alias_normalisation",
+      "source": "axonstore tenants {\n    backend: postgresql\n    connection: \"env:DB\"\n    schema {\n        id: int primary_key\n        active: boolean\n        bal: decimal\n        name: varchar\n    }\n}\n",
+      "expected": {
+        "form": "inline",
+        "columns": [
+          {"name": "id", "type": "Int", "primary_key": true, "auto_increment": false, "not_null": false, "unique": false, "default_value": ""},
+          {"name": "active", "type": "Bool", "primary_key": false, "auto_increment": false, "not_null": false, "unique": false, "default_value": ""},
+          {"name": "bal", "type": "Numeric", "primary_key": false, "auto_increment": false, "not_null": false, "unique": false, "default_value": ""},
+          {"name": "name", "type": "Text", "primary_key": false, "auto_increment": false, "not_null": false, "unique": false, "default_value": ""}
+        ]
+      }
+    },
+    {
+      "name": "form_b_manifest_reference",
+      "source": "axonstore tenants {\n    backend: postgresql\n    connection: \"env:DB\"\n    schema: \"public.tenants\"\n}\n",
+      "expected": {
+        "form": "manifest_ref",
+        "qualified_name": "public.tenants"
+      }
+    },
+    {
+      "name": "form_c_env_var_unquoted",
+      "source": "axonstore tenants {\n    backend: postgresql\n    connection: \"env:DB\"\n    schema: env:TENANT_SCHEMA\n}\n",
+      "expected": {
+        "form": "env_var",
+        "var_name": "TENANT_SCHEMA"
+      }
+    },
+    {
+      "name": "form_c_env_var_quoted",
+      "source": "axonstore tenants {\n    backend: postgresql\n    connection: \"env:DB\"\n    schema: \"env:TENANT_SCHEMA\"\n}\n",
+      "expected": {
+        "form": "env_var",
+        "var_name": "TENANT_SCHEMA"
+      }
+    },
+    {
+      "name": "d5_no_schema",
+      "source": "axonstore tenants {\n    backend: postgresql\n    connection: \"env:DB\"\n}\n",
+      "expected": null
+    }
+  ]
+}

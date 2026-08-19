@@ -1,18 +1,18 @@
-//! §Fase 116.d — the Instagram native core: the session-typed publish protocol,
+//! v2.77.0 — the Instagram native core: the session-typed publish protocol,
 //! made HTTP-real.
 //!
-//! Owned-only posture (D116.3): professional (business/creator) accounts only —
+//! Owned-only posture: professional (business/creator) accounts only —
 //! consumer publishing is refused at compile (`axon-T958`) and does not exist in
-//! the official API (paper §2.3). Reads (comments, insights) born Untrusted;
+//! the official API (paper section 2.3). Reads (comments, insights) born Untrusted;
 //! writes are governed egress.
 //!
 //! **Publishing is a mandatory typestate** (`axon-T957` made real): the connector
 //! drives the whole `create container → poll status → publish` sequence the
-//! platform requires (paper §2.3) inside [`SocialConnector::publish`]. A container
+//! platform requires (paper section 2.3) inside [`SocialConnector::publish`]. A container
 //! that reaches `ERROR`/`EXPIRED`, or never reaches `FINISHED` within the poll
 //! budget, is a typed failure — never a half-published post.
 //!
-//! **Quota is a consumable resource** (§72 / `axon-W018`): before publishing, the
+//! **Quota is a consumable resource** (v2.28.0 / `axon-W018`): before publishing, the
 //! connector reconciles with the platform's authoritative count via
 //! `GET /{ig}/content_publishing_limit` and refuses ([`ConnectorError::
 //! QuotaExhausted`]) at the 100/24h ceiling — the runtime half of the compile-time
@@ -20,7 +20,7 @@
 //!
 //! **Media deletion is NOT offered by the official API** — `delete` is honestly
 //! [`ConnectorError::Unsupported`], never emulated. `edit` likewise (not
-//! paper-verified). Carousels (multi-media) are deferred to §116.d.2.
+//! paper-verified). Carousels (multi-media) are deferred to v2.77.0.
 
 use std::time::Duration;
 
@@ -72,7 +72,7 @@ impl InstagramConfig {
     }
 }
 
-// The §94 redacting-Debug discipline: the fallback token never reaches a log.
+// The v2.48.0 redacting-Debug discipline: the fallback token never reaches a log.
 impl std::fmt::Debug for InstagramConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("InstagramConfig")
@@ -84,7 +84,7 @@ impl std::fmt::Debug for InstagramConfig {
     }
 }
 
-/// The Instagram connector core (§116.d).
+/// The Instagram connector core (v2.77.0).
 pub struct InstagramConnector {
     config: InstagramConfig,
     client: reqwest::blocking::Client,
@@ -111,7 +111,7 @@ impl InstagramConnector {
     }
 
     /// Reconcile with the platform's authoritative publish count; refuse at the
-    /// 100/24h ceiling (paper §2.3). Skipped when `reconcile_quota` is false.
+    /// 100/24h ceiling (paper section 2.3). Skipped when `reconcile_quota` is false.
     fn check_quota(&self, token: &str) -> Result<(), ConnectorError> {
         if !self.config.reconcile_quota {
             return Ok(());
@@ -301,7 +301,7 @@ impl SocialConnector for InstagramConnector {
         Ok(())
     }
 
-    /// The container typestate (paper §2.3): quota-reconcile → create container
+    /// The container typestate (paper section 2.3): quota-reconcile → create container
     /// (`/{ig}/media` with `image_url` + `caption`) → poll status to `FINISHED`
     /// → publish (`/{ig}/media_publish` with `creation_id`). A single image; a
     /// media-less request or a carousel is honestly refused (never degraded).
@@ -333,7 +333,7 @@ impl SocialConnector for InstagramConnector {
             }
         };
 
-        // Runtime quota reconciliation (§72 / W018) — refuse at the ceiling.
+        // Runtime quota reconciliation (v2.28.0 / W018) — refuse at the ceiling.
         self.check_quota(token)?;
 
         // 1. Create the media container.

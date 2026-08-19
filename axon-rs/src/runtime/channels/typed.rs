@@ -1,6 +1,6 @@
-//! AXON Runtime — Typed Channels (Fase 13.f.2 — Rust runtime parity).
+//! AXON Runtime — Typed Channels (v1.6.0 — Rust runtime parity).
 //!
-//! Direct port of `axon/runtime/channels/typed.py` (Fase 13.d). Provides
+//! Direct port of `axon/runtime/channels/typed.py` (v1.6.0). Provides
 //! the runtime layer for `Channel<τ, q, ℓ, π>` — first-class affine
 //! resources with π-calculus mobility (paper_mobile_channels.md).
 //!
@@ -20,7 +20,7 @@
 //!                              orchestrator with schema validation,
 //!                              QoS, capability gating
 //!
-//! Errors mirror compile-time diagnostics (Fase 13.b type checker) so a
+//! Errors mirror compile-time diagnostics (v1.6.0 type checker) so a
 //! misconfigured runtime cannot silently diverge from the static
 //! guarantees.
 
@@ -41,7 +41,7 @@ use axon_frontend::ir_nodes::{IRChannel, IRProgram};
 /// Runtime errors raised by the typed-channel layer.
 ///
 /// Each variant mirrors a compile-time diagnostic so a program that
-/// would have been rejected by the Fase 13.b type checker is also
+/// would have been rejected by the v1.6.0 type checker is also
 /// rejected here as defence-in-depth (relevant for cross-process
 /// publish/discover where the receiver cannot rerun static analysis).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -53,7 +53,7 @@ pub enum TypedChannelError {
     },
     /// Payload type does not match the channel schema.
     ///
-    /// The compile-time check (Fase 13.b `_check_emit`) catches this
+    /// The compile-time check (v1.6.0 `_check_emit`) catches this
     /// for statically-known programs; this runtime check is
     /// defence-in-depth.
     SchemaMismatch(String),
@@ -94,7 +94,7 @@ impl std::error::Error for TypedChannelError {}
 pub type Result<T> = std::result::Result<T, TypedChannelError>;
 
 // ═══════════════════════════════════════════════════════════════════
-//  CAPABILITY — Publish-Ext token (paper §4.3)
+// CAPABILITY — Publish-Ext token (paper section 4.3)
 // ═══════════════════════════════════════════════════════════════════
 
 /// Opaque, single-extrusion-hop witness of a published channel.
@@ -103,7 +103,7 @@ pub type Result<T> = std::result::Result<T, TypedChannelError>;
 /// can `discover` the underlying handle through the bus. The runtime
 /// attenuates the bearer's certainty envelope by `delta_pub` per hop
 /// so published-then-republished handles strictly lose certainty on
-/// every traversal — paper §6.2 ("no certainty laundering").
+/// every traversal — paper section 6.2 ("no certainty laundering").
 ///
 /// Capabilities are immutable (no setters); per-hop bookkeeping
 /// happens in the bus when the capability is created (`publish`) and
@@ -116,7 +116,7 @@ pub struct Capability {
     pub channel_name: String,
     /// σ-shield that mediated extrusion.
     pub shield_ref: String,
-    /// Certainty penalty per hop (paper §3.4 lower bound: 0.05).
+    /// Certainty penalty per hop (paper section 3.4 lower bound: 0.05).
     pub delta_pub: f64,
     /// Wall-clock seconds since the Unix epoch.
     pub issued_at: f64,
@@ -135,7 +135,7 @@ pub struct Capability {
 /// - affine     → may stay at 0 (drop) but never exceed 1 per holder
 /// - persistent → unbounded
 ///
-/// At Fase 13.f.2 scope, the bus tracks consumption counters at the
+/// At v1.6.0 scope, the bus tracks consumption counters at the
 /// handle level. Per-binding tracking (when `discover` yields fresh
 /// aliases) follows the Python reference and is deferred to a
 /// future sub-phase aligned with cross-process replay tokens.
@@ -153,7 +153,7 @@ pub struct TypedChannelHandle {
 }
 
 impl TypedChannelHandle {
-    /// Construct a handle with Fase 13 defaults
+    /// Construct a handle with v1.6.0 defaults
     /// (`qos=at_least_once`, `lifetime=affine`, `persistence=ephemeral`,
     /// no shield).
     pub fn new(name: impl Into<String>, message: impl Into<String>) -> Self {
@@ -331,7 +331,7 @@ fn default_compliance_check() -> ShieldComplianceFn {
     Arc::new(|_, _| true)
 }
 
-/// §Fase 124.c — derive the compliance predicate from the SAME
+/// v4.0.0 — derive the compliance predicate from the SAME
 /// `IRProgram` the bus is built from: κ(payload type) must be covered
 /// by κ(shield) before `publish` extrudes a capability (D8).
 ///
@@ -339,11 +339,11 @@ fn default_compliance_check() -> ShieldComplianceFn {
 /// check time. Both exist deliberately: the checker refuses the
 /// declaration before the program ever runs, and THIS predicate is the
 /// fail-closed backstop for IR that never went through the checker
-/// (hand-assembled programs, older compiled artifacts). Before §124.c,
+/// (hand-assembled programs, older compiled artifacts). Before v4.0.0,
 /// `from_ir_program` handed every caller the permissive default — the
 /// two production doors (`daemon.rs`, `runner.rs`) built buses where a
 /// shield covering NOTHING satisfied a channel carrying PHI. That is
-/// the presence-vs-exercise defect §122 spent a fase on, in the one
+/// the presence-vs-exercise defect v2.89.0 spent a cycle on, in the one
 /// seam that extrudes capabilities to outside parties.
 ///
 /// Semantics, fail-closed on the right side:
@@ -496,7 +496,7 @@ impl TypedEventBus {
     /// Bootstrap a bus from a fully-lowered `IRProgram` (post-13.c).
     /// Every `IRChannel` becomes a registered runtime handle.
     ///
-    /// §Fase 124.c — the compliance predicate is derived from the SAME
+    /// v4.0.0 — the compliance predicate is derived from the SAME
     /// IR (see [`compliance_check_from_ir`]): `publish` refuses a
     /// shield whose κ does not cover the channel's payload κ. Callers
     /// needing a different policy inject it via
@@ -535,12 +535,12 @@ impl TypedEventBus {
         self.registry.lock().unwrap().names()
     }
 
-    // ── EMIT (Chan-Output / Chan-Mobility, paper §3.1, §3.2) ──────
+    // ── EMIT (Chan-Output / Chan-Mobility, paper section 3.1, section 3.2) ──────
 
     /// Emit a value (or a channel handle for mobility) on a typed
     /// channel.
     ///
-    /// Schema enforcement mirrors Fase 13.b's `_check_emit`:
+    /// Schema enforcement mirrors v1.6.0's `_check_emit`:
     /// - second-order channel + scalar payload → [`TypedChannelError::SchemaMismatch`]
     /// - first-order channel + handle payload  → [`TypedChannelError::SchemaMismatch`]
     /// - second-order schema mismatch          → [`TypedChannelError::SchemaMismatch`]
@@ -656,7 +656,7 @@ impl TypedEventBus {
         Ok(())
     }
 
-    // ── PUBLISH (Publish-Ext, paper §4.3) ─────────────────────────
+    // ── PUBLISH (Publish-Ext, paper section 4.3) ─────────────────────────
 
     /// Extrude a channel handle through a shield, returning a
     /// [`Capability`] that downstream callers can `discover`.
@@ -706,7 +706,7 @@ impl TypedEventBus {
         Ok(cap)
     }
 
-    // ── DISCOVER (paper §3.4 dual) ────────────────────────────────
+    // ── DISCOVER (paper section 3.4 dual) ────────────────────────────────
 
     /// Consume a [`Capability`] and return the underlying handle.
     /// One-shot: subsequent calls with the same capability are
@@ -803,7 +803,7 @@ fn now_secs() -> f64 {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-//  tests — paridad con tests/test_typed_channels.py (Fase 13.d)
+// tests — paridad con tests/test_typed_channels.py (v1.6.0)
 // ═══════════════════════════════════════════════════════════════════
 
 #[cfg(test)]
@@ -1432,12 +1432,12 @@ mod tests {
         }
     }
 
-    // ── PAPER §9 END-TO-END ──────────────────────────────────────
+    // ── PAPER section 9 END-TO-END ──────────────────────────────────────
 
     #[tokio::test]
     async fn paper_section9_e2e_producer_publish_discover_receive() {
-        // Models the worked example from paper_mobile_channels.md §9
-        // (paper §9): typed producer emits an Order, then publishes
+        // Models the worked example from paper_mobile_channels.md section 9
+        // (paper section 9): typed producer emits an Order, then publishes
         // its OrdersCreated channel through a shield, then a separate
         // consumer discovers and receives.
         let bus = TypedEventBus::new();

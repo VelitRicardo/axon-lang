@@ -150,7 +150,7 @@ pub async fn listen_signals(coordinator: Arc<ShutdownCoordinator>) {
 ///
 /// This is called from the server launcher after axum::serve returns.
 ///
-/// §Fase 118.b.2 — the ONLY item in this module that needs the `server` feature,
+/// v2.81.0 — the ONLY item in this module that needs the `server` feature,
 /// and honestly so: it takes `&mut ServerState`, so it is server code by its own
 /// signature rather than by association. The coordinator itself
 /// ([`ShutdownCoordinator`], [`ShutdownReason`],

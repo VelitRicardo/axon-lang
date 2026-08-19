@@ -36,7 +36,7 @@ use std::sync::Arc;
 /// PR (template + entry in this enum + entry in
 /// [`domain_metadata`]), not a runtime config.
 ///
-/// §Fase 7.a expanded the vertical surface with `legaltech`,
+/// v1.2.0 expanded the vertical surface with `legaltech`,
 /// `fintech`, `pharmatech`, `medic_research` — each a distinct
 /// SaaS / product / research vertical with its own compliance
 /// posture (different from `legal`, `banking`, `healthcare`).
@@ -61,93 +61,93 @@ pub enum Domain {
     /// Multi-agent task delegation — planner + worker, ensemble,
     /// coordination across personas.
     MultiAgent,
-    /// §Fase 7.a — SOC2 + multi-tenant SaaS for legal-technology
+    /// v1.2.0 — SOC2 + multi-tenant SaaS for legal-technology
     /// products (contract automation, e-discovery, IP portfolio
     /// management). Differs from `Legal`: PRODUCT pattern with
     /// `requires:` capability gates, replay-token writes, per-tenant
     /// path scoping.
     LegalTech,
-    /// §Fase 7.a — PCI_DSS + SOC2 with AML/KYC + fraud-detection
+    /// v1.2.0 — PCI_DSS + SOC2 with AML/KYC + fraud-detection
     /// emphasis. Consumer fintech / neobank / embedded finance.
     /// Differs from `Banking`: AML/CFT + state money-transmitter +
     /// consumer-protection posture, not enterprise-ledger.
     FinTech,
-    /// §Fase 7.a — GxP + HIPAA + SOC2 for pharmaceutical R&D, drug
+    /// v1.2.0 — GxP + HIPAA + SOC2 for pharmaceutical R&D, drug
     /// discovery, compound screening. FDA 21 CFR Part 11 audit
     /// trails. Differs from `Healthcare` (patient care).
     PharmaTech,
-    /// §Fase 7.a — HIPAA + GxP + SOC2 for clinical research +
+    /// v1.2.0 — HIPAA + GxP + SOC2 for clinical research +
     /// trial-management workflows. IRB-supervised, adverse-event
     /// recording, protocol-deviation tracking. Differs from both
     /// `Healthcare` (patient care) and `PharmaTech` (drug discovery).
     MedicResearch,
-    // ── §Fase 7.b — Agent patterns (interaction modality) ────────
-    /// §Fase 7.b — Streaming research-assistant chat grounded in a
+    // ── v1.2.0 — Agent patterns (interaction modality) ────────
+    /// v1.2.0 — Streaming research-assistant chat grounded in a
     /// declared corpus with hard-fail source-citation anchor.
     ChatResearch,
-    /// §Fase 7.b — Streaming chat with function-calling tools
+    /// v1.2.0 — Streaming chat with function-calling tools
     /// (web search, calculator, time API). Tool-use surface.
     ChatTools,
-    /// §Fase 7.b — Chat that classifies-then-dispatches to typed
+    /// v1.2.0 — Chat that classifies-then-dispatches to typed
     /// skill sub-flows (Support / Sales / Billing per the
     /// canonical template).
     ChatSkills,
-    /// §Fase 7.b — WhatsApp Business webhook agent — typed
+    /// v1.2.0 — WhatsApp Business webhook agent — typed
     /// inbound/outbound payloads, per-phone-number persistent
     /// memory, PII-redaction shield.
     Whatsapp,
-    /// §Fase 7.b — Voice agent — μ-law ↔ PCM16 OTS codec
+    /// v1.2.0 — Voice agent — μ-law ↔ PCM16 OTS codec
     /// transformations, streaming Stream<Token> reply.
     Voice,
-    /// §Fase 7.b — Coding-assistant agent — sandboxed code
+    /// v1.2.0 — Coding-assistant agent — sandboxed code
     /// interpreter + git tools + streaming reply, anchored
     /// against hallucinated APIs.
     Dev,
-    /// §Fase 7.b — Consultative sales agent — lead qualification
+    /// v1.2.0 — Consultative sales agent — lead qualification
     /// with NoMisrepresentation anchor + CRM tool bindings.
     SalesConsultive,
-    /// §Fase 7.b — Embedded sales widget — streaming SSE chat +
+    /// v1.2.0 — Embedded sales widget — streaming SSE chat +
     /// JSON lead-capture endpoint, product-corpus grounded.
     SalesWidget,
-    // ── §Fase 7.c — Application patterns ─────────────────────────
-    /// §Fase 7.c — RPA-style multi-step workflow with mandate-gated
+    // ── v1.2.0 — Application patterns ─────────────────────────
+    /// v1.2.0 — RPA-style multi-step workflow with mandate-gated
     /// approvals + typed audit receipt.
     WorkflowAutomation,
-    /// §Fase 7.c — BI / analytics pipeline against a typed metrics
+    /// v1.2.0 — BI / analytics pipeline against a typed metrics
     /// warehouse with data-freshness anchor.
     BusinessIntelligence,
-    /// §Fase 7.c — ERP / CRM / HR sync hub — typed normalisation,
+    /// v1.2.0 — ERP / CRM / HR sync hub — typed normalisation,
     /// lineage preservation, reconciliation.
     CorporateIntegration,
-    /// §Fase 7.c — Continual-learning loop — feedback → eval →
+    /// v1.2.0 — Continual-learning loop — feedback → eval →
     /// mandate-gated production promotion.
     SelfLearning,
-    /// §Fase 7.c — Bulk document classification + extraction (general
+    /// v1.2.0 — Bulk document classification + extraction (general
     /// document Q&A / invoice / resume processing).
     DocumentAnalysis,
-    /// §Fase 7.c — Async support-ticket classification + priority +
+    /// v1.2.0 — Async support-ticket classification + priority +
     /// SLA-aware routing.
     TicketTriage,
-    /// §Fase 7.c — UGC moderation chain (immune + reflex + heal)
+    /// v1.2.0 — UGC moderation chain (immune + reflex + heal)
     /// with policy-citation anchor.
     ContentModeration,
-    /// §Fase 7.c — Knowledge-graph entity + relation extraction with
+    /// v1.2.0 — Knowledge-graph entity + relation extraction with
     /// typed triple store + evidence-span anchor.
     KnowledgeExtraction,
-    /// §Fase 7.c — Multi-framework compliance monitoring (HIPAA /
+    /// v1.2.0 — Multi-framework compliance monitoring (HIPAA /
     /// GDPR / PCI / SOX / SOC2) with PIX-chained audit + auditor
     /// review mandate.
     ComplianceMonitoring,
-    /// §Fase 7.c — Resume screening + candidate ranking with
+    /// v1.2.0 — Resume screening + candidate ranking with
     /// mandatory bias-detection shield + NoBiasInRanking anchor.
     Recruitment,
-    /// §Fase 7.c — Curriculum-driven tutoring persona with student-
+    /// v1.2.0 — Curriculum-driven tutoring persona with student-
     /// progress memory + Socratic anchor + streaming reply.
     Education,
-    /// §Fase 7.c — Personal-finance educator with mandatory
+    /// v1.2.0 — Personal-finance educator with mandatory
     /// NoInvestmentAdvice anchor (NOT a registered advisor).
     FinancialAdvisor,
-    /// §Fase 7.c — ETL pipeline with cognitive enrichment + transact
+    /// v1.2.0 — ETL pipeline with cognitive enrichment + transact
     /// over the load step + quality-floor anchor.
     DataPipeline,
 }
@@ -207,7 +207,7 @@ impl Domain {
             Domain::FinTech,
             Domain::PharmaTech,
             Domain::MedicResearch,
-            // Agent patterns (interaction modality) — §Fase 7.b
+            // Agent patterns (interaction modality) — v1.2.0
             Domain::ChatResearch,
             Domain::ChatTools,
             Domain::ChatSkills,
@@ -216,7 +216,7 @@ impl Domain {
             Domain::Dev,
             Domain::SalesConsultive,
             Domain::SalesWidget,
-            // Application patterns (use-case shape) — §Fase 7.c
+            // Application patterns (use-case shape) — v1.2.0
             Domain::WorkflowAutomation,
             Domain::BusinessIntelligence,
             Domain::CorporateIntegration,
@@ -321,8 +321,8 @@ fn domain_metadata(d: Domain) -> &'static DomainMetadata {
             compliance_applied: &["PCI_DSS", "SOX", "SOC2"],
             next_steps: &[
                 "Tokenise PANs at ingress — never store raw card numbers downstream.",
-                "Add a `mandate:` with `excludes_requester: true` on posting endpoints (SOX §404 SoD).",
-                "Configure retention ≥ 7y on any ledger-bearing `axonstore` (SOX §802).",
+                "Add a `mandate:` with `excludes_requester: true` on posting endpoints (SOX section 404 SoD).",
+                "Configure retention ≥ 7y on any ledger-bearing `axonstore` (SOX section 802).",
                 "Pin a deterministic backend for reproducible underwriting decisions.",
                 "Wire fraud-detection signals into the shield's scan list as they become available.",
             ],
@@ -385,7 +385,7 @@ fn domain_metadata(d: Domain) -> &'static DomainMetadata {
             next_steps: &[
                 "Pin a streaming backend (an LLM-routed backend (omit `provider:`)).",
                 "Choose a backpressure policy (drop_oldest / pause_upstream / fail) on the tool.",
-                "Add a `socket` declaration if you need session-typed reconnection (Fase 41).",
+                "Add a `socket` declaration if you need session-typed reconnection (v2.3.0).",
                 "Tighten the persona's `tone:` for your product voice.",
                 "Compose a `shield:` if the chat touches regulated data.",
             ],
@@ -535,7 +535,7 @@ fn domain_metadata(d: Domain) -> &'static DomainMetadata {
                 "Pin a streaming backend (an LLM-routed backend (omit `provider:`)).",
                 "Add a `shield` if the chat touches PII or regulated data.",
                 "Run `effort: strict` on the bound `run` to lock the tool surface in production.",
-                "Wire structured telemetry on tool-invocation outcomes (§Fase 8 preview).",
+                "Wire structured telemetry on tool-invocation outcomes (v1.3.0 preview).",
             ],
         },
         Domain::ChatSkills => &DomainMetadata {
@@ -556,7 +556,7 @@ fn domain_metadata(d: Domain) -> &'static DomainMetadata {
                 "Tune the router's `Classify` step's prompt with adopter-specific examples.",
                 "Bind a `shield` per skill — billing tends to need stricter PII gating than support.",
                 "Add a `confidence_floor:` on the router so ambiguous messages escalate to human review.",
-                "Wire telemetry per skill on dispatch + outcome (lead-in to §Fase 8).",
+                "Wire telemetry per skill on dispatch + outcome (lead-in to v1.3.0).",
             ],
         },
         Domain::Whatsapp => &DomainMetadata {
@@ -761,11 +761,11 @@ fn domain_metadata(d: Domain) -> &'static DomainMetadata {
             ],
             compliance_applied: &["SOC2"],
             next_steps: &[
-                // §Fase 101.g (D101.10) — the scaffold no longer advises wiring an
-                // OCR tool that would hallucinate; §101 ships real Inferred
+                // v2.54.0 — the scaffold no longer advises wiring an
+                // OCR tool that would hallucinate; v2.54.0 ships real Inferred
                 // producers. For scans/PDFs, call PDFExtractor / ImageTextExtractor
                 // (born Inferred, believe-ceiling, engine-measured confidence);
-                // for parsed DOCX/PPTX/XLSX, DocumentReader (born Parsed, §100).
+                // for parsed DOCX/PPTX/XLSX, DocumentReader (born Parsed, v2.54.0).
                 "For scans/images/PDFs, use ImageTextExtractor / PDFExtractor (born Inferred, ceiling `believe`, engine-measured confidence); for DOCX/PPTX/XLSX use DocumentReader (born Parsed).",
                 "The anchor's confidence_floor now gates a MEASURED confidence, not a model self-grade — tighten it for regulated extractions.",
                 "Add per-document-class extraction sub-flows (apply: pattern).",
@@ -853,7 +853,7 @@ fn domain_metadata(d: Domain) -> &'static DomainMetadata {
             ],
             compliance_applied: &["SOC2"],
             next_steps: &[
-                "Wire the control catalogue per framework (NIST 800-53 SP / SOX 404 / HIPAA §164).",
+                "Wire the control catalogue per framework (NIST 800-53 SP / SOX 404 / HIPAA section 164).",
                 "Add per-control evidence pointers (links to PIX / log / artefact).",
                 "Tighten AuditorReview.constraint to your real review SLA.",
                 "Add a posture-export endpoint for the auditor-portal.",
@@ -1138,14 +1138,14 @@ pub fn parse_domain_hint(s: &str) -> Option<Domain> {
         "banking" | "bank" => Some(Domain::Banking),
         "government" | "gov" | "federal" | "agency" => Some(Domain::Government),
         "legal" | "law" | "contract" => Some(Domain::Legal),
-        // §Fase 7.a — vertical extension aliases.
+        // v1.2.0 — vertical extension aliases.
         "legaltech" | "legal-tech" | "legal_tech" => Some(Domain::LegalTech),
         "fintech" | "neobank" | "embedded_finance" | "embedded-finance" => Some(Domain::FinTech),
         "pharma" | "pharmatech" | "pharma-tech" | "drug_discovery" | "drug-discovery"
         | "preclinical" => Some(Domain::PharmaTech),
         "medic_research" | "medical_research" | "clinical_research" | "clinical-research"
         | "trial_management" | "i+d" | "ipi" | "irb" => Some(Domain::MedicResearch),
-        // §Fase 7.b — agent-pattern aliases.
+        // v1.2.0 — agent-pattern aliases.
         "chat_research" | "research_chat" | "rag_chat" | "grounded_chat" => {
             Some(Domain::ChatResearch)
         }
@@ -1161,7 +1161,7 @@ pub fn parse_domain_hint(s: &str) -> Option<Domain> {
         "sales_widget" | "widget" | "website_chat" | "embedded_chat" | "lead_capture" => {
             Some(Domain::SalesWidget)
         }
-        // §Fase 7.c — application-pattern aliases.
+        // v1.2.0 — application-pattern aliases.
         "workflow_automation" | "workflow" | "rpa" | "approval_workflow" | "back_office" => {
             Some(Domain::WorkflowAutomation)
         }
@@ -1348,7 +1348,7 @@ mod tests {
         assert_eq!(parse_domain_hint("medical"), Some(Domain::Healthcare));
         assert_eq!(parse_domain_hint("HC"), Some(Domain::Healthcare));
         assert_eq!(parse_domain_hint("banking"), Some(Domain::Banking));
-        // §Fase 7.a — `fintech` now maps to the dedicated FinTech
+        // v1.2.0 — `fintech` now maps to the dedicated FinTech
         // domain (consumer fintech / neobank / embedded finance),
         // NOT Banking (enterprise-bank pattern).
         assert_eq!(parse_domain_hint("fintech"), Some(Domain::FinTech));
@@ -1356,7 +1356,7 @@ mod tests {
         assert_eq!(parse_domain_hint("gov"), Some(Domain::Government));
         assert_eq!(parse_domain_hint("multi-agent"), Some(Domain::MultiAgent));
         assert_eq!(parse_domain_hint("rag"), Some(Domain::Retrieval));
-        // §Fase 7.a — vertical extensions.
+        // v1.2.0 — vertical extensions.
         assert_eq!(parse_domain_hint("legaltech"), Some(Domain::LegalTech));
         assert_eq!(parse_domain_hint("pharma"), Some(Domain::PharmaTech));
         assert_eq!(parse_domain_hint("clinical_research"), Some(Domain::MedicResearch));

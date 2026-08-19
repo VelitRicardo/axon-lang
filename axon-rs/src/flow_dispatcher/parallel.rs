@@ -1,4 +1,4 @@
-//! §Fase 33.y.e — Parallel variant handler + concurrent dispatch
+//! v1.24.0 — Parallel variant handler + concurrent dispatch
 //! helper.
 //!
 //! # `IRParallelBlock` payload reality
@@ -8,7 +8,7 @@
 //! are not decomposed into the IR shape. This is consistent with
 //! `ast::ParBlock` which is also payload-free.
 //!
-//! The Fase 33.y.e cycle ships the PRODUCTION-READY concurrent-
+//! The v1.24.0 cycle ships the PRODUCTION-READY concurrent-
 //! dispatch machinery as a PUBLIC helper
 //! [`run_branches_concurrently`] that future AST/IR extensions
 //! consume; when the IR gains a `branches: Vec<Vec<IRFlowNode>>`
@@ -141,8 +141,8 @@ pub async fn run_par(
         })
         .map_err(|_| DispatchError::ChannelClosed)?;
 
-    // §Fase 65 — REAL concurrency. The IR now carries the `par` branches
-    // (pre-§65 `IRParallelBlock` was payload-free → this ran as a stub). Fan the
+    // v2.15.0 — REAL concurrency. The IR now carries the `par` branches
+    // (pre-v2.15.0 `IRParallelBlock` was payload-free → this ran as a stub). Fan the
     // branches out concurrently via the established machine; each branch gets a
     // cloned DispatchCtx (sharing the api_key / conversation / anchors / corpora
     // Arcs, with isolated `pinned_conns` so branches don't serialize on one pin).
@@ -179,7 +179,7 @@ pub async fn run_par(
     // Propagate a branch's `Return` sentinel (flow-terminating); otherwise the
     // merged completion.
     match outcome {
-            // §Fase 119.d — suspending inside a nested construct is refused.
+            // v2.83.0 — suspending inside a nested construct is refused.
             NodeOutcome::Hibernated { .. } => { return Err(DispatchError::BackendError { name: "hibernate".to_string(), message: "hibernate inside a nested construct (par branch) has no defined continuation shape yet; place it at top-level flow position"
                 .to_string() }); }
         NodeOutcome::Return { value } => Ok(NodeOutcome::Return { value }),
@@ -253,7 +253,7 @@ pub async fn run_branches_concurrently(
         // for every branch. Branches can set their own per-branch
         // policy by mutating their ctx clone before the helper.
         bc.pending_effect_policy = None;
-        // §Fase 37.x.j (D6.a) — Per-branch sub-pin isolation. Each
+        // v1.32.0 (D6.a) — Per-branch sub-pin isolation. Each
         // par branch gets a FRESH (independent) `pinned_conns` Arc so
         // branches do NOT serialize on the parent's pin map mutex.
         // When the first store op in a branch runs, the wire-
@@ -268,7 +268,7 @@ pub async fn run_branches_concurrently(
         //
         // D6.b (`par(serialized: true)`) would skip this replacement
         // so branches share the parent's Arc<Mutex<>> and serialize
-        // on the lock — an honest deferral to a future fase that
+        // on the lock — an honest deferral to a future cycle that
         // also lands the parser + AST grammar for `par(serialized:)`.
         bc.pinned_conns = std::sync::Arc::new(std::sync::Mutex::new(
             std::collections::HashMap::new(),
@@ -298,7 +298,7 @@ pub async fn run_branches_concurrently(
     for (bc, outcome) in branch_ctxs.iter().zip(results.into_iter()) {
         max_step_counter = max_step_counter.max(bc.step_counter);
         match outcome {
-            // §Fase 119.d — suspending inside a nested construct is refused.
+            // v2.83.0 — suspending inside a nested construct is refused.
             Ok(NodeOutcome::Hibernated { .. }) => { return Err(DispatchError::BackendError { name: "hibernate".to_string(), message: "hibernate inside a nested construct (par branch) has no defined \n                 continuation shape yet; place it at top-level flow position"
                 .to_string() }); }
             Ok(NodeOutcome::Completed {
@@ -315,7 +315,7 @@ pub async fn run_branches_concurrently(
                 // Par has no loop semantics — sentinel observed but
                 // treated as completion-with-no-output.
             }
-            // §Fase 120 — an effect discharge ESCAPING a par branch is refused,
+            // v2.87.0 — an effect discharge ESCAPING a par branch is refused,
             // for the same reason hibernation is: the branches run
             // concurrently, so "which branch does the continuation resume at?"
             // and "what happens to the siblings when one aborts the handle?"
@@ -387,7 +387,7 @@ async fn dispatch_branch_body(
         let outcome = Box::pin(crate::flow_dispatcher::dispatch_node(child, ctx)).await;
         ctx.branch_path.pop();
         match outcome? {
-            // §Fase 119.d — suspending inside a nested construct is refused.
+            // v2.83.0 — suspending inside a nested construct is refused.
             NodeOutcome::Hibernated { .. } => { return Err(DispatchError::BackendError { name: "hibernate".to_string(), message: "hibernate inside a nested construct (par branch) has no defined \n                 continuation shape yet; place it at top-level flow position"
                 .to_string() }); }
             NodeOutcome::Completed {
@@ -405,7 +405,7 @@ async fn dispatch_branch_body(
             NodeOutcome::Return { value } => {
                 return Ok(NodeOutcome::Return { value });
             }
-            // §Fase 120 — propagate to the branch boundary, where the merge
+            // v2.87.0 — propagate to the branch boundary, where the merge
             // above refuses it by name. Swallowing it here would make the
             // branch complete quietly with a stranded continuation.
             other @ (NodeOutcome::EffectResumed { .. }
@@ -519,7 +519,7 @@ mod tests {
         ));
     }
 
-    /// §Fase 65 — `run_par` now runs the IR's branches CONCURRENTLY (real
+    /// v2.15.0 — `run_par` now runs the IR's branches CONCURRENTLY (real
     /// effect), not a stub. Two branches → both execute, their outputs merge,
     /// and the `par` wrapper stays on the wire (StepComplete carries the merge).
     #[tokio::test]
@@ -561,7 +561,7 @@ mod tests {
         );
     }
 
-    /// §Fase 65 (Multiplexed SSE) — the concurrent `par` branches emit their
+    /// v2.15.0 (Multiplexed SSE) — the concurrent `par` branches emit their
     /// step events INTERLEAVED on the one stream, each carrying its `branch_path`
     /// (`"par[0]"` / `"par[1]"`) so the SSE consumer DEMUXES the concurrent
     /// streams instead of guessing by arrival order. This is the honest

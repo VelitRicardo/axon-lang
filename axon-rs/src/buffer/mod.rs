@@ -1,4 +1,4 @@
-//! Zero-copy multimodal buffers — §λ-L-E Fase 11.b.
+//! Zero-copy multimodal buffers — v1.4.0.
 //!
 //! Bytes that enter the runtime through a network socket, file
 //! handle or FFI boundary land **directly** in a region of Rust-

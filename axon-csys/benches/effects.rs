@@ -1,4 +1,4 @@
-//! §Fase 25.j — Algebraic-effects FSM dispatcher benchmark.
+//! v1.19.0 — Algebraic-effects FSM dispatcher benchmark.
 //!
 //! Characterises the C23 dispatcher's per-opcode throughput on
 //! representative wire shapes:
@@ -11,7 +11,7 @@
 //! `axon-rs/src/effects/runtime.rs`, which we can't depend on from
 //! axon-csys (would create a circular dep). The "≥10× faster than
 //! tree-walker" target ratified in D10 is established by the original
-//! Fase 23 paper §5 work; this benchmark documents the C kernel's
+//! v1.17.0 paper section 5 work; this benchmark documents the C kernel's
 //! absolute throughput so adopters can compute their own ratio
 //! against any baseline they care to measure.
 //!

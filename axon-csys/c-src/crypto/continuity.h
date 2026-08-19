@@ -1,8 +1,8 @@
 /*
- * §Fase 25.h — Continuity-token wire format primitives.
+ * v1.19.0 — Continuity-token wire format primitives.
  *
  * Pure-C primitives that produce + verify the byte-format of axon's
- * PEM continuity token (Fase 11.d). The wire layout (preserved
+ * PEM continuity token (v1.4.0). The wire layout (preserved
  * verbatim from the Rust reference impl in
  * `axon-rs/src/pem/continuity_token.rs`):
  *
@@ -69,7 +69,7 @@ typedef enum {
  *
  * Inputs:
  *   key             — HMAC signing key (any length; tiktoken per
- *                     FIPS 198-1 §3 + §5).
+ * FIPS 198-1 section 3 + section 5).
  *   session_id      — UTF-8 session id; MUST NOT contain 0x1e.
  *   expiry_ms       — i64 milliseconds since Unix epoch.
  *

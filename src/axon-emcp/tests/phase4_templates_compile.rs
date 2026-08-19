@@ -1,4 +1,4 @@
-//! §Phase 4 — every template shipped under `src/knowledge/templates/`
+//! Phase 4 — every template shipped under `src/knowledge/templates/`
 //! must compile end-to-end through the same `axon-frontend` pipeline
 //! the `axon` CLI uses.
 //!
@@ -13,7 +13,7 @@ use axon_emcp::compiler_pipeline::{run, Outcome};
 /// drift gate we read files directly so the test is independent of
 /// catalogue plumbing.
 fn templates_dir() -> std::path::PathBuf {
-    // §Release 0.2.0 — the corpus lives INSIDE the crate
+    // Release 0.2.0 — the corpus lives INSIDE the crate
     // (`src/axon-emcp/knowledge/`) so `cargo publish` ships it.
     std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("knowledge")
@@ -76,7 +76,7 @@ fn template_multi_agent_compiles() {
     assert_template_compiles("multi_agent");
 }
 
-// §Fase 7.a — vertical extension templates.
+// v1.2.0 — vertical extension templates.
 
 #[test]
 fn template_legaltech_compiles() {
@@ -98,7 +98,7 @@ fn template_medic_research_compiles() {
     assert_template_compiles("medic_research");
 }
 
-// §Fase 7.b — agent-pattern templates.
+// v1.2.0 — agent-pattern templates.
 
 #[test]
 fn template_chat_research_compiles() {
@@ -125,7 +125,7 @@ fn template_voice_compiles() {
     assert_template_compiles("voice");
 }
 
-/// §Fase 80.g — the preset-based voice agent: the whole program is one
+/// v2.37.0 — the preset-based voice agent: the whole program is one
 /// `voice` declaration; the expansion (ots + session/socket + upstreams)
 /// must compile end-to-end through the same pipeline.
 #[test]
@@ -148,7 +148,7 @@ fn template_sales_widget_compiles() {
     assert_template_compiles("sales_widget");
 }
 
-// §Fase 7.c — application-pattern templates (closes the cycle at 33/33).
+// v1.2.0 — application-pattern templates (closes the cycle at 33/33).
 
 #[test]
 fn template_workflow_automation_compiles() {

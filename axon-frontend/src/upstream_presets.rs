@@ -1,8 +1,8 @@
-//! §Fase 80.f — the blessed upstream preset catalog + `from Preset@vN`
+//! v2.37.0 — the blessed upstream preset catalog + `from Preset@vN`
 //! expansion.
 //!
 //! Each preset is a **versioned, named template** for a vendor the 2026
-//! voice market has converged on — and, per D80.5, each is an ORDINARY
+//! voice market has converged on — and, per the design decision, each is an ORDINARY
 //! `.axon` source string (a `session` + an `upstream`), never a black box:
 //! `axon desugar` prints the exact expansion, and forking a preset into a
 //! local hand-written `upstream` is always available. When a vendor changes
@@ -11,11 +11,11 @@
 //! to stdlib artifacts).
 //!
 //! Expansion runs at the tail of `Parser::parse()` (before type-check, so
-//! the §80.c laws see the EXPANDED declaration): the preset's `upstream`
+//! the v2.37.0 laws see the EXPANDED declaration): the preset's `upstream`
 //! fields fill every field the adopter left unwritten (an adopter-written
 //! field always wins), and the preset's `session` is injected unless a
 //! session of that name is already declared. An unknown preset leaves the
-//! declaration unexpanded — the §80.c checker reports it with the
+//! declaration unexpanded — the v2.37.0 checker reports it with the
 //! available-preset list (accumulating diagnostics beat a parse abort).
 //!
 //! Message-set scope (v1, deliberate): each preset maps the load-bearing
@@ -38,7 +38,7 @@ pub struct UpstreamPreset {
     pub name: &'static str,
     /// Preset version — the identifier after `@`.
     pub version: &'static str,
-    /// `cascaded_stt` | `cascaded_tts` | `fused_realtime` (D80.1: both
+    /// `cascaded_stt` | `cascaded_tts` | `fused_realtime` (the design decision: both
     /// architectures are first-class members of ONE catalog).
     pub architecture: &'static str,
     /// The ordinary `.axon` source the reference expands to.
@@ -46,7 +46,7 @@ pub struct UpstreamPreset {
 }
 
 /// The v1 catalog: the four cascaded legs + the two fused
-/// speech-to-speech APIs the 2026 market converged on (plan §1 survey).
+/// speech-to-speech APIs the 2026 market converged on (plan section 1 survey).
 pub const UPSTREAM_PRESETS: &[UpstreamPreset] = &[
     UpstreamPreset {
         name: "DeepgramSTT",
@@ -212,7 +212,7 @@ pub fn find(preset_ref: &str) -> Option<&'static UpstreamPreset> {
     UPSTREAM_PRESETS.iter().find(|p| p.name == name && p.version == version)
 }
 
-/// `"DeepgramSTT@v1, …"` — for the §80.c unknown-preset diagnostic.
+/// `"DeepgramSTT@v1, …"` — for the v2.37.0 unknown-preset diagnostic.
 pub fn available() -> String {
     UPSTREAM_PRESETS
         .iter()
@@ -259,8 +259,8 @@ fn merge_preset(user: &mut UpstreamDefinition, base: UpstreamDefinition) {
     }
 }
 
-/// §80.g (`axon desugar`) — render one (possibly preset-expanded)
-/// `upstream` back to canonical source. This is the D80.6 payload: the
+/// v2.37.0 (`axon desugar`) — render one (possibly preset-expanded)
+/// `upstream` back to canonical source. This is the the design decision payload: the
 /// compliance reviewer reads the exact declaration the compiler checked
 /// and the runtime dials — not the sugar that produced it.
 pub fn render_upstream(u: &UpstreamDefinition) -> String {
@@ -313,12 +313,12 @@ pub fn render_upstream(u: &UpstreamDefinition) -> String {
     s
 }
 
-/// §80.f — expand every `upstream X from Preset@vN { … }` in the program:
+/// v2.37.0 — expand every `upstream X from Preset@vN { … }` in the program:
 /// fill the declaration from the preset and inject the preset's `session`
 /// (unless a session of that name already exists — instantiating the same
 /// preset twice shares one session declaration). Runs at the tail of
 /// `Parser::parse()`; keeps `declarations` and `declaration_trivia`
-/// parallel. Unknown presets are left unexpanded for the §80.c checker.
+/// parallel. Unknown presets are left unexpanded for the v2.37.0 checker.
 pub fn expand(program: &mut Program) {
     let mut i = 0;
     while i < program.declarations.len() {
@@ -332,7 +332,7 @@ pub fn expand(program: &mut Program) {
         };
         let Some(preset) = find(&ref_str) else {
             i += 1;
-            continue; // §80.c reports the unknown preset with the catalog.
+            continue; // v2.37.0 reports the unknown preset with the catalog.
         };
         // Presets are compile-time constants authored in this file and
         // compile-gated by the tests below — a parse failure here is a
@@ -401,7 +401,7 @@ mod tests {
 
     #[test]
     fn catalog_covers_both_architectures() {
-        // D80.1 — cascaded and fused are BOTH first-class catalog members.
+        // the design decision — cascaded and fused are BOTH first-class catalog members.
         let archs: std::collections::HashSet<&str> =
             UPSTREAM_PRESETS.iter().map(|p| p.architecture).collect();
         assert!(archs.contains("cascaded_stt"));

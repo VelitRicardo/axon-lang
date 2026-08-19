@@ -1,14 +1,14 @@
 ---
 name: connections_release_across_cognition
-title: "Connections release across cognition — a pooled DB connection is never held idle across an LLM step (§Fase 96)"
-summary: "The resource-lifetime law behind `AXON_DB_POOLER_MODE` (§96): a pooled Postgres connection is a scarce, coherent resource, and a flow must not keep one checked out across a COGNITION (LLM) step it isn't using. The §37.x.j connection pin — one connection held per postgresql axonstore for the WHOLE flow so consecutive ops share a physical backend — is REQUIRED under a TRANSACTION-mode pooler (pgBouncer transaction / Supavisor `:6543`), where successive ops land on different backends and lose the unnamed-prepared-statement / session state. But under a SESSION pooler (Supabase session mode `:5432`) or a DIRECT connection, every pool connection is already a coherent stable session, so the pin is redundant — and harmful: it holds a scarce connection idle across the flow's slow LLM I/O, starving the pool under load. `AXON_DB_POOLER_MODE` (`transaction` default / `session` / `direct`) makes pinning pooler-aware: under session/direct, store ops acquire per-op and RELEASE the connection between them, including across cognition. This is dispatch_vs_cognition applied to connection lifetime — the connection belongs to the store op, never to the LLM call between two store ops."
+title: "Connections release across cognition — a pooled DB connection is never held idle across an LLM step (v2.51.0)"
+summary: "The resource-lifetime law behind `AXON_DB_POOLER_MODE` (v2.51.0): a pooled Postgres connection is a scarce, coherent resource, and a flow must not keep one checked out across a COGNITION (LLM) step it isn't using. The v1.32.0 connection pin — one connection held per postgresql axonstore for the WHOLE flow so consecutive ops share a physical backend — is REQUIRED under a TRANSACTION-mode pooler (pgBouncer transaction / Supavisor `:6543`), where successive ops land on different backends and lose the unnamed-prepared-statement / session state. But under a SESSION pooler (Supabase session mode `:5432`) or a DIRECT connection, every pool connection is already a coherent stable session, so the pin is redundant — and harmful: it holds a scarce connection idle across the flow's slow LLM I/O, starving the pool under load. `AXON_DB_POOLER_MODE` (`transaction` default / `session` / `direct`) makes pinning pooler-aware: under session/direct, store ops acquire per-op and RELEASE the connection between them, including across cognition. This is dispatch_vs_cognition applied to connection lifetime — the connection belongs to the store op, never to the LLM call between two store ops."
 ---
 
 # Connections release across cognition
 
 The canonical failure: a daemon (or a request flow) reads from a store,
 runs a slow LLM step, then writes back. If it holds one pooled Postgres
-connection for the whole flow — the §37.x.j pin — that connection sits
+connection for the whole flow — the v1.32.0 pin — that connection sits
 **checked out and idle** for the entire LLM call. Multiply by the flow's
 concurrency and the pool (say 20 connections behind a bounded session
 pooler) is exhausted by connections doing nothing but waiting on an LLM.
@@ -23,7 +23,7 @@ A cheap metadata read elsewhere (a `rotate` sweep's `list_class`) then
 
 ## Why the pin exists — and when it must not
 
-The §37.x.j **connection pin** holds one connection per `postgresql`
+The v1.32.0 **connection pin** holds one connection per `postgresql`
 axonstore for the flow's whole life, so every store op routes through
 the same physical backend. That is REQUIRED under a **transaction-mode
 pooler** (pgBouncer `pool_mode=transaction`, Supabase Supavisor `:6543`,
@@ -52,7 +52,7 @@ transaction pooler's cross-checkout session-state loss needs it.
 
 ## Relation to the other laws
 
-- `dispatch_vs_cognition` (§59) applied to a RESOURCE: the runtime holds
+- `dispatch_vs_cognition` (v2.9.0) applied to a RESOURCE: the runtime holds
   the connection for the dispatch (the store op); cognition (the LLM
   step) holds nothing. The pin, under a coherent pooler, would blur that
   line — this law restores it.

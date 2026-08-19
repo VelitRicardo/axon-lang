@@ -1,10 +1,10 @@
-//! AXON Runtime — Cryptographic Provenance (§ESK Fase 6.2)
+//! AXON Runtime — Cryptographic Provenance (v1.2.0)
 //!
 //! Direct port of `axon/runtime/esk/provenance.py`.
 //!
 //! Signed ΛD envelopes + Merkle-hash audit chain. HMAC-SHA256 is the
 //! always-available baseline; the hybrid Ed25519 ‖ ML-DSA-65 signer landed
-//! in §Fase 124.b as `esk::hybrid_signer::HybridSigner` — plain text, not an
+//! in v4.0.0 as `esk::hybrid_signer::HybridSigner` — plain text, not an
 //! intra-doc link, because that module is gated on `csys-native` and a link to
 //! it breaks rustdoc under the default features. Canonical
 //! serialization guarantees the Python golden and Rust output produce

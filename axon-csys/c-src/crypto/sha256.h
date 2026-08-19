@@ -1,5 +1,5 @@
 /*
- * §Fase 25.h — SHA-256 (FIPS 180-4 §6.2).
+ * v1.19.0 — SHA-256 (FIPS 180-4 section 6.2).
  *
  * Pure-C implementation of the SHA-256 secure hash algorithm,
  * algorithmically compliant with FIPS 180-4. The implementation is
@@ -16,10 +16,10 @@
  *     for the wire-format primitive that does NOT touch system time).
  *
  * Mathematical pillar (preserved verbatim from FIPS 180-4):
- *   - 8 hash words h0..h7 initialised per §5.3.3
- *   - 64 round constants K[0..63] per §4.2.2
- *   - Per 64-byte message block: 64-round compression per §6.2.2
- *   - Padding: §5.1.1 (append 0x80 then 0x00..0x00 then 64-bit BE
+ * - 8 hash words h0..h7 initialised per section 5.3.3
+ * - 64 round constants K[0..63] per section 4.2.2
+ * - Per 64-byte message block: 64-round compression per section 6.2.2
+ * - Padding: section 5.1.1 (append 0x80 then 0x00..0x00 then 64-bit BE
  *     length-in-bits)
  *
  * "FIPS-friendly" means algorithmically compliant + drift-gated
@@ -65,7 +65,7 @@ typedef struct {
     uint8_t  buf_len;
 } AxonCsysSha256Ctx;
 
-/* Initialise to FIPS 180-4 §5.3.3 starting hash values. */
+/* Initialise to FIPS 180-4 section 5.3.3 starting hash values. */
 void axon_csys_sha256_init(AxonCsysSha256Ctx* ctx);
 
 /* Feed `len` bytes into the running hash. May be called any number

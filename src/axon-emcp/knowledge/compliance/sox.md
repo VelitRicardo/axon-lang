@@ -1,15 +1,15 @@
 ---
 name: sox
 title: SOX — Sarbanes-Oxley Act (US Public Company Accounting Reform)
-summary: AXON annotations covering SOX §302 + §404 + §409 — what the compiler proves about financial-data integrity, what the runtime proves, what management still has to attest.
+summary: AXON annotations covering SOX section 302 + section 404 + section 409 — what the compiler proves about financial-data integrity, what the runtime proves, what management still has to attest.
 ---
 
 # SOX — Sarbanes-Oxley Act
 
 **Scope:** financial reporting controls of US publicly-traded
-companies. Centres on §302 (officer certifications), §404
-(internal-control attestation), §409 (material-change disclosure),
-§802 (records retention), §906 (criminal penalties for fraudulent
+companies. Centres on section 302 (officer certifications), section 404
+(internal-control attestation), section 409 (material-change disclosure),
+section 802 (records retention), section 906 (criminal penalties for fraudulent
 certification).
 
 The annotation is `compliance: [SOX]` on `type`, `axonstore`,
@@ -33,7 +33,7 @@ axonstore GeneralLedger
     backend: postgresql
     isolation: serializable
     encryption: at_rest
-    retention: 7y           # §802 — 7-year retention for accounting records
+    retention: 7y # section 802 — 7-year retention for accounting records
     on_breach: raise
 
 axonendpoint PostJournalEntry {
@@ -48,35 +48,35 @@ axonendpoint PostJournalEntry {
 
 | SOX section | AXON enforcement |
 |---|---|
-| §302 — management certification | Out of scope (process). |
-| §404(a) — internal control structure | A SOX-tagged `axonendpoint` whose `method:` is POST/PUT/DELETE requires a bound `mandate:` (the typed approval primitive) referencing an approval authority. |
-| §404(b) — segregation of duties | A `flow` whose body posts a SOX-tagged ledger entry requires the `mandate:` approver to differ from the flow's invoking persona (statically checked: the approver identifier must not be the same as the `as:` persona). |
-| §409 — material change disclosure | Out of scope (process). |
-| §802 — records retention | A SOX-tagged `axonstore` requires `retention:` ≥ 7y (`retention: 7y`, `10y`, `permanent`). The type checker rejects shorter retention. |
-| §906 — criminal penalty for false certification | Out of scope (process). |
+| section 302 — management certification | Out of scope (process). |
+| section 404(a) — internal control structure | A SOX-tagged `axonendpoint` whose `method:` is POST/PUT/DELETE requires a bound `mandate:` (the typed approval primitive) referencing an approval authority. |
+| section 404(b) — segregation of duties | A `flow` whose body posts a SOX-tagged ledger entry requires the `mandate:` approver to differ from the flow's invoking persona (statically checked: the approver identifier must not be the same as the `as:` persona). |
+| section 409 — material change disclosure | Out of scope (process). |
+| section 802 — records retention | A SOX-tagged `axonstore` requires `retention:` ≥ 7y (`retention: 7y`, `10y`, `permanent`). The type checker rejects shorter retention. |
+| section 906 — criminal penalty for false certification | Out of scope (process). |
 
 ## What the runtime enforces
 
 | SOX section | AXON runtime enforcement |
 |---|---|
-| §404(a) — control evidence | Every mutation to a SOX-tagged store emits an audit row with `(actor, role, action, target, before_hash, after_hash, approver, timestamp)`. |
-| §404(a) — control effectiveness | The audit chain is hash-linked + signed; any post-hoc modification breaks the chain head — the §27.k FIPS-friendly hash makes tampering detectable. |
-| §802 — records retention | The runtime refuses `purge` on a SOX-tagged store before the declared retention has elapsed; even authorised purges emit a structured `retention_break:` event for review. |
-| §404(b) — SoD enforcement | A `mandate:` whose approver matches the requesting persona at runtime is rejected with `sod_violation:`; this catches the case where static identifier equality wasn't enough (e.g. role-bound principals). |
+| section 404(a) — control evidence | Every mutation to a SOX-tagged store emits an audit row with `(actor, role, action, target, before_hash, after_hash, approver, timestamp)`. |
+| section 404(a) — control effectiveness | The audit chain is hash-linked + signed; any post-hoc modification breaks the chain head — the v1.19.1 FIPS-friendly hash makes tampering detectable. |
+| section 802 — records retention | The runtime refuses `purge` on a SOX-tagged store before the declared retention has elapsed; even authorised purges emit a structured `retention_break:` event for review. |
+| section 404(b) — SoD enforcement | A `mandate:` whose approver matches the requesting persona at runtime is rejected with `sod_violation:`; this catches the case where static identifier equality wasn't enough (e.g. role-bound principals). |
 
 ## What you still attest manually
 
-- **Officer certifications** (§302, §906) — quarterly + annual.
+- **Officer certifications** (section 302, section 906) — quarterly + annual.
 - **Material weakness** assessment — auditor judgment.
 - **Walkthroughs** of significant controls.
 - **PCAOB / external audit** opinion.
-- **Whistleblower channels** (§301) — operational.
+- **Whistleblower channels** (section 301) — operational.
 - **Change-management** sign-offs around code that touches a
   SOX-tagged store.
 
 ## Segregation of duties — the AXON model
 
-§404(b) demands that the person initiating a financial transaction
+section 404(b) demands that the person initiating a financial transaction
 cannot be the same person who approves it. AXON's `mandate:` field
 on a SOX-tagged endpoint encodes this:
 
@@ -102,7 +102,7 @@ posting if they match — emitting an audit row tagged
 
 ## Common patterns
 
-### Pattern 1 — Audit-trail query (§404 evidence pack)
+### Pattern 1 — Audit-trail query (section 404 evidence pack)
 
 ```axon
 flow QueryAuditForSOX(period: AccountingPeriod) -> List<AuditRow> {
@@ -115,7 +115,7 @@ flow QueryAuditForSOX(period: AccountingPeriod) -> List<AuditRow> {
 }
 ```
 
-The result feeds the §404 management attestation evidence pack.
+The result feeds the section 404 management attestation evidence pack.
 
 ### Pattern 2 — Retention-aware purge
 
@@ -129,7 +129,7 @@ flow CleanupOldEntries(cutoff: Date) {
     for row in Inventory.output {
         step CheckRetention {
             given: row
-            ask: "Has the §802 7-year retention elapsed for this row?"
+            ask: "Has the section 802 7-year retention elapsed for this row?"
             output: Bool
         }
         if CheckRetention.output {

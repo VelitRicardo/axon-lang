@@ -140,7 +140,7 @@ impl CognitiveState {
         tenant_id: impl Into<String>,
         flow_id: impl Into<String>,
     ) -> Self {
-        // §Fase 12.c — JSON serialisation of `DateTime<Utc>` via
+        // v1.4.2 — JSON serialisation of `DateTime<Utc>` via
         // chrono's default Serialize impl produces RFC 3339 with
         // millisecond precision, so any sub-millisecond fraction in
         // `Utc::now()` is silently dropped on the way to disk and the

@@ -1,4 +1,4 @@
-//! §Fase 51 — Proof-Carrying Code (PCC).
+//! v2.4.0 — Proof-Carrying Code (PCC).
 //!
 //! From **attestation** to **machine-checkable proof**. The
 //! [`crate::esk::attestation`] surface (SBOM, in-toto/SLSA provenance,
@@ -8,13 +8,13 @@
 //! it (Necula 1997: ship code + proof; the consumer runs a small,
 //! trusted, producer-independent checker).
 //!
-//! §Fase 51.a ships the kernel + the first property class
+//! v2.4.0 ships the kernel + the first property class
 //! ([`PropertyClass::ComplianceCoverage`]): every regulatory class an
 //! apx / axonendpoint declares is known + backed by a resolvable
-//! shield. §51.b-e generalize to effect-row soundness, capability
+//! shield. v2.4.0-e generalize to effect-row soundness, capability
 //! isolation, resource bounds, and shield-halt guarantees — the
 //! proof-term language + checker dispatch are designed to extend
-//! (D51.4 — "universal" is the architecture, shipped one class at a
+//! (the design decision — "universal" is the architecture, shipped one class at a
 //! time).
 //!
 //! ## The loop
@@ -50,34 +50,34 @@ pub use generate::{
     derive_tool_call_soundness_witness, generate_all_proofs, generate_call_soundness_certificate,
     generate_capability_containment_proofs, generate_capability_isolation_proofs,
     generate_channel_egress_soundness_proofs, generate_compliance_coverage_proofs,
-    // §Fase 89.c — the every_boundary_is_guarded coverage obligation.
+    // v2.44.0 — the every_boundary_is_guarded coverage obligation.
     derive_authorization_coverage_witness, generate_authorization_coverage_proofs,
-    // §Fase 90.b — the every_requirement_is_grantable obligation (the dual).
+    // v2.45.0 — the every_requirement_is_grantable obligation (the dual).
     derive_capability_grantability_witness, generate_capability_grantability_proofs,
     generate_effect_row_soundness_proofs,
     generate_interruptible_session_soundness_proofs,
     generate_parked_residual_soundness_proofs,
     generate_resource_bounds_proofs, generate_shield_halt_guarantee_proofs,
     generate_tool_call_soundness_proofs,
-    // §Fase 80 — the outbound-vendor projection obligation.
+    // v2.37.0 — the outbound-vendor projection obligation.
     derive_upstream_projection_witness, generate_upstream_projection_soundness_proofs,
-    // §Fase 83.c — the whole-program CORS-reference/consistency obligation.
+    // v2.38.0 — the whole-program CORS-reference/consistency obligation.
     derive_cors_policy_consistency_witness, generate_cors_policy_consistency_proofs,
-    // §Fase 91.c — the time_is_an_explicit_input cognitive obligation.
+    // v2.46.0 — the time_is_an_explicit_input cognitive obligation.
     derive_temporal_context_soundness_witness, generate_temporal_context_soundness_proofs,
-    // §Fase 92.d — the authority_only_attenuates static obligation.
+    // v2.46.0 — the authority_only_attenuates static obligation.
     derive_credential_attenuation_witness, generate_credential_attenuation_proofs,
-    // §Fase 94.e — the rotation_without_revelation static obligation.
+    // v2.48.0 — the rotation_without_revelation static obligation.
     derive_secret_custody_witness, generate_secret_custody_proofs,
-    // §Fase 98.d — the web-acquisition provenance obligation (born-Untrusted
+    // v2.52.0 — the web-acquisition provenance obligation (born-Untrusted
     // + the content-injection barrier).
     derive_scrape_provenance_soundness_witness, generate_scrape_provenance_soundness_proofs,
-    // §Fase 116.a — the authorization scope-coverage obligation (axon-T956 twin).
+    // v2.77.0 — the authorization scope-coverage obligation (axon-T956 twin).
     derive_scope_coverage_soundness_witness, generate_scope_coverage_soundness_proofs,
     derive_document_provenance_soundness_witness, generate_document_provenance_soundness_proofs,
-    // §Fase 105 — the CRM-delivery provenance obligation (T920 egress barrier).
+    // v2.60.0 — the CRM-delivery provenance obligation (T920 egress barrier).
     derive_delivery_provenance_soundness_witness, generate_delivery_provenance_soundness_proofs,
-    // §Fase 107 — the QUERY-safety obligation (T927; RFC 10008 §2 made a proof).
+    // v2.62.0 — the QUERY-safety obligation (T927; RFC 10008 section 2 made a proof).
     derive_dataspace_schema_soundness_witness, derive_gradient_soundness_witness,
     derive_query_safety_soundness_witness,
     generate_dataspace_schema_soundness_proofs, generate_gradient_soundness_proofs,
@@ -145,7 +145,7 @@ mod tests {
     }
 
     /// Shield providing the given regulatory classes (its `compliance:`
-    /// set — the §ESK Fase 6.1 covered-classes field).
+    /// set — the ESK covered-classes field).
     fn shield(name: &str, provides: &[&str]) -> IRShield {
         IRShield {
             node_type: "shield",
@@ -269,7 +269,7 @@ mod tests {
         }
     }
 
-    /// ADVERSARIAL (D51.2): a forged witness claiming `shield_present:
+    /// ADVERSARIAL: a forged witness claiming `shield_present:
     /// true` for an endpoint whose shield_ref is empty is REJECTED —
     /// the checker recomputes shield_present from the artifact and
     /// finds the witness lies.
@@ -290,7 +290,7 @@ mod tests {
         }
     }
 
-    /// ADVERSARIAL (D51.2): a forged witness hiding a phantom class
+    /// ADVERSARIAL: a forged witness hiding a phantom class
     /// (omitting it from `unknown_classes`) is REJECTED — the checker
     /// recomputes the unknown set.
     #[test]
@@ -312,7 +312,7 @@ mod tests {
         }
     }
 
-    /// ADVERSARIAL (D51.1): a proof minted for program A checked
+    /// ADVERSARIAL: a proof minted for program A checked
     /// against program B (different digest) is REJECTED.
     #[test]
     fn digest_mismatch_rejected() {
@@ -400,7 +400,7 @@ mod tests {
         assert_eq!(check_proof(&proofs[0], &ir), CheckOutcome::Verified);
     }
 
-    /// §51.a property-class slug is stable (wire contract).
+    /// v2.4.0 property-class slug is stable (wire contract).
     #[test]
     fn property_class_slug_stable() {
         assert_eq!(
@@ -447,7 +447,7 @@ mod tests {
         );
     }
 
-    // ── §Fase 51.b — EffectRowSoundness ──────────────────────────────
+    // ── v2.4.0 — EffectRowSoundness ──────────────────────────────
 
     /// Tool declaring the given effect-row entries.
     fn tool(name: &str, effects: &[&str]) -> IRToolSpec {
@@ -555,7 +555,7 @@ mod tests {
         }
     }
 
-    // ── §Fase 53.d — extension-declared provenance bases ─────────────
+    // ── v2.5.0 — extension-declared provenance bases ─────────────
 
     /// Build an `effects`-category extension with the given members
     /// (no metadata).
@@ -577,7 +577,7 @@ mod tests {
         }
     }
 
-    /// §53.d — a tool using an extension-declared provenance base
+    /// v2.5.0 — a tool using an extension-declared provenance base
     /// VERIFIES (the proof is self-contained: the verifier re-derives
     /// the provenance set from the artifact's own `extensions`).
     #[test]
@@ -591,7 +591,7 @@ mod tests {
         assert_eq!(check_proof(&proofs[0], &ir), CheckOutcome::Verified);
     }
 
-    /// §53.d — a custom base that NO extension declares still REFUTES
+    /// v2.5.0 — a custom base that NO extension declares still REFUTES
     /// (only the declared members are honored — the catalog is not
     /// silently opened).
     #[test]
@@ -611,7 +611,7 @@ mod tests {
         }
     }
 
-    /// §53.d (invariant #2, PCC independence) — the checker's provenance
+    /// v2.5.0 (invariant #2, PCC independence) — the checker's provenance
     /// set EXCLUDES a member whose base is a canonical enforceable base.
     /// PCC enforces this itself; it does not trust that the type-checker
     /// ran. (`io:bypass` is excluded; `risk:elevated` is included.)
@@ -632,11 +632,11 @@ mod tests {
         );
     }
 
-    // ── §Fase 53.c.2 — built-in `epistemic:<level>` provenance axis ──
+    // ── v2.5.0 — built-in `epistemic:<level>` provenance axis ──
 
-    /// §53.c.2 — a tool declaring the built-in `epistemic:<level>` axis
+    /// v2.5.0 — a tool declaring the built-in `epistemic:<level>` axis
     /// VERIFIES (no `extension` needed). This is the Kivi brief #15 case:
-    /// pre-§53.c.2 the IR re-injected `epistemic:believe` into the effect
+    /// pre-v2.5.0 the IR re-injected `epistemic:believe` into the effect
     /// row and PCC refuted it as an unknown base, forcing the strip.
     #[test]
     fn builtin_epistemic_level_verifies() {
@@ -654,7 +654,7 @@ mod tests {
         }
     }
 
-    /// §53.c.2 — an `epistemic:<bogus>` level (not in the closed catalog)
+    /// v2.5.0 — an `epistemic:<bogus>` level (not in the closed catalog)
     /// still REFUTES (the axis is closed, not a wildcard prefix).
     #[test]
     fn unknown_epistemic_level_refuted() {
@@ -694,7 +694,7 @@ mod tests {
         assert_eq!(check_proof(&proofs[0], &ir), CheckOutcome::Verified);
     }
 
-    /// ADVERSARIAL (D51.2): a forged witness hiding a phantom base
+    /// ADVERSARIAL: a forged witness hiding a phantom base
     /// (clearing `unknown_bases`) is rejected — the checker recomputes.
     #[test]
     fn forged_hidden_unknown_base_rejected() {
@@ -760,7 +760,7 @@ mod tests {
         assert_eq!(check_proof(&proofs[0], &ir_b), CheckOutcome::DigestMismatch);
     }
 
-    // ── §Fase 51.c — CapabilityIsolation ─────────────────────────────
+    // ── v2.4.0 — CapabilityIsolation ─────────────────────────────
 
     /// `axonstore` with the given Pillar IV capability gate slug.
     fn store(name: &str, capability: &str) -> crate::ir_nodes::IRAxonStore {
@@ -781,7 +781,7 @@ mod tests {
         }
     }
 
-    /// Happy path: a well-formed §32.g gate slug verifies.
+    /// Happy path: a well-formed v1.23.0 gate slug verifies.
     #[test]
     fn well_formed_gate_verifies() {
         let mut ir = empty_ir();
@@ -799,7 +799,7 @@ mod tests {
         assert!(generate_capability_isolation_proofs(&ir, VERSION).is_empty());
     }
 
-    /// A malformed gate slug (uppercase violates the §32.g grammar) →
+    /// A malformed gate slug (uppercase violates the v1.23.0 grammar) →
     /// Refuted.
     #[test]
     fn malformed_gate_refuted() {
@@ -827,7 +827,7 @@ mod tests {
         assert_eq!(check_proof(&proofs[0], &ir), CheckOutcome::Verified);
     }
 
-    /// ADVERSARIAL (D51.2): a forged witness claiming `malformed:
+    /// ADVERSARIAL: a forged witness claiming `malformed:
     /// false` for a broken gate is rejected — the checker re-runs the
     /// grammar validator and finds the witness lies.
     #[test]
@@ -872,7 +872,7 @@ mod tests {
         assert_eq!(check_proof(&restored, &ir), CheckOutcome::Verified);
     }
 
-    // ── §Fase 51.d — ResourceBounds ──────────────────────────────────
+    // ── v2.4.0 — ResourceBounds ──────────────────────────────────
 
     /// An endpoint with the given `retries` (reuses the base builder).
     fn endpoint_retries(name: &str, retries: i64) -> IRAxonEndpoint {
@@ -950,7 +950,7 @@ mod tests {
         assert_eq!(check_proof(&proofs[0], &ir), CheckOutcome::Verified);
     }
 
-    /// A socket declaring credit(0) → Refuted (deadlock per §41.b).
+    /// A socket declaring credit(0) → Refuted (deadlock per v2.3.0).
     #[test]
     fn socket_zero_credit_refuted() {
         let mut ir = empty_ir();
@@ -974,7 +974,7 @@ mod tests {
         assert!(generate_resource_bounds_proofs(&ir, VERSION).is_empty());
     }
 
-    /// ADVERSARIAL (D51.2): a forged retry witness claiming
+    /// ADVERSARIAL: a forged retry witness claiming
     /// `in_bounds: true` for a negative retry count is rejected — the
     /// checker recomputes the bound.
     #[test]
@@ -1047,7 +1047,7 @@ mod tests {
         assert_eq!(check_proof(&restored, &ir), CheckOutcome::Verified);
     }
 
-    // ── §Fase 51.e — ShieldHaltGuarantee ─────────────────────────────
+    // ── v2.4.0 — ShieldHaltGuarantee ─────────────────────────────
 
     /// Shield with the given `on_breach` policy + `scan` categories.
     fn shield_breach(name: &str, on_breach: &str, scan: &[&str]) -> IRShield {
@@ -1078,7 +1078,7 @@ mod tests {
         assert_eq!(check_proof(&proofs[0], &ir), CheckOutcome::Verified);
     }
 
-    /// §Fase 77.a (D77.6) — a sign-only egress shield (`sign: hmac_sha256`,
+    /// v2.34.0 — a sign-only egress shield (`sign: hmac_sha256`,
     /// no `scan:`) is a NON-vacuous halt: the signature is its enforcement
     /// (a breach = a delivery it refuses to sign). The brief-#51 Q3.d case.
     #[test]
@@ -1092,8 +1092,8 @@ mod tests {
         assert_eq!(check_proof(&proofs[0], &ir), CheckOutcome::Verified);
     }
 
-    /// §Fase 77.a — with NEITHER `scan:` nor `sign:`, a halt stays vacuous
-    /// and the proof still refutes (the pre-§77 guarantee is unchanged).
+    /// v2.34.0 — with NEITHER `scan:` nor `sign:`, a halt stays vacuous
+    /// and the proof still refutes (the pre-v2.34.0 guarantee is unchanged).
     #[test]
     fn halt_with_neither_scan_nor_sign_still_refutes() {
         let mut ir = empty_ir();
@@ -1148,7 +1148,7 @@ mod tests {
         }
     }
 
-    /// ADVERSARIAL (D51.2): a forged witness claiming `vacuous_halt:
+    /// ADVERSARIAL: a forged witness claiming `vacuous_halt:
     /// false` for a halt shield that scans nothing is rejected — the
     /// checker recomputes from the artifact.
     #[test]
@@ -1197,7 +1197,7 @@ mod tests {
         assert_eq!(check_proof(&restored, &ir), CheckOutcome::Verified);
     }
 
-    // ── §Fase 51.x — CapabilityContainment ───────────────────────────
+    // ── v2.4.0 — CapabilityContainment ───────────────────────────
 
     /// An endpoint with the given execute_flow + declared requires.
     fn endpoint_requires(name: &str, execute_flow: &str, requires: &[&str]) -> IRAxonEndpoint {
@@ -1363,7 +1363,7 @@ mod tests {
         assert!(generate_capability_containment_proofs(&ir, VERSION).is_empty());
     }
 
-    /// ADVERSARIAL (D51.2): a forged witness hiding an uncovered gate
+    /// ADVERSARIAL: a forged witness hiding an uncovered gate
     /// (clearing `uncovered_gates`) is rejected — the checker
     /// recomputes from the artifact.
     #[test]
@@ -1420,7 +1420,7 @@ mod tests {
         assert_eq!(check_proof(&restored, &ir), CheckOutcome::Verified);
     }
 
-    // ── §Fase 52.a — check_bundle deployability aggregate ────────────
+    // ── v2.4.0 — check_bundle deployability aggregate ────────────
 
     /// Build the full proof bundle for an IR (mirrors the CLI/handler
     /// `generate_all_proofs` → `ProofBundle` path).
@@ -1460,7 +1460,7 @@ mod tests {
     /// A leaky program (a flow reaches a gated store the endpoint does
     /// NOT declare) → the containment proof refutes → `all_verified()`
     /// false, and the refutation names the leaked capability. This is
-    /// the deploy-gate signal §52.c rejects on.
+    /// the deploy-gate signal v2.4.0 rejects on.
     #[test]
     fn bundle_report_flags_capability_leak() {
         let mut ir = empty_ir();
@@ -1524,14 +1524,14 @@ mod tests {
             .all(|r| r.outcome == CheckOutcome::DigestMismatch));
     }
 
-    // ── §Fase 51.x.3 — no-silent-gap reachability invariant ─────────
+    // ── v2.4.0 — no-silent-gap reachability invariant ─────────
 
     /// The reachability walk's match is exhaustive: it must NOT contain
     /// a `_` wildcard arm. This is the maintainable proxy for the
     /// compiler-enforced invariant (a wildcard would let a future
     /// `IRFlowNode` variant carrying a store ref / nested body be
     /// silently missed). A refactor that reintroduces a wildcard fails
-    /// HERE — the §51.x.3 no-silent-gap gate.
+    /// HERE — the v2.4.0 no-silent-gap gate.
     #[test]
     fn reachability_walk_has_no_wildcard_arm() {
         const GEN_SRC: &str = include_str!("generate.rs");
@@ -1557,7 +1557,7 @@ mod tests {
     /// The walk documents where transitive cross-flow reachability must
     /// be reopened if a flow-invocation node ever enters `IRFlowNode`
     /// (today `IRRun` is top-level only, so the case is vacuous — see
-    /// §51.x.3 recon). Pin the sentinel so the note can't be silently
+    /// v2.4.0 recon). Pin the sentinel so the note can't be silently
     /// dropped.
     #[test]
     fn reachability_walk_documents_transitive_reopen() {
@@ -1606,7 +1606,7 @@ mod tests {
         assert!(report.refutations().is_empty());
     }
 
-    // ── §Fase 58.i — ToolCallSoundness ───────────────────────────────
+    // ── v2.8.0 — ToolCallSoundness ───────────────────────────────
 
     /// A tool declaring the given `(name, type, optional)` input schema.
     fn tool_with_params(name: &str, params: &[(&str, &str, bool)]) -> IRToolSpec {
@@ -1886,7 +1886,7 @@ mod tests {
         }
     }
 
-    /// ADVERSARIAL (D51.2): a forged witness hiding an unknown argument
+    /// ADVERSARIAL: a forged witness hiding an unknown argument
     /// (clearing `unknown_args`) is rejected — the checker recomputes.
     #[test]
     fn forged_hidden_unknown_arg_rejected() {
@@ -1975,7 +1975,7 @@ mod tests {
     }
 
     /// `generate_all_proofs` includes the tool-call-soundness class, and a
-    /// defective call makes the bundle non-deployable (the §52 deploy-gate
+    /// defective call makes the bundle non-deployable (the v2.4.0 deploy-gate
     /// signal).
     #[test]
     fn all_proofs_includes_tool_call_soundness_and_flags_defect() {
@@ -2001,7 +2001,7 @@ mod tests {
             .any(|r| r.property == PropertyClass::ToolCallSoundness));
     }
 
-    // ── §Fase 72.f — EffectBudgeted ──────────────────────────────────────
+    // ── v2.28.0 — EffectBudgeted ──────────────────────────────────────
 
     /// Parse → IR (no type-check, so a deliberately-defective budget survives to
     /// the checker, which is the independent verifier under test).
@@ -2033,7 +2033,7 @@ mod tests {
         assert_eq!(check_proof(&proofs[0], &ir), CheckOutcome::Verified);
     }
 
-    // ── §87.g — SavantSoundness ──────────────────────────────────────────────
+    // ── v2.42.0 — SavantSoundness ──────────────────────────────────────────────
 
     const VALID_SAVANT: &str = "memory ResearchStore { store: persistent }\n\
          savant DeepAnalyst {\n\
@@ -2101,7 +2101,7 @@ mod tests {
         ));
     }
 
-    // ── §88.e — WardenSoundness ──────────────────────────────────────────────
+    // ── v2.43.0 — WardenSoundness ──────────────────────────────────────────────
 
     const VALID_WARDEN: &str = "scope InternalAudit {\n\
            targets: [ \"svc://payments\" ]\n\
@@ -2204,7 +2204,7 @@ mod tests {
         }
     }
 
-    // ── §Fase 73.g — JsonShapeSoundness ──────────────────────────────────
+    // ── v2.26.0 — JsonShapeSoundness ──────────────────────────────────
 
     const LENS_STORE: &str = "type UserEvent { name: String age: Int }\n\
          axonstore Events {\n\
@@ -2277,7 +2277,7 @@ mod tests {
         }
     }
 
-    // ── §Fase 74.g — ChannelDeliverySoundness ────────────────────────────
+    // ── v2.31.0 — ChannelDeliverySoundness ────────────────────────────
 
     const PRODUCED_CHANNEL: &str = "type Hib { tenant_id: String }\n\
          channel HibCh { message: Hib  qos: at_least_once  persistence: persistent_axonstore }\n\
@@ -2346,7 +2346,7 @@ mod tests {
         }
     }
 
-    // ── §Fase 76.e — AggregateSoundness ──────────────────────────────────
+    // ── v2.33.0 — AggregateSoundness ──────────────────────────────────
 
     const AGGREGATE_RETRIEVE: &str = "axonstore Tenants {\n\
            backend: postgresql\n\
@@ -2396,7 +2396,7 @@ mod tests {
     fn aggregate_soundness_refutes_an_unsound_clause() {
         // group_by without an aggregate — a T845-class violation the
         // runtime parser records; the proof generates but REFUTES, so the
-        // §52 deploy gate rejects the bundle fail-closed.
+        // v2.4.0 deploy gate rejects the bundle fail-closed.
         let ir = ir_from_source(
             "axonstore Tenants {\n\
                backend: postgresql\n\
@@ -2432,7 +2432,7 @@ mod tests {
         }
     }
 
-    // ── §Fase 77.b — ChannelEgressSoundness ──────────────────────────────
+    // ── v2.34.0 — ChannelEgressSoundness ──────────────────────────────
 
     /// The brief-#51 target program: a durable channel egress-published
     /// under a sign-only shield.
@@ -2448,7 +2448,7 @@ mod tests {
     #[test]
     fn channel_egress_round_trips_and_verifies() {
         let ir = ir_from_source(EGRESS_CHANNEL);
-        // The lowering stamped the handle (§77.b Phase 1.5)…
+        // The lowering stamped the handle (v2.34.0 Phase 1.5)…
         assert_eq!(ir.channels[0].egress_sign, "hmac_sha256");
         // …and the proof re-derives + verifies it.
         let proofs = super::generate::generate_channel_egress_soundness_proofs(&ir, "test");
@@ -2468,7 +2468,7 @@ mod tests {
     #[test]
     fn non_signing_publish_carries_no_egress_proof() {
         // A publish under a SCANNING shield is pure π-calc capability
-        // extrusion — no egress contract, no proof (pre-§77 semantics).
+        // extrusion — no egress contract, no proof (pre-v2.34.0 semantics).
         let ir = ir_from_source(
             "type T { id: String }\n\
              shield Gate { scan: [pii_leak]  on_breach: halt }\n\
@@ -2484,7 +2484,7 @@ mod tests {
     #[test]
     fn channel_egress_refutes_an_ephemeral_channel() {
         // Signed egress on a non-durable channel — the promise dies with
-        // the process (D77.6). The compile-time mirror is axon-T848; the
+        // the process. The compile-time mirror is axon-T848; the
         // proof REFUTES independently so a handcrafted IR cannot sneak by.
         let ir = ir_from_source(
             "type T { id: String }\n\
@@ -2540,7 +2540,7 @@ mod tests {
         }
     }
 
-    // ── §Fase 83.c — CorsPolicyConsistency ───────────────────────────────
+    // ── v2.38.0 — CorsPolicyConsistency ───────────────────────────────
 
     const CORS_PROGRAM: &str = "flow Chat() -> Unit { step S { ask: \"hi\" } }\n\
          cors PublicWebCors {\n\
@@ -2641,7 +2641,7 @@ mod tests {
         }
     }
 
-    // ── §Fase 91.c — TemporalContextSoundness ────────────────────────────
+    // ── v2.46.0 — TemporalContextSoundness ────────────────────────────
 
     const TEMPORAL_PROGRAM: &str = "context Scheduling { now: \"UTC\" }\n\
          flow Plan() -> Unit {\n\
@@ -2744,7 +2744,7 @@ mod tests {
         );
     }
 
-    // ── §Fase 92.d — CredentialAttenuation ───────────────────────────────
+    // ── v2.46.0 — CredentialAttenuation ───────────────────────────────
 
     const CREDENTIAL_PROGRAM: &str = "credential WidgetSession {\n\
              ttl: 15m\n\
@@ -2845,7 +2845,7 @@ mod tests {
         );
     }
 
-    // ── §Fase 94.e — SecretCustodySoundness ──────────────────────────────
+    // ── v2.48.0 — SecretCustodySoundness ──────────────────────────────
 
     const CUSTODY_PROGRAM: &str = "axonstore CrmTokens {\n\
              backend: secrets\n\
@@ -2955,7 +2955,7 @@ mod tests {
         );
     }
 
-    // ── §Fase 84.c — TechnicianCommandSafety ─────────────────────────────
+    // ── v2.39.0 — TechnicianCommandSafety ─────────────────────────────
 
     const TECH_PROGRAM: &str = concat!(
         "type Command { line: String }\n",
@@ -3058,7 +3058,7 @@ mod tests {
         }
     }
 
-    // ── §Fase 85.c — CacheSoundness ──────────────────────────────────────
+    // ── v2.40.0 — CacheSoundness ──────────────────────────────────────
 
     const CACHE_PROGRAM: &str = concat!(
         "flow Chat() -> Unit { step S { ask: \"hi\" } }\n",
@@ -3134,7 +3134,7 @@ mod tests {
         }
     }
 
-    // ── §Fase 98.d — ScrapeProvenanceSoundness ───────────────────────────
+    // ── v2.52.0 — ScrapeProvenanceSoundness ───────────────────────────
 
     const SCRAPE_PROGRAM: &str = concat!(
         "type RawPage { status: Int, body: String }\n",
@@ -3205,7 +3205,7 @@ mod tests {
         }
     }
 
-    // ── §Fase 99.d — DocumentProvenanceSoundness ─────────────────────────
+    // ── v2.53.0 — DocumentProvenanceSoundness ─────────────────────────
 
     const DOC_PROGRAM: &str = concat!(
         "document quarterly_report {\n",
@@ -3265,7 +3265,7 @@ mod tests {
         }
     }
 
-    // ── §Fase 105 — DeliveryProvenanceSoundness ──────────────────────────
+    // ── v2.60.0 — DeliveryProvenanceSoundness ──────────────────────────
 
     const DELIVER_PROGRAM: &str = concat!(
         "deliver push_lead {\n",
@@ -3318,7 +3318,7 @@ mod tests {
         }
     }
 
-    // ── §Fase 110.b — NotificationProvenanceSoundness ────────────────────
+    // ── v2.66.0 — NotificationProvenanceSoundness ────────────────────
 
     const NOTIFY_PROGRAM: &str = concat!(
         "notify LowSales {\n",
@@ -3373,7 +3373,7 @@ mod tests {
         }
     }
 
-    // ── §Fase 109.b — GradientSoundness (the proof-carrying derivative) ──
+    // ── v2.65.0 — GradientSoundness (the proof-carrying derivative) ──
 
     const GRAD_PROGRAM: &str = concat!(
         "flow Score(x: Float, y: Float) -> Text {\n",
@@ -3432,7 +3432,7 @@ mod tests {
         );
     }
 
-    // ── §Fase 108.d — DataspaceSchemaSoundness (T928/T930, made a proof) ──
+    // ── v2.63.0 — DataspaceSchemaSoundness (T928/T930, made a proof) ──
 
     const DATASPACE_PROGRAM: &str = concat!(
         "dataspace Sales {\n",
@@ -3497,7 +3497,7 @@ mod tests {
         );
     }
 
-    // ── §Fase 107 — QuerySafetySoundness (RFC 10008 §2, made a proof) ────
+    // ── v2.62.0 — QuerySafetySoundness (RFC 10008 section 2, made a proof) ────
 
     const QUERY_PROGRAM: &str = concat!(
         "axonstore mem { backend: in_memory }\n",
@@ -3562,7 +3562,7 @@ mod tests {
         }
     }
 
-    // ── §Fase 100.e — DocumentIngestionSoundness ─────────────────────────
+    // ── v2.54.0 — DocumentIngestionSoundness ─────────────────────────
 
     const INGEST_PROGRAM: &str = concat!(
         "type Doc { text: String }\n",
@@ -3606,9 +3606,9 @@ mod tests {
 
     #[test]
     fn no_inferred_producer_ships_in_this_fase() {
-        // D100.14 — the vacuum: the built-in stdlib catalog has NO tool that
+        // the design decision — the vacuum: the built-in stdlib catalog has NO tool that
         // declares `ingest:inferred`, so the Inferred ceiling (T1001) is
-        // vacuously satisfied until §101 adds a producer.
+        // vacuously satisfied until v2.54.0 adds a producer.
         let has_inferred = crate::stdlib::TOOLS.iter().any(|t| {
             // native tools carry no declared ingest class in the catalog; the
             // OSS `DocumentReader` produces Parsed only (asserted in ooxml_read).
@@ -3632,10 +3632,10 @@ mod tests {
         }
     }
 
-    // ── §Fase 101.b — InferredCeilingSoundness ───────────────────────────
+    // ── v2.54.0 — InferredCeilingSoundness ───────────────────────────
 
-    // An `ingest:inferred` PRODUCER (an OCR reader) — the state §100 forbade
-    // (D100.14) and §101 creates. It declares NO `epistemic:know` (ceiling holds)
+    // An `ingest:inferred` PRODUCER (an OCR reader) — the state v2.54.0 forbade
+    // and v2.54.0 creates. It declares NO `epistemic:know` (ceiling holds)
     // and its output is shielded before reasoning.
     const INFER_PROGRAM: &str = concat!(
         "type Doc { text: String }\n",
@@ -3669,7 +3669,7 @@ mod tests {
 
     #[test]
     fn parsed_only_program_carries_no_inferred_ceiling_proof() {
-        // The §100 vacuum: a program with only `ingest:parsed` tools owes NO
+        // The v2.54.0 vacuum: a program with only `ingest:parsed` tools owes NO
         // inferred-ceiling proof (no producer exists).
         let ir = ir_from_source(INGEST_PROGRAM);
         assert!(
@@ -3711,7 +3711,7 @@ mod tests {
         }
     }
 
-    // ── §Fase 86.c — ForgeSoundness ──────────────────────────────────────
+    // ── v2.41.0 — ForgeSoundness ──────────────────────────────────────
 
     const FORGE_PROGRAM: &str = concat!(
         "anchor GoldenRatio { require: aesthetic_harmony confidence_floor: 0.70 }\n",
@@ -3765,7 +3765,7 @@ mod tests {
         }
     }
 
-    // ── §Fase 80 — UpstreamProjectionSoundness ───────────────────────────
+    // ── v2.37.0 — UpstreamProjectionSoundness ───────────────────────────
 
     const STT_UPSTREAM: &str = "session SttDialogue {\n\
              axon:   [ send AudioChunk, receive Transcript, loop ]\n\
@@ -3850,7 +3850,7 @@ mod tests {
         }
     }
 
-    // ── §Fase 90.b — CapabilityGrantability (every_requirement_is_grantable) ──
+    // ── v2.45.0 — CapabilityGrantability (every_requirement_is_grantable) ──
 
     /// A representative RBAC catalog (colon) + the reserved dotted caps —
     /// the grantable authority manifest the enterprise supplies.

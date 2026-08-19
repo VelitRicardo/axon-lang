@@ -1,6 +1,6 @@
-//! §Fase 33.y.e D9 — Algebraic-effects ↔ wire bridge.
+//! v1.24.0 D9 — Algebraic-effects ↔ wire bridge.
 //!
-//! Integrates the Fase 23 [`crate::effects::EffectRuntime`] with the
+//! Integrates the v1.17.0 [`crate::effects::EffectRuntime`] with the
 //! 33.y dispatcher's wire surface: when an instruction block
 //! contains `perform Stream.Yield x` operations, the bridge:
 //!
@@ -20,13 +20,13 @@
 //!
 //! # Why static scan vs runtime hook
 //!
-//! Fase 23's `EffectRuntime` is a self-contained FSM with no
+//! v1.17.0's `EffectRuntime` is a self-contained FSM with no
 //! external observation hooks on handler-clause execution. A
 //! truly-live bridge (one that fires axon.token per dynamic Yield
 //! interleaved with execution) would require extending
 //! `EffectRuntime` with an `on_perform: Fn(...)` callback — that's
-//! deliberately deferred to Fase 33.y.e.2 to keep this cycle's
-//! footprint clean of Fase-23 modifications.
+//! deliberately deferred to v1.24.0 to keep this cycle's
+//! footprint clean of cycle-23 modifications.
 //!
 //! The static-scan bridge is **structurally complete** for the
 //! canonical adopter pattern of a flat `perform Stream.Yield x`
@@ -35,7 +35,7 @@
 //! The trace-collected count post-run is recorded as the
 //! authoritative `tokens_emitted` for the StepAuditRecord (D6).
 //!
-//! # `IRStreamBlock` payload reality — **fixed in §Fase 111.e**
+//! # `IRStreamBlock` payload reality — **fixed in v2.67.0**
 //!
 //! This section used to read: *"`IRStreamBlock` is **payload-free**
 //! (mirror of `ast::StreamBlock`). The handler emits the canonical
@@ -48,7 +48,7 @@
 //! and (pre-retraction) `transact`. One function, four advertised
 //! primitives, all no-ops *by construction* rather than by neglect.
 //!
-//! §111.e gives `stream` its body: `StreamBlock` (AST) and
+//! v2.67.0 gives `stream` its body: `StreamBlock` (AST) and
 //! `IRStreamBlock` (IR) carry `body`, the parser parses it as real
 //! typed flow steps, and [`run_stream`] **executes it**. The field is
 //! `skip_serializing_if = "Vec::is_empty"`, so an empty block still
@@ -56,7 +56,7 @@
 //! and a legacy IR still runs as the old no-op.
 //!
 //! The `perform Stream.Yield` bridge below ([`bridge_effect_stream_yield`])
-//! remains the Fase-23 algebraic-effects surface, reachable on its own
+//! remains the cycle-23 algebraic-effects surface, reachable on its own
 //! terms; it is orthogonal to the block's body.
 //!
 //! # D-letter anchors
@@ -84,7 +84,7 @@ use crate::ir_nodes::IRStreamBlock;
 //  run_stream — dispatcher arm
 // ────────────────────────────────────────────────────────────────────
 
-/// **§Fase 111.e — MADE REAL.**
+/// **v2.67.0 — MADE REAL.**
 ///
 /// # What this used to be
 ///
@@ -93,7 +93,7 @@ use crate::ir_nodes::IRStreamBlock;
 /// but that was a symptom, not the cause.
 ///
 /// The cause was one function. `stream`, `deliberate`, `consensus` and (before
-/// its §111.b retraction) `transact` all parsed through `parse_block_step`, whose
+/// its v2.67.0 retraction) `transact` all parsed through `parse_block_step`, whose
 /// **entire job is `skip_braced_block()`**. The block's contents were thrown away
 /// at PARSE time. These handlers were not no-ops through neglect — they were
 /// no-ops *by construction*: there was nothing in the AST for anyone to execute.
@@ -117,11 +117,11 @@ pub async fn run_stream(
         return Err(DispatchError::UpstreamCancelled);
     }
 
-    // §Fase 119.n — the handler arms parse at FLOW level too (they used to be a
+    // v2.83.0 — the handler arms parse at FLOW level too (they used to be a
     // hard error: `Unexpected token in flow body: 'on_chunk'`). At this position
     // there is no generation to source chunks from — a flow body is not a step —
     // so accepting the grammar and ignoring the arms would install a BRAND NEW
-    // silent drop of exactly the kind §119.n exists to remove. Refuse, and name
+    // silent drop of exactly the kind v2.83.0 exists to remove. Refuse, and name
     // the position that does work.
     if node.on_chunk.is_some() || node.on_complete.is_some() || node.on_error.is_some() {
         return Err(DispatchError::BackendError {
@@ -155,7 +155,7 @@ pub async fn run_stream(
         })
         .map_err(|_| DispatchError::ChannelClosed)?;
 
-    // §111.e — RUN THE BODY. Every step inside `stream { … }` dispatches
+    // v2.67.0 — RUN THE BODY. Every step inside `stream { … }` dispatches
     // normally; its fragments reach the caller through the same `ctx.tx` channel
     // as it produces them, so the block streams rather than buffering.
     //
@@ -208,10 +208,10 @@ pub async fn run_stream(
 }
 
 // ────────────────────────────────────────────────────────────────────
-//  bridge_effect_stream_yield — PUBLIC Fase 23 ↔ wire bridge
+// bridge_effect_stream_yield — PUBLIC v1.17.0 ↔ wire bridge
 // ────────────────────────────────────────────────────────────────────
 
-/// Bridge a Fase 23 algebraic-effects instruction block to the
+/// Bridge a v1.17.0 algebraic-effects instruction block to the
 /// dispatcher's SSE wire.
 ///
 /// # Phases
@@ -277,10 +277,10 @@ pub async fn bridge_effect_stream_yield(
         return Err(DispatchError::UpstreamCancelled);
     }
 
-    // §1 — Static Yield scan.
+    // section 1 — Static Yield scan.
     let yields = scan_stream_yields(instructions);
 
-    // §2/3 — Resolve + emit wire tokens.
+    // section 2/3 — Resolve + emit wire tokens.
     let mut accumulated = String::new();
     for (token_index, perf) in yields.iter().enumerate() {
         if ctx.cancel.is_cancelled() {
@@ -302,7 +302,7 @@ pub async fn bridge_effect_stream_yield(
             .map_err(|_| DispatchError::ChannelClosed)?;
     }
 
-    // §4 — Run the EffectRuntime.
+    // section 4 — Run the EffectRuntime.
     let result = runtime
         .run(instructions)
         .map_err(|e| DispatchError::BackendError {
@@ -310,7 +310,7 @@ pub async fn bridge_effect_stream_yield(
             message: format!("{e:?}"),
         })?;
 
-    // §5 — Audit row for D6 per-step replay binding.
+    // section 5 — Audit row for D6 per-step replay binding.
     {
         let mut hasher = Sha256::new();
         hasher.update(accumulated.as_bytes());
@@ -319,7 +319,7 @@ pub async fn bridge_effect_stream_yield(
         for byte in digest.as_slice() {
             let _ = write!(output_hash_hex, "{byte:02x}");
         }
-        // §Fase 34.i — Legacy bridge path populates the tool-stream
+        // v1.29.0 — Legacy bridge path populates the tool-stream
         // provenance fields with sensible defaults: tool_name stays
         // `None` (no Tool trait impl backs Stream.Yield); the chunk
         // count + hash + terminator kind reflect the static-scan
@@ -342,7 +342,7 @@ pub async fn bridge_effect_stream_yield(
             tool_chunks_emitted: Some(yields.len() as u64),
             tool_output_hash_hex: Some(tool_output_hash_hex),
             tool_terminator_kind: Some("stop".to_string()),
-            // §Fase 65.C.3 — effect-stream path: no LLM output to anchor-check.
+            // v2.15.0 — effect-stream path: no LLM output to anchor-check.
             anchor_breaches: Vec::new(),
         };
         let mut guard = ctx.step_audit_records.lock().await;
@@ -353,7 +353,7 @@ pub async fn bridge_effect_stream_yield(
 }
 
 // ════════════════════════════════════════════════════════════════════
-//  §Fase 34.g — bridge_effect_stream_yield_unified
+// v1.29.0 — bridge_effect_stream_yield_unified
 // ════════════════════════════════════════════════════════════════════
 
 /// **34.g convergence variant** of [`bridge_effect_stream_yield`].
@@ -404,10 +404,10 @@ pub async fn bridge_effect_stream_yield_unified(
         return Err(DispatchError::UpstreamCancelled);
     }
 
-    // §1 — Static Yield scan (same as legacy function).
+    // section 1 — Static Yield scan (same as legacy function).
     let yields = scan_stream_yields(instructions);
 
-    // §2 — Resolve + materialize as ToolChunks. Each Yield's
+    // section 2 — Resolve + materialize as ToolChunks. Each Yield's
     // resolved value becomes one intermediate chunk; the sequence
     // closes with a Stop terminator so the unified handler treats
     // it as a complete stream.
@@ -424,7 +424,7 @@ pub async fn bridge_effect_stream_yield_unified(
     }
     tool_chunks.push(ToolChunk::terminator("", ToolFinishReason::Stop));
 
-    // §3 — Route through the unified handler.
+    // section 3 — Route through the unified handler.
     let source = crate::flow_dispatcher::unified_stream::unified_stream_from_chunks(tool_chunks);
     let summary = crate::flow_dispatcher::unified_stream::unified_stream_handler(
         source,
@@ -440,7 +440,7 @@ pub async fn bridge_effect_stream_yield_unified(
         return Err(DispatchError::UpstreamCancelled);
     }
 
-    // §4 — Run the EffectRuntime to completion (mirrors the legacy
+    // section 4 — Run the EffectRuntime to completion (mirrors the legacy
     // function — the wire emission precedes runtime execution by
     // design until 33.y.e.2 ships per-Yield runtime hooks).
     let result = runtime
@@ -450,7 +450,7 @@ pub async fn bridge_effect_stream_yield_unified(
             message: format!("{e:?}"),
         })?;
 
-    // §5 — Audit row. 34.g activates the policy-enforcement
+    // section 5 — Audit row. 34.g activates the policy-enforcement
     // counters when a policy is declared. 34.i adds the tool-stream
     // provenance quartet: tool_name stays `None` (algebraic-effect
     // bridge has no Tool trait impl); tool_chunks_emitted reports
@@ -481,7 +481,7 @@ pub async fn bridge_effect_stream_yield_unified(
             tool_chunks_emitted: Some(summary.chunks_pushed),
             tool_output_hash_hex: Some(tool_hash),
             tool_terminator_kind: Some(terminator_kind.to_string()),
-            // §Fase 65.C.3 — effect-stream path: no LLM output to anchor-check.
+            // v2.15.0 — effect-stream path: no LLM output to anchor-check.
             anchor_breaches: Vec::new(),
         };
         let mut guard = ctx.step_audit_records.lock().await;
@@ -562,7 +562,7 @@ fn resolve_first_argument(perf: &IRPerform, runtime: &EffectRuntime) -> Value {
         // literal-encoded Yield arguments produce wire content
         // post-scan; symbolic Yields produce the symbol name as
         // wire content (canonical fallback).
-        // §Future: add `pub fn lookup_global(&self, name: &str) -> Option<Value>`
+        // Future: add `pub fn lookup_global(&self, name: &str) -> Option<Value>`
         //  to EffectRuntime.
         let _ = name;
     }

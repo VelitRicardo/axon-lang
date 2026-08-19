@@ -7,7 +7,7 @@
 //! - **Enterprise adapter shape** — defined as a trait any
 //!   adopter/enterprise-side implementation can satisfy. The
 //!   `axon_enterprise.replay.service.ReplayService` ports this
-//!   trait to Python, anchoring each token in the §10.g audit
+//! trait to Python, anchoring each token in the v1.4.0 audit
 //!   hash chain.
 //!
 //! The trait is intentionally minimal — `append`, `get`, `since` —

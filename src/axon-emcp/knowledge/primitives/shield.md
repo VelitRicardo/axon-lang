@@ -3,14 +3,14 @@ name: shield
 summary: A composable defence layer — scans inputs/outputs for declared threats with a structured on-breach policy.
 category: operators
 top_level: true
-since: Fase 20
+since: v1.13.1
 grammar: |
   shield <Name> {
       scan: [<category1>, <category2>, ...]    # optional* — closed-catalog threat list
       strategy: <canary|classifier|dual_llm|ensemble|pattern|perplexity>  # optional
       on_breach: <deflect|escalate|halt|quarantine|sanitize_and_retry>    # optional
       severity: <low|medium|high|critical>                                # optional
-      sign: <hmac_sha256>                       # optional — §77 egress signing (axon-T846)
+      sign: <hmac_sha256> # optional — v2.34.0 egress signing (axon-T846)
       quarantine: <ident>                       # optional — quarantine sink
       max_retries: <integer>                    # optional — retry budget on sanitize
       confidence_threshold: <0.0..1.0>          # optional — classifier confidence floor
@@ -61,7 +61,7 @@ shield PHIShield {
 
 An **egress shield** signs instead of scanning — `publish
 <Channel> within <Shield>` binds it to a channel so every
-external delivery carries a receiver-verifiable HMAC (§77):
+external delivery carries a receiver-verifiable HMAC (v2.34.0):
 
 ```axon
 shield WebhookEgress {
@@ -106,7 +106,7 @@ A **single identifier** from the closed strategy catalogue
 | `dual_llm` | Two-model adversarial check. |
 | `ensemble` | Combine multiple strategies under a quorum. |
 
-### `sign:` (optional — the egress-signing field, §Fase 77)
+### `sign:` (optional — the egress-signing field, v2.34.0)
 
 A **single identifier** from the closed signing catalogue
 (`axon-frontend::type_checker::VALID_SIGN_ALGORITHMS`), today
@@ -132,15 +132,15 @@ A **single identifier** from the closed on-breach catalogue
 | `sanitize_and_retry` | Mask the `redact:` fields, re-scan, up to `max_retries:`; only a now-passing candidate proceeds (`axon-T952` requires `redact:`; a non-JSON candidate halts). |
 | `escalate` | Hand off to the escalation queue, then refuse the emission (a human decides). |
 
-**Since §114.w every policy above RUNS** — at both enforcement
+**Since v2.69.0 every policy above RUNS** — at both enforcement
 sites (the shield step and `emit`'s σ-gate), via the breach policy
-resolved onto the IR nodes at lowering. Before §114.w the catalog
+resolved onto the IR nodes at lowering. Before v2.69.0 the catalog
 was documented, parsed, type-checked — and the runtime always
 halted. The quarantine/escalation destinations are registry-backed
 (`shield_registry::{register_breach_sink, set_escalation_queue}`);
 OSS mounts none (enterprise mounts the DLQ under the audit hash
 chain), and an unmounted destination halts loudly — never a
-phantom guardrail. Gate: `fase114_w_on_breach_catalog` (9/9).
+phantom guardrail. Gate: `on_breach_catalog` (9/9).
 
 ### `severity:` (optional)
 
@@ -163,7 +163,7 @@ A **bracketed list of identifiers** from the closed compliance
 catalogue. A shield's compliance tags must **cover** the
 compliance tags of every surface it binds — a `compliance:
 [SOC2]` shield cannot guard a HIPAA-tagged endpoint without
-adding HIPAA. The §40 cross-tag check enforces this at deploy
+adding HIPAA. The section 40 cross-tag check enforces this at deploy
 time.
 
 ## Composition with anchors
@@ -206,7 +206,7 @@ The two are orthogonal and compose freely.
 
 - `axon://primitives/anchor` — the predicate counterpart.
 - `axon://primitives/publish` — binds an egress (`sign:`)
-  shield to a channel for signed external delivery (§77).
+  shield to a channel for signed external delivery (v2.34.0).
 - `axon://primitives/axonendpoint` — `shield:` binding site.
 - `axon://primitives/socket` — `shield:` binding site
   (per-frame).

@@ -3,7 +3,7 @@ name: daemon
 summary: A long-lived, supervised cognitive process — reacts to events on declared listeners with structured restart semantics.
 category: wire
 top_level: true
-since: Fase 16
+since: v1.11.0
 grammar: |
   daemon <Name> [(<params>)] [-> <ReturnType>] {
       goal: "<string>"                                    # optional
@@ -15,7 +15,7 @@ grammar: |
       max_tokens: <integer>                                # optional
       max_time: <duration>                                 # optional
       max_cost: <number>                                   # optional
-      requires: [<cap.slug>, ...]                          # optional (§52.d) — capability scope for scheduled work
+      requires: [<cap.slug>, ...] # optional (v2.4.0) — capability scope for scheduled work
       listen <channel-ref|"<topic>"|"cron:<expr>"> [as <alias>] [{ <steps> }]  # optional, repeatable
   }
 ---
@@ -31,7 +31,7 @@ messages to its handler logic.
 This is AXON's actor surface. A daemon is the closest the
 language gets to a "service" in the operational sense: it has
 identity, lifecycle, supervised restarts, and an event surface.
-The Fase 16 supervisor handles restart policies + crash
+The v1.11.0 supervisor handles restart policies + crash
 containment; daemons are sandboxed by construction.
 
 ## Surface
@@ -87,20 +87,20 @@ failure.
 The daemon's **event surface**. Each `listen` line binds an
 incoming event source. Two forms:
 
-1. **Channel reference** (canonical since Fase 13.g — typed
+1. **Channel reference** (canonical since v1.6.0 — typed
    channels): `listen TicketChannel as event`.
-2. **String topic** (legacy, pre-Fase 13): `listen
+2. **String topic** (legacy, pre-v1.6.0): `listen
    "tickets.inbound" as msg`.
-3. **Cron schedule** (§Fase 52.b — a first-class TIME trigger,
+3. **Cron schedule** (v2.4.0 — a first-class TIME trigger,
    not a topic): `listen "cron:*/5 * * * *" as tick { … }`.
 
 Multiple `listen` lines stack — the daemon multiplexes across
 all bound sources. The optional `as <alias>` binds the event
 payload to a named variable visible inside the listener body.
-The **body `{ … }` is real flow steps** (§52.a) that the
+The **body `{ … }` is real flow steps** (v2.4.0) that the
 supervisor executes on each arrival — it is *not* skipped.
 
-### `listen "cron:<expr>"` — scheduled execution (§Fase 52.b)
+### `listen "cron:<expr>"` — scheduled execution (v2.4.0)
 
 A listener whose channel is `"cron:<expr>"` fires on a wall-clock
 schedule. `<expr>` is a **5-field POSIX cron** string
@@ -127,7 +127,7 @@ daemon SessionCleaner {
   with no work is a no-op). The `as <alias>` is optional; the
   body is required for cron listeners.
 
-### `requires: [<cap.slug>, ...]` (optional, §Fase 52.d)
+### `requires: [<cap.slug>, ...]` (optional, v2.4.0)
 
 The **capability scope** a scheduled (cron) listener runs under.
 Because a cron tick has no inbound principal, a daemon with a
@@ -139,7 +139,7 @@ grammar (`^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$`).
 ## Runtime behaviour
 
 `daemon` lowers to a `DaemonDefinition` IR node carrying its
-declared listeners. At deploy time, the Fase 16 supervisor:
+declared listeners. At deploy time, the v1.11.0 supervisor:
 
 1. Mounts the daemon as a supervised process under the
    declared budgets.
@@ -162,7 +162,7 @@ duration)`.
   container. For multi-container deployments, declare
   multiple manifests; each can host one daemon.
 - **Not unsupervised.** Production daemons declare `shield:`
-  AND budgets. The Fase 16 supervisor refuses to mount a
+  AND budgets. The v1.11.0 supervisor refuses to mount a
   shield-less daemon in regulated environments.
 - **Not the same as `listen` (the flow-step)**. The
   flow-body `listen` is a one-shot subscription inside a

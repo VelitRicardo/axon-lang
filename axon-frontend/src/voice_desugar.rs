@@ -1,19 +1,19 @@
-//! §Fase 80.g — `voice` macro-expansion: the simplicity layer lowered to
+//! v2.37.0 — `voice` macro-expansion: the simplicity layer lowered to
 //! the primitives already in the language, as SOURCE TEXT.
 //!
 //! The expansion is generated as an ordinary `.axon` source string and
 //! parsed through the same pipeline as adopter code — which is exactly what
-//! makes D80.6 hold: `axon desugar` prints THIS text, the compliance
+//! makes the design decision hold: `axon desugar` prints THIS text, the compliance
 //! reviewer reads real declarations, and the type-checker + PCC see the
 //! expanded program with no special cases. A `voice` declaration itself
 //! never reaches the IR: the deployed artifact IS the expansion.
 //!
 //! What one `voice V` lowers to:
-//! - `carrier: mulaw8k` (the default) ⇒ the §ots μ-law↔PCM16 codec pair
+//! - `carrier: mulaw8k` (the default) ⇒ the ots μ-law↔PCM16 codec pair
 //!   (`InboundMulawToPcm16` / `OutboundPcm16ToMulaw` — shared, injected
 //!   once per program); `carrier: pcm16` ⇒ no transcode.
 //! - the carrier-facing `session <V>CarrierTurn` + `socket <V>Call` —
-//!   §79-interruptible (barge-in) when `interruptible: true`, in which case
+//! v2.36.0-interruptible (barge-in) when `interruptible: true`, in which case
 //!   the socket declares `reconnect: cognitive_state` + the voice's
 //!   `legal_basis:` (the sugar CANNOT generate a program
 //!   `ParkedResidualSoundness` refutes — T852 enforces the input side).
@@ -21,7 +21,7 @@
 //!   `<V>RealtimeLink` (fused) for each leg given as a `Preset@vN`
 //!   reference; a leg naming an already-declared `upstream` is used as-is.
 //!
-//! Runs at the tail of `Parser::parse()` BEFORE the §80.f preset expansion,
+//! Runs at the tail of `Parser::parse()` BEFORE the v2.37.0 preset expansion,
 //! so the `from Preset@vN` upstreams this pass emits are themselves
 //! expanded in the same parse.
 
@@ -58,15 +58,15 @@ pub fn expansion_source(v: &VoiceDefinition, include_ots: bool) -> String {
     }
 
     // Carrier-facing session: the caller streams audio in, the agent
-    // streams audio out; with barge-in the agent's utterance is a §79
+    // streams audio out; with barge-in the agent's utterance is a v2.36.0
     // interruptible region whose handler resumes (the abandon exit stays
-    // available to the runtime via §79's two-exit construct).
+    // available to the runtime via v2.36.0's two-exit construct).
     // `loop` recurses to the role's start and must be the LAST step of the
-    // path it ends (§41 lowering: everything after a `loop` in sequence is
+    // path it ends (v2.3.0 lowering: everything after a `loop` in sequence is
     // unreachable; a leading `loop` would lower to the unguarded μX.X).
     // The iteration body is credit-BALANCED by construction (one receive
     // per send, Δ = 0) so the generated socket's credit window passes the
-    // §41.c Presburger discharge — sugar that generated an unsustainable
+    // v2.3.0 Presburger discharge — sugar that generated an unsustainable
     // loop would fail its own compile.
     if v.interruptible {
         out.push_str(&format!(
@@ -105,7 +105,7 @@ pub fn expansion_source(v: &VoiceDefinition, include_ots: bool) -> String {
     out
 }
 
-/// §80.g — expand every `voice` in the program by parsing its generated
+/// v2.37.0 — expand every `voice` in the program by parsing its generated
 /// source and splicing the declarations in after it. The `voice`
 /// declaration itself STAYS in the AST (provenance + T852 validation) but
 /// is skipped by the IR generator — the deployed artifact is the expansion.
@@ -158,7 +158,7 @@ mod tests {
         Parser::new(tokens).parse().expect("parse")
     }
 
-    /// The keystone claim (§7 of the plan): a barge-in-capable phone agent
+    /// The keystone claim (section 7 of the plan): a barge-in-capable phone agent
     /// from a blessed preset pair in UNDER 20 LINES, compiling clean.
     #[test]
     fn twenty_line_cascaded_voice_agent_compiles_clean() {

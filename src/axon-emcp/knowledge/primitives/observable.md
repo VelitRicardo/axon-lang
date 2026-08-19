@@ -3,7 +3,7 @@ name: observable
 summary: Declares a Hermitian observable — a Pauli-sum M = Σ cₖ Pₖ — measured by a quant block to collapse a Hilbert-space state back to a classical expectation.
 category: operators
 top_level: true
-since: Fase 51 (v2.19.0)
+since: v2.19.0
 grammar: |
   # Top-level declaration — a BLOCK of `key: value` fields:
   observable <Name> {

@@ -10,7 +10,7 @@ primitives:
 ---
 
 // `axonendpoint` exposes a flow as a typed HTTP REST resource.
-// `body:` field names match the flow's parameter names (Fase 37 + 37.y
+// `body:` field names match the flow's parameter names (v1.32.0 + v1.32.0
 // D3 — Request Binding Contract).
 
 persona Reviewer {
@@ -24,7 +24,7 @@ type ReviewInput   { q: String }
 type ReviewOutput  { reply: String }
 type ReviewRequest { req: ReviewInput }
 
-// v2.0.0 wire contract (Fase 39 D2 + D12): JSON-transport responses
+// v2.0.0 wire contract (v2.0.0 D2 + D12): JSON-transport responses
 // MUST wrap the payload in `FlowEnvelope<T>` so the ψ-vector slot
 // `result` carries the structured value alongside `certainty`,
 // `provenance_chain`, and the rest of the envelope. Bare types are

@@ -1,4 +1,4 @@
-//! §Fase 28.e — Smart-suggest "Did you mean X?" for unknown tokens.
+//! v1.20.0 — Smart-suggest "Did you mean X?" for unknown tokens.
 //!
 //! Byte-identical mirror of `axon/compiler/_smart_suggest.py`.
 //! Same Levenshtein algorithm shape, same threshold (≤ 2), same
@@ -15,10 +15,10 @@
 //! Pure module: zero runtime deps, no allocations beyond the
 //! result `Vec<String>` + the rolling DP row.
 
-/// §D3 — Levenshtein distance threshold.
+/// D3 — Levenshtein distance threshold.
 pub const MAX_DISTANCE: usize = 2;
 
-/// §D3 — Maximum number of candidates returned by `suggest`.
+/// D3 — Maximum number of candidates returned by `suggest`.
 pub const MAX_RESULTS: usize = 3;
 
 /// Iterative Levenshtein edit distance.
@@ -180,7 +180,7 @@ pub const FLOW_BODY_KEYWORD_NAMES: &[&str] = &[
 // ── Tests ────────────────────────────────────────────────────────
 
 #[cfg(test)]
-mod fase28_smart_suggest_tests {
+mod smart_suggest_tests {
     use super::*;
 
     // ── Levenshtein ──────────────────────────────────────────────

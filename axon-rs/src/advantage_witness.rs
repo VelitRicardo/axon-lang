@@ -1,4 +1,4 @@
-//! §Fase 69.a — The Advantage Witness: a transversal Axon law.
+//! v2.23.0 — The Advantage Witness: a transversal Axon law.
 //!
 //! Doctrine `axon://logic/no_unwitnessed_advantage`: **no primitive may claim an
 //! advantage over a cheaper baseline unless it carries a machine-checkable witness
@@ -14,11 +14,11 @@
 //! a `false` verdict is the honest fail-closed signal (the compiler/runtime
 //! recommends the baseline; `axon-W007`/`W008`).
 //!
-//! The metric catalog is CLOSED (the §53 extension discipline) and mirrored in the
+//! The metric catalog is CLOSED (the v2.5.0 extension discipline) and mirrored in the
 //! frontend (`axon_frontend::type_checker::WITNESS_METRICS`, parity-pinned by
-//! `tests/fase69_a_witness_metric_parity.rs`) so `axon check` and the runtime agree
+//! `tests/witness_metric_parity.rs`) so `axon check` and the runtime agree
 //! on which metrics exist. v1 ships the four the field already uses; quant is the
-//! first provider (§69.b), retrieval the second (§69.d).
+//! first provider (v2.23.0), retrieval the second (v2.23.0).
 
 /// The CLOSED catalog of advantage metrics — kept byte-identical to
 /// `axon_frontend::type_checker::WITNESS_METRICS` (parity-pinned).
@@ -30,15 +30,15 @@ pub const WITNESS_METRICS: &[&str] = &[
 ];
 
 /// How advantage over a baseline is measured. A closed catalog — adding a metric
-/// is a deliberate PR (the §53 closed-catalog discipline), never an open set.
+/// is a deliberate PR (the v2.5.0 closed-catalog discipline), never an open set.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AdvantageMetric {
-    /// quant kernels (§69.b): geometric difference `g(K_classical ‖ K_quantum)` —
+    /// quant kernels (v2.23.0): geometric difference `g(K_classical ‖ K_quantum)` —
     /// the report's pre-screening instrument; 0 ⇒ the kernels are interchangeable.
     GeometricDifference,
-    /// quant kernels (§69.b): centered kernel-target alignment vs the baseline.
+    /// quant kernels (v2.23.0): centered kernel-target alignment vs the baseline.
     KernelTargetAlignment,
-    /// retrieval / navigate (§69.d): ranking lift over flat cosine retrieval.
+    /// retrieval / navigate (v2.23.0): ranking lift over flat cosine retrieval.
     RankingLift,
     /// deliberation primitives: outcome lift over a single-shot baseline.
     OutcomeLift,
@@ -79,7 +79,7 @@ impl Baseline {
     }
 }
 
-/// The machine-checkable verdict — the proof object the §69.a PCC `AdvantageWitnessed`
+/// The machine-checkable verdict — the proof object the v2.23.0 PCC `AdvantageWitnessed`
 /// class carries. An independent verifier re-checks `holds == (measure > threshold)`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct AdvantageVerdict {
@@ -121,7 +121,7 @@ impl AdvantageVerdict {
 ///
 /// `D` is the primitive's real-data type (embeddings + labels for a quant kernel,
 /// a query/relevance set for retrieval, …) — the witness is always evaluated on
-/// REAL data (you cannot claim advantage in the abstract, D69.3).
+/// REAL data (you cannot claim advantage in the abstract, the design decision).
 pub trait AdvantageWitness<D> {
     /// The cheaper alternative this construct claims to beat.
     fn baseline(&self) -> Baseline;

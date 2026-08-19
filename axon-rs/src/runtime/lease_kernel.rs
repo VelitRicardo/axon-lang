@@ -1,4 +1,4 @@
-//! AXON Runtime — LeaseKernel (§λ-L-E Fase 3.2)
+//! AXON Runtime — LeaseKernel (v1.1.0)
 //!
 //! Direct port of `axon/runtime/lease_kernel.py`.
 //!

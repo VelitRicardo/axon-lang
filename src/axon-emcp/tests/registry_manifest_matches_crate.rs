@@ -7,9 +7,9 @@
 //! entire job is to tell MCP clients what this server is. Nothing gated it, so
 //! nothing caught it; it surfaced only when someone went to publish.
 //!
-//! That is exactly §Fase 117's defect in a different registry: crates.io served
+//! That is exactly v2.81.0's defect in a different registry: crates.io served
 //! a README describing v1.0.0 for the 2.80.0 crate, for six releases, behind one
-//! ignored warning. The lesson §117 paid for is that **a published artefact
+//! ignored warning. The lesson v2.81.0 paid for is that **a published artefact
 //! needs a gate, not a convention** — a doc sentence asserting an invariant is
 //! not an invariant, it is a wish. This file is that gate.
 //!

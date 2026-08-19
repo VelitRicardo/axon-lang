@@ -1,13 +1,13 @@
-//! §Fase 105 — Governed CRM Delivery runtime: the OSS contract + the
+//! v2.60.0 — Governed CRM Delivery runtime: the OSS contract + the
 //! `DeliveryProvider` seam (the enterprise-engine injection point) + the
-//! provenance-carrying discipline (D105.2) + the idempotency law (D105.5).
+//! provenance-carrying discipline + the idempotency law.
 //!
-//! **What delivery is.** The egress-dual of acquisition (`scrape`, §98). Given a
+//! **What delivery is.** The egress-dual of acquisition (`scrape`, v2.52.0). Given a
 //! set of canonical CRM operations whose fields bind flow values, write them into
 //! the tenant's system of record. Where `scrape` brings a value in born
 //! Untrusted, `deliver` sends a value OUT into a machine others treat as fact.
 //!
-//! **The load-bearing property (D105.2): a delivered field carries its epistemic
+//! **The load-bearing property: a delivered field carries its epistemic
 //! origin, or the author vouched.** With `provenance: attached` (the default) each
 //! field lands in the CRM beside its [`FieldProvenance`] block (level +
 //! confidence + source) — a vendor guess arrives *labeled as a guess*. With
@@ -15,10 +15,10 @@
 //! shield+anchor-cleared under an `epistemic { believe|know }` vouch, so bare
 //! values are honest. Silent laundering is impossible by construction.
 //!
-//! **The engine is enterprise (D105.1).** OSS ships the CONTRACT + a default
+//! **The engine is enterprise.** OSS ships the CONTRACT + a default
 //! [`NoProvider`] that TYPED-REFUSES every delivery — never a fabricated receipt
-//! (D105.6 / the §104 D104.6 honesty). The enterprise generic HTTP transducer
-//! (§105.c) registers via [`register_provider`]; the `crm:deliver` RBAC gate +
+//! (the design decision / the v2.58.0 the design decision honesty). The enterprise generic HTTP transducer
+//! (v2.60.0) registers via [`register_provider`]; the `crm:deliver` RBAC gate +
 //! the per-tenant legal flag + credential resolution + the audit all live in
 //! enterprise. With no engine wired, `deliver` is an honest refusal.
 
@@ -30,7 +30,7 @@ use serde::{Deserialize, Serialize};
 //  Provenance mode + the per-field epistemic origin
 // ════════════════════════════════════════════════════════════════════════════
 
-/// How field provenance crosses the delivery boundary (D105.2). Mirrors the
+/// How field provenance crosses the delivery boundary. Mirrors the
 /// frontend `deliver.provenance:` catalog; an empty IR value lowers to `Attached`
 /// (the safe default: provenance travels).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -54,14 +54,14 @@ impl ProvenanceMode {
     }
 }
 
-/// The epistemic origin of one delivered field (D105.2) — the exact shape §104's
+/// The epistemic origin of one delivered field — the exact shape v2.58.0's
 /// `EnrichedField` produces (`level` on the believe-ceiling lattice + `confidence`
 /// + the `source` vendor/flow tag). When [`ProvenanceMode::Attached`], the
 /// enterprise transducer lands this beside the value in the CRM record so an
 /// auditor can later tell a verified fact from a vendor's guess.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FieldProvenance {
-    /// `speculate | believe | …` — the believe-ceiling lattice name (§101/§104).
+    /// `speculate | believe | …` — the believe-ceiling lattice name (v2.54.0/v2.58.0).
     pub level: String,
     /// The confidence in `[0,1]`.
     pub confidence: f64,
@@ -86,7 +86,7 @@ pub struct DeliveredField {
 // ════════════════════════════════════════════════════════════════════════════
 
 /// A canonical, vendor-agnostic CRM operation. `kind ∈ {upsert_contact,
-/// create_deal, add_note}`. `idempotency_key` is the D105.5 law: an at-least-once
+/// create_deal, add_note}`. `idempotency_key` is the the design decision law: an at-least-once
 /// retry keyed on this value MUST NOT double-create — the enterprise transducer
 /// maps it onto the vendor's natural-key/external-id upsert.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -110,7 +110,7 @@ pub struct DeliveryRequest {
 
 /// A receipt witnessing one delivered operation. `record_id` is the vendor's id
 /// for the upserted record (`None` on a typed miss); `created` is `false` when an
-/// existing record was updated — the idempotency witness (D105.5).
+/// existing record was updated — the idempotency witness.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DeliveryReceipt {
     pub kind: String,
@@ -125,7 +125,7 @@ pub struct DeliveryReceipt {
 // ════════════════════════════════════════════════════════════════════════════
 
 /// Everything that can go wrong delivering. A failure is a typed error + (in
-/// enterprise) an audit row — NEVER a fabricated receipt (D105.6 / D98.5). The
+/// enterprise) an audit row — NEVER a fabricated receipt. The
 /// blame split is load-bearing: `Caller` is the flow's fault (a malformed
 /// payload), `Provider`/`Network` is the vendor's.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -167,19 +167,19 @@ impl std::fmt::Display for DeliveryError {
 
 /// The contract every delivery engine satisfies: a [`DeliveryRequest`] → one
 /// [`DeliveryReceipt`] per operation. The enterprise generic HTTP transducer
-/// (§105.c) implements this. Failure is a typed [`DeliveryError`], never a
-/// fabricated receipt (D105.6).
+/// (v2.60.0) implements this. Failure is a typed [`DeliveryError`], never a
+/// fabricated receipt.
 pub trait DeliveryProvider: Send + Sync {
     /// A stable provider identifier for the audit row (e.g. `"http-generic"`).
     fn name(&self) -> &str;
     /// Deliver every operation. MUST be idempotent per `idempotency_key`
-    /// (D105.5) and MUST return a typed error on failure — never a fabricated
+    /// and MUST return a typed error on failure — never a fabricated
     /// receipt.
     fn deliver(&self, req: &DeliveryRequest) -> Result<Vec<DeliveryReceipt>, DeliveryError>;
 }
 
 /// The OSS default engine: **none**. It typed-refuses every delivery — the honest
-/// state of a runtime with no engine wired (the §104 `NoProvider` shape).
+/// state of a runtime with no engine wired (the v2.58.0 `NoProvider` shape).
 #[derive(Debug, Clone, Copy, Default)]
 pub struct NoProvider;
 
@@ -197,7 +197,7 @@ fn registry() -> &'static RwLock<Option<Arc<dyn DeliveryProvider>>> {
     REG.get_or_init(|| RwLock::new(None))
 }
 
-/// §Fase 105.c — register the process-wide delivery transducer. OSS ships none
+/// v2.60.0 — register the process-wide delivery transducer. OSS ships none
 /// (every delivery typed-refuses); the enterprise host mounts the generic HTTP
 /// transducer here at boot. Exactly the [`crate::enrichment::register_provider`]
 /// / [`crate::scrape_tool::register_scrape_fetcher`] injection shape.
@@ -219,7 +219,7 @@ pub fn active_provider() -> Option<Arc<dyn DeliveryProvider>> {
 //  Planning (IR → resolved request) + dispatch
 // ════════════════════════════════════════════════════════════════════════════
 
-/// §Fase 105 — compile an [`crate::ir_nodes::IRDeliver`] into a resolved
+/// v2.60.0 — compile an [`crate::ir_nodes::IRDeliver`] into a resolved
 /// [`DeliveryRequest`]: every `ref` field is looked up via `resolve` (the flow's
 /// binding environment); literals pass through. The `key:` field of each
 /// operation becomes its `idempotency_key` (T926 guaranteed its presence at
@@ -274,7 +274,7 @@ pub fn plan_delivery(
     })
 }
 
-/// Run the active provider, or typed-refuse if none is registered (D105.6).
+/// Run the active provider, or typed-refuse if none is registered.
 pub fn run_delivery(req: &DeliveryRequest) -> Result<Vec<DeliveryReceipt>, DeliveryError> {
     match active_provider() {
         Some(p) => p.deliver(req),
@@ -288,7 +288,7 @@ mod tests {
     use crate::ir_nodes::{IRDeliver, IRDeliverOp, IRDocField};
 
     /// Serialises the registry-touching tests — the provider registry is
-    /// process-global (the §104 `REG_LOCK` discipline).
+    /// process-global (the v2.58.0 `REG_LOCK` discipline).
     static REG_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
     fn ir_deliver(provenance: &str) -> IRDeliver {

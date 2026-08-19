@@ -12,7 +12,7 @@ use crate::ast::*;
 use crate::ir_nodes::*;
 use crate::store_schema::{StoreColumn, StoreColumnSchema};
 
-/// §Fase 38.b (D1) — lower the parsed AST schema declaration to its
+/// v1.31.0 (D1) — lower the parsed AST schema declaration to its
 /// IR mirror. Pure + total — every AST variant has an IR variant.
 fn lower_column_schema(s: &StoreColumnSchema) -> IRStoreColumnSchema {
     match s {
@@ -41,24 +41,24 @@ fn lower_column(c: &StoreColumn) -> IRStoreColumn {
         not_null: c.not_null,
         unique: c.unique,
         default_value: c.default_value.clone(),
-        // §Fase 38.x.c (D2) — round-trip the IDENTITY marker through IR.
+        // v1.31.0 (D2) — round-trip the IDENTITY marker through IR.
         identity: c.identity,
-        // §Fase 73.f (D1) — round-trip the `index` declaration so the
+        // v2.26.0 (D1) — round-trip the `index` declaration so the
         // deploy gate sees it and materializes the (GIN / b-tree) index.
         indexed: c.indexed,
-        // §Fase 73.g (D1) — round-trip the `Json<T>` shape-lens struct name
+        // v2.26.0 (D1) — round-trip the `Json<T>` shape-lens struct name
         // so the PCC `JsonShapeSoundness` proof re-derives it from the IR.
         json_shape: c.json_shape.clone(),
     }
 }
 
 pub struct IRGenerator {
-    /// §Fase 109.a — per-flow context for `grad`: every rich `let`'s
+    /// v2.65.0 — per-flow context for `grad`: every rich `let`'s
     /// expression in the CURRENT flow (populated at `visit_flow` entry,
     /// read by the Grad arm of `visit_flow_step`). RefCell because the
     /// visitor is `&self` across 8 recursive call sites.
     grad_lets: std::cell::RefCell<HashMap<String, crate::ast::Expr>>,
-    /// §Fase 120 (Phase 0) — the CLOSED effect catalog, pre-resolved before any
+    /// v2.87.0 (Phase 0) — the CLOSED effect catalog, pre-resolved before any
     /// flow lowers so a bare `perform Emit(x)` resolves regardless of whether
     /// the `effect` declaration precedes or follows the flow in source. The
     /// order-independence is the same discipline `shield_signs` needed.
@@ -68,12 +68,12 @@ pub struct IRGenerator {
     /// operation — a disagreement that would let the checker pass a program the
     /// generator then lowers against a different effect.
     effect_catalog: crate::effect_catalog::EffectCatalog,
-    /// §Fase 121 (Phase 0) — declared `type`s by name, so `validate … against:
+    /// v2.88.0 (Phase 0) — declared `type`s by name, so `validate … against:
     /// <Schema>` resolves regardless of whether the type is declared above or
-    /// below the flow. Same order-independence `shield_signs` (§77.b) and the
-    /// effect catalog (§120) needed, and for the same reason.
+    /// below the flow. Same order-independence `shield_signs` (v2.34.0) and the
+    /// effect catalog (v2.87.0) needed, and for the same reason.
     type_defs: HashMap<String, IRType>,
-    /// §Fase 120 — per-generation handler-frame counter. `Cell` because
+    /// v2.87.0 — per-generation handler-frame counter. `Cell` because
     /// `visit_flow_step` is `&self` across the recursive call sites (the
     /// `grad_lets` precedent).
     next_frame_id: std::cell::Cell<u32>,
@@ -82,50 +82,50 @@ pub struct IRGenerator {
     anchors: HashMap<String, IRAnchor>,
     flows: HashMap<String, IRFlow>,
     lambda_data_specs: HashMap<String, IRLambdaData>,
-    /// §λ-L-E Fase 1 (Free Monad root) — Manifests / Observes, in
+    /// v1.1.0 (Free Monad root) — Manifests / Observes, in
     /// declaration order, become nodes the Handler layer will interpret.
     intention_ops: Vec<IRIntentionOperation>,
     /// Anchor for the intention tree's own source position.
     program_line: u32,
     program_column: u32,
-    /// §λ-L-E Fase 13 — channel registry for mobility detection at lowering.
+    /// v1.6.0 — channel registry for mobility detection at lowering.
     /// Names of declared channels are recorded as they're visited so
     /// `visit_emit` can pre-resolve `value_is_channel` without re-scanning
     /// the AST (parity with the Python `IREmit.value_is_channel` flag).
     channel_names: std::collections::HashSet<String>,
-    /// §Fase 77.b — shield name → its `sign:` algorithm, pre-resolved in
+    /// v2.34.0 — shield name → its `sign:` algorithm, pre-resolved in
     /// Phase 0 (order-independent, unlike `channel_names`) so a `publish`
     /// lowers with its egress algorithm regardless of declaration order.
     /// Only SIGNING shields are recorded (empty `sign:` shields are not
     /// egress-relevant).
     shield_signs: HashMap<String, String>,
-    /// §Fase 114 (owed) — channel name → the σ-shield it declares
+    /// v2.69.0 (owed) — channel name → the σ-shield it declares
     /// (`channel C { … shield: S }`), pre-resolved in Phase 0 (order-independent,
     /// like `shield_signs`) so an `emit C(v)` lowers with its channel's shield
     /// regardless of whether the `channel` decl precedes or follows the flow.
     /// Only channels with a non-empty `shield:` are recorded.
     channel_shields: HashMap<String, String>,
-    /// §Fase 114.u — resource name → (endpoint config key, capacity),
+    /// v2.69.0 — resource name → (endpoint config key, capacity),
     /// pre-resolved in Phase 0 (order-independent, like `shield_signs`) so an
     /// `upstream X { resource: R }` derives its dial address and its instance
     /// bound at LOWERING regardless of declaration order. Stamping the
-    /// derivation into the artifact is the §114 shield-egress discipline:
+    /// derivation into the artifact is the v2.69.0 shield-egress discipline:
     /// every dial path reads `IRUpstream.resolve` — none can forget the wire.
     resource_channels: HashMap<String, (String, Option<i64>)>,
-    /// §Fase 114.w — shield name → its compiled breach policy (only shields
+    /// v2.69.0 — shield name → its compiled breach policy (only shields
     /// with a non-empty `on_breach:` are recorded), pre-resolved in Phase 0 so
     /// the policy rides `IRShieldApplyStep` / `IREmit` regardless of
     /// declaration order.
     shield_policies: HashMap<String, crate::ir_nodes::IRBreachPolicy>,
-    /// §Fase 122.a — shield name → its declared `scan:` list (only shields with
+    /// v2.89.0 — shield name → its declared `scan:` list (only shields with
     /// a non-empty `scan:` are recorded), pre-resolved in Phase 0 beside
     /// `shield_policies` so the assertion rides `IRShieldApplyStep` / `IREmit`
     /// regardless of declaration order. The runtime refuses to honour a
     /// declared scan it has no scanner for; it can only do that if the artifact
     /// carries what was declared.
     shield_scans: HashMap<String, Vec<String>>,
-    /// §Fase 115.e — dotted module path → `.axi` interface hash for every
-    /// module the EMS resolved in this compilation. Empty (every pre-§115
+    /// v2.76.0 — dotted module path → `.axi` interface hash for every
+    /// module the EMS resolved in this compilation. Empty (every pre-v2.76.0
     /// caller) ⇒ `visit_import` lowers exactly as in v2.75.0 (the new
     /// `IRImport` fields stay at their skip-serialized defaults).
     import_resolution: std::collections::BTreeMap<String, String>,
@@ -156,7 +156,7 @@ impl IRGenerator {
         }
     }
 
-    /// §Fase 115.e — supply the EMS resolution map (dotted module path →
+    /// v2.76.0 — supply the EMS resolution map (dotted module path →
     /// interface hash) so every `IRImport` this generation lowers carries
     /// `resolved: true` + its module's interface hash. Called by the EMS
     /// driver (`crate::ems`) on the linked program; no other caller needs it.
@@ -168,7 +168,7 @@ impl IRGenerator {
         self
     }
 
-    /// §Fase 77.b (Phase 0) — record every declared shield's non-empty
+    /// v2.34.0 (Phase 0) — record every declared shield's non-empty
     /// `sign:` algorithm, recursing into `epistemic` blocks (the same
     /// nesting `collect_emitted_channels` honours in the type checker).
     fn collect_shield_signs(&mut self, decls: &[Declaration]) {
@@ -183,11 +183,11 @@ impl IRGenerator {
         }
     }
 
-    /// §Fase 114 (owed) — Phase 0 pre-pass mirroring [`collect_shield_signs`]:
+    /// v2.69.0 (owed) — Phase 0 pre-pass mirroring [`collect_shield_signs`]:
     /// record each `channel C { … shield: S }`'s shield so an `emit C(v)` lowers
     /// carrying S regardless of declaration order. Only non-empty shields are
     /// recorded (an unshielded channel leaves `IREmit.shield_ref` empty → the
-    /// pre-§114 emit shape).
+    /// pre-v2.69.0 emit shape).
     fn collect_channel_shields(&mut self, decls: &[Declaration]) {
         for decl in decls {
             match decl {
@@ -201,7 +201,7 @@ impl IRGenerator {
         }
     }
 
-    /// §Fase 114.u (Phase 0) — record every declared resource's channel facts
+    /// v2.69.0 (Phase 0) — record every declared resource's channel facts
     /// (endpoint config key + capacity) so `visit_upstream` can derive the
     /// dial address and the instance bound regardless of declaration order.
     fn collect_resource_channels(&mut self, decls: &[Declaration]) {
@@ -217,7 +217,7 @@ impl IRGenerator {
         }
     }
 
-    /// §Fase 114.w (Phase 0) — record every declared shield's breach policy so
+    /// v2.69.0 (Phase 0) — record every declared shield's breach policy so
     /// the enforcement nodes carry it. A shield with no `on_breach:` records
     /// nothing (halt is the fail-closed default the runtime applies anyway).
     fn collect_shield_policies(&mut self, decls: &[Declaration]) {
@@ -241,13 +241,13 @@ impl IRGenerator {
         }
     }
 
-    /// §Fase 122.a (Phase 0) — record every declared shield's `scan:` list so
+    /// v2.89.0 (Phase 0) — record every declared shield's `scan:` list so
     /// the enforcement nodes carry the assertion they are supposed to honour.
     ///
     /// Mirrors [`Self::collect_shield_policies`] exactly, including the
     /// `epistemic` recursion. A shield with an empty `scan:` records nothing:
     /// it asserts nothing about the content, so the OSS identity passthrough
-    /// stays honest for it (§119.c's argument, which this fase keeps rather
+    /// stays honest for it (v2.83.0's argument, which this cycle keeps rather
     /// than reverses).
     fn collect_shield_scans(&mut self, decls: &[Declaration]) {
         for decl in decls {
@@ -261,7 +261,7 @@ impl IRGenerator {
         }
     }
 
-    /// §Fase 77.b (Phase 1.5) — walk every lowered body (flows + daemon
+    /// v2.34.0 (Phase 1.5) — walk every lowered body (flows + daemon
     /// listeners, recursing into conditionals / loops / par branches /
     /// nested listen + quant bodies) for `publish` sites carrying a
     /// resolved `sign`, and stamp the algorithm onto the matching
@@ -311,34 +311,34 @@ impl IRGenerator {
         self.program_line = program.loc.line;
         self.program_column = program.loc.column;
 
-        // Phase 0 (§Fase 77.b): pre-resolve every declared shield's `sign:`
+        // Phase 0 (v2.34.0): pre-resolve every declared shield's `sign:`
         // BEFORE lowering, so a `publish C within S` resolves its egress
         // algorithm regardless of declaration order (a flow may precede the
         // shield in source; the incremental `channel_names` pattern would
         // miss it).
         self.collect_shield_signs(&program.declarations);
-        // §Fase 114 (owed) — same Phase 0 discipline for channel shields, so an
+        // v2.69.0 (owed) — same Phase 0 discipline for channel shields, so an
         // `emit C(v)` lowers with C's declared σ-shield and the runtime scans the
         // egressing value on every dispatch path.
         self.collect_channel_shields(&program.declarations);
-        // §Fase 114.u — same Phase 0 discipline for resource channels, so an
+        // v2.69.0 — same Phase 0 discipline for resource channels, so an
         // `upstream { resource: R }` derives address + instance bound at
         // lowering (the artifact carries the wire; no dial site can miss it).
         self.collect_resource_channels(&program.declarations);
-        // §Fase 114.w — and shield breach policies, so `on_breach:` rides the
+        // v2.69.0 — and shield breach policies, so `on_breach:` rides the
         // enforcement nodes on every dispatch path by construction.
         self.collect_shield_policies(&program.declarations);
-        // §Fase 122.a — and shield `scan:` lists, so a declared scan rides the
+        // v2.89.0 — and shield `scan:` lists, so a declared scan rides the
         // enforcement nodes too. Without it the runtime cannot tell a shield
         // that asserts something (and must refuse when nothing can check it)
         // from a shield that only filters (where absence is honest).
         self.collect_shield_scans(&program.declarations);
-        // §Fase 120 — and the effect catalog, so D120.2's bare-name resolution
+        // v2.87.0 — and the effect catalog, so the design decision's bare-name resolution
         // is order-independent: `flow F { … perform Emit(x) … }` must resolve
         // whether `effect SSE { Emit … }` was written above it or below.
         self.effect_catalog =
             crate::effect_catalog::EffectCatalog::from_program(program);
-        // §Fase 121 — and the declared `type`s, so `validate … against:` binds
+        // v2.88.0 — and the declared `type`s, so `validate … against:` binds
         // its schema whether the type sits above or below the flow.
         for decl in &program.declarations {
             if let Declaration::Type(t) = decl {
@@ -352,7 +352,7 @@ impl IRGenerator {
             self.visit_declaration(decl, &mut ir);
         }
 
-        // Phase 1.5 (§Fase 77.b): mark egress channels — a channel some
+        // Phase 1.5 (v2.34.0): mark egress channels — a channel some
         // `publish` site declared under a SIGNING shield carries the
         // resolved algorithm on its IR handle (`egress_sign`), the single
         // fact the enterprise egress worker reads. First site wins
@@ -377,8 +377,8 @@ impl IRGenerator {
             }
         }
 
-        // Phase 3 (§8.2.h.2): assemble the intention tree if the program
-        // declared any Fase-1 cognitive-I/O operations. Empty ⇒ `None`
+        // Phase 3 (section 8.2.h.2): assemble the intention tree if the program
+        // declared any cycle-1 cognitive-I/O operations. Empty ⇒ `None`
         // (JSON `null`), matching Python's reference behaviour.
         if !self.intention_ops.is_empty() {
             ir.intention_tree = Some(IRIntentionTree {
@@ -389,11 +389,11 @@ impl IRGenerator {
             });
         }
 
-        // Phase 4 (§Fase 53.b, founder refinement B): deterministic
+        // Phase 4 (v2.5.0, founder refinement B): deterministic
         // extension order. Declarations across multiple `import`ed files
         // arrive in file+source order; sorting by the extension
         // identifier makes `ir.extensions` a pure function of the
-        // declared set, so the proof-bundle hash (§53.d) is stable
+        // declared set, so the proof-bundle hash (v2.5.0) is stable
         // regardless of declaration order. Stable sort preserves the
         // (already-deterministic, single-file) member order within each
         // extension.
@@ -404,17 +404,17 @@ impl IRGenerator {
 
     fn visit_declaration(&mut self, decl: &Declaration, ir: &mut IRProgram) {
         match decl {
-            // §Fase 114.a — a TOP-LEVEL budget governs every flow that calls the
+            // v2.69.0 — a TOP-LEVEL budget governs every flow that calls the
             // tools its quotas name, not just a daemon's.
             Declaration::Budget(n) => ir.budgets.push(Self::visit_budget(n)),
             Declaration::Import(n) => ir.imports.push(self.visit_import(n)),
-            // §Fase 120 — the declared effect catalog rides the artifact so the
+            // v2.87.0 — the declared effect catalog rides the artifact so the
             // dispatcher can check an operation's arity at the perform site.
             //
-            // This populates `IRProgram::effects`, the field §Fase 23 created as
+            // This populates `IRProgram::effects`, the field v1.17.0 created as
             // a Python-parity mirror and NOBODY ever wrote to. Reusing it rather
             // than adding a parallel one is deliberate: two compiled catalogs of
-            // one concept in one artifact is the §119.m.2 defect, and the
+            // one concept in one artifact is the v2.83.0 defect, and the
             // pre-existing shape is already what `axon-rs/src/effects/ir.rs`
             // deserialises.
             Declaration::Effect(n) => {
@@ -431,10 +431,10 @@ impl IRGenerator {
                             source_line: op.loc.line,
                             source_column: op.loc.column,
                             name: op.name.clone(),
-                            // D1 (operation polymorphism) is NOT in this fase's
-                            // scope; §120 lands monomorphic operations and the
+                            // D1 (operation polymorphism) is NOT in this cycle's
+                            // scope; v2.87.0 lands monomorphic operations and the
                             // field stays empty rather than being filled with a
-                            // guess. See the fase doc's de-scope note.
+                            // guess. See the cycle doc's de-scope note.
                             type_parameters: Vec::new(),
                             parameter_names: op
                                 .parameters
@@ -484,7 +484,7 @@ impl IRGenerator {
             }
             Declaration::Agent(n) => ir.agents.push(self.visit_agent(n)),
             Declaration::Shield(n) => ir.shields.push(self.visit_shield(n)),
-            // §Fase 71.a — temporal execution-window guard.
+            // v2.27.0 — temporal execution-window guard.
             Declaration::Window(n) => ir.windows.push(Self::visit_window(n)),
             Declaration::Pix(n) => ir.pix_specs.push(self.visit_pix(n)),
             Declaration::Ledger(n) => ir.ledger_specs.push(self.visit_ledger(n)),
@@ -497,7 +497,7 @@ impl IRGenerator {
             Declaration::Daemon(n) => ir.daemons.push(self.visit_daemon(n)),
             Declaration::AxonStore(n) => ir.axonstore_specs.push(self.visit_axonstore(n)),
             Declaration::AxonEndpoint(n) => ir.endpoints.push(self.visit_axonendpoint(n)),
-            // §Fase 53.b — lower the `extension` declaration into the IR.
+            // v2.5.0 — lower the `extension` declaration into the IR.
             // Deterministic ordering is applied once, at the end of
             // `generate` (Phase 4), not here.
             Declaration::Extension(n) => ir.extensions.push(self.visit_extension(n)),
@@ -505,7 +505,7 @@ impl IRGenerator {
             Declaration::Fabric(n) => ir.fabrics.push(self.visit_fabric(n)),
             Declaration::Manifest(n) => {
                 let m = self.visit_manifest(n);
-                // §λ-L-E Fase 1 — manifest is a provisioning intention
+                // v1.1.0 — manifest is a provisioning intention
                 // (goes to the Free-Monad tree for the Handler layer).
                 self.intention_ops
                     .push(IRIntentionOperation::Manifest(m.clone()));
@@ -513,7 +513,7 @@ impl IRGenerator {
             }
             Declaration::Observe(n) => {
                 let o = self.visit_observe(n);
-                // §λ-L-E Fase 1 — observations are intentions too.
+                // v1.1.0 — observations are intentions too.
                 self.intention_ops
                     .push(IRIntentionOperation::Observe(o.clone()));
                 ir.observations.push(o);
@@ -527,24 +527,24 @@ impl IRGenerator {
             Declaration::Upstream(n) => ir.upstreams.push(self.visit_upstream(n)),
             Declaration::Cors(n) => ir.cors_policies.push(self.visit_cors(n)),
             Declaration::Cache(n) => ir.caches.push(self.visit_cache(n)),
-            // §Fase 92.a — lower the ephemeral-credential contract.
+            // v2.46.0 — lower the ephemeral-credential contract.
             Declaration::Credential(n) => ir.credentials.push(self.visit_credential(n)),
-            // §Fase 87.a — lower the `savant` orchestrator into the IR.
+            // v2.42.0 — lower the `savant` orchestrator into the IR.
             Declaration::Savant(n) => ir.savants.push(self.visit_savant(n)),
-            // §Fase 99.b — lower the `document` declaration into the IR.
+            // v2.53.0 — lower the `document` declaration into the IR.
             Declaration::Document(n) => ir.documents.push(self.visit_document(n)),
-            // §Fase 105 — lower the `deliver` declaration into the IR.
+            // v2.60.0 — lower the `deliver` declaration into the IR.
             Declaration::Deliver(n) => ir.deliveries.push(self.visit_deliver(n)),
             Declaration::Notify(n) => ir.notifications.push(self.visit_notify(n)),
-            // §Fase 87.d — lower the `synth` tool-synthesis policy into the IR.
+            // v2.42.0 — lower the `synth` tool-synthesis policy into the IR.
             Declaration::Synth(n) => ir.synths.push(self.visit_synth(n)),
-            // §Fase 88.a — lower the `scope` authorization policy into the IR.
+            // v2.43.0 — lower the `scope` authorization policy into the IR.
             Declaration::Scope(n) => ir.scopes.push(self.visit_scope(n)),
-            // §Fase 80.g — `voice` never reaches the IR: the parser already
+            // v2.37.0 — `voice` never reaches the IR: the parser already
             // expanded it into ordinary ots/session/socket/upstream
             // declarations (in this same program), and THOSE are the
             // deployed artifact. The declaration stays in the AST purely
-            // for provenance + T852 validation (D80.6: the reviewer audits
+            // for provenance + T852 validation (the design decision: the reviewer audits
             // the expansion, which is real IR, not the sugar).
             Declaration::Voice(_) => {}
             Declaration::Observable(n) => ir.observables.push(self.visit_observable(n)),
@@ -554,7 +554,7 @@ impl IRGenerator {
             Declaration::Heal(n) => ir.heals.push(self.visit_heal(n)),
             Declaration::Component(n) => ir.components.push(self.visit_component(n)),
             Declaration::View(n) => ir.views.push(self.visit_view(n)),
-            // §λ-L-E Fase 13 — Mobile typed channels (paper §3, §4).
+            // v1.6.0 — Mobile typed channels (paper section 3, section 4).
             // Record the channel name BEFORE visiting subsequent flow
             // bodies so `IREmit.value_is_channel` resolves correctly for
             // mobility uses appearing after this declaration in source
@@ -565,22 +565,22 @@ impl IRGenerator {
             }
             Declaration::Epistemic(eb) => {
                 for child in &eb.body {
-                    // §Fase 99.d — record the enclosing epistemic mode on a
+                    // v2.53.0 — record the enclosing epistemic mode on a
                     // document so the barrier re-derives identically at deploy.
                     if let Declaration::Document(d) = child {
                         let mut ird = self.visit_document(d);
                         ird.epistemic_mode = eb.mode.clone();
                         ir.documents.push(ird);
                     } else if let Declaration::Notify(nf) = child {
-                        // §Fase 110 — record the enclosing epistemic mode so the
+                        // v2.66.0 — record the enclosing epistemic mode so the
                         // T933 barrier re-derives identically at deploy.
                         let mut irn = self.visit_notify(nf);
                         irn.epistemic_mode = eb.mode.clone();
                         ir.notifications.push(irn);
                     } else if let Declaration::Deliver(dl) = child {
-                        // §Fase 105 — record the enclosing epistemic mode on a
+                        // v2.60.0 — record the enclosing epistemic mode on a
                         // delivery so the T920 barrier re-derives identically at
-                        // deploy (the §99.d document discipline, egress-dual).
+                        // deploy (the v2.53.0 document discipline, egress-dual).
                         let mut ird = self.visit_deliver(dl);
                         ird.epistemic_mode = eb.mode.clone();
                         ir.deliveries.push(ird);
@@ -607,7 +607,7 @@ impl IRGenerator {
     // ── Visitors ─────────────────────────────────────────────────
 
     fn visit_import(&self, n: &ImportNode) -> IRImport {
-        // §Fase 115.e — when the EMS driver supplied a resolution map, the
+        // v2.76.0 — when the EMS driver supplied a resolution map, the
         // lowered import carries the proof it resolved (+ against WHICH
         // interface). Without a map both fields stay at their defaults and
         // are skip-serialized — v2.75.0 byte parity.
@@ -714,8 +714,8 @@ impl IRGenerator {
             sandbox: n.sandbox,
             input_schema: Vec::new(),
             output_schema: String::new(),
-            // §Fase 58.c — carry the typed input schema + output type into the
-            // IR (the §32 input_schema/output_schema above stay the validation
+            // v2.8.0 — carry the typed input schema + output type into the
+            // IR (the v1.23.0 input_schema/output_schema above stay the validation
             // hints; these are the D1 type contract).
             parameters: n
                 .parameters
@@ -735,25 +735,25 @@ impl IRGenerator {
                 })
                 .collect(),
             output_type: n.output_type.clone(),
-            // §Fase 116.a — the required authorization scopes (D116.9; elided
-            // when empty, IR-SHA stable for every pre-§116 tool).
+            // v2.77.0 — the required authorization scopes (the design decision; elided
+            // when empty, IR-SHA stable for every pre-v2.77.0 tool).
             requires: n.requires.clone(),
-            // §Fase 94.c — the dispatch-injection secret KEY (elided when
+            // v2.48.0 — the dispatch-injection secret KEY (elided when
             // empty; the value NEVER rides the IR — it lives in custody).
             secret: n.secret.clone(),
-            // §Fase 95.a — the partition parameter selecting the per-call
+            // v2.49.0 — the partition parameter selecting the per-call
             // key segment (elided when empty; IR-SHA stable for every
-            // pre-§95 tool). Only the parameter NAME travels, never a value.
+            // pre-v2.49.0 tool). Only the parameter NAME travels, never a value.
             secret_partition: n.secret_partition.clone(),
             effect_row,
-            // §Fase 84.b — Remote Hands technician fields (elided from the IR
+            // v2.39.0 — Remote Hands technician fields (elided from the IR
             // when unset, per the `skip_serializing_if` on `IRToolSpec`).
             target: n.target.clone(),
             risk: n.risk.clone(),
             argv: n.argv.clone(),
-            // §Fase 85.b — the cache-policy reference (elided when empty).
+            // v2.40.0 — the cache-policy reference (elided when empty).
             cache: n.cache.clone(),
-            // §Fase 98.b — the web-acquisition config (elided from the IR
+            // v2.52.0 — the web-acquisition config (elided from the IR
             // when absent, per the `skip_serializing_if` on `IRToolSpec`).
             scrape: n.scrape.as_ref().map(|s| crate::ir_nodes::IRScrapeSpec {
                 node_type: "scrape_spec",
@@ -834,7 +834,7 @@ impl IRGenerator {
         };
 
         // Collect all flow body nodes as typed IR
-        // §Fase 109.a — collect the flow's rich `let` expressions so the
+        // v2.65.0 — collect the flow's rich `let` expressions so the
         // Grad arm can differentiate them (recursing into nested bodies;
         // T932 enforces the "prior, same flow" discipline at check time).
         {
@@ -916,7 +916,7 @@ impl IRGenerator {
         }
     }
 
-    /// §Fase 70.a — lower a pure-expression AST node into its IR form. Pure
+    /// v2.26.0 — lower a pure-expression AST node into its IR form. Pure
     /// structural map; operators become canonical lowercase strings.
     fn lower_expr(e: &Expr) -> IRExpr {
         match e {
@@ -929,7 +929,7 @@ impl IRGenerator {
                 },
             },
             Expr::Ref(p) => IRExpr::Ref { path: p.clone() },
-            // §Fase 119.o — the `logic { let … return }` chain, lowered term for
+            // v2.83.0 — the `logic { let … return }` chain, lowered term for
             // term. Structural: no substitution, so each bound value is one node
             // and the evaluator runs it once.
             Expr::Let { name, value, body } => IRExpr::Let {
@@ -980,12 +980,12 @@ impl IRGenerator {
         }
     }
 
-    /// §Fase 119.n — lower one `step { }` to its IR node.
+    /// v2.83.0 — lower one `step { }` to its IR node.
     ///
     /// Extracted from [`Self::visit_flow_step`] because a `stream<T>` handler arm
     /// IS a step (see `ast::StreamBlock::on_chunk`) and must lower through the
     /// SAME path — an arm that lowered through a private copy would quietly stop
-    /// carrying whatever the next fase adds to a step.
+    /// carrying whatever the next cycle adds to a step.
     fn lower_step(&self, s: &crate::ast::StepNode) -> IRStep {
         IRStep {
             node_type: "step",
@@ -1006,13 +1006,13 @@ impl IRGenerator {
             requires_context: s.requires_context,
             now_tz: s.now_tz.clone(),
             pix_ops: s.pix_ops.iter().map(|op| self.visit_flow_step(op)).collect(),
-            // §Fase 119.n — the step-body `stream<T> { … }`. Before this fase the
+            // v2.83.0 — the step-body `stream<T> { … }`. Before this cycle the
             // parser discarded it, so there was never anything here to lower.
             stream: s
                 .stream
                 .as_ref()
                 .map(|sb| Box::new(self.lower_stream_block(sb))),
-            // §Fase 120 — the step-body `perform`s, in source order. They lower
+            // v2.87.0 — the step-body `perform`s, in source order. They lower
             // through the SAME `lower_perform` the flow position uses, so a
             // bare name can never resolve to one effect at flow level and
             // another inside a step.
@@ -1031,16 +1031,16 @@ impl IRGenerator {
         }
     }
 
-    /// §Fase 119.n — lower a `stream<T> { on_chunk: … on_complete: … }` block.
+    /// v2.83.0 — lower a `stream<T> { on_chunk: … on_complete: … }` block.
     fn lower_stream_block(&self, s: &crate::ast::StreamBlock) -> IRStreamBlock {
         IRStreamBlock {
             node_type: "stream",
             source_line: s.loc.line,
             source_column: s.loc.column,
-            // §Fase 111.e — lower the body. It used to be discarded at parse
+            // v2.67.0 — lower the body. It used to be discarded at parse
             // time, which is why `run_stream` had nothing to run.
             body: s.body.iter().map(|st| self.visit_flow_step(st)).collect(),
-            // §Fase 119.n — the published surface: the chunk type and the two
+            // v2.83.0 — the published surface: the chunk type and the two
             // handler arms, none of which reached the IR before.
             chunk_type: s.chunk_type.clone(),
             on_chunk: s.on_chunk.as_ref().map(|a| Box::new(self.lower_step(a))),
@@ -1052,7 +1052,7 @@ impl IRGenerator {
         }
     }
 
-    /// §Fase 120 (D120.2) — resolve a perform/forward site to its effect name.
+    /// v2.87.0 — resolve a perform/forward site to its effect name.
     ///
     /// Returns the EMPTY string when the bare form is ambiguous or undeclared.
     /// That is deliberate and it is not the diagnostic: the type-checker refuses
@@ -1070,7 +1070,7 @@ impl IRGenerator {
         }
     }
 
-    /// §Fase 120 — lower one `perform`. Shared by the flow position and the
+    /// v2.87.0 — lower one `perform`. Shared by the flow position and the
     /// step-body position so the two can never resolve differently.
     fn lower_perform(&self, p: &crate::ast::PerformStep) -> crate::ir_nodes::IREffectPerform {
         crate::ir_nodes::IREffectPerform {
@@ -1087,7 +1087,7 @@ impl IRGenerator {
     fn visit_flow_step(&self, fs: &FlowStep) -> IRFlowNode {
         match fs {
             FlowStep::Step(s) => IRFlowNode::Step(self.lower_step(s)),
-            // §Fase 92.b — `mint <Credential> as <binding>`.
+            // v2.46.0 — `mint <Credential> as <binding>`.
             FlowStep::Mint(s) => IRFlowNode::Mint(crate::ir_nodes::IRMintStep {
                 node_type: "mint",
                 source_line: s.loc.line,
@@ -1095,7 +1095,7 @@ impl IRGenerator {
                 credential_ref: s.credential_ref.clone(),
                 binding: s.binding.clone(),
             }),
-            // §Fase 94.b — `rotate <SecretsStore> [where "…"] with <Tool>
+            // v2.48.0 — `rotate <SecretsStore> [where "…"] with <Tool>
             // as <binding>`.
             FlowStep::Rotate(s) => IRFlowNode::Rotate(crate::ir_nodes::IRRotateStep {
                 node_type: "rotate",
@@ -1118,9 +1118,9 @@ impl IRGenerator {
                 source_column: s.loc.column,
                 strategy: s.strategy.clone(),
                 target: s.target.clone(),
-                // §Fase 119.f.8 — the block form's fields. Elided when empty so
-                // every pre-§119.f.8 program's IR JSON stays byte-identical
-                // (the §68.b/§91.a no-IR-SHA-drift discipline).
+                // v2.83.0 — the block form's fields. Elided when empty so
+                // every pre-v2.83.0 program's IR JSON stays byte-identical
+                // (the v2.22.0/v2.46.0 no-IR-SHA-drift discipline).
                 given: s.given.clone(),
                 ask: s.ask.clone(),
                 depth: s.depth,
@@ -1131,7 +1131,7 @@ impl IRGenerator {
                 source_column: s.loc.column,
                 target: s.target.clone(),
                 rule: s.rule.clone(),
-                // §Fase 121 — resolve `against: <Schema>` HERE, from the Phase 0
+                // v2.88.0 — resolve `against: <Schema>` HERE, from the Phase 0
                 // catalog, so the artifact carries its own derivation and the
                 // dispatcher cannot be reached without it. Order-independent: a
                 // `type` declared after the flow resolves exactly as one
@@ -1141,7 +1141,7 @@ impl IRGenerator {
                     .get(&s.rule)
                     .cloned()
                     .map(Box::new),
-                // §Fase 121 — the guard rides its validation into the IR; the
+                // v2.88.0 — the guard rides its validation into the IR; the
                 // pairing needs no re-derivation because it was never taken
                 // apart.
                 guard: s.guard.as_ref().map(|g| crate::ir_nodes::IRConfidenceGuard {
@@ -1168,7 +1168,7 @@ impl IRGenerator {
                 format_type: s.format_type.clone(),
                 priority: s.priority.clone(),
                 style: s.style.clone(),
-                // §Fase 119.f.9 — elided when empty, so no IR-SHA drift.
+                // v2.83.0 — elided when empty, so no IR-SHA drift.
                 include: s.include.clone(),
             }),
             FlowStep::UseTool(s) => IRFlowNode::UseTool(IRUseToolStep {
@@ -1176,11 +1176,11 @@ impl IRGenerator {
                 source_line: s.loc.line,
                 source_column: s.loc.column,
                 tool_name: s.tool_name.clone(),
-                // §Fase 58.b — `LegacyPositional` projects its string verbatim
+                // v2.8.0 — `LegacyPositional` projects its string verbatim
                 // (D5, unchanged IR). `Named` keeps the legacy `argument` empty
-                // and carries its pairs in `named_args` below (§58.c).
+                // and carries its pairs in `named_args` below (v2.8.0).
                 argument: s.args.legacy_argument(),
-                // §Fase 58.c — structured keyword args survive to the IR.
+                // v2.8.0 — structured keyword args survive to the IR.
                 named_args: match &s.args {
                     UseArgs::Named(pairs) => pairs
                         .iter()
@@ -1226,7 +1226,7 @@ impl IRGenerator {
                     .collect(),
                 conditions: s.conditions.clone(),
                 conjunctor: s.conjunctor.clone(),
-                // §Fase 70.a — lower the expression form when present (rich
+                // v2.26.0 — lower the expression form when present (rich
                 // conditions only; legacy-shaped ones keep `cond = None`).
                 cond: s.cond.as_ref().map(Self::lower_expr),
             }),
@@ -1249,7 +1249,7 @@ impl IRGenerator {
                 } else {
                     s.value_kind.clone()
                 },
-                // §Fase 70.f — lower the expression form when present.
+                // v2.26.0 — lower the expression form when present.
                 value_ast: s.value_ast.as_ref().map(Self::lower_expr),
             }),
             FlowStep::Return(s) => IRFlowNode::Return(IRReturnStep {
@@ -1258,7 +1258,7 @@ impl IRGenerator {
                 source_column: s.loc.column,
                 value_expr: s.value_expr.clone(),
             }),
-            // Fase 19.e — break / continue. Both are payload-free at
+            // v1.14.0 — break / continue. Both are payload-free at
             // both AST and IR level; the runner translates them into
             // sentinel exceptions caught by the enclosing for-in loop.
             FlowStep::Break(s) => IRFlowNode::Break(IRBreakStep {
@@ -1283,7 +1283,7 @@ impl IRGenerator {
                 node_type: "parallel_block",
                 source_line: s.loc.line,
                 source_column: s.loc.column,
-                // §Fase 65 — lower each AST branch (a Vec<FlowStep>) into a
+                // v2.15.0 — lower each AST branch (a Vec<FlowStep>) into a
                 // flow-IR body so the dispatcher runs them concurrently.
                 branches: s
                     .branches
@@ -1322,7 +1322,7 @@ impl IRGenerator {
                 constraints_ref: s.constraints_ref.clone(),
             }),
             FlowStep::Grad(s) => {
-                // §Fase 109.a — differentiate AT COMPILE TIME: the artifact
+                // v2.65.0 — differentiate AT COMPILE TIME: the artifact
                 // the IR carries IS the (simplified) derivative. A miss or a
                 // non-differentiable construct on this path means a stale
                 // artifact (T931/T932 refused it at check time on the happy
@@ -1418,9 +1418,9 @@ impl IRGenerator {
                 shield_name: s.shield_name.clone(),
                 target: s.target.clone(),
                 output_type: s.output_type.clone(),
-                // §Fase 114.w — the shield's breach policy rides the step.
+                // v2.69.0 — the shield's breach policy rides the step.
                 breach_policy: self.shield_policies.get(&s.shield_name).cloned(),
-                // §Fase 122.a — and its declared `scan:`, so the runtime can
+                // v2.89.0 — and its declared `scan:`, so the runtime can
                 // refuse an assertion it has no scanner to honour.
                 scan: self
                     .shield_scans
@@ -1429,7 +1429,7 @@ impl IRGenerator {
                     .unwrap_or_default(),
             }),
             FlowStep::Stream(s) => IRFlowNode::Stream(self.lower_stream_block(s)),
-            // ── §Fase 120 — algebraic effects ────────────────────
+            // ── v2.87.0 — algebraic effects ────────────────────
             FlowStep::Handle(h) => {
                 let frame_id = self.next_frame_id.get();
                 self.next_frame_id.set(frame_id + 1);
@@ -1445,7 +1445,7 @@ impl IRGenerator {
                             operation_name: c.operation_name.clone(),
                             parameter_names: c.parameter_names.clone(),
                             // The clause body lowers to ORDINARY flow nodes —
-                            // D120.1. This is the line that makes an effect
+                            // the design decision. This is the line that makes an effect
                             // handler able to `emit`, call a tool or persist.
                             body: c.body.iter().map(|s| self.visit_flow_step(s)).collect(),
                             source_line: c.loc.line,
@@ -1470,7 +1470,7 @@ impl IRGenerator {
                 value_expr: a.value_expr.clone(),
             }),
             FlowStep::Forward(f) => {
-                // D120.2 resolution, identical to `perform` — a `forward` names
+                // the design decision resolution, identical to `perform` — a `forward` names
                 // an operation the same way and must not resolve differently.
                 let effect_name = self.resolve_effect_name(
                     f.effect_name.as_deref(),
@@ -1545,7 +1545,7 @@ impl IRGenerator {
                 arguments: s.arguments.clone(),
                 output_name: s.output_name.clone(),
             }),
-            // §Fase 119.m.3 — `<Agent>(arg, …)`.
+            // v2.83.0 — `<Agent>(arg, …)`.
             FlowStep::AgentCall(s) => IRFlowNode::AgentCall(crate::ir_nodes::IRAgentCall {
                 node_type: "agent_call",
                 source_line: s.loc.line,
@@ -1554,9 +1554,9 @@ impl IRGenerator {
                 arguments: s.arguments.clone(),
             }),
             FlowStep::Listen(s) => IRFlowNode::Listen(self.lower_listen(s)),
-            // §λ-L-E Fase 13 — Mobile typed channel reductions.
+            // v1.6.0 — Mobile typed channel reductions.
             FlowStep::Emit(s) => {
-                // §Fase 114 (owed) — the target channel's declared σ-shield
+                // v2.69.0 (owed) — the target channel's declared σ-shield
                 // (Phase 0 pre-pass; empty ⇒ unshielded channel). The runtime
                 // scans the emitted value through it before the value leaves.
                 let shield_ref = self
@@ -1564,13 +1564,13 @@ impl IRGenerator {
                     .get(&s.channel_ref)
                     .cloned()
                     .unwrap_or_default();
-                // §Fase 114.w — and the shield's breach policy rides beside it.
+                // v2.69.0 — and the shield's breach policy rides beside it.
                 let breach_policy = if shield_ref.is_empty() {
                     None
                 } else {
                     self.shield_policies.get(&shield_ref).cloned()
                 };
-                // §Fase 122.a — and its declared `scan:`, for the same reason.
+                // v2.89.0 — and its declared `scan:`, for the same reason.
                 let scan = if shield_ref.is_empty() {
                     Vec::new()
                 } else {
@@ -1597,7 +1597,7 @@ impl IRGenerator {
                 source_column: s.loc.column,
                 channel_ref: s.channel_ref.clone(),
                 shield_ref: s.shield_ref.clone(),
-                // §Fase 77.b — resolve the shield's egress algorithm at
+                // v2.34.0 — resolve the shield's egress algorithm at
                 // lowering (Phase 0 pre-pass; empty ⇒ pure π-calc publish).
                 sign: self
                     .shield_signs
@@ -1634,10 +1634,10 @@ impl IRGenerator {
                 alias: s.alias.clone(),
                 order_by: s.order_by.clone(),
                 limit_expr: s.limit_expr.clone(),
-                // §Fase 76.d — the aggregate surface (raw; elided when empty).
+                // v2.33.0 — the aggregate surface (raw; elided when empty).
                 aggregate: s.aggregate.clone(),
                 group_by: s.group_by.clone(),
-                // §Fase 85.b — the cache-policy reference (elided when empty).
+                // v2.40.0 — the cache-policy reference (elided when empty).
                 cache: s.cache.clone(),
             }),
             FlowStep::Mutate(s) => IRFlowNode::Mutate(IRMutateStep {
@@ -1660,7 +1660,7 @@ impl IRGenerator {
                 source_line: s.loc.line,
                 source_column: s.loc.column,
             }),
-            // §Fase 51.a — lower the `quant` block; the body lowers recursively
+            // v2.4.0 — lower the `quant` block; the body lowers recursively
             // (like `par` branches) so the nested flow-IR is preserved.
             FlowStep::Warden(s) => IRFlowNode::Warden(crate::ir_nodes::IRWarden {
                 node_type: "warden",
@@ -1683,7 +1683,7 @@ impl IRGenerator {
                 effect: s.effect.clone(),
                 body: s.body.iter().map(|stmt| self.visit_flow_step(stmt)).collect(),
             }),
-            // §Fase 51.d.2 — the `yield` measurement point.
+            // v2.4.0 — the `yield` measurement point.
             FlowStep::Yield(s) => IRFlowNode::Yield(crate::ir_nodes::IRYield {
                 node_type: "yield",
                 source_line: s.loc.line,
@@ -1691,7 +1691,7 @@ impl IRGenerator {
                 value_expr: s.value_expr.clone(),
                 value_kind: s.value_kind.clone(),
             }),
-            // §Fase 52.c — `run <Flow>(args)` flow-step → reuse the run IR.
+            // v2.4.0 — `run <Flow>(args)` flow-step → reuse the run IR.
             FlowStep::Run(s) => IRFlowNode::Run(self.visit_run(s)),
             FlowStep::GenericStep(_) => {
                 // Should not occur — all flow steps have dedicated handlers
@@ -1812,7 +1812,7 @@ impl IRGenerator {
         }
     }
 
-    /// §Fase 71.a — lower a temporal execution-window guard.
+    /// v2.27.0 — lower a temporal execution-window guard.
     fn visit_window(n: &WindowDefinition) -> IRWindow {
         IRWindow {
             node_type: "window",
@@ -1831,7 +1831,7 @@ impl IRGenerator {
                 })
                 .collect(),
             exclude: n.exclude.clone(),
-            // §71.c default — an unset policy defers (the safe choice: never
+            // v2.27.0 default — an unset policy defers (the safe choice: never
             // run outside the window, retry when it opens).
             on_outside: if n.on_outside.is_empty() {
                 "defer".to_string()
@@ -1841,14 +1841,14 @@ impl IRGenerator {
         }
     }
 
-    /// §Fase 72.a — lower a `budget { … }` block. An omitted `on_exhausted`
+    /// v2.28.0 — lower a `budget { … }` block. An omitted `on_exhausted`
     /// lowers to `block` (the fail-closed default: never over-emit).
     fn visit_budget(n: &BudgetBlock) -> IRBudget {
         IRBudget {
             node_type: "budget",
             source_line: n.loc.line,
             source_column: n.loc.column,
-            // §Fase 114.a — empty for the anonymous daemon-attached form.
+            // v2.69.0 — empty for the anonymous daemon-attached form.
             name: n.name.clone(),
             quotas: n
                 .quotas
@@ -1869,7 +1869,7 @@ impl IRGenerator {
     }
 
     fn visit_shield(&self, n: &ShieldDefinition) -> IRShield {
-        // §8.2.h — Python parity: strategy defaults "pattern"; Option<T> collapses to concrete zeros.
+        // section 8.2.h — Python parity: strategy defaults "pattern"; Option<T> collapses to concrete zeros.
         let strategy = if n.strategy.is_empty() {
             "pattern".to_string()
         } else {
@@ -1912,7 +1912,7 @@ impl IRGenerator {
         }
     }
 
-    /// §Fase 62.0 — lower a `ledger` declaration to its audit-chain IR node.
+    /// v2.12.0 — lower a `ledger` declaration to its audit-chain IR node.
     fn visit_ledger(&self, n: &LedgerDefinition) -> IRLedger {
         IRLedger {
             node_type: "ledger",
@@ -1948,7 +1948,7 @@ impl IRGenerator {
             source_column: n.loc.column,
             name: n.name.clone(),
             documents: n.documents.clone(),
-            // §Fase 63.A — lower the typed weighted edges (the MDN graph).
+            // v2.13.0 — lower the typed weighted edges (the MDN graph).
             relations: n
                 .relations
                 .iter()
@@ -1962,8 +1962,8 @@ impl IRGenerator {
             adaptive: n.adaptive,
             mcp_server: n.mcp_server.clone(),
             mcp_resource_uri: n.mcp_resource_uri.clone(),
-            // §Fase 64.A — lower the dynamic store-sourced backing (None for the
-            // static §63 corpus → serde-skipped → byte-identical IR).
+            // v2.14.0 — lower the dynamic store-sourced backing (None for the
+            // static v2.13.0 corpus → serde-skipped → byte-identical IR).
             store_source: n.store_source.as_ref().map(|s| IRCorpusStoreSource {
                 doc_store: s.doc_store.clone(),
                 doc_id: s.doc_id_col.clone(),
@@ -1983,8 +1983,8 @@ impl IRGenerator {
             source_line: n.loc.line,
             source_column: n.loc.column,
             name: n.name.clone(),
-            // §108.b — canonicalize the declared type (aliases resolved
-            // here, once): the engine's deploy hook and the §108.d PCC
+            // v2.63.0 — canonicalize the declared type (aliases resolved
+            // here, once): the engine's deploy hook and the v2.63.0 PCC
             // class read ONE spelling. A type the checker refused (T928)
             // never reaches IR generation on the happy path; a raw
             // passthrough survives only in a stale/hand-edited artifact,
@@ -2039,7 +2039,7 @@ impl IRGenerator {
             source_column: n.loc.column,
             name: n.name.clone(),
             shield_ref: n.shield_ref.clone(),
-            // §Fase 111.f — the parameters and the body now reach the IR. Before
+            // v2.67.0 — the parameters and the body now reach the IR. Before
             // this, `IRCompute` carried only `name` + `shield_ref`, so the
             // "deterministic muscle" had nothing to flex: no inputs, no term.
             parameters: n
@@ -2060,7 +2060,7 @@ impl IRGenerator {
         }
     }
 
-    /// §Fase 52.a — lower one `listen` listener (channel + alias + handler
+    /// v2.4.0 — lower one `listen` listener (channel + alias + handler
     /// body) to its IR. Shared by the flow-step `FlowStep::Listen` arm and the
     /// daemon listener list so both carry the (now-executing) body.
     fn lower_listen(&self, s: &ListenStep) -> IRListenStep {
@@ -2087,21 +2087,21 @@ impl IRGenerator {
             strategy: n.strategy.clone(),
             on_stuck: n.on_stuck.clone(),
             shield_ref: n.shield_ref.clone(),
-            // §Fase 71.c — the daemon's `window:` temporal binding.
+            // v2.27.0 — the daemon's `window:` temporal binding.
             window_ref: n.window_ref.clone(),
-            // §Fase 72.a — the daemon's `budget { … }` rate limit.
+            // v2.28.0 — the daemon's `budget { … }` rate limit.
             budget: n.budget.as_ref().map(Self::visit_budget),
             max_tokens: n.max_tokens,
             max_time: n.max_time.clone(),
             max_cost: n.max_cost,
-            // §Fase 52.a — listeners-with-bodies now survive lowering (were dropped).
+            // v2.4.0 — listeners-with-bodies now survive lowering (were dropped).
             listeners: n.listeners.iter().map(|l| self.lower_listen(l)).collect(),
-            // §Fase 52.d — the daemon's declared capability scope.
+            // v2.4.0 — the daemon's declared capability scope.
             requires_capabilities: n.requires_capabilities.clone(),
         }
     }
 
-    /// §Fase 99.b — lower a `document` declaration into the IR. The effect row
+    /// v2.53.0 — lower a `document` declaration into the IR. The effect row
     /// is flattened the same way tool effect rows are (base + `epistemic:`
     /// synthesis is not needed here — a document row carries `io`/`storage`/
     /// `sensitive:*`/`legal:*`). Block order is preserved for determinism.
@@ -2154,7 +2154,7 @@ impl IRGenerator {
         }
     }
 
-    /// §Fase 105 — lower a `deliver` declaration into the IR. Operation order
+    /// v2.60.0 — lower a `deliver` declaration into the IR. Operation order
     /// is preserved for determinism; field values reuse the document field
     /// lowering (`text`/`ref`/`list`/`int`/`bool`).
     fn visit_notify(&self, n: &crate::ast::NotifyDefinition) -> crate::ir_nodes::IRNotify {
@@ -2204,7 +2204,7 @@ impl IRGenerator {
         }
     }
 
-    /// §Fase 87.a — lower a `savant` orchestrator (surface only; the checker
+    /// v2.42.0 — lower a `savant` orchestrator (surface only; the checker
     /// owns catalog/ref/budget validation).
     fn visit_savant(&self, n: &SavantDefinition) -> IRSavant {
         IRSavant {
@@ -2224,7 +2224,7 @@ impl IRGenerator {
         }
     }
 
-    /// §Fase 88.a — lower a `scope` authorization policy (surface only; the
+    /// v2.43.0 — lower a `scope` authorization policy (surface only; the
     /// checker owns catalog + non-empty + resolution validation).
     fn visit_scope(&self, n: &ScopeDefinition) -> crate::ir_nodes::IRScope {
         crate::ir_nodes::IRScope {
@@ -2269,7 +2269,7 @@ impl IRGenerator {
         }
     }
 
-    /// §Fase 87.d — lower a `synth` policy. `review` lowers to the fail-closed
+    /// v2.42.0 — lower a `synth` policy. `review` lowers to the fail-closed
     /// default `required` when omitted (never a silent "no review").
     fn visit_synth(&self, n: &SynthDefinition) -> IRSynth {
         IRSynth {
@@ -2298,7 +2298,7 @@ impl IRGenerator {
             name: n.name.clone(),
             backend: n.backend.clone(),
             connection: n.connection.clone(),
-            // §Fase 113 — the `resource` this store runs on (empty = the legacy
+            // v2.67.0 — the `resource` this store runs on (empty = the legacy
             // un-resourced form; skip-if-empty on the wire ⇒ no IR-SHA drift).
             resource_ref: n.resource_ref.clone(),
             confidence_floor: n.confidence_floor,
@@ -2306,12 +2306,12 @@ impl IRGenerator {
             on_breach: n.on_breach.clone(),
             capability: n.capability.clone(),
             class: n.class.clone(),
-            // §Fase 38.b (D1) — thread the parsed column-schema
+            // v1.31.0 (D1) — thread the parsed column-schema
             // declaration (if any) through to the IR. The IR mirror
             // preserves the tagged-union shape (inline / manifest_ref /
             // env_var) and the canonical PascalCase column-type name.
             //
-            // §Fase 94.a — a `backend: secrets` store carries the FIXED
+            // v2.48.0 — a `backend: secrets` store carries the FIXED
             // synthesized metadata schema instead (an adopter-declared
             // schema on a secrets store is `axon-T900` and never reaches
             // a shipped IR): the artifact stays self-describing, so PCC
@@ -2330,10 +2330,10 @@ impl IRGenerator {
         }
     }
 
-    /// §Fase 53.b — lower an `extension` declaration to its IR mirror.
+    /// v2.5.0 — lower an `extension` declaration to its IR mirror.
     /// Pure structural lowering; the category/no-shadowing/provenance
-    /// invariants are enforced by the §53.c type-checker before this IR
-    /// is consumed by §53.d PCC.
+    /// invariants are enforced by the v2.5.0 type-checker before this IR
+    /// is consumed by v2.5.0 PCC.
     fn visit_extension(&self, n: &crate::ast::ExtensionDefinition) -> crate::ir_nodes::IRExtension {
         crate::ir_nodes::IRExtension {
             node_type: "extension",
@@ -2354,7 +2354,7 @@ impl IRGenerator {
     }
 
     fn visit_axonendpoint(&self, n: &AxonEndpointDefinition) -> IRAxonEndpoint {
-        // §8.2.h — Python emits `node_type: "endpoint"`; retries collapses Option<i64> → i64.
+        // section 8.2.h — Python emits `node_type: "endpoint"`; retries collapses Option<i64> → i64.
         IRAxonEndpoint {
             node_type: "endpoint",
             source_line: n.loc.line,
@@ -2369,11 +2369,11 @@ impl IRGenerator {
             retries: n.retries.unwrap_or(0),
             timeout: n.timeout.clone(),
             compliance: n.compliance.clone(),
-            // §Fase 37.y (D1) — IR mirror of `AxonEndpointDefinition.path_params`.
+            // v1.32.0 (D1) — IR mirror of `AxonEndpointDefinition.path_params`.
             // Direct clone (Vec<String>); the IR JSON omits the field
             // when the path has no placeholders (D5 backwards-compat).
             path_params: n.path_params.clone(),
-            // §Fase 37.y (D2) — Lower each AST `TypeField` to an
+            // v1.32.0 (D2) — Lower each AST `TypeField` to an
             // `IRTypeField`. The catalog validation already happened
             // at parse time; the IR layer just shape-translates.
             query_params: n
@@ -2389,21 +2389,21 @@ impl IRGenerator {
                     optional: f.type_expr.optional,
                 })
                 .collect(),
-            // §Fase 51.x — lower the `requires:` capability scopes into
+            // v2.4.0 — lower the `requires:` capability scopes into
             // the IR so the PCC CapabilityContainment property can read
             // them. Direct clone; IR JSON omits the field when empty
             // (D5 backwards-compat).
             requires_capabilities: n.requires_capabilities.clone(),
-            // §Fase 83.a — the `cors: <Name>` reference. Direct clone;
-            // IR JSON omits the field when empty (D83.5 / zero IR-SHA drift).
+            // v2.38.0 — the `cors: <Name>` reference. Direct clone;
+            // IR JSON omits the field when empty (the design decision / zero IR-SHA drift).
             cors_ref: n.cors_ref.clone(),
-            // §Fase 89.a — the explicit authorization-coverage opt-out.
+            // v2.44.0 — the explicit authorization-coverage opt-out.
             // Direct clone; IR JSON omits it when false (zero IR-SHA drift).
             public: n.public,
         }
     }
 
-    /// §λ-L-E Fase 1 — Resource IR lowering.
+    /// v1.1.0 — Resource IR lowering.
     fn visit_resource(&self, n: &ResourceDefinition) -> IRResource {
         IRResource {
             node_type: "resource",
@@ -2416,12 +2416,12 @@ impl IRGenerator {
             lifetime: n.lifetime.clone(),
             certainty_floor: n.certainty_floor,
             shield_ref: n.shield_ref.clone(),
-            // §Fase 113 — the fabric this resource lives in.
+            // v2.67.0 — the fabric this resource lives in.
             within: n.within.clone(),
         }
     }
 
-    /// §λ-L-E Fase 1 — Fabric IR lowering.
+    /// v1.1.0 — Fabric IR lowering.
     fn visit_fabric(&self, n: &FabricDefinition) -> IRFabric {
         IRFabric {
             node_type: "fabric",
@@ -2436,7 +2436,7 @@ impl IRGenerator {
         }
     }
 
-    /// §λ-L-E Fase 1 — Manifest IR lowering.
+    /// v1.1.0 — Manifest IR lowering.
     fn visit_manifest(&self, n: &ManifestDefinition) -> IRManifest {
         IRManifest {
             node_type: "manifest",
@@ -2451,7 +2451,7 @@ impl IRGenerator {
         }
     }
 
-    /// §λ-L-E Fase 1 — Observe IR lowering.
+    /// v1.1.0 — Observe IR lowering.
     fn visit_observe(&self, n: &ObserveDefinition) -> IRObserve {
         IRObserve {
             node_type: "observe",
@@ -2471,7 +2471,7 @@ impl IRGenerator {
         }
     }
 
-    /// §λ-L-E Fase 3 — Reconcile IR lowering.
+    /// v1.1.0 — Reconcile IR lowering.
     fn visit_reconcile(&self, n: &ReconcileDefinition) -> IRReconcile {
         IRReconcile {
             node_type: "reconcile",
@@ -2492,7 +2492,7 @@ impl IRGenerator {
         }
     }
 
-    /// §λ-L-E Fase 3 — Lease IR lowering.
+    /// v1.1.0 — Lease IR lowering.
     fn visit_lease(&self, n: &LeaseDefinition) -> IRLease {
         IRLease {
             node_type: "lease",
@@ -2514,7 +2514,7 @@ impl IRGenerator {
         }
     }
 
-    /// §λ-L-E Fase 5 — Immune IR lowering.
+    /// v1.1.0 — Immune IR lowering.
     fn visit_immune(&self, n: &ImmuneDefinition) -> IRImmune {
         IRImmune {
             node_type: "immune",
@@ -2539,7 +2539,7 @@ impl IRGenerator {
         }
     }
 
-    /// §λ-L-E Fase 5 — Reflex IR lowering.
+    /// v1.1.0 — Reflex IR lowering.
     fn visit_reflex(&self, n: &ReflexDefinition) -> IRReflex {
         IRReflex {
             node_type: "reflex",
@@ -2558,7 +2558,7 @@ impl IRGenerator {
         }
     }
 
-    /// §λ-L-E Fase 5 — Heal IR lowering.
+    /// v1.1.0 — Heal IR lowering.
     fn visit_heal(&self, n: &HealDefinition) -> IRHeal {
         IRHeal {
             node_type: "heal",
@@ -2583,7 +2583,7 @@ impl IRGenerator {
         }
     }
 
-    /// §λ-L-E Fase 9 — Component IR lowering.
+    /// v1.3.1 — Component IR lowering.
     fn visit_component(&self, n: &ComponentDefinition) -> IRComponent {
         IRComponent {
             node_type: "component",
@@ -2601,7 +2601,7 @@ impl IRGenerator {
         }
     }
 
-    /// §λ-L-E Fase 9 — View IR lowering.
+    /// v1.3.1 — View IR lowering.
     fn visit_view(&self, n: &ViewDefinition) -> IRView {
         IRView {
             node_type: "view",
@@ -2614,7 +2614,7 @@ impl IRGenerator {
         }
     }
 
-    /// §λ-L-E Fase 4 — Session IR lowering.
+    /// v1.1.0 — Session IR lowering.
     fn visit_session(&self, n: &SessionDefinition) -> IRSession {
         let roles = n
             .roles
@@ -2640,7 +2640,7 @@ impl IRGenerator {
         }
     }
 
-    /// §Fase 41.b — recursively lower a session step, including the nested
+    /// v2.3.0 — recursively lower a session step, including the nested
     /// `select`/`branch` choice sub-protocols (each branch is its own ordered
     /// step sequence). Mirrors the AST `SessionStep`/`SessionBranch` shape.
     fn lower_session_step_ir(&self, s: &SessionStep) -> IRSessionStep {
@@ -2663,14 +2663,14 @@ impl IRGenerator {
                         .collect(),
                 })
                 .collect(),
-            // §Fase 79.b — interrupt-only fields; empty/false (and thus skipped
+            // v2.36.0 — interrupt-only fields; empty/false (and thus skipped
             // in the serialized IR) for every other op.
             binder: s.binder.clone(),
             resumable: s.resumable,
         }
     }
 
-    /// §λ-L-E Fase 4 — Topology IR lowering.
+    /// v1.1.0 — Topology IR lowering.
     fn visit_topology(&self, n: &TopologyDefinition) -> IRTopology {
         IRTopology {
             node_type: "topology",
@@ -2693,7 +2693,7 @@ impl IRGenerator {
         }
     }
 
-    /// §λ-L-E Fase 3 — Ensemble IR lowering.
+    /// v1.1.0 — Ensemble IR lowering.
     fn visit_ensemble(&self, n: &EnsembleDefinition) -> IREnsemble {
         IREnsemble {
             node_type: "ensemble",
@@ -2756,7 +2756,7 @@ impl IRGenerator {
     }
 
     // ──────────────────────────────────────────────────────────────────
-    //  §λ-L-E Fase 13 — Mobile Typed Channels (paper_mobile_channels.md)
+    // v1.6.0 — Mobile Typed Channels (paper_mobile_channels.md)
     //  Declarative channels lower to IRChannel; emit/publish/discover
     //  are step-level reductions handled in `visit_flow_step`.
     // ──────────────────────────────────────────────────────────────────
@@ -2772,13 +2772,13 @@ impl IRGenerator {
             lifetime: n.lifetime.clone(),
             persistence: n.persistence.clone(),
             shield_ref: n.shield_ref.clone(),
-            // §Fase 77.b — stamped by `mark_egress_channels` (Phase 1.5)
+            // v2.34.0 — stamped by `mark_egress_channels` (Phase 1.5)
             // once every publish site is lowered.
             egress_sign: String::new(),
         }
     }
 
-    /// §Fase 41.b — compile a `socket` to its IR (the typed-WS transport
+    /// v2.3.0 — compile a `socket` to its IR (the typed-WS transport
     /// binding; axon-rs realises the endpoint from this).
     fn visit_socket(&self, n: &SocketDefinition) -> IRSocket {
         IRSocket {
@@ -2793,7 +2793,7 @@ impl IRGenerator {
         }
     }
 
-    /// §Fase 80.b — compile an `upstream` to its IR (the outbound vendor
+    /// v2.37.0 — compile an `upstream` to its IR (the outbound vendor
     /// connection; axon-rs dials + transcodes from this alone — a new vendor
     /// is a new declaration, never new Rust code).
     fn visit_upstream(&self, n: &UpstreamDefinition) -> IRUpstream {
@@ -2805,11 +2805,11 @@ impl IRGenerator {
             transport: n.transport.clone(),
             protocol: n.protocol.clone(),
             role: n.role.clone(),
-            // §Fase 114.u — a resourced upstream DERIVES its dial address from
+            // v2.69.0 — a resourced upstream DERIVES its dial address from
             // the resource's `endpoint` (a per-tenant config key, axon-T944).
             // The derivation happens HERE, at lowering, so every dial path —
             // OSS voice legs, enterprise session legs, tests — reads the same
-            // stamped `resolve` by construction (the §114 multi-path lesson).
+            // stamped `resolve` by construction (the v2.69.0 multi-path lesson).
             resolve: if n.resource_ref.is_empty() {
                 n.resolve.clone()
             } else {
@@ -2819,7 +2819,7 @@ impl IRGenerator {
                     .unwrap_or_default()
             },
             resource_ref: n.resource_ref.clone(),
-            // §Fase 114.u — max concurrent connection INSTANCES, from
+            // v2.69.0 — max concurrent connection INSTANCES, from
             // `resource.capacity`. None for an un-resourced upstream (and for
             // a resource with no declared capacity): unbounded, the pre-114.u
             // behaviour, honestly unchanged.
@@ -2858,7 +2858,7 @@ impl IRGenerator {
         }
     }
 
-    /// §Fase 83.a — lower a `cors Name { … }` declaration. Field-shape
+    /// v2.38.0 — lower a `cors Name { … }` declaration. Field-shape
     /// checks (wildcard+credentials T853, origin-glob T854, closed-method
     /// T855) already ran at type-check time — lowering is a pure
     /// shape-translation, no validation logic here.
@@ -2877,7 +2877,7 @@ impl IRGenerator {
         }
     }
 
-    /// §Fase 92.a — lower an ephemeral-credential contract. The duration
+    /// v2.46.0 — lower an ephemeral-credential contract. The duration
     /// literal converts to SECONDS here (one arithmetic-ready
     /// representation for every consumer); an unparseable literal lowers
     /// to `0`, which `axon-T894` rejects before the IR ships.
@@ -2895,8 +2895,8 @@ impl IRGenerator {
         }
     }
 
-    /// §Fase 85.b — lower a `cache` policy declaration (pure shape translation;
-    /// every law already ran in the §85.c checker).
+    /// v2.40.0 — lower a `cache` policy declaration (pure shape translation;
+    /// every law already ran in the v2.40.0 checker).
     fn visit_cache(&self, n: &crate::ast::CacheDefinition) -> crate::ir_nodes::IRCache {
         crate::ir_nodes::IRCache {
             node_type: "cache",
@@ -2912,7 +2912,7 @@ impl IRGenerator {
         }
     }
 
-    /// §Fase 51.c.2 — lower a Pauli-sum observable declaration.
+    /// v2.4.0 — lower a Pauli-sum observable declaration.
     fn visit_observable(&self, n: &crate::ast::ObservableDefinition) -> crate::ir_nodes::IRObservable {
         crate::ir_nodes::IRObservable {
             node_type: "observable",
@@ -2931,7 +2931,7 @@ impl IRGenerator {
         }
     }
 
-    /// §Fase 69.a — lower a `witness` declaration into IR (verbatim refs +
+    /// v2.23.0 — lower a `witness` declaration into IR (verbatim refs +
     /// metric/threshold/baseline; the deploy/runtime evaluator computes the verdict).
     fn visit_witness(&self, n: &crate::ast::WitnessDefinition) -> crate::ir_nodes::IRWitness {
         crate::ir_nodes::IRWitness {
@@ -2948,10 +2948,10 @@ impl IRGenerator {
     }
 }
 
-// ── §λ-L-E Fase 13 — Mobile Typed Channels IR generator tests ───────────────
+// ── v1.6.0 — Mobile Typed Channels IR generator tests ───────────────
 
 #[cfg(test)]
-mod fase13_ir_tests {
+mod ir_tests_2 {
     use super::*;
     use crate::lexer::Lexer;
     use crate::parser::Parser;
@@ -3097,12 +3097,12 @@ mod fase13_ir_tests {
 }
 
 #[cfg(test)]
-mod fase19_ir_tests {
-    //! Fase 19.e — Rust mirror of break/continue keywords. The Python
+mod ir_tests {
+    //! v1.14.0 — Rust mirror of break/continue keywords. The Python
     //! frontend already lowers BreakStatement → IRBreak and
-    //! ContinueStatement → IRContinue (see Fase 19.e Python commit);
+    //! ContinueStatement → IRContinue (see v1.14.0 Python commit);
     //! these tests guard the Rust side at the IR-generator boundary
-    //! so cross-stack parity goldens (Fase 19.h) compare on aligned
+    //! so cross-stack parity goldens (v1.14.0) compare on aligned
     //! shapes.
 
     use super::*;
@@ -3178,12 +3178,12 @@ mod fase19_ir_tests {
 }
 
 // ════════════════════════════════════════════════════════════════════
-//  §Fase 37.y.3 — IR mirror for path_params + query_params + D5
+// v1.32.0 — IR mirror for path_params + query_params + D5
 //  IR-JSON byte-identity backwards-compat.
 // ════════════════════════════════════════════════════════════════════
 
 #[cfg(test)]
-mod fase37y_ir_mirror_tests {
+mod ir_mirror_tests {
     use super::*;
     use crate::lexer::Lexer;
     use crate::parser::Parser;

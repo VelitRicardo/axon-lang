@@ -3,7 +3,7 @@ name: axonstore
 summary: A typed, audit-chained data store — relational backend, isolation level, encryption, retention, on-breach policy.
 category: data_plane
 top_level: true
-since: Fase 36
+since: v1.31.0
 grammar: |
   axonstore <Name> {
       backend: <ident>                        # required — postgres | mysql | sqlite | in_memory
@@ -12,7 +12,7 @@ grammar: |
       on_breach: <log|raise|rollback>          # optional — policy on type-check breach
       capability: "<slug.dotted>"              # optional — required cap to access
       confidence_floor: <0.0..1.0>             # optional — minimum certainty
-      schema { <col>: <Type> [<constraint>...], ... }   # optional — Fase 38.b inline schema
+      schema { <col>: <Type> [<constraint>...], ... } # optional — v1.31.0 inline schema
       schema: "<manifest.ref>"                 # optional — manifest-bound schema
       schema: env:VAR                          # optional — per-tenant schema env-var
   }
@@ -21,17 +21,17 @@ grammar: |
 # `axonstore`
 
 `axonstore` declares **a typed, audit-chained data store** — the
-data-plane primitive that backs every Fase 36+ persistence
+data-plane primitive that backs every v1.31.0+ persistence
 surface. It binds a name, a backend, an isolation level, an
 on-breach policy, and (optionally) a column schema, retention
 policy, encryption setting, and capability slug.
 
 This is **the structural commitment of the data plane**:
 everything declared here is auditable, isolated by tenancy by
-construction, and gated by typed capability checks. The §40
+construction, and gated by typed capability checks. The v2.0.0
 column-proof rule cross-validates that compliance-tagged stores
 (`compliance: [HIPAA]`) carry the right tenant_id column;
-runtime mutations land in the §19 PIX provenance chain.
+runtime mutations land in the v1.14.0 PIX provenance chain.
 
 ## Surface
 
@@ -105,7 +105,7 @@ A **single identifier** from the closed breach catalogue
 | `raise` | Halt with a typed error. **Production default for compliance-tagged stores.** |
 | `rollback` | Roll back the current transaction; emit audit row. |
 
-### `capability:` (optional, Fase 35.j D11)
+### `capability:` (optional, v1.30.0 D11)
 
 A **string literal** containing a **dotted-slug capability**
 (`"admin"`, `"tenant.read"`, `"hipaa.phi.read"`). Mutations
@@ -119,7 +119,7 @@ A **numeric literal in `[0.0, 1.0]`**. Minimum certainty
 required to commit a write. Below the floor, mutations land in
 a quarantine table for review.
 
-### `schema { ... }` / `schema: "<ref>"` / `schema: env:VAR` (Fase 38.b D1)
+### `schema { ... }` / `schema: "<ref>"` / `schema: env:VAR` (v1.31.0 D1)
 
 Three closed forms for declaring the store's typed column
 schema:
@@ -136,7 +136,7 @@ schema {
 ```
 
 Column constraints (position-independent): `primary_key`,
-`auto_increment`, `identity` (Fase 38.x.d), `not_null`,
+`auto_increment`, `identity` (v1.31.0), `not_null`,
 `unique`, `default <value>`.
 
 **(b) Manifest reference** — `schema: "public.tenants"`. The
@@ -162,7 +162,7 @@ the on-breach policy.
 Every mutation flows through:
 1. **Capability check** — `capability:` slug must be in the
    actor's capability set.
-2. **Column proof** — the §40 column proof verifies the
+2. **Column proof** — the v2.0.0 column proof verifies the
    mutation respects compliance tags (e.g. HIPAA-tagged store
    requires `tenant_id` in the WHERE clause).
 3. **Type check** — column types are enforced.
@@ -173,8 +173,8 @@ Every mutation flows through:
 ## Reading the store — `retrieve` (operations)
 
 A declared store is **read** with a flow-body `retrieve` block. Beyond
-the `where:` filter and the `as:` result binding, two §Fase 67.b clauses
-bound and order the result, and the §67.a time-aware `where:` admits
+the `where:` filter and the `as:` result binding, two v2.21.0 clauses
+bound and order the result, and the v2.21.0 time-aware `where:` admits
 `now() ± interval`:
 
 ```axon
@@ -190,7 +190,7 @@ flow StaleSessions() -> Unit {
 
 | Clause | Form | Meaning | Bad-input error |
 |---|---|---|---|
-| `where:` | string | row filter; time-aware forms are `now()` and `now() ± interval '<n> <unit>'` (§67.a) | **`axon-T806`** — malformed `now() ± interval` or a non-temporal column |
+| `where:` | string | row filter; time-aware forms are `now()` and `now() ± interval '<n> <unit>'` (v2.21.0) | **`axon-T806`** — malformed `now() ± interval` or a non-temporal column |
 | `order_by:` | string `"col [asc\|desc], …"` | sort terms; column existence proven when the store has an inline schema | **`axon-T807`** — empty term, bad identifier, bad direction, or unknown column |
 | `limit:` | `<u32>` or `${param}` | row cap | **`axon-T808`** — not a non-negative integer (or a non-integer parameter) |
 | `as:` | identifier | binds the result rows | — |
@@ -199,7 +199,7 @@ These compile-time proofs (`axon check`) mirror the runtime
 `filter::{parse_order_by, parse_limit}` in lockstep (cross-crate parity
 test), so a bounded/ordered `retrieve` that type-checks is one the
 runtime executes identically. Iterate the rows with
-`for s in <retrieve> { … }` and project columns as `${s.<col>}` (§67.g).
+`for s in <retrieve> { … }` and project columns as `${s.<col>}` (v2.21.0).
 
 ## What this primitive is NOT
 
@@ -214,7 +214,7 @@ runtime executes identically. Iterate the rows with
   named entry within a dataspace.
 - **Not silent on compliance.** A `compliance: [HIPAA]`
   axonstore without `tenant_id` in the schema is rejected by
-  the §40 column proof at parse time.
+  the v2.0.0 column proof at parse time.
 
 ## See also
 

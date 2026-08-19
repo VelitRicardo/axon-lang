@@ -1,7 +1,7 @@
 /*
- * §Fase 25.h — SHA-256 (FIPS 180-4) implementation.
+ * v1.19.0 — SHA-256 (FIPS 180-4) implementation.
  *
- * Direct port of the FIPS 180-4 §6.2.2 reference algorithm. Section
+ * Direct port of the FIPS 180-4 section 6.2.2 reference algorithm. Section
  * citations point at the published PDF (NIST 2015 reissue) so an
  * auditor can read this file alongside the standard.
  */
@@ -14,14 +14,14 @@
  * Constants
  * ────────────────────────────────────────────────────────────────── */
 
-/* §5.3.3 — initial hash values (the first 32 bits of the fractional
+/* section 5.3.3 — initial hash values (the first 32 bits of the fractional
  * parts of the square roots of the first 8 primes). */
 static const uint32_t AXON_CSYS_SHA256_INITIAL_H[8] = {
     0x6a09e667u, 0xbb67ae85u, 0x3c6ef372u, 0xa54ff53au,
     0x510e527fu, 0x9b05688cu, 0x1f83d9abu, 0x5be0cd19u,
 };
 
-/* §4.2.2 — round constants (the first 32 bits of the fractional
+/* section 4.2.2 — round constants (the first 32 bits of the fractional
  * parts of the cube roots of the first 64 primes). */
 static const uint32_t AXON_CSYS_SHA256_K[64] = {
     0x428a2f98u, 0x71374491u, 0xb5c0fbcfu, 0xe9b5dba5u,
@@ -43,7 +43,7 @@ static const uint32_t AXON_CSYS_SHA256_K[64] = {
 };
 
 /* ──────────────────────────────────────────────────────────────────────
- * Bit operations — FIPS 180-4 §3.2 + §4.1.2
+ * Bit operations — FIPS 180-4 section 3.2 + section 4.1.2
  * ────────────────────────────────────────────────────────────────── */
 
 static inline uint32_t axon_csys_sha256_rotr(uint32_t x, unsigned n) {
@@ -95,14 +95,14 @@ static inline void axon_csys_sha256_store_be64(uint8_t* p, uint64_t v) {
 }
 
 /* ──────────────────────────────────────────────────────────────────────
- * Compression function — FIPS 180-4 §6.2.2
+ * Compression function — FIPS 180-4 section 6.2.2
  * ────────────────────────────────────────────────────────────────── */
 
 static void axon_csys_sha256_compress(
     uint32_t h[8],
     const uint8_t block[AXON_CSYS_SHA256_BLOCK_SIZE])
 {
-    /* §6.2.2 step 1 — message schedule W[0..63]. */
+    /* section 6.2.2 step 1 — message schedule W[0..63]. */
     uint32_t w[64];
     for (size_t t = 0; t < 16; ++t) {
         w[t] = axon_csys_sha256_load_be32(block + t * 4u);
@@ -114,7 +114,7 @@ static void axon_csys_sha256_compress(
              + w[t - 16];
     }
 
-    /* §6.2.2 step 2 — initialise working variables a..h. */
+    /* section 6.2.2 step 2 — initialise working variables a..h. */
     uint32_t a = h[0];
     uint32_t b = h[1];
     uint32_t c = h[2];
@@ -124,7 +124,7 @@ static void axon_csys_sha256_compress(
     uint32_t g = h[6];
     uint32_t hh = h[7];
 
-    /* §6.2.2 step 3 — 64 rounds. */
+    /* section 6.2.2 step 3 — 64 rounds. */
     for (size_t t = 0; t < 64; ++t) {
         uint32_t t1 = hh
                     + AXON_CSYS_SHA256_BSIG1(e)
@@ -143,7 +143,7 @@ static void axon_csys_sha256_compress(
         a = t1 + t2;
     }
 
-    /* §6.2.2 step 4 — fold working variables back into h. */
+    /* section 6.2.2 step 4 — fold working variables back into h. */
     h[0] += a;
     h[1] += b;
     h[2] += c;
@@ -181,7 +181,7 @@ void axon_csys_sha256_update(
 
     /* Update the total bit count up-front so the final padding can
      * use the original message length. SHA-256 supports messages up
-     * to 2^64 - 1 bits per FIPS 180-4 §5.1.1; the wraparound check
+     * to 2^64 - 1 bits per FIPS 180-4 section 5.1.1; the wraparound check
      * is below the application's plausible message size and we do
      * not enforce it here (would require a saturating add). */
     ctx->total_bits += (uint64_t) len * 8u;
@@ -222,7 +222,7 @@ void axon_csys_sha256_final(
         return;
     }
 
-    /* §5.1.1 — pad to 56 (mod 64) bytes, then append 8-byte BE
+    /* section 5.1.1 — pad to 56 (mod 64) bytes, then append 8-byte BE
      * length. The 0x80 byte is always added; depending on remaining
      * space we either pad-and-finish-this-block, pad a fresh second
      * block, or both. */

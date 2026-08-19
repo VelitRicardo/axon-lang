@@ -1,4 +1,4 @@
-//! §Fase 101.c — the IDP-E recognizer kernel: the deterministic core of axon's
+//! v2.54.0 — the IDP-E recognizer kernel: the deterministic core of axon's
 //! Epistemic Vision Engine.
 //!
 //! **Doctrine (`axon_reads_with_geometry_not_correlation`).** Where the market
@@ -9,27 +9,27 @@
 //! hole geometry, stroke density) for the actual glyph → reading-order assembly →
 //! a `pix`-navigable canonical tree. The read is **pure and deterministic**: the
 //! same raster yields the same spans, bit-for-bit (the [`page_digest`]
-//! determinism guarantee, §101.c — the analogue of §99's byte-deterministic
+//! determinism guarantee, v2.54.0 — the analogue of v2.53.0's byte-deterministic
 //! writer).
 //!
-//! **The honest framing (D101.14) — topology is a *prior*, not the recogniser.**
+//! **The honest framing — topology is a *prior*, not the recogniser.**
 //! Persistent Betti numbers partition the alphabet into only a few classes
 //! (β₁: `8`→2, `0oO`→1, `1IH`→0). They do **robust segmentation and coarse
 //! bucketing**; the **geometry** (aspect ratio, hole position, density) carries
 //! the real discrimination. We do not claim "topology reads the letters." And the
 //! Cohen-Steiner stability that protects β under *pixel* noise does **not** cover
 //! merges/splits (touching glyphs, broken strokes); those surface as a **low
-//! confidence** the `anchor` floor catches (D101.7), never a silent wrong glyph.
+//! confidence** the `anchor` floor catches, never a silent wrong glyph.
 //!
-//! **Scope (D101.17) — clean machine-print / structured documents.** v1 ships a
+//! **Scope — clean machine-print / structured documents.** v1 ships a
 //! reference prototype set (digits + topologically-distinct uppercase). The
-//! production engine's tuned multi-font KB is the enterprise moat (§101.f). This
+//! production engine's tuned multi-font KB is the enterprise moat (v2.54.0). This
 //! kernel is complete *for its declared scope*; the scope is declared, not hidden.
 //!
 //! **Safe input.** The kernel reads a bounded **PGM (P5) / PBM (P4) raster** — a
 //! trivially, safely parseable grid, decoded in-process with bounds checked
 //! BEFORE allocation. Real-world PNG/JPEG/PDF decode is the CVE-prone step and
-//! lives in the sidecar (§101.e), which feeds this kernel the same raster tiles.
+//! lives in the sidecar (v2.54.0), which feeds this kernel the same raster tiles.
 
 use std::collections::BTreeMap;
 
@@ -43,7 +43,7 @@ use crate::extraction::{
 // ── The raster ──────────────────────────────────────────────────────────────
 
 /// A decoded grayscale tile, row-major, `0` = black ink … `255` = white. The
-/// safe interchange the sidecar (§101.e) and the kernel share.
+/// safe interchange the sidecar (v2.54.0) and the kernel share.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RasterTile {
     pub width: usize,
@@ -55,8 +55,8 @@ pub struct RasterTile {
 impl RasterTile {
     /// Parse a bounded **PGM (P5)** or **PBM (P4)** binary raster. Bounds are
     /// checked BEFORE the pixel buffer is read, so a hostile header cannot force
-    /// a giant allocation (D101.12). This is the ONLY decode the kernel does
-    /// in-process; everything richer is the sidecar's job (§101.e).
+    /// a giant allocation. This is the ONLY decode the kernel does
+    /// in-process; everything richer is the sidecar's job (v2.54.0).
     pub fn from_netpbm(bytes: &[u8], bounds: &ExtractionBounds) -> Result<Self, ExtractionError> {
         let mut p = NetpbmCursor { b: bytes, i: 0 };
         let magic = p.token().ok_or_else(|| ExtractionError::DecodeFailed("empty raster".into()))?;
@@ -72,7 +72,7 @@ impl RasterTile {
         };
         let width = p.uint().ok_or_else(|| ExtractionError::DecodeFailed("no width".into()))?;
         let height = p.uint().ok_or_else(|| ExtractionError::DecodeFailed("no height".into()))?;
-        // Bound the geometry BEFORE allocating (D101.12).
+        // Bound the geometry BEFORE allocating.
         let mp = (width.saturating_mul(height)) / 1_000_000;
         if mp as u32 > bounds.max_megapixels {
             return Err(ExtractionError::PixelCapExceeded(mp as u32));
@@ -422,7 +422,7 @@ fn count_holes(grid: &BitGrid, x0: usize, y0: usize, x1: usize, y1: usize) -> (u
     (centroids.len() as u32, cys)
 }
 
-// ── Geometric discrimination (D101.14) ──────────────────────────────────────
+// ── Geometric discrimination ──────────────────────────────────────
 
 /// A glyph's signature: the topological bucket (β₁) + the geometry that refines
 /// it. This is what a prototype is matched against.
@@ -432,15 +432,15 @@ struct GlyphSignature {
     aspect: f64,
     density: f64,
     /// mean normalised vertical hole position (0=top … 1=bottom); NaN → 0.
-    /// Computed for the §101.f enterprise-KB seam; the v1 OSS matcher is
-    /// topology-first (D101.17) and has no reader yet — named, not silent.
+    /// Computed for the v2.54.0 enterprise-KB seam; the v1 OSS matcher is
+    /// topology-first and has no reader yet — named, not silent.
     #[allow(dead_code)]
     hole_y: f64,
 }
 
 /// A reference prototype: a character + the signature region it occupies. The
-/// v1 set is deliberately small and topologically-distinct (D101.17); the
-/// enterprise KB (§101.f) extends it across fonts.
+/// v1 set is deliberately small and topologically-distinct; the
+/// enterprise KB (v2.54.0) extends it across fonts.
 struct Prototype {
     ch: char,
     beta1: u32,
@@ -466,11 +466,11 @@ const PROTOTYPES: &[Prototype] = &[
 ];
 
 /// Classify a signature against the prototype set. Returns `(char, confidence)`
-/// where confidence is a **geometric margin** (D101.2): 1.0 when the signature
+/// where confidence is a **geometric margin**: 1.0 when the signature
 /// sits squarely inside exactly one prototype's region and far from any other,
 /// falling toward 0 as it nears a boundary or matches nothing. A NON-match
 /// returns the replacement char with confidence 0 — which any `anchor` floor
-/// rejects (D101.7), never a silent wrong glyph (D101.14).
+/// rejects, never a silent wrong glyph.
 fn classify(sig: GlyphSignature) -> (char, f64) {
     // First bucket by β₁ (topology). Within the bucket, score each prototype by
     // how centrally the geometry sits in its box; the margin to the runner-up is
@@ -508,16 +508,16 @@ fn classify(sig: GlyphSignature) -> (char, f64) {
         }
     }
     // Confidence = the winner's score attenuated by how close the runner-up is
-    // (the Wasserstein-margin analogue, D101.2).
+    // (the Wasserstein-margin analogue, the design decision).
     let margin = (best.1 - runner).clamp(0.0, 1.0);
     let confidence = if best.1 == 0.0 { 0.0 } else { (0.5 * best.1 + 0.5 * margin).clamp(0.0, 1.0) };
     (best.0, confidence)
 }
 
-// ── Reading-order assembly + the canonical tree (D101.11) ───────────────────
+// ── Reading-order assembly + the canonical tree ───────────────────
 
 /// A node of the `pix`-navigable canonical document tree `D = (N, E, ρ, κ)`
-/// (D101.11): a structural block with its deduced text, spatial `location`, and
+///: a structural block with its deduced text, spatial `location`, and
 /// children. Every leaf's text still carries `Inferred` provenance downstream.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DocNode {
@@ -691,14 +691,14 @@ fn recognise_grid(grid: &BitGrid) -> RecognizedPage {
 }
 
 /// Recognise a decoded raster tile into a page — the kernel's public entry.
-/// Pure and deterministic (D101.16).
+/// Pure and deterministic.
 pub fn recognise(tile: &RasterTile) -> RecognizedPage {
     let grid = BitGrid::binarise(tile);
     recognise_grid(&grid)
 }
 
 /// A stable digest of a recognised page — the determinism guarantee made
-/// checkable (§101.c, the analogue of §99's byte-golden hash). The SAME raster
+/// checkable (v2.54.0, the analogue of v2.53.0's byte-golden hash). The SAME raster
 /// yields the SAME digest, forever, under a pinned engine.
 pub fn page_digest(page: &RecognizedPage) -> String {
     let mut h = Sha256::new();
@@ -720,7 +720,7 @@ pub fn page_digest(page: &RecognizedPage) -> String {
 /// The IDP-E engine: reads a bounded PGM/PBM raster and recognises it. Its
 /// output is born `Inferred` + `Untrusted` with measured confidence — the
 /// [`ExtractionEngine`] contract. Real PNG/JPEG/PDF decode is the sidecar's
-/// (§101.e); this engine is the deterministic recogniser the sidecar feeds.
+/// (v2.54.0); this engine is the deterministic recogniser the sidecar feeds.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct IdpeEngine;
 
@@ -839,7 +839,7 @@ mod tests {
     #[test]
     fn unrecognised_shape_gets_zero_confidence_not_a_wrong_glyph() {
         // A dense square matches no prototype's geometry cleanly → low/zero conf,
-        // which an anchor floor rejects — never a silent wrong glyph (D101.14).
+        // which an anchor floor rejects — never a silent wrong glyph.
         let page = recog(&[
             "#####", "#####", "#####", "#####", "#####",
         ]);
@@ -851,7 +851,7 @@ mod tests {
 
     #[test]
     fn recognition_is_deterministic() {
-        // §101.c determinism guarantee: same raster ⇒ same page digest, twice.
+        // v2.54.0 determinism guarantee: same raster ⇒ same page digest, twice.
         let rows: &[&str] = &[
             " ### ",
             "#   #",
@@ -881,7 +881,7 @@ mod tests {
     #[test]
     fn pixel_bound_refuses_giant_raster_before_alloc() {
         // A header claiming 100_000 × 100_000 (10^10 px) must be refused BEFORE
-        // any pixel buffer is allocated (D101.12).
+        // any pixel buffer is allocated.
         let hdr = b"P5 100000 100000 255\n";
         let err = RasterTile::from_netpbm(hdr, &ExtractionBounds::default()).unwrap_err();
         assert!(matches!(err, ExtractionError::PixelCapExceeded(_)), "{err:?}");

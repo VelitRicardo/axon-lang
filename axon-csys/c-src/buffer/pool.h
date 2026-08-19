@@ -1,5 +1,5 @@
 /*
- * §Fase 25.d — axon-csys public buffer-pool header.
+ * v1.19.0 — axon-csys public buffer-pool header.
  *
  * Cache-line-aligned slab allocator for `ZeroCopyBuffer` storage.
  * Direct port of `axon-rs/src/buffer/pool.rs` with three metal-side

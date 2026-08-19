@@ -1,17 +1,17 @@
-//! §Fase 91.b — declared cognitive time: the runtime half of `now:`.
+//! v2.46.0 — declared cognitive time: the runtime half of `now:`.
 //!
 //! The cognitive completion of `axon://logic/time_is_an_explicit_input`
-//! (§71): a step (or the program's `context` frame) DECLARES the IANA zone
-//! its cognition runs in (`now: "America/Bogota"`, §91.a); this module
+//! (v2.27.0): a step (or the program's `context` frame) DECLARES the IANA zone
+//! its cognition runs in (`now: "America/Bogota"`, v2.46.0); this module
 //! SUPPLIES the instant and RENDERS the deterministic system-prompt line;
 //! the envelope RECORDS `(captured_utc, tz, tzdb_version, zones)` so the
 //! exact prompt the model saw is reconstructible byte-for-byte.
 //!
-//! Three laws, mirrored from §71:
+//! Three laws, mirrored from v2.27.0:
 //! - **One instant per run.** The capture happens once (lazily, at the
 //!   first `now:`-bearing step) and every subsequent step renders THAT
 //!   instant in its declared zone — two steps in one run can never
-//!   disagree about "now" (plan vivo §5, the per-run fork).
+//! disagree about "now" (plan vivo section 5, the per-run fork).
 //! - **The frontend format-checked; the runtime is the authority.** A zone
 //!   that passes `axon-T892`'s shape law but is not in the tz database
 //!   fails CLOSED here (a loud dispatch error, never a silent omission).
@@ -44,7 +44,7 @@ impl TemporalCapture {
 /// actually rendered (first-use order, deduplicated). Lives behind
 /// `Arc<Mutex<…>>` on the dispatch context so `par` branches share ONE
 /// capture and the collector reads the final state after the walk (the
-/// §67.c `store_row_counts` discipline — the lock is never held across
+/// v2.21.0 `store_row_counts` discipline — the lock is never held across
 /// an `.await`).
 #[derive(Debug, Default)]
 pub struct TemporalState {
@@ -54,13 +54,13 @@ pub struct TemporalState {
 
 /// The envelope/audit record: what instant the run saw, under which tz
 /// database, rendered in which declared zones. Elided from the wire when
-/// absent (`skip_serializing_if` at the envelope field) — every pre-§91
+/// absent (`skip_serializing_if` at the envelope field) — every pre-v2.46.0
 /// flow's wire stays byte-identical.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TemporalRecord {
     /// RFC 3339 UTC instant of the run's single capture.
     pub captured_utc: String,
-    /// IANA tz-database release the render resolved against (§71.d).
+    /// IANA tz-database release the render resolved against (v2.27.0).
     pub tzdb_version: String,
     /// Declared zones actually rendered this run, first-use order.
     pub zones: Vec<String>,
@@ -85,7 +85,7 @@ impl std::fmt::Display for UnknownZone {
 }
 
 /// Render the deterministic system-prompt line for `capture` in `zone`.
-/// Pure — no clock read; DST-correct via chrono-tz (the §71.b machinery).
+/// Pure — no clock read; DST-correct via chrono-tz (the v2.27.0 machinery).
 /// The line shape is versioned by convention: changing it is a wire-visible
 /// prompt change and must be release-noted.
 pub fn render_line(capture: &TemporalCapture, zone: &str) -> Result<String, UnknownZone> {

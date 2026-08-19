@@ -44,7 +44,7 @@ How to use this server when writing AXON for the user:
      `session`, etc. are top-level; `step`, `select`, `branch`,
      `send`, `receive` are inside a `flow` or `session` body.)
    - `axon://grammar/composition` — the nesting rules.
-   - `axon://logic/session_duality` — the §Fase 41 connection law.
+   - `axon://logic/session_duality` — the v2.3.0 connection law.
    - `axon://compliance/{framework}` — what `compliance: [...]`
      annotations cover which audit framework.
 

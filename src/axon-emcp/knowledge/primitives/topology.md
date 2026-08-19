@@ -3,7 +3,7 @@ name: topology
 summary: "Declares a process-graph topology whose liveness is checked by a genuine DFS cycle detector (Honda liveness — a narrow sufficient condition, honestly scoped)."
 category: session_types
 top_level: true
-since: λ-L-E Fase 4
+since: v1.1.0
 grammar: |
   topology <Name> {
       nodes: [ <declared-name>, ... ]
@@ -30,7 +30,7 @@ declared sessions.
 
 ## Proof
 
-`type_checker::check_topology` + `check_topology_liveness` (the §111
+`type_checker::check_topology` + `check_topology_liveness` (the v2.67.0
 audit verdict: Real — "a genuine DFS cycle detector, narrow sufficient
 condition, but real").
 

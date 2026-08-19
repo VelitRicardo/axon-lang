@@ -3,7 +3,7 @@ name: axonendpoint
 summary: HTTP REST primitive — exposes a flow on a typed route with body/output schemas, transport classification, and compliance.
 category: wire
 top_level: true
-since: Fase 32
+since: v1.23.0
 grammar: |
   axonendpoint <Name> {
       method: <GET|POST|PUT|DELETE|PATCH>     # required — closed catalog
@@ -17,7 +17,7 @@ grammar: |
       transport: <json|sse(axon|openai|anthropic)>   # optional — wire format (default json)
       keepalive: <duration>                    # optional — SSE keepalive interval
       requires: ["<slug.dotted>", ...]         # optional — capability scopes
-      replay: <true|false>                     # optional — Fase 32.h replay-token binding
+      replay: <true|false> # optional — v1.23.0 replay-token binding
       retries: <integer>                       # optional — automatic retry count
       timeout: <duration>                      # optional — request budget
       compliance: [<Tag1>, ...]                # optional — compliance tags
@@ -33,7 +33,7 @@ query block, an executing flow, a response type, and (in
 production deployments) a compute backend, a defence shield, a
 capability gate, and compliance tags.
 
-This is the canonical surface a Fase 32+ AXON program ships:
+This is the canonical surface a v1.23.0+ AXON program ships:
 the entire HTTP boundary collapses into one typed declaration
 that the runtime mounts at deploy time. Adopters do not write
 route handlers in a separate language — the endpoint declaration
@@ -85,17 +85,17 @@ A **string literal** containing the URL path. Path placeholders
 `{name}` are extracted at parse time and become **path
 parameters** the Request Binding Contract uses to bind flow
 parameters. Duplicate `{name}` in the same path is rejected at
-parse time (Fase 37.y D1).
+parse time (v1.32.0 D1).
 
 ### `body:` (optional)
 
 A **single identifier** referencing a declared `type`. The
 request body is deserialised into this type before the flow
 runs. Critically, the body type's **field names must match the
-flow's parameter names** (Request Binding Contract, Fase 37 +
+flow's parameter names** (Request Binding Contract, v1.32.0 +
 37.y D3).
 
-### `query:` (optional, Fase 37.y D2)
+### `query:` (optional, v1.32.0 D2)
 
 An **inline `{ name: Type, ... }` block** declaring query
 parameters. The type for each must come from the **closed
@@ -113,20 +113,20 @@ body (subject to `transport:` shaping).
 ### `output:` (required)
 
 The **declared response type**. For `transport: json` (default),
-the type **MUST wrap in `FlowEnvelope<T>`** (Fase 39 D2) — the
+the type **MUST wrap in `FlowEnvelope<T>`** (v2.0.0 D2) — the
 v2.0.0 wire envelope contract. For `transport: sse(...)`, bare
 `Stream<T>` is valid; the runtime emits per-chunk SSE frames.
 
-### `backend:` (production-required, Fase 36.d D2)
+### `backend:` (production-required, v1.31.0 D2)
 
 A **single identifier** declaring the execution backend.
 Common slugs: `auto`, `openai`, `anthropic`, `gemini`,
 `ollama`, `openrouter`. Omitting `backend:` emits an
-`axon-W003` warning — the endpoint falls through the Fase 36 D1
+`axon-W003` warning — the endpoint falls through the v1.31.0 D1
 provider-resolution ladder at request time; if no provider
 resolves, the runtime returns a structured HTTP 503.
 
-### `transport:` (optional, Fase 30 D1)
+### `transport:` (optional, v1.21.0 D1)
 
 A **single identifier** declaring the wire format:
 
@@ -139,7 +139,7 @@ A **single identifier** declaring the wire format:
 
 The `sse(<dialect>)` form requires the bound flow's final step's
 output to be `Stream<T>` AND a reachable tool with a
-`stream:<policy>` effect (Fase 30.c).
+`stream:<policy>` effect (v1.21.0).
 
 ### `keepalive:` (optional)
 
@@ -147,7 +147,7 @@ A **duration literal** (`15s`, `30s`). SSE keepalive interval.
 Applies only to `transport: sse(...)` endpoints; ignored for
 JSON transports.
 
-### `requires:` (optional, Fase 32.g D8)
+### `requires:` (optional, v1.23.0 D8)
 
 A **bracketed list of string literals** containing
 dotted-slug capabilities (`"admin"`, `"tenant.read"`,
@@ -156,11 +156,11 @@ dotted-slug capabilities (`"admin"`, `"tenant.read"`,
 `requires:` reject requests whose bearer-token capabilities
 don't cover the listed set.
 
-### `replay:` (optional, Fase 32.h)
+### `replay:` (optional, v1.23.0)
 
 A **boolean literal**. Enables idempotent-replay token binding
 for POST/PUT requests. Defaults: ON for POST/PUT, OFF for
-GET/DELETE (the Fase 32.h plan-vivo D9).
+GET/DELETE (the v1.23.0 plan-vivo D9).
 
 ### `retries:` / `timeout:` (optional)
 
@@ -170,12 +170,12 @@ Per-request budgets. `retries:` is a non-negative integer;
 ### `compliance:` (optional)
 
 A **bracketed list of identifiers** from the closed compliance
-catalogue. The §40 cross-tag check propagates compliance from
+catalogue. The v2.0.0 cross-tag check propagates compliance from
 the body type + execute flow + shield; explicit tags here are
 the **canonical attestation** for the endpoint's audit
 boundary.
 
-## The Request Binding Contract (Fase 37 + 37.y D3)
+## The Request Binding Contract (v1.32.0 + v1.32.0 D3)
 
 Every flow parameter the `execute:` flow declares must bind to
 one of three sources, **matched by name**:
@@ -199,7 +199,7 @@ parameter '<p>' has no matching binding source` diagnostic.
   interchangeable; the distinction is purely naming.
 - **Not free of compliance gating.** Production endpoints
   declare `requires:` + a `shield:` + a `compliance:` list.
-  Anonymous endpoints exist for prototyping; the §40 lint
+  Anonymous endpoints exist for prototyping; the v2.0.0 lint
   warns when they ship to a deployment with regulated data.
 
 ## See also

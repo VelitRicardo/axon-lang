@@ -12,7 +12,7 @@ grammar: |
       max_tokens: <integer>                         # optional — output budget
       temperature: <0.0..2.0>                       # optional — sampling temperature
       cite_sources: <true|false>                    # optional — force citations on every claim
-      now: "<IANA-tz>"                              # optional (§91) — the frame's declared cognitive timezone
+      now: "<IANA-tz>" # optional (v2.46.0) — the frame's declared cognitive timezone
   }
 ---
 
@@ -99,19 +99,19 @@ identical semantics to the persona-level field of the same name.
 The two compose: if either the persona OR the active context
 demands citations, citations are required.
 
-### `now:` (optional, §Fase 91)
+### `now:` (optional, v2.46.0)
 
 An **IANA timezone string literal** (`"America/Bogota"`, `"UTC"`) —
 the frame's **declared cognitive timezone**. Every step running
 within this context carries the run's single captured instant,
 rendered in this zone, in its system prompt — unless the step
 declares its own `now:` (step overrides frame). This is
-`time_is_an_explicit_input` (§71) applied to cognition: a
+`time_is_an_explicit_input` (v2.27.0) applied to cognition: a
 scheduling agent must say WHOSE time it reasons in; "the server's
 local time" is the ambient read this doctrine forbids.
 Format-checked at compile time (**`axon-T892`**); the envelope
 records `(captured_utc, tzdb_version, zones)` for byte-exact
-replay. Absent ⇒ no temporal injection (byte-identical to pre-§91).
+replay. Absent ⇒ no temporal injection (byte-identical to pre-v2.46.0).
 
 ## Runtime behaviour
 
@@ -147,7 +147,7 @@ multi-turn dialogue).
 - **Not a persona.** Persona = identity (who); context = frame
   (how). The two compose; they are not interchangeable.
 - **Not a session.** `memory: session` IS the conversational
-  memory scope; `session` (the primitive) is a §41
+  memory scope; `session` (the primitive) is a v2.3.0
   duality-typed dialogue protocol — different concept.
 
 ## See also

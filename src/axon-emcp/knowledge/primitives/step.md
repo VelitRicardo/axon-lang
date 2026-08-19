@@ -10,8 +10,8 @@ grammar: |
       ask: "<prompt>"                 # required for cognitive steps — natural-language instruction
       output: <Type>                  # required for cognitive steps — output type
       confidence_floor: <0.0..1.0>    # optional — minimum confidence to accept
-      requires_context: <tokens>      # optional (§68) — min context window; resolver picks the smallest model that fits
-      now: "<IANA-tz>"                # optional (§91) — declared cognitive time: inject the run's captured instant, rendered in THIS zone
+      requires_context: <tokens> # optional (v2.22.0) — min context window; resolver picks the smallest model that fits
+      now: "<IANA-tz>" # optional (v2.46.0) — declared cognitive time: inject the run's captured instant, rendered in THIS zone
       navigate: <Graph.Path>          # optional — route through a knowledge graph
       apply: <FlowName>               # optional — invoke a declared flow
 
@@ -101,13 +101,13 @@ specifications to the `output:` type and to bound anchors.
 ### `output:` (required for cognitive steps)
 
 The **declared output type**. Accepts the full type-expression
-shape (Fase 32.l):
+shape (v1.23.0):
 
 | Form | Example |
 |---|---|
 | Bare type | `EntityMap` |
 | Generic | `List<Risk>`, `Optional<Citation>` |
-| Stream (Fase 33) | `Stream<Token>` |
+| Stream (v1.24.0) | `Stream<Token>` |
 | Nested generic | `FlowEnvelope<List<TenantRecord>>` |
 | Optional | `Greeting?`, `Stream<Token>?` |
 
@@ -122,10 +122,10 @@ A **numeric literal in `[0.0, 1.0]`**. Overrides the persona's
 in a flow is markedly higher-stakes than the others (e.g. a
 medical-diagnosis step inside an otherwise informational flow).
 
-### `requires_context:` (optional, §Fase 68)
+### `requires_context:` (optional, v2.22.0)
 
 A **positive integer** — the minimum context-window size (in tokens)
-this step needs. The §68 capability-aware resolver picks the **smallest
+this step needs. The v2.22.0 capability-aware resolver picks the **smallest
 model whose context window is ≥ this value**, and **fails closed**:
 
 ```axon
@@ -145,7 +145,7 @@ value must be `> 0` and not exceed the largest context window in the
 capability catalog (a requirement no model can satisfy is a compile
 error, not a silent fallback).
 
-### `now:` (optional, §Fase 91)
+### `now:` (optional, v2.46.0)
 
 An **IANA timezone string literal** (`"America/Bogota"`, `"UTC"`) —
 the step's **declared cognitive time**. When present, the runtime
@@ -156,13 +156,13 @@ into the step's system prompt, e.g.:
 Current datetime: 2026-07-07T14:33:05-05:00 (America/Bogota; tzdb 2025b; captured at run start).
 ```
 
-This is `time_is_an_explicit_input` (§71) applied to cognition: the
+This is `time_is_an_explicit_input` (v2.27.0) applied to cognition: the
 source DECLARES that the step carries time and WHOSE time it reasons
 in; the runtime supplies the instant; the envelope records
 `(captured_utc, tzdb_version, zones)` so the exact prompt is
 replayable. There is deliberately **no ambient clock** — a step
 without `now:` (and no frame-level `context.now:`) gets no temporal
-line, byte-identical to pre-§91.
+line, byte-identical to pre-v2.46.0.
 
 ```axon
 step Triage {
@@ -221,7 +221,7 @@ For **flow composition**, the applied flow's parameters and return
 type are expected to align with `given:` and `output:` (the
 intended contract).
 
-> **Enforcement note (§Fase 58).** The type-checked, structured
+> **Enforcement note (v2.8.0).** The type-checked, structured
 > way to invoke a **tool** with named, schema-validated arguments
 > is the **flow-level** `use <Tool>(k = v, …)` form — the
 > type-checker validates the call against the tool's declared
@@ -231,7 +231,7 @@ intended contract).
 > fields onto the tool schema) is a planned refinement and is not
 > yet compile-validated; the compiler emits **`axon-W004`** redirecting
 > `apply: <Tool>` to the typed `use <Tool>(k = v, …)` flow-level form
-> (§Fase 59) — prefer that for typed tool calls.
+> (v2.9.0) — prefer that for typed tool calls.
 
 ## Sub-constructs (one per step)
 

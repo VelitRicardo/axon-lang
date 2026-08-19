@@ -1,11 +1,11 @@
-//! §Fase 124.b — **vendored cryptography is what its provenance says it is.**
+//! v4.0.0 — **vendored cryptography is what its provenance says it is.**
 //!
 //! # Why this gate exists
 //!
-//! D124.3 put the entire cryptographic module boundary inside `axon-csys`,
+//! the design decision put the entire cryptographic module boundary inside `axon-csys`,
 //! because a FIPS 140-3 evaluation needs a declared boundary and splitting
 //! crypto between C23 and Rust crates doubles the surface an assessor must
-//! examine. D124.6 then settled that the boundary is populated with vetted
+//! examine. the design decision then settled that the boundary is populated with vetted
 //! reference implementations rather than hand-written lattice arithmetic: the
 //! boundary argument is about what is *inside* it, not about who typed the
 //! code, and a from-scratch ML-DSA is the first thing a CMVP assessor
@@ -25,7 +25,7 @@
 //! # Why it parses the manifest instead of hardcoding hashes
 //!
 //! A hash written in the test and a hash written in the manifest are two copies
-//! of one fact, and §122.e paid for a law written three times where the third
+//! of one fact, and v2.89.0 paid for a law written three times where the third
 //! copy was the one that drifted. The manifest is the single source; this file
 //! reads it.
 

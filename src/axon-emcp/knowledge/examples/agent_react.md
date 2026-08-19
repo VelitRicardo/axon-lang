@@ -11,7 +11,7 @@ primitives:
   - agent
 ---
 
-// `agent` is the Fase 18+ orchestrated cognitive entity. Where
+// `agent` is the v1.12.0+ orchestrated cognitive entity. Where
 // `persona` declares identity and `flow` declares a typed sequence,
 // `agent` binds tools + memory + shield under a coordination
 // strategy (react | plan_and_execute | reflexion | custom) with
@@ -25,13 +25,13 @@ persona Researcher {
 }
 
 tool WebSearch {
-    // LLM-routed: the tool IS the model. No `provider:` (§114.b).
+    // LLM-routed: the tool IS the model. No `provider:` (v2.69.0).
     effects:  <network>
     timeout:  30s
 }
 
 tool Calculator {
-    // LLM-routed: the tool IS the model. No `provider:` (§114.b).
+    // LLM-routed: the tool IS the model. No `provider:` (v2.69.0).
     effects:  <pure>
     timeout:  5s
 }

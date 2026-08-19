@@ -1,4 +1,4 @@
-//! AXON Runtime — Epistemic Security Kernel (§ESK Fase 6).
+//! AXON Runtime — Epistemic Security Kernel (v1.2.0).
 //!
 //! Direct port of `axon/runtime/esk/`. The ESK sits at the sealed boundary
 //! of the runtime and gives every artefact a cryptographic, regulatory,
@@ -6,17 +6,17 @@
 //! CC EAL 4+) can verify without access to Axon internals.
 //!
 //! Sub-modules:
-//!   * `compliance` — canonical κ registry (§Fase 6.1).
-//!   * `provenance` — HMAC / Merkle-chained signed envelopes (§Fase 6.2).
-//!   * `attestation` — SBOM + ComplianceDossier + in-toto Statement (§Fase 6.6).
+//! * `compliance` — canonical κ registry (v1.2.0).
+//! * `provenance` — HMAC / Merkle-chained signed envelopes (v1.2.0).
+//! * `attestation` — SBOM + ComplianceDossier + in-toto Statement (v1.2.0).
 //!   * `audit_engine` — gap analysis, risk register, evidence packager.
 
 pub mod attestation;
 pub mod audit_engine;
 pub mod compliance;
-/// §Fase 124.b — the hybrid evidence signer, `Ed25519(H) ‖ ML-DSA-65(H)`.
+/// v4.0.0 — the hybrid evidence signer, `Ed25519(H) ‖ ML-DSA-65(H)`.
 /// Gated on `csys-native`: its cryptography is the C module boundary, and
-/// §119.h made the C toolchain opt-in. Without the feature, the HMAC-SHA256
+/// v2.83.0 made the C toolchain opt-in. Without the feature, the HMAC-SHA256
 /// baseline in [`provenance`] remains the signer.
 #[cfg(feature = "csys-native")]
 pub mod hybrid_signer;

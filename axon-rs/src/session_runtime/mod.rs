@@ -1,6 +1,6 @@
-//! §Fase 41.d — the **runtime** of a session-typed dialogue.
+//! v2.3.0 — the **runtime** of a session-typed dialogue.
 //!
-//! `axon-frontend::session` (§41.a/b/c) gives the static algebra: the
+//! `axon-frontend::session` (v2.3.0) gives the static algebra: the
 //! `SessionType` grammar, the duality involution, the regular-coinductive
 //! equality, and the Presburger-decidable credit-refined backpressure
 //! index `!ⁿA.S`. This crate's `session_runtime` module is the dynamic
@@ -22,16 +22,16 @@
 //!   our outgoing frames in turn, and closes with `1000 normal closure`
 //!   on `end` or `1002 protocol error` on a [`error::ProtocolError`].
 //!
-//! The carrier in 41.d is WebSocket; future fases extend the same
+//! The carrier in 41.d is WebSocket; future cycles extend the same
 //! `SessionRuntime` over:
 //! - 41.f: the enterprise axum server (multi-tenant + RLS + audit per
 //!   utterance — the Kivi single-image unblock);
-//! - 41.g: typed reconnection via `cognitive_states` (the §41.a residual
+//! - 41.g: typed reconnection via `cognitive_states` (the v2.3.0 residual
 //!   type sealed at disconnect resumes from the same cursor);
 //! - 41.h: multiparty projection (the global-type `G` projected to each
 //!   role `G⌐r`, each running its own `SessionRuntime`).
 
-/// §Fase 111.i — the SessionType compiler: `IRSession` → [`crate::session::SessionType`].
+/// v2.67.0 — the SessionType compiler: `IRSession` → [`crate::session::SessionType`].
 ///
 /// The declarations reached the IR all along; nothing read them. The type-checker
 /// lowered the roles to prove duality and dropped the result, and the enterprise
@@ -43,8 +43,8 @@ pub mod error;
 pub mod state;
 pub mod wire;
 
-// §Fase 118.b.2 — the two CARRIERS live behind the `server` feature; the
-// protocol itself does not. `compile` (IRSession → SessionType, the §111.i gap
+// v2.81.0 — the two CARRIERS live behind the `server` feature; the
+// protocol itself does not. `compile` (IRSession → SessionType, the v2.67.0 gap
 // this module exists to close), `state` (the runtime, credit window, sealed
 // resume) and `wire` (the frame encoding) are transport-agnostic and stay in
 // every build — so `axon check` still proves a socket's protocol dual, and a
@@ -55,7 +55,7 @@ pub mod wire;
 // NOTE for whoever comes next: `ws.rs` also owns `PeerRole`, `apply_outgoing`
 // and `next_outgoing_frame` — the transport-agnostic core of the protocol loop,
 // which `sse.rs` imports FROM the WebSocket carrier. That is the same smell this
-// sub-fase moved three times (`AXON_VERSION`, `IngestProvenance`,
+// step moved three times (`AXON_VERSION`, `IngestProvenance`,
 // `ServerExecutionResult`), and it is recorded here rather than fixed because it
 // does not bite: both carriers are gated together, so nothing outside `server`
 // names them. It WOULD bite the moment a third carrier arrives, or an SSE-only

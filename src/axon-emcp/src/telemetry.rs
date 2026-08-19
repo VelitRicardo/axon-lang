@@ -1,4 +1,4 @@
-//! §Fase 8 — Telemetry surface, OTLP-grade in shape + privacy-first by
+//! v1.3.0 — Telemetry surface, OTLP-grade in shape + privacy-first by
 //! construction.
 //!
 //! # Design
@@ -120,7 +120,7 @@ struct TelemetryState {
     compose: ComposeStats,
     /// `axon.check` / `axon.parse` outcomes — pass/fail per stage.
     check: CheckStats,
-    /// §Phase 9 — `axon.examples` outcomes (listing / by-name /
+    /// Phase 9 — `axon.examples` outcomes (listing / by-name /
     /// by-topic / by-primitive). Privacy-clean: only closed-catalog
     /// slugs flow here.
     examples: ExamplesStats,
@@ -155,7 +155,7 @@ struct ComposeStats {
     top_score_buckets: BTreeMap<u32, u64>,
 }
 
-/// §Phase 9 — `axon.examples` aggregate counters. Tracks how
+/// Phase 9 — `axon.examples` aggregate counters. Tracks how
 /// adopters discover the corpus: how often a listing returned vs
 /// a specific-slug fetch vs a topic / primitive filter. Both filter
 /// fields are closed-catalog slugs (topic from [`ExampleTopic`],
@@ -299,7 +299,7 @@ impl Telemetry {
         }));
     }
 
-    /// §Phase 9 — record an `axon.examples` lookup outcome.
+    /// Phase 9 — record an `axon.examples` lookup outcome.
     ///
     /// # Privacy
     /// - `by_name` (`Some(slug)`) — the exact example slug requested.
@@ -959,7 +959,7 @@ mod tests {
 
     #[test]
     fn event_kind_constants_carry_canonical_strings() {
-        // §Privacy invariant — the closed catalog of event kinds is
+        // Privacy invariant — the closed catalog of event kinds is
         // stable; downstream pipelines key off these strings.
         assert_eq!(EventKind::TOOL_CALL.0, "tool_call");
         assert_eq!(EventKind::RESOURCE_READ.0, "resource_read");
