@@ -319,10 +319,7 @@ mod tests {
     fn validate_normalises_negative_certainty() {
         let env = EpistemicEnvelope::new(-0.5, false, EpistemicKind::Clean);
         let out = validate_degradation(env);
-        assert_eq!(
-            out.certainty, 0.0,
-            "negative certainty coerced to 0.0"
-        );
+        assert_eq!(out.certainty, 0.0, "negative certainty coerced to 0.0");
     }
 
     #[test]
