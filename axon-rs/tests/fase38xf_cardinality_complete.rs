@@ -194,13 +194,13 @@ fn s5_d3_singular_tail_with_list_output_emits_t9xx() {
     let t9xx_bilateral: Vec<&TypeError> = errs.iter()
         .filter(|e| {
             e.message.contains("axon-T9XX")
-                && e.message.contains("D3 bilateral")
+                && e.message.contains("bilateral_cardinality_mismatch")
         })
         .collect();
     assert!(
         !t9xx_bilateral.is_empty(),
         "§Fase 38.x.f §5 — singular flow tail + `output: List<T>` MUST \
-         emit `axon-T9XX` with the D3 bilateral hint. All errors: \
+         emit `axon-T9XX` with the bilateral hint. All errors: \
          {errs:#?}"
     );
 }

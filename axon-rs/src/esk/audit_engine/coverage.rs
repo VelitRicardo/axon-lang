@@ -124,7 +124,7 @@ mod tests {
         assert!(
             !compliance_coverage_holds(&ir),
             "a κ-annotated type that no endpoint or channel carries exercises \
-             no coverage rule — scoring it was the §111 presence defect"
+             no coverage rule — scoring it was the presence-not-coverage defect"
         );
     }
 

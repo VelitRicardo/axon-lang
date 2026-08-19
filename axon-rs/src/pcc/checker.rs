@@ -442,7 +442,7 @@ fn check_capability_isolation(
     if actual.malformed {
         return CheckOutcome::Refuted {
             reason: format!(
-                "axonstore '{}' declares a malformed capability gate {:?} (not a valid §32.g scope: ^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$)",
+                "axonstore '{}' declares a malformed capability gate {:?} (not a valid scope: ^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$)",
                 actual.store_name, actual.capability
             ),
         };
@@ -531,7 +531,7 @@ fn check_resource_bounds(
                 if !positive {
                     return CheckOutcome::Refuted {
                         reason: format!(
-                            "socket '{}' declares backpressure credit({}) — a window < 1 deadlocks the §Fase 41.b typed-resource gate",
+                            "socket '{}' declares backpressure credit({}) — a window < 1 deadlocks the typed-resource gate",
                             socket.name, credit
                         ),
                     };
@@ -1998,7 +1998,7 @@ fn check_query_safety_soundness(
         return CheckOutcome::Refuted {
             reason: format!(
                 "axon-T927 QUERY-safety: endpoint(s) declare `method: QUERY` but their flow \
-                 performs a declared write (RFC 10008 §2 — a QUERY MUST be safe and idempotent; \
+                 performs a declared write (RFC 10008 section 2 — a QUERY MUST be safe and idempotent; \
                  caches, proxies and clients may retry it freely): {:?}",
                 actual.unsafe_queries
             ),
@@ -2076,7 +2076,7 @@ fn check_inferred_ceiling_soundness(
         Some(w) => w,
         None => {
             return CheckOutcome::Refuted {
-                reason: "no `ingest:inferred` producer exists in this artifact — the §100 vacuum \
+                reason: "no `ingest:inferred` producer exists in this artifact — the ingestion vacuum \
                          holds; forged or stale proof"
                     .to_string(),
             }
@@ -2092,7 +2092,7 @@ fn check_inferred_ceiling_soundness(
         return CheckOutcome::Refuted {
             reason: format!(
                 "axon-T1001 `ingest:inferred` producer(s) also declare `epistemic:know` (an \
-                 inferred read can never be `know`, D101.1): {:?}",
+                 inferred read can never be `know`): {:?}",
                 actual.ceiling_violations
             ),
         };
@@ -2165,7 +2165,7 @@ fn check_interruptible_session_soundness(
         return CheckOutcome::Refuted {
             reason: format!(
                 "interrupt handler in session '{}' role '{}' does not reach a two-exit \
-                 terminal (`resume` or `end`, D79.11a)",
+                 terminal (`resume` or `end`)",
                 actual.session_name, actual.role_name
             ),
         };
@@ -2203,7 +2203,7 @@ fn check_parked_residual_soundness(
         return CheckOutcome::Refuted {
             reason: format!(
                 "socket '{}' parks an interruptible residual but does not declare `reconnect: \
-                 cognitive_state` — the at-rest κ would be an unsealed second store (paper §7)",
+                 cognitive_state` — the at-rest κ would be an unsealed second store",
                 actual.socket_name
             ),
         };
@@ -2213,7 +2213,7 @@ fn check_parked_residual_soundness(
         return CheckOutcome::Refuted {
             reason: format!(
                 "socket '{}' parks a possibly-PII-bearing residual but declares no `legal_basis` \
-                 — the at-rest retention TTL has no legal ceiling (paper §7)",
+                 — the at-rest retention TTL has no legal ceiling",
                 actual.socket_name
             ),
         };

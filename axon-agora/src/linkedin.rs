@@ -87,12 +87,12 @@ impl LinkedInConnector {
         if config.author_org_urn.starts_with("urn:li:person:") {
             return Err(ConnectorError::Refused(PostureRefusal {
                 code: "axon-T958",
-                reason: "LinkedIn member-level automation is prohibited (API ToS §3.1(26); \
+                reason: "LinkedIn member-level automation is prohibited (API ToS section 3.1(26); \
                          r_member_social is a closed permission) — a connector cannot act as a \
                          member.",
                 fix: "Build the connector for an organization URN (urn:li:organization:<id>) \
                       under an approved Community Management use case.",
-                source: "paper_axon_agora.md §2.1 [L-TOS]",
+                source: "paper_axon_agora.md section 2.1 [L-TOS]",
             }));
         }
         if !config.author_org_urn.starts_with("urn:li:organization:") {
@@ -100,7 +100,7 @@ impl LinkedInConnector {
                 code: "axon-T958",
                 reason: "the LinkedIn connector acts only as an owned organization.",
                 fix: "Set author_org_urn to urn:li:organization:<id>.",
-                source: "paper_axon_agora.md §2.1",
+                source: "paper_axon_agora.md section 2.1",
             }));
         }
         let client = reqwest::blocking::Client::builder()
@@ -166,7 +166,7 @@ impl LinkedInConnector {
             message = format!(
                 "{message} — the pinned LinkedIn-Version '{}' appears sunset/invalid; upgrade \
                  the connector's api_version to a supported YYYYMM (LinkedIn sunsets Marketing \
-                 versions on a cadence, paper §2.1).",
+                 versions on a cadence, paper section 2.1).",
                 self.config.api_version
             );
         }

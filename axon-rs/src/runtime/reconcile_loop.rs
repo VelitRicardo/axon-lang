@@ -241,7 +241,7 @@ impl<'p, H: Handler> ReconcileLoop<'p, H> {
                 "reconcile '{}': the observation carries no `resources_observed` evidence, so the \
                  drift between the manifest's DESIRED shape and the world's ACTUAL shape cannot be \
                  computed. Refusing — reporting zero drift here would be a claim that reality \
-                 matches your intent, made without looking (§112.e)",
+                 matches your intent, made without looking",
                 self.ir.name
             )));
         };
@@ -376,7 +376,7 @@ impl<'p, H: Handler> ReconcileLoop<'p, H> {
                 data.insert("drift".into(), serde_json::Value::from(drift));
                 data.insert(
                     "note".into(),
-                    "belief revision reserved for Fase 4 (psyche integration)".into(),
+                    "belief revision reserved for psyche integration".into(),
                 );
                 Ok(HandlerOutcome::new(
                     "refine",

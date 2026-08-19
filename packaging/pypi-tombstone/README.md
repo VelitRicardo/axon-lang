@@ -11,9 +11,9 @@ Requires [Rust](https://rustup.rs) **1.95+** and a C compiler (MSVC / clang / gc
 
 ## What happened
 
-The Python interpreter was retired in **Fase 40 (*Pure Silicon*, v2.0.0)**. For a
+The Python interpreter was retired in **v2.0.0 (*Pure Silicon*)**. For a
 while afterwards this package was a thin launcher that downloaded and executed the
-native binary; that shim was deleted in **Fase 116.c.5**. Everything — lexer,
+native binary; that shim was deleted in **v2.77.0**. Everything — lexer,
 parser, epistemic type system, IR generator, runtime, HTTP server, CLI — is native
 Rust, with the FIPS-routable cryptographic and tokeniser kernels in standalone C23.
 

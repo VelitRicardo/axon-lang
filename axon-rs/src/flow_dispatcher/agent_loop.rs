@@ -741,7 +741,7 @@ async fn apply_on_stuck(
             name: format!("agent:{}", agent.name),
             message: format!(
                 "{context}, and `on_stuck: hibernate` has no continuation to park — \
-                 §119.d suspends a flow walk by capturing its remaining nodes, and an \
+                 `hibernate` suspends a flow walk by capturing its remaining nodes, and an \
                  agent loop has no such list. Refused rather than quietly escalated. Use \
                  escalate, forge or retry."
             ),

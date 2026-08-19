@@ -1,21 +1,21 @@
 // ─────────────────────────────────────────────────────────────────────
-//  examples/mobile_channels.axon — Fase 13 worked example.
+//  examples/mobile_channels.axon — mobile channels worked example.
 //
 //  Producer/broker/consumer pipeline showcasing π-calculus mobility
-//  (paper_mobile_channels.md §3.2 Chan-Mobility).  An OrdersCreated
+//  (paper_mobile_channels.md, Chan-Mobility).  An OrdersCreated
 //  handle is *passed as a value* through BrokerHandoff so consumers
 //  can dynamically discover the right channel for the right request.
 //
 //  Compile-time guarantees demonstrated:
-//    • Channel<Order>      — schema-checked emit/listen (D3, paper §3.1)
-//    • Channel<Channel<T>> — second-order session types (D6.d, paper §3.3)
-//    • shield gate         — D8 capability extrusion (paper §3.4)
+//    • Channel<Order>      — schema-checked emit/listen
+//    • Channel<Channel<T>> — second-order session types
+//    • shield gate         — capability extrusion
 //    • discover            — typed dynamic import of a published handle
 //
 //  `axon check` clean (0 errors, 0 warnings under --strict).
 // ─────────────────────────────────────────────────────────────────────
 
-// Compliance class κ on the payload type (paper §3.4 + ESK Fase 6.1).
+// Compliance class κ on the payload type (the ESK coverage rule).
 type Order compliance [PCI_DSS] {
     id:           String
     amount:       Float
@@ -23,7 +23,7 @@ type Order compliance [PCI_DSS] {
 }
 
 // The shield that gates extrusion of OrdersCreated.  Its compliance
-// list MUST cover Order.compliance — paper §3.4 / Fase 6.1.
+// list MUST cover Order.compliance.
 shield PublicBroker {
     scan: [pii_leak, prompt_injection]
     compliance: [PCI_DSS]
@@ -41,12 +41,12 @@ channel OrdersCreated {
 // Second-order channel — carries OrdersCreated *handles* (mobility).
 // A handle to a regulated channel is regulated REACH: `Channel<Order>`
 // carries Order's κ through the wrapper, so this channel needs a
-// covering shield too (axon-T1215, §Fase 124.c — the dual of T957).
+// covering shield too (axon-T1215 — the dual of T957).
 channel BrokerHandoff {
     message:     Channel<Order>
     qos:         exactly_once
     lifetime:    affine
-    persistence: persistent_axonstore  // handle survives reboots (§AS)
+    persistence: persistent_axonstore  // handle survives reboots
     shield:      PublicBroker          // covers κ(Order) = [PCI_DSS]
 }
 
@@ -57,7 +57,7 @@ daemon OrderConsumer() {
 
     listen BrokerHandoff as ch {
         // The body sees `ch: Channel<Order>` — the type checker
-        // resolved this through the second-order schema (paper §3.3).
+        // resolved this through the second-order schema.
         listen OrdersCreated as order {
             step Process {
                 given: order

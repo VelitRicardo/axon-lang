@@ -4,10 +4,10 @@ version = "3.0.0"
 edition = "2021"
 rust-version = "1.95"
 authors = ["AXON Project", "Ricardo Velit"]
-description = "AXON compiler frontend - lexer, parser, AST, epistemic type system, type checker, IR generator. Zero runtime dependencies. v1.59.0 (Fase 119) adds the two judgments the runtime shares verbatim: `stability` (the `mandate` gain band D < |Kp+Ki+Kd| < 1/L, both endpoints exclusive, verified at compile time against declared bounds) and `substrate` (the `fabric` provider/region/jurisdiction catalog behind axon-E041 region mismatch and axon-E042 compliance-jurisdiction). It also accepts the step-body statement positions the language reference has always published: mandate/shield/ots/lambda applications scoped to the step they govern, the PIX verbs with a braceless field list, and `hibernate until <event>`. v1.58.0 added axon-T957 RegulatedBoundaryCoverage. See https://www.ricardovelit.com/axon-docs"
+description = "AXON compiler frontend - lexer, parser, AST, epistemic type system, type checker, IR generator. Zero runtime dependencies. Ships the two judgments the runtime shares verbatim: `stability` (the `mandate` gain band D < |Kp+Ki+Kd| < 1/L, both endpoints exclusive, verified at compile time against declared bounds) and `substrate` (the `fabric` provider/region/jurisdiction catalog behind axon-E041 region mismatch and axon-E042 compliance-jurisdiction). It also accepts the step-body statement positions the language reference has always published: mandate/shield/ots/lambda applications scoped to the step they govern, the PIX verbs with a braceless field list, and `hibernate until <event>`. axon-T957 RegulatedBoundaryCoverage and axon-T1215 channel κ-coverage guard every regulated boundary. See https://www.ricardovelit.com/axon-docs"
 license = "AGPL-3.0-or-later"
 repository = "https://github.com/VelitRicardo/axon-lang"
-# §Fase 119.g — D119.2 named the canonical documentation host. Until now BOTH
+# The canonical documentation host. Until 2.83.0 BOTH
 # fields were absent, so the crates.io page showed no documentation link at
 # all: an adopter landing there had nowhere to go but the README.
 homepage = "https://www.ricardovelit.com/axon-docs"

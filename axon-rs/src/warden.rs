@@ -150,7 +150,7 @@ pub fn unsupported_scope_depths(
                  analyse. Refusing at DEPLOY rather than mid-flow: a `warden` block that fails \
                  on its seventh step has already let the six before it emit, persist and \
                  deliver. The OSS reference supports `static_artifact` only; the invasive \
-                 depths (`memory_dump`, `live_network`) require the enterprise engine (§88.h). \
+                 depths (`memory_dump`, `live_network`) require the enterprise engine. \
                  Either lower the scope's ceiling or deploy against a backend that reaches it.",
                 s.name, s.depth
             )

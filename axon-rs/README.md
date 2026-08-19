@@ -52,7 +52,7 @@ cargo install axon-lang --features server,postgres   # …with the SQL data plan
 | *(none — the default)* | `axon`: check, compile, run, dossier, audit, sbom, prove, verify, fmt, fix, repl, … |
 | `server` | the `axon-server` binary — HTTP / SSE / NDJSON / WebSocket |
 | `postgres` | `backend: postgresql` axonstores, `axon store introspect` |
-| `documents` | the OOXML surface (§99/§100/§106) and `axon evidence-package` |
+| `documents` | the OOXML surface (synthesis, ingestion, governed egress) and `axon evidence-package` |
 
 **Both binaries are AGPL and both live in this crate.** The split is a *role*
 boundary — compiler vs runtime — not a paid one.
@@ -100,7 +100,7 @@ X app.axon  1 error(s)
   error [line 4]: axon-T957 axonendpoint 'Api' carries regulated data
   (kappa = {GDPR, HIPAA}) across a trust boundary but declares no `shield:`.
   Regulated boundaries require a shield whose `compliance:` covers the type's
-  kappa — ESK Fase 6.1 coverage rule. […] Declaring the classes on the
+  kappa — the ESK coverage rule. […] Declaring the classes on the
   endpoint's own `compliance:` does NOT cover them: that list is a label,
   the shield is the control that acts on a breach.
 ```
@@ -120,7 +120,7 @@ likely to reach for:
 | `axon compile` | lower to IR JSON |
 | `axon serve` | run the HTTP / SSE / NDJSON / WebSocket server — needs `--features server`, and points you at `axon-server` |
 | `axon dossier` · `axon audit` · `axon sbom` | regulatory posture, gap analysis, SBOM |
-| `axon prove` · `axon verify` | emit and independently check proof objects |
+| `axon pcc prove` · `axon pcc verify` | emit and independently check proof objects |
 | `axon fmt` · `axon fix` · `axon repl` · `axon inspect` | the usual tooling |
 
 `axon --help` lists all of them.
@@ -129,7 +129,7 @@ likely to reach for:
 
 ```toml
 [dependencies]
-axon-lang = "2"
+axon-lang = "4"
 ```
 
 ```rust

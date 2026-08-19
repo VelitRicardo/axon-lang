@@ -454,7 +454,7 @@ impl ColumnBuilder {
         // validated() pass is kept as the single choke point anyway —
         // cheap, and it means NO ColumnArray exists unchecked.
         ColumnArray::validated(self.len, validity, data)
-            .expect("ColumnBuilder maintains the §5.1 invariants by construction")
+            .expect("ColumnBuilder maintains the column invariants by construction")
     }
 }
 
@@ -1068,7 +1068,7 @@ pub fn ingest_bytes(
     if raw.len() as u64 > limits.max_bytes {
         return Err(format!(
             "ingest refused BEFORE parse: source is {} bytes, the declared bound is {} \
-             (§100 bounds-BEFORE-parse — raise `limits {{ max_bytes: … }}` if intended)",
+             (bounds-BEFORE-parse — raise `limits {{ max_bytes: … }}` if intended)",
             raw.len(),
             limits.max_bytes
         ));
@@ -1408,7 +1408,7 @@ fn eval_condition(cond: &FilterCondition, cell: &CellValue) -> Result<bool, Stri
         Rhs::Time(_) => {
             return Err(format!(
                 "column `{}`: `now()` time values in a dataspace `where:` are deferred \
-                 §108.x surface — bind an RFC 3339 literal instead",
+                 surface — bind an RFC 3339 literal instead",
                 cond.column
             ))
         }

@@ -332,7 +332,7 @@ impl SocialConnector for FacebookPagesConnector {
     ) -> Result<PublishReceipt, ConnectorError> {
         Err(ConnectorError::Unsupported {
             platform: Platform::FacebookPages,
-            reason: "post editing is not on the paper-verified Pages surface (§2.2)".to_string(),
+            reason: "post editing is not on the paper-verified Pages surface (paper section 2.2)".to_string(),
         })
     }
 

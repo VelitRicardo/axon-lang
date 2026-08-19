@@ -173,7 +173,7 @@ fn fips_140_3_controls() -> Vec<Control> {
     vec![
         ctl!(Fips140_3, "FIPS.ALG_APPROVED", "Only FIPS-approved algorithms used", "HMAC-SHA256 + SHA-256 + Ed25519 + ML-DSA-65", RuntimeInvariant, "axon.runtime.esk.provenance"),
         ctl!(Fips140_3, "FIPS.BOUNDARY", "Cryptographic boundary defined", "ESK-CB: provenance.py + secret.py + attestation.py", ManualPolicy, "docs/compliance/fips_140_3_submission_template.md"),
-        ctl!(Fips140_3, "FIPS.FSM", "Finite State Model", "POWER-OFF → INITIALIZED → OPERATIONAL", ManualPolicy, "docs/compliance/fips_140_3_submission_template.md §6"),
+        ctl!(Fips140_3, "FIPS.FSM", "Finite State Model", "POWER-OFF → INITIALIZED → OPERATIONAL", ManualPolicy, "docs/compliance/fips_140_3_submission_template.md, section 6"),
         ctl!(Fips140_3, "FIPS.KAT_HMAC", "HMAC-SHA256 Known Answer Test", "Test with fixed key/message → known tag", TestSuite, "tests/test_phase6_runtime.py"),
         ctl!(Fips140_3, "FIPS.KAT_SHA", "SHA-256 Known Answer Test", "SHA-256('abc') verification", TestSuite, "tests/test_phase6_runtime.py"),
         // §Fase 124.b — this control carried the literal locator "PENDING"
@@ -182,7 +182,7 @@ fn fips_140_3_controls() -> Vec<Control> {
         // RFC 8032 §7.1 vectors asserted byte-exactly (seed→pk AND signature,
         // three keypairs) plus byte-identity against an independent
         // implementation, which determinism makes possible for Ed25519.
-        ctl!(Fips140_3, "FIPS.KAT_ED25519", "Ed25519 KAT (RFC 8032 vectors)", "RFC 8032 §7.1 byte-exact + cross-impl byte-identity", TestSuite, "axon-csys/tests/ed25519_kat.rs"),
+        ctl!(Fips140_3, "FIPS.KAT_ED25519", "Ed25519 KAT (RFC 8032 vectors)", "RFC 8032 section 7.1 byte-exact + cross-impl byte-identity", TestSuite, "axon-csys/tests/ed25519_kat.rs"),
         ctl!(Fips140_3, "FIPS.PCT", "Pairwise consistency test Ed25519", "generate → sign → verify", TestSuite, "tests/test_phase6_runtime.py"),
         ctl!(Fips140_3, "FIPS.RNG", "Approved RNG source", "Python secrets.token_bytes (OS CSPRNG)", RuntimeInvariant, "HmacSigner.random"),
         ctl!(Fips140_3, "FIPS.CT_COMPARE", "Constant-time comparisons", "hmac.compare_digest for MAC verify", RuntimeInvariant, "HmacSigner.verify"),

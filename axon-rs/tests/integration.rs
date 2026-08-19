@@ -29323,7 +29323,7 @@ fn fase5_immune_missing_scope_is_type_error() {
     "#);
     assert!(
         errors.iter().any(|e| e.message.contains("requires an explicit 'scope'")
-            && e.message.contains("paper §8.2")),
+            && e.message.contains("section 8.2")),
         "got {errors:?}"
     );
 }
@@ -29448,7 +29448,7 @@ fn fase5_heal_adversarial_requires_shield_per_paper_7_3() {
     "#);
     assert!(
         errors.iter().any(|e| e.message.contains("mode='adversarial' requires a 'shield' gate")
-            && e.message.contains("Paper §7.3")),
+            && e.message.contains("section 7.3")),
         "got {errors:?}"
     );
 }

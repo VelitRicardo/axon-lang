@@ -572,7 +572,7 @@ impl TypedEventBus {
                 let expected_inner = handle.inner_message_type();
                 if inner.message != expected_inner {
                     return Err(TypedChannelError::SchemaMismatch(format!(
-                        "emit on '{}' expects Channel<{}> but received handle for '{}' (second-order schema mismatch, paper §3.2)",
+                        "emit on '{}' expects Channel<{}> but received handle for '{}' (second-order schema mismatch)",
                         handle.name, expected_inner, inner.message,
                     )));
                 }

@@ -1548,7 +1548,7 @@ mod tests {
         assert!(
             !body.contains("_ => {}") && !body.contains("_ =>"),
             "collect_store_accesses must stay an EXHAUSTIVE match with no \
-             `_` wildcard — a wildcard re-opens the §51.x.3 silent-gap risk \
+             `_` wildcard — a wildcard re-opens the silent-gap risk \
              (a future IRFlowNode variant could carry a store ref / nested \
              body and be missed)"
         );
@@ -1563,7 +1563,7 @@ mod tests {
     fn reachability_walk_documents_transitive_reopen() {
         const GEN_SRC: &str = include_str!("generate.rs");
         assert!(
-            GEN_SRC.contains("REOPENED (§51.x.3)") || GEN_SRC.contains("REOPEN"),
+            GEN_SRC.contains("REOPENED") || GEN_SRC.contains("REOPEN"),
             "the walk must keep the note on where to reopen transitive \
              cross-flow reachability if a flow-invocation node ever joins \
              IRFlowNode"
@@ -3614,7 +3614,7 @@ mod tests {
             // OSS `DocumentReader` produces Parsed only (asserted in ooxml_read).
             t.name == "DocumentReaderInferred" // no such tool exists
         });
-        assert!(!has_inferred, "no built-in Inferred producer may ship in §100 (D100.14)");
+        assert!(!has_inferred, "no built-in Inferred producer may ship");
     }
 
     #[test]
@@ -3674,7 +3674,7 @@ mod tests {
         let ir = ir_from_source(INGEST_PROGRAM);
         assert!(
             super::generate::generate_inferred_ceiling_soundness_proofs(&ir, "test").is_empty(),
-            "no `ingest:inferred` producer → no proof (the §100 vacuum holds)"
+            "no `ingest:inferred` producer → no proof (the ingestion vacuum holds)"
         );
     }
 

@@ -97,7 +97,7 @@ pub fn dispatch_or_reject(tool_name: &str, argument: &str) -> Result<Option<Tool
             return Err(format!(
                 "tool '{tool_name}' is declared in the stdlib catalog but has no native \
                  implementation and no provider — refusing to silently hand the call to the \
-                 model, which would fabricate its output (§Fase 99 §8). Implement the tool, give \
+                 model, which would fabricate its output. Implement the tool, give \
                  it a provider, or remove it from the catalog."
             ));
         }

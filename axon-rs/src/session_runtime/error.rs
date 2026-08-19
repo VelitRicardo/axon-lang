@@ -88,7 +88,7 @@ impl fmt::Display for ProtocolError {
             ProtocolError::CreditExhausted { payload, budget } => write!(
                 f,
                 "credit exhausted on `send {payload}` at window n = 0 \
-                 (budget = {budget}, §Fase 41.c, paper §4.2)"
+                 (budget = {budget})"
             ),
             ProtocolError::AlreadyComplete { frame_kind } => write!(
                 f,
@@ -99,7 +99,7 @@ impl fmt::Display for ProtocolError {
             ProtocolError::NoInterruptArmed => write!(
                 f,
                 "signal fired but no interruptible region is armed (cursor not inside \
-                 an `interrupt` body, §Fase 79.d)"
+                 an `interrupt` body)"
             ),
             ProtocolError::SignalMismatch { expected, got } => write!(
                 f,
@@ -108,12 +108,12 @@ impl fmt::Display for ProtocolError {
             ProtocolError::WatchdogBreach { bound, actual } => write!(
                 f,
                 "WCET watchdog breach: reaction path took {actual} transitions, declared \
-                 bound is {bound} (fail-closed, §Fase 79.d / D79.5)"
+                 bound is {bound} (fail-closed)"
             ),
             ProtocolError::DoubleResume => write!(
                 f,
                 "`resume` on an already-consumed one-shot continuation \
-                 (linear-type violation, §Fase 79 D79.1)"
+                 (linear-type violation)"
             ),
         }
     }

@@ -355,7 +355,7 @@ pub fn run_evidence_package(file: &str, output: Option<&str>, note: &str) -> i32
             "ed25519_public_key": hex(&keys.ed25519),
             "ml_dsa_65_public_key": hex(&keys.ml_dsa_65),
             "signature": hex(&sig),
-            "note": "Keys are generated per package; this proves integrity since packaging, not signer identity. Durable identity requires key custody (§94 integration, planned).",
+            "note": "Keys are generated per package; this proves integrity since packaging, not signer identity. Durable identity requires key custody (integration planned).",
         });
         let sig_path = format!("{}.sig.json", path.display());
         if let Err(e) = fs::write(&sig_path, serde_json::to_string_pretty(&sig_json).unwrap_or_default()) {
@@ -430,7 +430,7 @@ mod tests {
         let sig_file: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(&sig_path).expect(
                 "the detached signature must exist beside the ZIP — a signer with no \
-                 production caller is the defect this fase exists to close",
+                 production caller is the defect this gate exists to close",
             ))
             .expect("valid JSON");
 

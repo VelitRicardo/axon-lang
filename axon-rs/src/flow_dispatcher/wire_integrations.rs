@@ -617,7 +617,7 @@ pub async fn run_emit(
             serde_json::Value::Null,
         );
         if let Err(e) = log.append(token).await {
-            eprintln!("§74.e emit token append failed for '{}': {e}", node.channel_ref);
+            eprintln!("emit token append failed for '{}': {e}", node.channel_ref);
         }
     }
 
@@ -1621,9 +1621,9 @@ pub async fn run_quant(
                     "`depth: {depth}` declares a {depth}-layer variational circuit U(θ), but the \
                      language carries no θ — `quant` has no parameter surface, and a rotation \
                      layer needs real angles. Running U(0) and calling it your circuit would \
-                     fabricate the physics (§111). Omit `depth:` to measure the encoded carrier \
+                     fabricate the physics. Omit `depth:` to measure the encoded carrier \
                      directly (a complete, real computation: E = ⟨ψ|M|ψ⟩); a parameter surface is \
-                     deferred to §111.x"
+                     deferred"
                 ),
             });
         }
@@ -1786,7 +1786,7 @@ pub async fn run_warden(
             name: "warden".to_string(),
             message: format!(
                 "`within {}` does not resolve to a declared scope — an analysis with no \
-                 authorization envelope runs on nothing and authorises nothing (§88, fail-closed)",
+                 authorization envelope runs on nothing and authorises nothing (fail-closed)",
                 node.scope_ref
             ),
         })?;
@@ -1808,7 +1808,7 @@ pub async fn run_warden(
                 "target `{}` does not resolve to readable evidence in this flow — bind the \
                  artifact first (e.g. `retrieve` it, or `let {} = …`). Analysing an unread target \
                  would report 'no findings' for something never opened, which is the one result a \
-                 security primitive must never fabricate (§111 F12)",
+                 security primitive must never fabricate",
                 node.target, node.target
             ),
         });
@@ -1921,7 +1921,7 @@ pub async fn run_yield(
         name: "yield".to_string(),
         message: "`yield` outside a `quant { … }` block — there is no Hilbert space to collapse \
                   into and no observable to measure with. Returning 0.0 here would be \
-                  indistinguishable from a genuine expectation of zero (§111)"
+                  indistinguishable from a genuine expectation of zero"
             .to_string(),
     })?;
     let backend = ctx

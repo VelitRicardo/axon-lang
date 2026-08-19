@@ -172,10 +172,10 @@ mod tests {
         let src = shipped_source();
         assert!(
             src.contains("pub struct PinnedConn(sqlx::pool::PoolConnection<sqlx::Postgres>);"),
-            "§118 D118.2 — the inner handle must stay a PRIVATE tuple field. \
+            "the inner handle must stay a PRIVATE tuple field. \
              Making it `pub` would re-open the leak this port exists to close: \
              the executor could then name `sqlx::Postgres` again through the \
-             newtype, and the §118.b.3 uninhabited-variant trick would stop \
+             newtype, and the uninhabited-variant trick would stop \
              compiling because callers would depend on the field."
         );
     }
@@ -196,7 +196,7 @@ mod tests {
         for e in escapes {
             assert!(
                 !src.contains(e),
-                "§118 D118.2 — `{e}` would hand the raw `PoolConnection` back to \
+                "`{e}` would hand the raw `PoolConnection` back to \
                  callers and re-open the leak this port exists to close. The \
                  port's surface is `new` + `as_store_conn`, deliberately."
             );
@@ -210,7 +210,7 @@ mod tests {
         assert_eq!(
             pub_fns.len(),
             2,
-            "§118 D118.2 — `PinnedConn` must expose exactly `new` and \
+            "`PinnedConn` must expose exactly `new` and \
              `as_store_conn`. A third public function is how a port becomes a \
              leak again, one convenience at a time. Found: {pub_fns:?}"
         );

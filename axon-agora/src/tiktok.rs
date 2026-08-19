@@ -206,7 +206,7 @@ impl SocialConnector for TikTokConnector {
     ) -> Result<PublishReceipt, ConnectorError> {
         Err(ConnectorError::Unsupported {
             platform: Platform::TikTok,
-            reason: "TikTok is read/analytics-first (D116.7) — commenting is not on the surface"
+            reason: "TikTok is read/analytics-first — commenting is not on the surface"
                 .to_string(),
         })
     }
@@ -219,7 +219,7 @@ impl SocialConnector for TikTokConnector {
     ) -> Result<(), ConnectorError> {
         Err(ConnectorError::Unsupported {
             platform: Platform::TikTok,
-            reason: "TikTok is read/analytics-first (D116.7) — moderation is not on the surface"
+            reason: "TikTok is read/analytics-first — moderation is not on the surface"
                 .to_string(),
         })
     }
@@ -261,14 +261,14 @@ impl SocialConnector for TikTokConnector {
     ) -> Result<PublishReceipt, ConnectorError> {
         Err(ConnectorError::Unsupported {
             platform: Platform::TikTok,
-            reason: "TikTok is read/analytics-first (D116.7)".to_string(),
+            reason: "TikTok is read/analytics-first".to_string(),
         })
     }
 
     fn delete(&self, _ctx: &CallContext, _object_id: &str) -> Result<(), ConnectorError> {
         Err(ConnectorError::Unsupported {
             platform: Platform::TikTok,
-            reason: "TikTok is read/analytics-first (D116.7)".to_string(),
+            reason: "TikTok is read/analytics-first".to_string(),
         })
     }
 }

@@ -102,7 +102,7 @@ impl std::fmt::Display for SourceError {
                 f,
                 "source '{source}' resolves to no registered adapter — an unregistered source is \
                  UNKNOWN, not healthy. Register an adapter for it, or name a declared `resource`. \
-                 (§112.a: an observation that cannot be taken must refuse, never return a default \
+                 (an observation that cannot be taken must refuse, never return a default \
                  envelope)"
             ),
             SourceError::Timeout { source, after } => {
@@ -224,7 +224,7 @@ impl ResourceProbeAdapter {
     /// Resolve the resource's endpoint **key** and reduce it to `host:port`.
     ///
     /// §Fase 113 — the endpoint is a config key, so it is RESOLVED first. That
-    /// also *improves the refusal*: where the pre-§113 code could only say "no
+    /// also *improves the refusal*: where the old code could only say "no
     /// reachable address", this can say **which key is unset** — a failure that
     /// names the knob the operator has to turn instead of one that reads like a
     /// network fault.
@@ -451,7 +451,7 @@ mod tests {
         let msg = format!("{err}");
         assert!(
             msg.contains("blob.archive"),
-            "the refusal must name the KEY the operator has to set — where the pre-§113 code \
+            "the refusal must name the KEY the operator has to set — where the old code \
              could only say 'no reachable address', which reads like a network fault. Got: {msg}"
         );
     }

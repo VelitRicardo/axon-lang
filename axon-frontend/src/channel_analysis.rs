@@ -285,7 +285,7 @@ pub fn channel_hover_markdown(channel: &ChannelDefinition) -> String {
     if channel.message.starts_with("Channel<") {
         buf.push_str(
             "**Second-order channel** — carries another channel handle as its \
-             message (π-calculus mobility, paper §3.2).\n\n",
+             message (π-calculus mobility).\n\n",
         );
     }
     if channel.shield_ref.is_empty() {
@@ -296,7 +296,7 @@ pub fn channel_hover_markdown(channel: &ChannelDefinition) -> String {
     } else {
         buf.push_str(&format!(
             "Capability-gated by **`{}`** — `publish {} within {}` is the \
-             only legal extrusion path (D8, paper §3.4).\n",
+             only legal extrusion path.\n",
             channel.shield_ref, channel.name, channel.shield_ref,
         ));
     }
@@ -588,7 +588,7 @@ mod tests {
         let c = find_channel_definition(&p, "C").unwrap();
         let md = channel_hover_markdown(c);
         assert!(md.contains("Second-order channel"));
-        assert!(md.contains("paper §3.2"));
+        assert!(md.contains("π-calculus mobility"));
     }
 
     #[test]

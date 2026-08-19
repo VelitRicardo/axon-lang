@@ -1,8 +1,8 @@
 # PyPI tombstone for `axon-lang`.
 #
 # This is NOT the project's build system. AXON is a Rust + C23 toolchain; the
-# Python interpreter was retired in §Fase 40 (*Pure Silicon*, v2.0.0) and the
-# PyPI launcher shim was deleted in §Fase 116.c.5. What remains on PyPI is a
+# Python interpreter was retired in v2.0.0 (*Pure Silicon*) and the
+# PyPI launcher shim was deleted in v2.77.0. What remains on PyPI is a
 # deliberate REDIRECT: anyone who types `pip install axon-lang` — because a
 # stale blog post, a cached search result or an old README told them to — gets
 # a package whose entire content is "this moved, here is where."

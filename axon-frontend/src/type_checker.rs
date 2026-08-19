@@ -2340,8 +2340,7 @@ impl<'a> TypeChecker<'a> {
                         self.emit(
                             format!(
                                 "extension '{}' effect member '{}' shadows the canonical enforceable \
-                                 base '{}'. Extensions are PROVENANCE-class only (§Fase 53 invariant \
-                                 #2: E_C ∩ E_E = ∅) — they may not redefine or qualify an enforceable \
+                                 base '{}'. Extensions are PROVENANCE-class only (E_C ∩ E_E = ∅) — they may not redefine or qualify an enforceable \
                                  effect base.",
                                 ext.name, m.name, base
                             ),
@@ -2371,7 +2370,7 @@ impl<'a> TypeChecker<'a> {
                         self.emit(
                             format!(
                                 "extension '{}' scan member '{}' shadows a canonical scan category \
-                                 (§Fase 53 invariant #3 — no shadowing of the canonical catalog)",
+                                 (no shadowing of the canonical catalog)",
                                 ext.name, m.name
                             ),
                             &m.loc,
@@ -2773,7 +2772,7 @@ impl<'a> TypeChecker<'a> {
                 format!(
                     "axon-T858 technician tool '{}' binds `target:` on `provider: bash` but \
                      declares no `argv:` — a free-string command would reopen the injection \
-                     surface §Fase 84 exists to close (D84.1); declare an argv template, e.g. \
+                     surface the technician grammar exists to close; declare an argv template, e.g. \
                      `argv: [\"ping\", \"-c\", \"${{count}}\", \"${{host}}\"]`",
                     node.name
                 ),
@@ -2793,7 +2792,7 @@ impl<'a> TypeChecker<'a> {
                             format!(
                                 "axon-T859 argv placeholder '${{{}}}' in technician tool '{}' is \
                                  not a declared `parameters:` entry — every argv placeholder must \
-                                 bind to a typed argument (the §54.b interpolation discipline)",
+                                 bind to a typed argument (the interpolation discipline)",
                                 name, node.name
                             ),
                             &node.loc,
@@ -2807,7 +2806,7 @@ impl<'a> TypeChecker<'a> {
                              whole-element placeholder — a `${{param}}` must be an ENTIRE argv \
                              element (never fused with surrounding text like `${{x}}.txt` or \
                              `pre${{x}}`), so an argument can neither be split nor escape its \
-                             slot (D84.1)",
+                             slot",
                             t, node.name
                         ),
                         &node.loc,
@@ -2839,7 +2838,7 @@ impl<'a> TypeChecker<'a> {
                         "axon-T860 technician tool '{}' is `risk: destructive` but its bound \
                          session offers no reachable `branch{{ approved: […], denied: […] }}` — a \
                          destructive command must have a human confirm/deny exit visible in the \
-                         protocol's own shape (D84.2); add the branch, or reclassify `risk: safe`",
+                         protocol's own shape; add the branch, or reclassify `risk: safe`",
                         node.name
                     ),
                     &node.loc,
@@ -3220,7 +3219,7 @@ impl<'a> TypeChecker<'a> {
         require(
             self,
             "web",
-            "web content is born epistemically Untrusted (D98.1) and cannot reach an agent's \
+            "web content is born epistemically Untrusted and cannot reach an agent's \
              belief without a shield",
         );
 
@@ -3254,7 +3253,7 @@ impl<'a> TypeChecker<'a> {
             self.emit(
                 format!(
                     "axon-T904 tool '{}' sets `adaptive: true` but does not declare `storage` — \
-                     adaptive relocation persists per-tenant selector memory (§98.h), a real \
+                     adaptive relocation persists per-tenant selector memory, a real \
                      `<storage>` effect. Add `storage` to `effects: <…>`.",
                     node.name
                 ),
@@ -3751,7 +3750,7 @@ impl<'a> TypeChecker<'a> {
                     format!(
                         "axon-T1001 tool '{}' declares `ingest:inferred` AND `epistemic:know` — \
                          an inferred (OCR/vision) read is a belief about pixels, not a fact about \
-                         a file; it can never be `know` (D100.1). Its ceiling is `believe`.",
+                         a file; it can never be `know`. Its ceiling is `believe`.",
                         node.name
                     ),
                     &node.loc,
@@ -4302,7 +4301,7 @@ impl<'a> TypeChecker<'a> {
             self.emit(
                 format!(
                     "axon-T908 flow '{}' acquires adversarial ingress content (a tool carrying \
-                     the `web` effect (§98 scraping) or an `ingest:*` annotation (§100 document \
+                     the `web` effect (scraping) or an `ingest:*` annotation (document \
                      ingestion), born Untrusted) and feeds a cognitive step whose agent declares \
                      no shield, with no `shield` applied in the flow. Scraped/ingested content is \
                      adversarial: scan it before it reaches an agent's beliefs. Add a `shield <S> \
@@ -5345,7 +5344,7 @@ impl<'a> TypeChecker<'a> {
             Some(secs) if secs > MAX_CREDENTIAL_TTL_SECS => self.emit(
                 format!(
                     "axon-T894 credential '{}' declares `ttl: {}` ({secs}s), above the \
-                     24h ephemeral ceiling — a long-lived machine identity is the §81 \
+                     24h ephemeral ceiling — a long-lived machine identity is the \
                      service-account surface, not an ephemeral credential.",
                     node.name, node.ttl
                 ),
@@ -5522,7 +5521,7 @@ impl<'a> TypeChecker<'a> {
             self.emit(
                 format!(
                     "axon-T913 document '{}' binds `sensitive:*` data but its `effects:` carries \
-                     no `legal:<basis>` — a document is an egress boundary (D99.4); a sensitive \
+                     no `legal:<basis>` — a document is an egress boundary; a sensitive \
                      value leaving the lattice into a human artifact needs a declared legal basis.",
                     node.name
                 ),
@@ -5559,7 +5558,7 @@ impl<'a> TypeChecker<'a> {
         if target.is_empty() {
             return Some(format!(
                 "axon-T930 `{verb}` names no dataspace — the data-plane form is \
-                 `{verb} <Dataspace> …` (§108.d; these verbs are relational \
+                 `{verb} <Dataspace> …` (these verbs are relational \
                  operations, not prompts)."
             ));
         }
@@ -5642,7 +5641,7 @@ impl<'a> TypeChecker<'a> {
                 self.emit(
                     format!(
                         "axon-T928 dataspace '{}' column `{}` has unknown type `{}`. The \
-                         closed dataspace column-type catalog (D108.1) is {{{}}} — each \
+                         closed dataspace column-type catalog is {{{}}} — each \
                          type maps 1:1 to a physical columnar buffer layout, so the \
                          catalog admits no open extension.{}",
                         node.name,
@@ -5678,7 +5677,7 @@ impl<'a> TypeChecker<'a> {
         if !matches!(node.channel.as_str(), "sms" | "whatsapp" | "telegram") {
             self.emit(
                 format!(
-                    "axon-T934 notify '{}' has `channel: {}` — the closed v1 channel catalog is {{sms, whatsapp, telegram}} (D110.5; further channels are additive §110.x surface).",
+                    "axon-T934 notify '{}' has `channel: {}` — the closed v1 channel catalog is {{sms, whatsapp, telegram}} (further channels are additive surface).",
                     node.name,
                     if node.channel.is_empty() { "<unset>" } else { &node.channel }
                 ),
@@ -5689,7 +5688,7 @@ impl<'a> TypeChecker<'a> {
         if !node.to_is_secret {
             self.emit(
                 format!(
-                    "axon-T934 notify '{}' has a literal recipient (`to: {}`). A recipient is PII and never rides source, IR, prompts or audit — declare it under §94 custody and reference the class: `to: secret(ops.oncall_phone)`. The value resolves at dispatch, tenant-scoped.",
+                    "axon-T934 notify '{}' has a literal recipient (`to: {}`). A recipient is PII and never rides source, IR, prompts or audit — declare it under secret custody and reference the class: `to: secret(ops.oncall_phone)`. The value resolves at dispatch, tenant-scoped.",
                     node.name,
                     if node.to_secret.is_empty() { "<unset>" } else { &node.to_secret }
                 ),
@@ -5747,7 +5746,7 @@ impl<'a> TypeChecker<'a> {
         if cleared && binds_flow_values && !epistemic_ok {
             self.emit(
                 format!(
-                    "axon-T933 notify '{}' is `provenance: cleared` and binds flow values into a HUMAN notification. A guess reaching a person's pocket labeled as fact is assertion-laundering at its fastest — the human acts immediately (D110.2, the T920 barrier's human-egress sibling). Use `provenance: attached` (each bound value arrives with its epistemic label; a §108 envelope ref appends its evidence line), or vouch the values inside `epistemic {{ believe|know }}`.",
+                    "axon-T933 notify '{}' is `provenance: cleared` and binds flow values into a HUMAN notification. A guess reaching a person's pocket labeled as fact is assertion-laundering at its fastest — the human acts immediately (the T920 barrier's human-egress sibling). Use `provenance: attached` (each bound value arrives with its epistemic label; a dataspace envelope ref appends its evidence line), or vouch the values inside `epistemic {{ believe|know }}`.",
                     node.name
                 ),
                 &node.loc,
@@ -5792,7 +5791,7 @@ impl<'a> TypeChecker<'a> {
             self.emit(
                 format!(
                     "axon-T923 deliver '{}' has no `secret:` — a CRM write must authenticate; \
-                     name the per-tenant credential key (resolved via §94 custody at dispatch, \
+                     name the per-tenant credential key (resolved via secret custody at dispatch, \
                      never revealed to cognition).",
                     node.name
                 ),
@@ -5829,7 +5828,7 @@ impl<'a> TypeChecker<'a> {
                 format!(
                     "axon-T924 deliver '{}' binds `sensitive:*` data but its `effects:` carries no \
                      `legal:<basis>` — delivering PII into a system of record is further \
-                     processing (D105.6); declare the legal basis.",
+                     processing; declare the legal basis.",
                     node.name
                 ),
                 &node.loc,
@@ -5865,8 +5864,8 @@ impl<'a> TypeChecker<'a> {
                 format!(
                     "axon-T920 deliver '{}' is `provenance: cleared` and binds a flow value into a \
                      CRM with no provenance. A value leaving the epistemic lattice into a system of \
-                     record cannot be more confident than the reasoning that produced it (D105.2, \
-                     the provenance-stripping barrier — the egress-dual of the §99 assertion-\
+                     record cannot be more confident than the reasoning that produced it (the \
+                     provenance-stripping barrier — the egress-dual of the assertion-\
                      laundering barrier). Use `provenance: attached` (the default — each field \
                      lands with its level/confidence/source, a guess labeled as a guess), or, if \
                      you vouch the delivered values are verified facts, wrap the delivery in \
@@ -5898,7 +5897,7 @@ impl<'a> TypeChecker<'a> {
                         "axon-T926 deliver '{}' — operation `{}` has no `key:` — every delivery \
                          operation requires an idempotency key (a natural key like the contact \
                          email, or an adopter `external_id`) so an at-least-once retry never \
-                         double-creates a record (D105.5).",
+                         double-creates a record.",
                         node.name, op.kind
                     ),
                     &op.loc,
@@ -5976,7 +5975,7 @@ impl<'a> TypeChecker<'a> {
                                 "axon-T916 document '{}' — the `{}` block binds flow value `{}` in \
                                  its assertive `{}:` slot with no provenance. A value leaving the \
                                  epistemic lattice into a human artifact cannot be more confident \
-                                 than the reasoning that produced it (D99.1, the assertion-\
+                                 than the reasoning that produced it (the assertion-\
                                  laundering barrier). Add `attribute: <source>` (renders as a \
                                  visible source note), wrap the document in `epistemic {{ mode: \
                                  believe }}` if you vouch it is ≥ believe, or pass `{}` through a \
@@ -6023,7 +6022,7 @@ impl<'a> TypeChecker<'a> {
                         self.emit(
                             format!(
                                 "axon-T917 document '{}' — chart `kind: {}` is outside the bounded \
-                                 v1 subset {}. SmartArt / pivots / 3-D are deferred (D99.9).",
+                                 v1 subset {}. SmartArt / pivots / 3-D are deferred.",
                                 doc.name,
                                 k,
                                 valid_list(VALID_CHART_KINDS)
@@ -6231,7 +6230,7 @@ impl<'a> TypeChecker<'a> {
                 format!(
                     "axon-T877 savant '{}' declares no `budget {{ max_iterations: N }}` — a \
                      long-horizon autonomous agent MUST carry an enforced compute ceiling \
-                     (the §72 linear-budget discipline); an unbounded loop is fail-open",
+                     (the linear-budget discipline); an unbounded loop is fail-open",
                     node.name
                 ),
                 &node.loc,
@@ -6556,7 +6555,7 @@ impl<'a> TypeChecker<'a> {
         if !node.taint.is_empty() {
             self.emit(
                 format!(
-                    "axon-T936 shield '{}' declares `taint: {}` — a DEAD field, retracted in §111. \
+                    "axon-T936 shield '{}' declares `taint: {}` — a DEAD field, retracted in v2.67.0. \
                      It was parsed, carried into the IR, and never read by the runtime: it bought \
                      you nothing. Delete it. Epistemic taint is not a shield knob — external data \
                      is born `Untrusted` by law (axon-T908) and degrades the lattice on contact; \
@@ -6895,7 +6894,7 @@ impl<'a> TypeChecker<'a> {
         {
             // §4: non_diagnostic is mandatory
             self.emit(
-                format!("Psyche '{}' must include 'non_diagnostic' in safety_constraints (dependent type safety §4)", node.name),
+                format!("Psyche '{}' must include 'non_diagnostic' in safety_constraints (dependent type safety)", node.name),
                 &node.loc,
             );
         }
@@ -7528,7 +7527,7 @@ impl<'a> TypeChecker<'a> {
                      URLs and credentials never appear in source (the same config-not-code law \
                      `axon-T850` already enforces on `upstream.resolve`, and `axon-T902` on \
                      `tool.secret`). A production DSN written into the program is exactly the \
-                     shape §94 secret custody exists to refuse.",
+                     shape secret custody exists to refuse.",
                     node.name, node.endpoint
                 ),
                 &node.loc,
@@ -8108,7 +8107,7 @@ impl<'a> TypeChecker<'a> {
                                 format!(
                                     "Session '{session_name}' role '{role_name}' step #{idx}: \
                                      interrupt handler must reach `resume` or `end` \
-                                     (a two-exit construct, paper §3.5)"
+                                     (a two-exit construct)"
                                 ),
                                 &step.loc,
                             );
@@ -8239,7 +8238,7 @@ impl<'a> TypeChecker<'a> {
                 self.emit(
                     format!(
                         "Socket '{}' backpressure credit must be ≥ 1 (got {n}); a 0-credit window \
-                         cannot type a send (§Fase 41 §4.2)",
+                         cannot type a send",
                         node.name
                     ),
                     &node.loc,
@@ -8299,7 +8298,7 @@ impl<'a> TypeChecker<'a> {
         if node.preset.is_some() && node.transport.is_empty() && node.protocol.is_empty() {
             self.emit(
                 format!(
-                    "Upstream '{}' references unknown preset '{}'. Available: {} (or fork: write the full `upstream` by hand — a preset is ordinary source, D80.5)",
+                    "Upstream '{}' references unknown preset '{}'. Available: {} (or fork: write the full `upstream` by hand — a preset is ordinary source)",
                     node.name,
                     node.preset.as_deref().unwrap_or(""),
                     crate::upstream_presets::available()
@@ -8317,7 +8316,7 @@ impl<'a> TypeChecker<'a> {
         } else if !is_valid(&node.transport, VALID_UPSTREAM_TRANSPORTS) {
             self.emit(
                 format!(
-                    "Upstream '{}' transport '{}' is not in the v1 catalog: {} (gRPC/raw-TCP are named deferred scope — fase_80_upstream_design.md §5)",
+                    "Upstream '{}' transport '{}' is not in the v1 catalog: {} (gRPC/raw-TCP are named deferred scope)",
                     node.name, node.transport, valid_list(VALID_UPSTREAM_TRANSPORTS)
                 ),
                 &node.loc,
@@ -8371,7 +8370,7 @@ impl<'a> TypeChecker<'a> {
             if !is_valid(overflow, VALID_UPSTREAM_OVERFLOW) {
                 self.emit(
                     format!(
-                        "Upstream '{}' overflow '{}' is not in the v1 catalog: {} (`degrade_quality` needs a declared degrader — named deferred scope, fase_80_upstream_design.md §5)",
+                        "Upstream '{}' overflow '{}' is not in the v1 catalog: {} (`degrade_quality` needs a declared degrader — named deferred scope)",
                         node.name,
                         overflow,
                         valid_list(VALID_UPSTREAM_OVERFLOW)
@@ -8480,7 +8479,7 @@ impl<'a> TypeChecker<'a> {
                 }
                 Some(n) => self.emit(
                     format!(
-                        "Upstream '{}' backpressure credit must be ≥ 1 (got {n}); a 0-credit window cannot type a send (§Fase 41 §4.2)",
+                        "Upstream '{}' backpressure credit must be ≥ 1 (got {n}); a 0-credit window cannot type a send",
                         node.name
                     ),
                     &node.loc,
@@ -8708,7 +8707,7 @@ impl<'a> TypeChecker<'a> {
         if node.interruptible && node.legal_basis.is_none() {
             self.emit(
                 format!(
-                    "axon-T852 Voice '{}' declares `interruptible: true` without `legal_basis:` — a barge-in-capable call parks mid-utterance residuals at rest (§79), and that retention must be governed",
+                    "axon-T852 Voice '{}' declares `interruptible: true` without `legal_basis:` — a barge-in-capable call parks mid-utterance residuals at rest, and that retention must be governed",
                     node.name
                 ),
                 &node.loc,
@@ -8799,7 +8798,7 @@ impl<'a> TypeChecker<'a> {
         if !is_config_key(key) {
             self.emit(
                 format!(
-                    "axon-T850 Upstream '{upstream}' `{field}:` value '{key}' is not a config key — keys are lowercase dot-separated (`[a-z0-9][a-z0-9_.-]*`, no `/`, no `:`); URLs and credentials never appear in source (the same config-not-code property as `tool`, §58.g)"
+                    "axon-T850 Upstream '{upstream}' `{field}:` value '{key}' is not a config key — keys are lowercase dot-separated (`[a-z0-9][a-z0-9_.-]*`, no `/`, no `:`); URLs and credentials never appear in source (the same config-not-code property as `tool`)"
                 ),
                 loc,
             );
@@ -8991,7 +8990,7 @@ impl<'a> TypeChecker<'a> {
             self.emit(
                 format!(
                     "immune '{}' requires an explicit 'scope' (tenant | flow | global). \
-                     No implicit default exists — blast radius must be declared (paper §8.2)",
+                     No implicit default exists — blast radius must be declared (immune paper, section 8.2)",
                     node.name
                 ),
                 &node.loc,
@@ -9053,7 +9052,7 @@ impl<'a> TypeChecker<'a> {
         if node.scope.is_empty() {
             self.emit(
                 format!(
-                    "reflex '{}' requires an explicit 'scope' (tenant | flow | global) — paper §8.2",
+                    "reflex '{}' requires an explicit 'scope' (tenant | flow | global) — immune paper, section 8.2",
                     node.name
                 ),
                 &node.loc,
@@ -9129,7 +9128,7 @@ impl<'a> TypeChecker<'a> {
         if node.scope.is_empty() {
             self.emit(
                 format!(
-                    "heal '{}' requires an explicit 'scope' (tenant | flow | global) — paper §8.2",
+                    "heal '{}' requires an explicit 'scope' (tenant | flow | global) — immune paper, section 8.2",
                     node.name
                 ),
                 &node.loc,
@@ -9180,7 +9179,7 @@ impl<'a> TypeChecker<'a> {
             self.emit(
                 format!(
                     "heal '{}' invalid mode '{}'. Valid: audit_only | human_in_loop | \
-                     adversarial (paper §7)",
+                     adversarial",
                     node.name, node.mode
                 ),
                 &node.loc,
@@ -9192,7 +9191,7 @@ impl<'a> TypeChecker<'a> {
                 format!(
                     "heal '{}' mode='adversarial' requires a 'shield' gate \
                      (no LLM-generated patch ships without review). \
-                     Paper §7.3: adversarial mode needs explicit Risk Acceptance",
+                     Adversarial mode needs explicit Risk Acceptance (immune paper, section 7.3)",
                     node.name
                 ),
                 &node.loc,
@@ -9315,7 +9314,7 @@ impl<'a> TypeChecker<'a> {
                             "component '{}' renders regulated type '{}' \
                              (kappa = {{{}}}) but declares no 'via_shield'. \
                              Regulated renders require a shield that covers \
-                             the type's kappa — Fase 9.5.",
+                             the type's kappa.",
                             node.name,
                             node.renders,
                             {
@@ -9380,7 +9379,7 @@ impl<'a> TypeChecker<'a> {
                                             "component '{}' on_interact flow '{}' \
                                              expects first parameter of type '{}', \
                                              but component renders '{}'. Signatures \
-                                             must match — Fase 9.2 rule 2.",
+                                             must match.",
                                             node.name, node.on_interact, pt, node.renders
                                         ),
                                         &node.loc,
@@ -9489,7 +9488,7 @@ impl<'a> TypeChecker<'a> {
         None
     }
 
-    /// §Fase 107.a (`axon-T927`) — **the QUERY-safety law.** RFC 10008 §2: a QUERY
+    /// §Fase 107.a (`axon-T927`) — **the QUERY-safety law.** RFC 10008 section 2: a QUERY
     /// request MUST be processed "in a safe and idempotent manner" — it does not
     /// change state. Caches, proxies and clients are ENTITLED to act on that (they
     /// may retry and cache freely), so a QUERY that writes is not a style problem:
@@ -9520,7 +9519,7 @@ impl<'a> TypeChecker<'a> {
                 self.emit(
                     format!(
                         "axon-T927 axonendpoint '{}' declares `method: QUERY`, but its flow '{}' \
-                         performs a declared write (`{}`). RFC 10008 §2: a QUERY MUST be processed \
+                         performs a declared write (`{}`). RFC 10008 section 2: a QUERY MUST be processed \
                          in a SAFE and IDEMPOTENT manner — caches, proxies and clients are entitled \
                          to retry and cache it freely, so a QUERY that changes state is a \
                          correctness + security bug, not a style choice. Use `method: POST` for a \
@@ -9548,7 +9547,7 @@ impl<'a> TypeChecker<'a> {
                     "axon-T927 axonendpoint '{}' declares `method: QUERY`, but this program \
                      declares a `{} {}` — an egress declaration FIRES for every flow the executor \
                      runs (it writes a CRM row / persists an artifact), so this endpoint could not \
-                     be safe. RFC 10008 §2 requires a QUERY to change no state. Use `method: POST`, \
+                     be safe. RFC 10008 section 2 requires a QUERY to change no state. Use `method: POST`, \
                      or move the `{}` into a program whose endpoints are not QUERY.",
                     node.name, kind, decl_name, kind
                 ),
@@ -9725,7 +9724,7 @@ impl<'a> TypeChecker<'a> {
                             "axonendpoint '{}' executes flow '{}' which accesses \
                              axonstore '{}' requiring capability '{}', but '{}' \
                              does not grant it — add '{}' to the endpoint's \
-                             `requires:` list (Fase 35.j Pillar IV).",
+                             `requires:` list.",
                             node.name,
                             node.execute_flow,
                             store_name,
@@ -9833,7 +9832,7 @@ impl<'a> TypeChecker<'a> {
                             "axon-T957 axonendpoint '{}' carries regulated data \
                              (kappa = {{{}}}) across a trust boundary but declares no \
                              `shield:`. Regulated boundaries require a shield whose \
-                             `compliance:` covers the type's kappa — ESK Fase 6.1 \
+                             `compliance:` covers the type's kappa — the ESK \
                              coverage rule. Declare `shield: <Name>` on the endpoint, \
                              where that shield lists at least [{}] in its \
                              `compliance:`. Declaring the classes on the endpoint's own \
@@ -9858,7 +9857,7 @@ impl<'a> TypeChecker<'a> {
                             format!(
                                 "axon-T957 axonendpoint '{}' declares `shield: {}`, but that \
                                  shield does not cover kappa = {{{}}} carried across the \
-                                 boundary — ESK Fase 6.1 coverage rule. Add [{}] to shield \
+                                 boundary — the ESK coverage rule. Add [{}] to shield \
                                  '{}'s `compliance:` list, or name a shield that already \
                                  covers them.",
                                 node.name,
@@ -10009,14 +10008,14 @@ impl<'a> TypeChecker<'a> {
                                 "axonendpoint '{}' executes flow '{}' whose \
                                  required parameter '{}: {}' has no matching \
                                  binding source. The Request Binding Contract \
-                                 (Fase 37 + 37.y D3) binds a flow parameter \
+                                 binds a flow parameter \
                                  from a same-named path placeholder \
                                  (`{{{}}}` in the `path:` string), query \
                                  param (`query: {{ {}: {} }}`), or body \
                                  field. Either {} add a `{{{}}}` placeholder \
                                  to the path, or declare `{}: {}` in the \
                                  `query: {{ … }}` block — or make the \
-                                 parameter optional (Fase 37.y D3).",
+                                 parameter optional.",
                                 node.name,
                                 node.execute_flow,
                                 param.name,
@@ -10067,7 +10066,7 @@ impl<'a> TypeChecker<'a> {
                                  forbids a name in multiple sources to keep \
                                  the runtime binding unambiguous. Remove the \
                                  declaration from {} of the sources so '{}' \
-                                 resolves uniquely. (Fase 37.y D4)",
+                                 resolves uniquely.",
                                 node.name,
                                 param.name,
                                 sources.len() - 1,
@@ -10094,7 +10093,7 @@ impl<'a> TypeChecker<'a> {
                                      the flow parameter to `{}: Text` and \
                                      parse/validate inside the flow, or move \
                                      the binding to `query: {{ {}: {} }}` if \
-                                     the type matters at the wire (Fase 37.y D3).",
+                                     the type matters at the wire.",
                                     node.name,
                                     param.name,
                                     param.name,
@@ -10120,8 +10119,7 @@ impl<'a> TypeChecker<'a> {
                                      whose parameter '{}' is '{}', but the \
                                      `query: {{ … }}` block declares '{}' as \
                                      '{}' — the types must match for the \
-                                     Request Binding Contract to bind it \
-                                     (Fase 37.y D3).",
+                                     Request Binding Contract to bind it.",
                                     node.name,
                                     node.execute_flow,
                                     param.name,
@@ -10144,7 +10142,7 @@ impl<'a> TypeChecker<'a> {
                                      parameter '{}' is '{}', but body type '{}' \
                                      declares field '{}' as '{}' — the types \
                                      must match for the Request Binding \
-                                     Contract to bind it (Fase 37 D2).",
+                                     Contract to bind it.",
                                     node.name,
                                     node.execute_flow,
                                     param.name,
@@ -10291,8 +10289,7 @@ impl<'a> TypeChecker<'a> {
                      `Stream<T>` / `List<T>` declarations are valid. \
                  See the wire-envelope contract in the docs \
                  (https://www.ricardovelit.com/axon-docs) for the \
-                 ψ-vector shape. \
-                 (Fase 39 D2 + D12 — Pure Silicon Cognition)",
+                 ψ-vector shape.",
                 node.name,
                 node.output_type,
                 node.output_type,
@@ -10357,15 +10354,14 @@ impl<'a> TypeChecker<'a> {
                          (plural — `List<{}>`), but flow '{}' produces a \
                          `{}` (singular) tail. The runtime would either \
                          wrap the singular in an array implicitly OR fail \
-                         the D5 output-schema gate (Fase 32.d) depending \
+                         the output-schema gate depending \
                          on path. To make the contract explicit: \
                          (a) change the endpoint to `output: {}` if it \
                              returns a single resource (REST \
                              `GET /api/{{resource}}/{{id}}`-style); OR \
                          (b) wrap the tail in a list — `return [result]` \
                              or `for x in [result] {{ x }}` at the flow \
-                             tail. \
-                         (Fase 38.x.f D3 bilateral)",
+                             tail. (bilateral_cardinality_mismatch)",
                         node.name,
                         node.output_type,
                         decl_t,
@@ -10387,8 +10383,8 @@ impl<'a> TypeChecker<'a> {
                          tail expression — the flow ends with a step or \
                          construct that produces a list (e.g. `retrieve` \
                          step, `for x in xs {{ … }}` loop, or `return \
-                         [a, b, c]`). The runtime D5 output-schema gate \
-                         (Fase 32.d) would reject the response as a \
+                         [a, b, c]`). The runtime output-schema gate \
+                         would reject the response as a \
                          shape mismatch. \
                          Either: \
                          (a) change the endpoint to `output: List<{}>` if \
@@ -10400,8 +10396,7 @@ impl<'a> TypeChecker<'a> {
                              BEFORE the implicit tail, OR add an explicit \
                              `return result[0]` at the end of the flow if \
                              the iteration is guaranteed to yield exactly \
-                             one element. \
-                         (Fase 38.x.f D1 — v1.39.0 narrow case preserved)",
+                             one element. (narrow_singular_case_preserved)",
                         node.name,
                         node.output_type,
                         node.execute_flow,
@@ -10428,8 +10423,7 @@ impl<'a> TypeChecker<'a> {
                          (b) change the flow tail to a step with \
                              `output: Stream<{}>` (e.g. `step Generate \
                              {{ ask: \"...\" output: Stream<{}> }}`) if \
-                             you want SSE chunked delivery. \
-                         (Fase 38.x.f D5 stream_cardinality_mismatch)",
+                             you want SSE chunked delivery. (stream_cardinality_mismatch)",
                         node.name,
                         decl_t,
                         node.execute_flow,
@@ -10453,8 +10447,7 @@ impl<'a> TypeChecker<'a> {
                          (a) change the endpoint to `output: Stream<{}>` \
                              if you want SSE chunked delivery, OR \
                          (b) change the flow tail to a non-streaming step \
-                             returning `{}` if you want JSON delivery. \
-                         (Fase 38.x.f D5 stream_cardinality_mismatch)",
+                             returning `{}` if you want JSON delivery. (stream_cardinality_mismatch)",
                         node.name,
                         node.output_type,
                         node.execute_flow,
@@ -10484,8 +10477,7 @@ impl<'a> TypeChecker<'a> {
                              D5 gate will not protect this endpoint); \
                              OR \
                          (c) split into two endpoints, one per branch's \
-                             shape. \
-                         (Fase 38.x.f D6 cardinality_disagreement_in_branches)",
+                             shape. (cardinality_disagreement_in_branches)",
                         node.name,
                         node.execute_flow,
                         node.output_type,
@@ -10510,7 +10502,7 @@ impl<'a> TypeChecker<'a> {
             // shortcut.
             (Cardinality::Wrapped(_), _) | (_, Cardinality::Wrapped(_)) => {
                 unreachable!(
-                    "§Fase 39 D4 invariant — Wrapped is unwrapped by the \
+                    "Wrapped is unwrapped by the \
                      early-return shortcut at the top of emit_cardinality_gate; \
                      this match arm should be unreachable."
                 );
@@ -10882,7 +10874,7 @@ impl<'a> TypeChecker<'a> {
                             format!(
                                 "axon-T929 ingest declares unknown `format: {}`. The closed \
                                  loader catalog is {{csv, json}} (deterministic, first-party — \
-                                 the §100 posture; Parquet/Arrow-IPC are deferred §108.x surface).",
+                                 the document-ingestion posture; Parquet/Arrow-IPC are deferred surface).",
                                 n.format
                             ),
                             &n.loc,
@@ -11143,7 +11135,7 @@ impl<'a> TypeChecker<'a> {
                 FlowStep::Corroborate(n) => {
                     self.emit(
                         format!(
-                            "axon-T937 `corroborate {}` is RETRACTED (§111). It never corroborated \
+                            "axon-T937 `corroborate {}` is RETRACTED (v2.67.0). It never corroborated \
                              anything: the runtime interpolated the reference's NAME into an LLM \
                              prompt, fetched no independent source, read no content, and computed no \
                              agreement metric — while instructing the model to report 'agreement \
@@ -11197,7 +11189,7 @@ impl<'a> TypeChecker<'a> {
                 // stop swallowing programs today.
                 FlowStep::Deliberate(n) => {
                     self.emit(
-                        "axon-T939 `deliberate { … }` is REFUSED (§111). It never controlled a \
+                        "axon-T939 `deliberate { … }` is REFUSED (v2.67.0). It never controlled a \
                          budget: the block's body is discarded at PARSE time (it shares \
                          `parse_block_step` with `stream`/`consensus`/`transact`, whose whole job \
                          is to skip the braces), so the steps you wrote inside it never reached \
@@ -11210,7 +11202,7 @@ impl<'a> TypeChecker<'a> {
                 }
                 FlowStep::Consensus(n) => {
                     self.emit(
-                        "axon-T940 `consensus { … }` is REFUSED (§111). There is no best-of-N: no \
+                        "axon-T940 `consensus { … }` is REFUSED (v2.67.0). There is no best-of-N: no \
                          votes are cast, nothing is aggregated, no candidates are generated. The \
                          block's body is discarded at PARSE time, so the handler never even \
                          receives it — a selection over an empty set silently returned nothing \
@@ -11222,13 +11214,13 @@ impl<'a> TypeChecker<'a> {
                 }
                 FlowStep::Transact(n) => {
                     self.emit(
-                        "axon-T938 `transact { … }` is RETRACTED (§111). It never opened a \
+                        "axon-T938 `transact { … }` is RETRACTED (v2.67.0). It never opened a \
                          transaction: the runtime set an unread marker string, the block's body \
                          was never lowered into the IR, and no lock was taken and nothing was \
                          rolled back. Writes inside it were as atomic as writes outside it — which \
                          is to say, not. A fabricated atomicity guarantee is worse than an absent \
                          one, because you only discover it on the failure path. Until real \
-                         transactional semantics land (§111.x), issue the writes directly and make \
+                         transactional semantics land, issue the writes directly and make \
                          them idempotent, so a retry converges instead of corrupting."
                             .to_string(),
                         &n.loc,
@@ -12108,7 +12100,7 @@ impl<'a> TypeChecker<'a> {
                          set does not cover. A tool's `requires:` scope must be held: declare a \
                          `credential` that grants '{}', or add it to the executing endpoint's \
                          `requires:` capabilities. Held scopes come from `credential.grants` \
-                         (§92) and endpoint/daemon `requires:` capabilities (§51.x).",
+                         and endpoint/daemon `requires:` capabilities.",
                         n.tool_name, scope, scope
                     ),
                     &n.loc,
@@ -12970,7 +12962,7 @@ impl<'a> TypeChecker<'a> {
                              (kappa = {{{}}}) but declares no `shield:`. A channel \
                              without a shield is not publishable (D8), and a \
                              regulated payload that can never be published is a \
-                             declaration contradiction — ESK Fase 6.1 coverage \
+                             declaration contradiction — the ESK coverage \
                              rule, dual of axon-T957. Declare `shield: <Name>` on \
                              the channel, where that shield lists at least [{}] in \
                              its `compliance:`.",
@@ -12993,7 +12985,7 @@ impl<'a> TypeChecker<'a> {
                             format!(
                                 "axon-T1215 channel '{}' declares `shield: {}`, but \
                                  that shield does not cover kappa = {{{}}} carried by \
-                                 its message type — ESK Fase 6.1 coverage rule, dual \
+                                 its message type — the ESK coverage rule, dual \
                                  of axon-T957. Add [{}] to shield '{}'s `compliance:` \
                                  list, or name a shield that already covers them.",
                                 node.name,
@@ -13126,7 +13118,7 @@ impl<'a> TypeChecker<'a> {
                  emits to it — there is no `emit {channel}(…)` anywhere in the program, so \
                  this listener can NEVER fire (it waits for an event no producer raises). \
                  Add a producer (`emit {channel}(payload)` in a flow), or remove the \
-                 listener. (§74 delivers a listener that HAS a producer.)"
+                 listener."
             ),
             loc,
         );
@@ -13267,7 +13259,7 @@ impl<'a> TypeChecker<'a> {
                     self.emit(
                         format!(
                             "emit on '{}' carries '{}' but value '{}' is not a \
-                             channel handle (mobility violation, Chan-Mobility paper §3.2)",
+                             channel handle (mobility violation)",
                             node.channel_ref, outer, node.value_ref
                         ),
                         &node.loc,
@@ -14135,7 +14127,7 @@ fn build_w006_message(compute_ref: &str, step_name: &str) -> String {
          for this step, declare its capability need with `requires_context: <tokens>` \
          (the resolver picks the smallest model whose context window fits, or fails \
          closed at deploy), or set the deployment model (e.g. `AXON_DAEMON_MODEL`). \
-         See §Fase 68 capability-aware model resolution."
+         Model resolution is capability-aware."
     )
 }
 
@@ -14147,7 +14139,7 @@ fn build_w003_message(endpoint_name: &str) -> String {
     format!(
         "warning[{W003_CODE}]: axonendpoint '{endpoint_name}' declares \
          no `backend:` — its execution backend is resolved at request \
-         time down the Fase 36 precedence ladder (server default → \
+         time down the precedence ladder (server default → \
          environment-available providers). If none resolves the \
          endpoint fails with a structured HTTP 503; it never silently \
          runs the no-op `stub`. Declare `backend: <provider>` to pin \
@@ -14609,7 +14601,7 @@ mod fase13_typecheck_tests {
         assert!(warns[0].message.contains("orders.created"));
         assert!(warns[0].message.contains("NEVER fire"));
         // the misleading "migrate to typed channel" redirect is gone
-        assert!(!warns[0].message.contains("deprecated since Fase 13"));
+        assert!(!warns[0].message.contains("deprecated since"));
     }
 
     #[test]
@@ -14650,7 +14642,7 @@ mod fase13_typecheck_tests {
         assert!(errs.is_empty(), "errors: {:?}", errs);
         assert!(
             !warns.iter().any(|w| w.message.contains("axon-W009")),
-            "a listener WITH a producer must not warn (§74 delivers it): {:?}",
+            "a listener WITH a producer must not warn: {:?}",
             warns
         );
     }
@@ -15205,7 +15197,7 @@ mod fase38xe_cardinality_tests {
             .collect();
         assert!(
             !e039.is_empty(),
-            "§Fase 39.e (D12 α) — a bare-singular `output: T` on a \
+            "a bare-singular `output: T` on a \
              `transport: json` endpoint with retrieve-tail MUST emit \
              `axon-E039`. All errors: {errs:#?}"
         );
@@ -15221,7 +15213,7 @@ mod fase38xe_cardinality_tests {
         assert!(
             err.message.contains("FlowEnvelope<List<StoreRow>>")
                 || err.message.contains("FlowEnvelope<List<TenantRecord>>"),
-            "§39.e — the E039 hint MUST suggest a canonical \
+            "the E039 hint MUST suggest a canonical \
              FlowEnvelope wrapping around the inferred tail \
              cardinality (List<StoreRow> from the IR retrieve-step \
              taxonomy today; List<TenantRecord> if inference is \
@@ -15230,7 +15222,7 @@ mod fase38xe_cardinality_tests {
         );
         assert!(
             err.message.contains("transport: sse"),
-            "§39.e — the E039 hint MUST also name the sse migration \
+            "the E039 hint MUST also name the sse migration \
              alternative. Got: {}",
             err.message
         );
@@ -15241,7 +15233,7 @@ mod fase38xe_cardinality_tests {
             .collect();
         assert!(
             t9xx.is_empty(),
-            "§39.e — when E039 fires, T9XX MUST be suppressed (single \
+            "when E039 fires, T9XX MUST be suppressed (single \
              canonical diagnostic with the right answer). Got: {t9xx:#?}"
         );
     }
@@ -15270,7 +15262,7 @@ mod fase38xe_cardinality_tests {
             .collect();
         assert!(
             t9xx.is_empty(),
-            "§Fase 38.x.e D1 — a retrieve-tail flow with `output: \
+            "a retrieve-tail flow with `output: \
              List<T>` is the well-formed case. No T9XX should fire. \
              Got: {t9xx:#?}"
         );
@@ -15300,7 +15292,7 @@ mod fase38xe_cardinality_tests {
             .collect();
         assert!(
             t9xx.is_empty(),
-            "§Fase 38.x.e D1 — a step-tail flow with matching singular \
+            "a step-tail flow with matching singular \
              output is well-formed; no cardinality mismatch. Got: \
              {t9xx:#?}"
         );
@@ -15332,7 +15324,7 @@ mod fase38xe_cardinality_tests {
             .collect();
         assert!(
             t9xx.is_empty(),
-            "§Fase 38.x.e D1 — endpoint with no `output:` declared \
+            "endpoint with no `output:` declared \
              skips the cardinality gate (honest scope). Got: {t9xx:#?}"
         );
     }
@@ -15363,7 +15355,7 @@ mod fase38xe_cardinality_tests {
             .collect();
         assert!(
             t9xx.is_empty(),
-            "§Fase 38.x.e D1 — Stream<T> output skips the gate \
+            "Stream<T> output skips the gate \
              (v1.39.0 honest scope). Got: {t9xx:#?}"
         );
     }
@@ -15411,11 +15403,11 @@ mod fase39a_flow_envelope_tests {
                 assert_eq!(
                     *inner,
                     Cardinality::Singular("TenantRecord".to_string()),
-                    "§39.a §1 — inner must be Singular(\"TenantRecord\")"
+                    "inner must be Singular(\"TenantRecord\")"
                 );
             }
             other => panic!(
-                "§39.a §1 — FlowEnvelope<TenantRecord> must yield \
+                "FlowEnvelope<TenantRecord> must yield \
                  Wrapped(Singular(...)). Got: {other:?}"
             ),
         }
@@ -15431,12 +15423,12 @@ mod fase39a_flow_envelope_tests {
                 assert_eq!(
                     *inner,
                     Cardinality::Plural("TenantRecord".to_string()),
-                    "§39.a §1 acceptance — inner must be Plural(\"TenantRecord\") \
+                    "inner must be Plural(\"TenantRecord\") \
                      (the canonical retrieve-tail shape Kivi reported)"
                 );
             }
             other => panic!(
-                "§39.a §1 acceptance — FlowEnvelope<List<TenantRecord>> must \
+                "FlowEnvelope<List<TenantRecord>> must \
                  yield Wrapped(Plural(\"TenantRecord\")). Got: {other:?}"
             ),
         }
@@ -15454,11 +15446,11 @@ mod fase39a_flow_envelope_tests {
                 assert_eq!(
                     *inner,
                     Cardinality::StreamCardinality("Token".to_string()),
-                    "§39.a §1 — inner must be StreamCardinality(\"Token\")"
+                    "inner must be StreamCardinality(\"Token\")"
                 );
             }
             other => panic!(
-                "§39.a §1 — FlowEnvelope<Stream<Token>> must yield \
+                "FlowEnvelope<Stream<Token>> must yield \
                  Wrapped(StreamCardinality(...)). Got: {other:?}"
             ),
         }
@@ -15474,10 +15466,10 @@ mod fase39a_flow_envelope_tests {
                 assert_eq!(
                     *inner,
                     Cardinality::Disagreed,
-                    "§39.a §1 — FlowEnvelope<Any> inner must be Disagreed"
+                    "FlowEnvelope<Any> inner must be Disagreed"
                 );
             }
-            other => panic!("§39.a §1 — got: {other:?}"),
+            other => panic!("got: {other:?}"),
         }
     }
 
@@ -15494,15 +15486,15 @@ mod fase39a_flow_envelope_tests {
                     assert_eq!(
                         **inner_inner,
                         Cardinality::Singular("TenantRecord".to_string()),
-                        "§39.a §1 — nested wrap inner must be Singular"
+                        "nested wrap inner must be Singular"
                     );
                 }
                 other => panic!(
-                    "§39.a §1 — nested wrap outer.inner must be Wrapped. \
+                    "nested wrap outer.inner must be Wrapped. \
                      Got: {other:?}"
                 ),
             },
-            other => panic!("§39.a §1 — got: {other:?}"),
+            other => panic!("got: {other:?}"),
         }
     }
 
@@ -15518,7 +15510,7 @@ mod fase39a_flow_envelope_tests {
         assert_eq!(
             card,
             Cardinality::Plural("TenantRecord".to_string()),
-            "§39.a §2 — List<T> backwards-compat: still Plural"
+            "List<T> backwards-compat: still Plural"
         );
     }
 
@@ -15528,7 +15520,7 @@ mod fase39a_flow_envelope_tests {
         assert_eq!(
             card,
             Cardinality::StreamCardinality("Token".to_string()),
-            "§39.a §2 — Stream<T> backwards-compat: still StreamCardinality"
+            "Stream<T> backwards-compat: still StreamCardinality"
         );
     }
 
@@ -15538,7 +15530,7 @@ mod fase39a_flow_envelope_tests {
         assert_eq!(
             card,
             Cardinality::Singular("TenantRecord".to_string()),
-            "§39.a §2 — bare type backwards-compat: still Singular"
+            "bare type backwards-compat: still Singular"
         );
     }
 
@@ -15579,7 +15571,7 @@ mod fase39a_flow_envelope_tests {
             .collect();
         assert!(
             parse_errs.is_empty(),
-            "§39.a §3 — FlowEnvelope<List<TenantRecord>> MUST parse cleanly. \
+            "FlowEnvelope<List<TenantRecord>> MUST parse cleanly. \
              Got parse-class errors: {parse_errs:#?}"
         );
     }
@@ -15621,7 +15613,7 @@ mod fase39a_flow_envelope_tests {
             .collect();
         assert!(
             cardinality_errs.is_empty(),
-            "§39.a §4 — FlowEnvelope<List<T>> declared against Plural \
+            "FlowEnvelope<List<T>> declared against Plural \
              tail MUST silent-pass the cardinality gate (the wrap \
              unwraps transparently). Got: {cardinality_errs:#?}"
         );
@@ -15651,27 +15643,27 @@ mod fase39a_flow_envelope_tests {
             .iter()
             .filter(|e| e.message.contains("axon-E039"))
             .collect();
-        assert!(!e039.is_empty(), "§39.e §1 — bare T MUST fire E039. Got: {errs:#?}");
+        assert!(!e039.is_empty(), "bare T MUST fire E039. Got: {errs:#?}");
         assert!(
             e039[0].message.contains("`output: TenantRecord`"),
-            "§39.e §1 — diagnostic MUST name the declared bare type. Got: {}",
+            "diagnostic MUST name the declared bare type. Got: {}",
             e039[0].message
         );
         assert!(
             e039[0].message.contains("FlowEnvelope<"),
-            "§39.e §1 — diagnostic MUST suggest FlowEnvelope wrapping. \
+            "diagnostic MUST suggest FlowEnvelope wrapping. \
              Got: {}",
             e039[0].message
         );
         assert!(
             e039[0].message.contains("transport: sse"),
-            "§39.e §1 — diagnostic MUST mention sse migration alternative. \
+            "diagnostic MUST mention sse migration alternative. \
              Got: {}",
             e039[0].message
         );
         assert!(
             e039[0].message.contains("D12"),
-            "§39.e §1 — diagnostic MUST reference the D12 α \
+            "diagnostic MUST reference the D12 α \
              ratification anchor. Got: {}",
             e039[0].message
         );
@@ -15702,17 +15694,17 @@ mod fase39a_flow_envelope_tests {
             .collect();
         assert!(
             !e039.is_empty(),
-            "§39.e §2 — bare `List<T>` MUST fire E039. Got: {errs:#?}"
+            "bare `List<T>` MUST fire E039. Got: {errs:#?}"
         );
         assert!(
             e039[0].message.contains("`output: List<TenantRecord>`"),
-            "§39.e §2 — diagnostic MUST name the declared bare List<T>. \
+            "diagnostic MUST name the declared bare List<T>. \
              Got: {}",
             e039[0].message
         );
         assert!(
             e039[0].message.contains("FlowEnvelope<List<"),
-            "§39.e §2 — diagnostic MUST suggest FlowEnvelope<List<...>>. \
+            "diagnostic MUST suggest FlowEnvelope<List<...>>. \
              Got: {}",
             e039[0].message
         );
@@ -15751,7 +15743,7 @@ mod fase39a_flow_envelope_tests {
             .collect();
         assert!(
             e039_or_silent <= 1,
-            "§39.e §3 — Stream<T> bare emits at most ONE diagnostic \
+            "Stream<T> bare emits at most ONE diagnostic \
              (E039 or silent if implicit_transport=sse). Got count: \
              {e039_or_silent}, t9yy: {t9yy:#?}, all: {errs:#?}"
         );
@@ -15785,7 +15777,7 @@ mod fase39a_flow_envelope_tests {
             .collect();
         assert!(
             wire_errs.is_empty(),
-            "§39.e §4 — FlowEnvelope<T> singular happy path MUST be \
+            "FlowEnvelope<T> singular happy path MUST be \
              clean. Got: {wire_errs:#?}"
         );
     }
@@ -15818,7 +15810,7 @@ mod fase39a_flow_envelope_tests {
             .collect();
         assert!(
             wire_errs.is_empty(),
-            "§39.e §5 — FlowEnvelope<List<T>> over a List<T>-tail flow \
+            "FlowEnvelope<List<T>> over a List<T>-tail flow \
              is the canonical migration. Got: {wire_errs:#?}"
         );
     }
@@ -15847,7 +15839,7 @@ mod fase39a_flow_envelope_tests {
             .collect();
         assert!(
             wire_errs.is_empty(),
-            "§39.e §6 — `output: Any` is the universal-accept escape \
+            "`output: Any` is the universal-accept escape \
              hatch; E039 MUST NOT fire. Got: {wire_errs:#?}"
         );
     }
@@ -15877,7 +15869,7 @@ mod fase39a_flow_envelope_tests {
             .collect();
         assert!(
             e039.is_empty(),
-            "§39.e §7 — explicit `transport: sse` MUST exempt the \
+            "explicit `transport: sse` MUST exempt the \
              endpoint from E039 (the SSE wire has its own event \
              family per D9). Got: {e039:#?}"
         );
@@ -15908,7 +15900,7 @@ mod fase39a_flow_envelope_tests {
             .collect();
         assert!(
             wire_errs.is_empty(),
-            "§39.e §8 — empty `output:` MUST skip E039 (D9 \
+            "empty `output:` MUST skip E039 (D9 \
              backwards-compat). Got: {wire_errs:#?}"
         );
     }
@@ -15936,7 +15928,7 @@ mod fase39a_flow_envelope_tests {
             .collect();
         assert!(
             e039.is_empty(),
-            "§39.e §9 — `output: Unit` MUST be exempt from E039. \
+            "`output: Unit` MUST be exempt from E039. \
              Got: {e039:#?}"
         );
     }
@@ -15967,7 +15959,7 @@ mod fase39a_flow_envelope_tests {
             .collect();
         assert!(
             e039.is_empty(),
-            "§39.e §10 — nested FlowEnvelope<FlowEnvelope<X>> is \
+            "nested FlowEnvelope<FlowEnvelope<X>> is \
              semantically degenerate but NOT an E039 (any \
              `FlowEnvelope<...>` declaration passes the wrapping \
              mandate). Got: {e039:#?}"
@@ -16001,7 +15993,7 @@ mod fase39a_flow_envelope_tests {
             .collect();
         assert!(
             !t9xx.is_empty(),
-            "§39.a §4 — Wrapped(Singular) against Plural tail MUST \
+            "Wrapped(Singular) against Plural tail MUST \
              surface axon-T9XX through the unwrap (the wrap is \
              transparent to the cardinality contract). Errors: {errs:#?}"
         );

@@ -912,7 +912,7 @@ mod tests {
         let (msg, payload) = classify_inbound(&rules, &frame).expect("classified");
         assert_eq!(msg, "Transcript");
         let InboundPayload::Json(v) = payload else { panic!("json payload") };
-        assert_eq!(v["channel"]["alternatives"][0]["transcript"], "hola", "whole body is the §73 Json payload");
+        assert_eq!(v["channel"]["alternatives"][0]["transcript"], "hola", "whole body is the Json payload");
 
         let frame2 = Message::Text(r#"{"type":"SpeechStarted"}"#.into());
         assert_eq!(classify_inbound(&rules, &frame2).unwrap().0, "SpeechStarted", "default discriminator");

@@ -1,20 +1,20 @@
-// AXON Example — Structured Tool Dispatch (§Fase 58)
+// AXON Example — Structured Tool Dispatch
 //
 // The canonical shape of the flow-level `use <Tool>(k = v, …)` primitive:
 // a multi-field, schema-validated tool call. The tool declares a typed
 // input schema (`parameters:`) and an output type (`output_type:`); the
 // call binds named args BY NAME, validated against that schema at compile
 // time — an unknown/duplicate/missing-required arg or a literal type
-// mismatch is CALLER blame (CT-2) BEFORE any dispatch (§58.d). At runtime
+// mismatch is CALLER blame (CT-2) BEFORE any dispatch. At runtime
 // the named args assemble a typed JSON body that is POSTed to the
-// tool-server (§58.e/f/f.2), and the typed result binds under
+// tool-server, and the typed result binds under
 // `CrmRadar_result` for a later step to consume.
 //
 // Two rules this example encodes:
 //   1. Tool dispatch is FLOW-LEVEL. A `use` written inside a `step { }`
-//      body is a parse error (§54.a). The legitimate in-step form is
+//      body is a parse error. The legitimate in-step form is
 //      `apply: <Tool>` (run the tool as that step's backend).
-//   2. Endpoint wiring is config-driven (§58.g): with no absolute
+//   2. Endpoint wiring is config-driven: with no absolute
 //      `runtime:` URL, the call resolves to {base}/{tool name} where the
 //      base is `AXON_TOOL_BASE_URL` (OSS server) or the per-tenant
 //      `tool.base_url` config key (enterprise) — the same source runs

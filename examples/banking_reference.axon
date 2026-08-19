@@ -8,7 +8,7 @@
 //
 //  Exercises the full Axon stack: types, flows, shields, resources,
 //  manifests, observes, reconcile, lease, immune, reflex, heal —
-//  wired with compile-time compliance coverage (ESK Fase 6.1).
+//  wired with compile-time compliance coverage (the ESK coverage rule).
 //
 //  Adopters: change the provider (aws/gcp/azure), the region, and the
 //  specific resource sizing to fit their deployment.  Every other
@@ -36,7 +36,7 @@ type RiskScore(0.0..1.0)
 
 // ── Flows ─────────────────────────────────────────────────────────
 
-// §Fase 37 — the Request Binding Contract: every required flow parameter binds
+// The Request Binding Contract: every required flow parameter binds
 // from exactly one declared source, matched BY NAME against a path placeholder,
 // a `query:` field, or a field of the endpoint's `body:` type.
 
@@ -72,7 +72,7 @@ shield ReportingShield {
 
 // ── Infrastructure resources ──────────────────────────────────────
 
-// §Fase 113 — `kind:` is a CLOSED catalog (http | https | mysql | postgres |
+// `kind:` is a CLOSED catalog (http | https | mysql | postgres |
 // redis): exactly what the runtime can REACH. `endpoint:` is a CONFIG KEY,
 // never a URL, a DSN or a host:port — the address resolves per deployment
 // (`axon-T942` / `axon-T944`).
@@ -128,7 +128,7 @@ observe BankingHealth from ProductionBanking {
   certainty_floor: 0.90
 }
 
-// ── Control cognitivo (Fase 3) ────────────────────────────────────
+// ── Control cognitivo ─────────────────────────────────────────────
 
 reconcile LedgerReconciler {
   observe:      BankingHealth
@@ -146,7 +146,7 @@ lease WriteWindow {
   on_expire:   anchor_breach
 }
 
-// ── Cognitive Immune System (Fase 5) ──────────────────────────────
+// ── Cognitive Immune System ───────────────────────────────────────
 
 immune BankingVigil {
   watch:        [BankingHealth]

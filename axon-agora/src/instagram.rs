@@ -327,7 +327,7 @@ impl SocialConnector for InstagramConnector {
                     platform: Platform::Instagram,
                     reason: format!(
                         "carousel posts ({n} media) need the child-container + carousel flow — \
-                         deferred to §116.d.2, not silently degraded"
+                         deferred, not silently degraded"
                     ),
                 })
             }
@@ -373,7 +373,7 @@ impl SocialConnector for InstagramConnector {
     ) -> Result<PublishReceipt, ConnectorError> {
         Err(ConnectorError::Unsupported {
             platform: Platform::Instagram,
-            reason: "Instagram media editing is not on the paper-verified surface (§2.3)"
+            reason: "Instagram media editing is not on the paper-verified surface (paper section 2.3)"
                 .to_string(),
         })
     }

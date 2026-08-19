@@ -1166,11 +1166,11 @@ where
                 tokio::runtime::Builder::new_current_thread()
                     .enable_all()
                     .build()
-                    .expect("Fase 35.e: failed to build the store-op Tokio runtime")
+                    .expect("failed to build the store-op Tokio runtime")
                     .block_on(crate::tenant_context::CURRENT_TENANT_ID.scope(tenant, fut))
             })
             .join()
-            .expect("Fase 35.e: the store-op thread panicked")
+            .expect("the store-op thread panicked")
     })
 }
 

@@ -1,6 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════
-//  I/O Cognitivo — Cálculo Lambda Lineal Epistémico (λ-L-E), Fase 1
-//  Plan: docs/plan_io_cognitivo.md
+//  I/O Cognitivo — Cálculo Lambda Lineal Epistémico (λ-L-E)
 //
 //  A complete example exercising the four new primitives:
 //    resource · fabric · manifest · observe
@@ -23,7 +22,7 @@ shield NetworkShield {
 // checker enforces that linear and affine resources belong to at most
 // one manifest (Separation Logic disjointness across heaps).
 
-// §Fase 113 — `kind:` is a CLOSED catalog (http | https | mysql | postgres |
+// `kind:` is a CLOSED catalog (http | https | mysql | postgres |
 // redis): exactly what the runtime can REACH. `endpoint:` is a CONFIG KEY,
 // never a URL, a DSN or a host:port (`axon-T942` / `axon-T944`).
 
@@ -61,14 +60,14 @@ fabric ProductionVPC {
 
 // ── Holder (the consumer that makes `linear` mean something) ───────
 //
-// §Fase 120 — this file is the showcase for `resource · fabric · manifest ·
+// This file is the showcase for `resource · fabric · manifest ·
 // observe`, and it was missing the half of linearity that costs something.
 // `PrimaryDatabase` is `lifetime: linear`: at most one holder, and AT LEAST
 // one. A manifest PROVISIONS a resource; it does not hold it. So the canonical
-// §λ-L-E example declared a linear database that nothing consumed — the exact
+// λ-L-E example declared a linear database that nothing consumed — the exact
 // shape `axon-T945` exists to refuse, sitting in the file that teaches the law.
 //
-// It went unnoticed because `axon check` never ran the §113 laws: the CLI takes
+// It went unnoticed because `axon check` never ran the resource laws: the CLI takes
 // `TypeChecker::check_with_warnings`, which had drifted from `check` and no
 // longer carried them. Every test that proved T945 called `check` — the engine,
 // not the path an adopter takes.

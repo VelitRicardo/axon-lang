@@ -637,8 +637,8 @@ pub async fn run_compute_apply(
         message: format!(
             "`compute {}` declares no body — it cannot compute anything. Give it one: \
              `compute {}(x: Number) -> Number {{ x * 2 }}`. Binding a placeholder here is how \
-             the pre-§111 runtime handed a downstream step the text \"compute:{}(…)\" where it \
-             expected a number (§111 F10)",
+             the old runtime handed a downstream step the text \"compute:{}(…)\" where it \
+             expected a number",
             spec.name, spec.name, spec.name
         ),
     })?;

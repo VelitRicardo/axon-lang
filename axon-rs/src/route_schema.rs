@@ -620,7 +620,7 @@ fn validate_struct(
                              (singular). Either change the endpoint to \
                              `output: List<{tn}>` or collapse the flow's tail \
                              to a single item (e.g. `return result[0]`). \
-                             (Fase 38.x.f D2)",
+                             ",
                             tn = schema.name,
                             n = v.as_array().map(|a| a.len()).unwrap_or(0),
                         )
@@ -1199,8 +1199,8 @@ mod tests {
         // The §0 marker text was unique; if it reappears we know the
         // bridge was reinstated.
         assert!(
-            !src.contains("§0 — §Fase 38.x.f.9 (POST-CLOSE HOTFIX 2026-05-21) — generic-\n    // aware parsing"),
-            "§Fase 39.d §S — the v1.40.2/v1.40.3 §0 preamble inside \
+            !src.contains("(POST-CLOSE HOTFIX 2026-05-21) — generic-\n    // aware parsing"),
+            "the v1.40.2/v1.40.3 preamble inside \
              validate_value MUST stay retired. Generic parsing belongs \
              at the canonical validate_body entry now."
         );
@@ -1225,7 +1225,7 @@ mod tests {
         // but not as the active gate logic.
         assert!(
             active_extract_calls <= 1,
-            "§Fase 39.d §S — the D5 gate MUST NOT manually call \
+            "the output-schema gate MUST NOT manually call \
              `extract_inner_ontological_type` for unwrapping (that work \
              moved into validate_body). Found {active_extract_calls} \
              active references."

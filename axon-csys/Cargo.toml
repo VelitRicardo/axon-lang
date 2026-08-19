@@ -9,9 +9,9 @@ repository = "https://github.com/VelitRicardo/axon-lang"
 readme = "README.md"
 keywords = ["axon", "c23", "ffi", "kernel", "performance"]
 categories = ["development-tools::ffi", "external-ffi-bindings"]
-description = "axon-csys — Fase 25 (Silicon + Cognition sesión 1). C23 metal-bound kernels for axon-lang. The Rust crate hosts safe wrappers; the c-src/ tree hosts the kernels: cache-line-aligned slab allocator (25.d), G.711 mulaw + linear PCM resampler (25.c), algebraic effects FSM dispatcher with computed gotos (25.e), BPE tokenizer with #embed (25.g), HMAC-SHA256 continuity token (25.h), plus an adopter-facing C transpiler bridge (25.f). Each kernel ships with a byte-identical drift gate against the Rust reference impl. 25.b ships only the build-infrastructure probe; later sub-fases append their kernels."
+description = "axon-csys — C23 metal-bound kernels for axon-lang. The Rust crate hosts safe wrappers; the c-src/ tree hosts the kernels: cache-line-aligned slab allocator, G.711 mulaw + linear PCM resampler, algebraic effects FSM dispatcher with computed gotos, BPE tokenizer with #embed, HMAC-SHA256 continuity token, the epistemic envelope kernel, the vendored FIPS 202 / ML-DSA-65 / Ed25519 signing boundary, plus an adopter-facing C transpiler bridge. Each kernel ships with a byte-identical drift gate against a Rust reference implementation; the C toolchain is opt-in behind the `native` feature."
 
-# ─── §Fase 119.h — the C toolchain becomes OPT-IN ────────────────────
+# ─── The C toolchain is OPT-IN ───────────────────────────────────────
 #
 # `cc::Build::compile` PANICS when no C compiler is found, and this crate's
 # build script called it unconditionally — so `cargo install axon-lang` on a
@@ -40,7 +40,7 @@ name = "axon_csys"
 path = "src/lib.rs"
 
 [dependencies]
-# §Fase 25.g — fancy-regex provides PCRE-style possessive quantifiers
+# fancy-regex provides PCRE-style possessive quantifiers
 # (`++`, `?+`, `*+`) and lookaround (`(?!\S)`) that the cl100k_base /
 # o200k_base pretokeniser patterns rely on. tiktoken-rs already pulled
 # fancy-regex transitively; replacing tiktoken-rs with axon-csys keeps
@@ -49,14 +49,14 @@ path = "src/lib.rs"
 # its internal data structures). The result is one direct dep instead
 # of one direct + many transitive.
 #
-# §Fase 119.h — OPTIONAL, because the pretokeniser it backs only exists when
+# OPTIONAL, because the pretokeniser it backs only exists when
 # the C23 BPE kernel does. Dropping it takes seven crates out of the
 # toolchain-free tree (fancy-regex, bit-set, bit-vec, regex-automata,
 # aho-corasick, memchr, regex-syntax).
 fancy-regex = { version = "0.13", optional = true }
 
 [build-dependencies]
-# §Fase 25.b D3 — cc-rs is the de facto Rust ecosystem standard for
+# cc-rs is the de facto Rust ecosystem standard for
 # C deps (used by `ring`, `openssl-sys`, `sodiumoxide`, etc); zero adopter
 # setup; build script integrates into `cargo build` natively. Keep the
 # version aligned with the rest of the cargo ecosystem (cc 1.2 supports
@@ -64,30 +64,30 @@ fancy-regex = { version = "0.13", optional = true }
 cc = "1.2"
 
 [dev-dependencies]
-# §Fase 25.g — drift gate. Reference encoder for cross-validating
+# Drift gate. Reference encoder for cross-validating
 # axon-csys's BPE output against tiktoken's canonical implementation.
 # Production builds DO NOT link tiktoken-rs (the whole point of 25.g
 # was to remove the dep); it is only present in the test target.
 tiktoken-rs = "0.6"
-# §Fase 25.h — crypto drift gate. The Rust ecosystem reference impls
+# Crypto drift gate. The Rust ecosystem reference impls
 # for SHA-256 / HMAC / base64url-no-pad / constant-time compare. Not
 # linked into production binaries — purely cross-validation against
 # our in-house C kernel.
 #
-# §Fase 119.h — they now cross-validate BOTH implementations. `tests/crypto.rs`
+# They cross-validate BOTH implementations. `tests/crypto.rs`
 # declares no `required-features`, so `cargo test --no-default-features` runs
 # the very same NIST CAVS vectors and reference comparisons against the
 # pure-Rust twins in `crypto::portable`. The toolchain-free build is measured
 # by the gate that was written to judge the C.
 sha2 = "0.10"
-# §Fase 124.b — drift gate for the VENDORED FIPS 202 kernel. Same posture as
+# Drift gate for the VENDORED FIPS 202 kernel. Same posture as
 # `sha2` above: an independent implementation used only to cross-validate the C
 # in the test target, never linked into production. A published NIST vector
 # proves the kernel computes the standard; this proves it agrees with another
 # implementation across arbitrary inputs, which is what catches a length- or
 # padding-edge the fixed vectors do not reach.
 sha3 = "0.10"
-# §Fase 124.b — INTEROP gate for the vendored ML-DSA-65 kernel (RustCrypto's
+# INTEROP gate for the vendored ML-DSA-65 kernel (RustCrypto's
 # independent FIPS 204 implementation). A signature scheme cannot be proven by
 # fixed vectors alone here — PQClean signs HEDGED, so its signatures are not
 # reproducible — and a roundtrip only proves self-consistency: a signer and
@@ -95,7 +95,7 @@ sha3 = "0.10"
 # verification is the proof that the bytes are FIPS 204: the C kernel's
 # signatures must verify under this crate, and this crate's under the C kernel.
 ml-dsa = "0.1.1"
-# §Fase 124.b — interop + byte-identity gate for the vendored Ed25519 kernel.
+# Interop + byte-identity gate for the vendored Ed25519 kernel.
 # Ed25519 is DETERMINISTIC, so this gate is stronger than ML-DSA's: same seed +
 # message must yield the SAME 64 bytes from both implementations, on top of the
 # RFC 8032 published vectors.
@@ -103,17 +103,17 @@ ed25519-dalek = "2"
 hmac = "0.12"
 base64 = "0.22"
 subtle = "2"
-# §Fase 25.j — fuzz drift gate uses a deterministic seedable RNG so
+# Fuzz drift gate uses a deterministic seedable RNG so
 # CI runs are reproducible. Pinned to 0.9 to align with the prod
 # `rand` dep already in axon-rs (no transitive bloat in axon-csys).
 rand = { version = "0.9", default-features = false, features = ["std", "std_rng"] }
-# §Fase 25.j — criterion drives the cross-stack benchmarks. The
+# criterion drives the cross-stack benchmarks. The
 # `html_reports` feature emits target/criterion/<bench>/index.html
 # for visual inspection; CI lanes consume the JSON output for
 # regression gating in 25.k.
 criterion = { version = "0.5", default-features = false, features = ["html_reports", "cargo_bench_support"] }
 
-# ─── §Fase 119.h — which suites need the C ───────────────────────────
+# ─── Which suites need the C ─────────────────────────────────────────
 #
 # `required-features` is not a convenience here, it is the honesty gate: a
 # test target that reaches a C-only module MUST refuse to build without it,
@@ -142,7 +142,7 @@ required-features = ["native"]
 name = "drift_gate"
 required-features = ["native"]
 
-# §Fase 25.j — bench registration. Each entry corresponds to a
+# Bench registration. Each entry corresponds to a
 # `benches/<name>.rs` file; `harness = false` lets criterion install
 # its own runner (the cargo default is libtest, which doesn't know
 # how to drive criterion's groups + sample-size logic).

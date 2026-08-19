@@ -1,4 +1,4 @@
-// AXON Example — Tool Dispatch (§Fase 54)
+// AXON Example — Tool Dispatch
 //
 // The canonical shape of the flow-level `use <Tool> on <arg>` primitive.
 // A request parameter is bound BY NAME and handed to a native tool via an
@@ -6,13 +6,12 @@
 // natively — intercepted by the runtime tool registry — instead of being
 // simulated by the LLM.
 //
-// Two rules this example encodes (both enforced by the compiler as of
-// §Fase 54):
+// Two rules this example encodes (both enforced by the compiler):
 //   1. Tool dispatch is FLOW-LEVEL. A `use` written inside a `step { }`
-//      body is a parse error (§54.a) — it would silently degrade to an
+//      body is a parse error — it would silently degrade to an
 //      unconstrained LLM step. The legitimate in-step form is `apply:`.
 //   2. The `on "${query}"` argument interpolates the request-bound
-//      parameter at dispatch (§54.b). A bare `on query` is a literal.
+//      parameter at dispatch. A bare `on query` is a literal.
 
 tool WebSearch {
   provider: http

@@ -21,7 +21,7 @@
 </p>
 
 <details>
-<summary align="center"><strong>Primitive census</strong> — every language construct advertised here is a <em>build input</em>: the compiler's anti-drift gate (<code>axon-frontend/src/advertised.rs</code>, §111/§114.z) parses this block at test time and fails the build unless each badge carries a human-attested statement of what its runtime actually does.</summary>
+<summary align="center"><strong>Primitive census</strong> — every language construct advertised here is a <em>build input</em>: the compiler's anti-drift gate (<code>axon-frontend/src/advertised.rs</code>) parses this block at test time and fails the build unless each badge carries a human-attested statement of what its runtime actually does.</summary>
 
 <p align="center">
   <!-- Cognition primitives -->
@@ -52,12 +52,12 @@
   <code>component</code> · <code>view</code><br>
   <!-- Enterprise I/O capabilities (Fases 80–85) -->
   <code>cache</code> · <code>voice</code> · <code>shell</code> · <code>path rewrite</code> · <code>PASETO</code><br>
-  <!-- NEW — Session-typed WebSocket dialogue (Fase 41, v2.3.0) -->
+  <!-- NEW — Session-typed WebSocket dialogue (v2.3.0) -->
   <strong>Session types (v2.3.0):</strong>
   <code>socket</code> · <code>upstream</code> · <code>send T</code> · <code>receive T</code> · <code>select {ℓᵢ:…}</code> · <code>branch {ℓᵢ:…}</code> · <code>backpressure: credit(k)</code> · <code>reconnect: cognitive_state</code>
 </p>
 
-**Unwired — advertised, and not yet reachable (§122).** Three of the badges
+**Unwired — advertised, and not yet reachable.** Three of the badges
 above name a primitive whose engine exists and passes its own tests, and which
 **no published program can reach**: nothing calls it. They are listed in the
 compiler's `KNOWN_DEBT` ratchet, which may only shrink, so this list cannot grow
@@ -70,7 +70,7 @@ quietly:
 | `synth` | the deny-by-default OSS reference, which refuses by design | a mount point. Note the honest ceiling: wiring it in OSS yields a *refusal*, not execution — synthesised code runs only in the enterprise sandbox |
 
 This table exists because the alternative is worse. `cache` was attested as
-working until §122 measured it, on a citation that named a compile-time property
+working until v2.89.0 measured it, on a citation that named a compile-time property
 as evidence of a runtime — so the state `Unwired` was added to the gate, and it
 owes a ledger entry exactly like an unimplemented promise does. A ledger that
 stays empty because a row is mislabelled is worth less than one that admits
@@ -111,7 +111,7 @@ infrastructure layer where resources, control loops, observability, security
 kernels, and UI components carry their regulatory class as a **compile-time
 type**, drawn from a **closed vocabulary Κ of 15 classes**: HIPAA, PCI_DSS,
 GDPR, SOX, FINRA, ISO27001, SOC2, FISMA, GxP, CCPA, NIST_800_53, and — since
-§124 — Brazil's LGPD, Mexico's LFPDPPP and NOM151, Colombia's LEY1581. An
+v4.0.0 — Brazil's LGPD, Mexico's LFPDPPP and NOM151, Colombia's LEY1581. An
 unknown label is a **compile error** with a one-edit suggestion
 (`axon-T1214`: `[HIPPA]` is refused, `HIPAA` is suggested). FIPS 140-3 and
 CC EAL 4+ are *audit frameworks* the evidence
@@ -120,7 +120,7 @@ engine targets — deliberately **not** members of Κ: κ classifies what data
 that fail coverage are rejected *before* they run. No other programming
 language does this.
 
-**v2.3.0 (Fase 41) adds the first session-typed real-time dialogue primitive in
+**v2.3.0 adds the first session-typed real-time dialogue primitive in
 any production language**: declare a `session` (the bidirectional protocol),
 bind it to a `socket` (the WebSocket transport with credit-refined
 backpressure), and the compiler proves the two endpoints are duals
@@ -154,22 +154,22 @@ error**, not a post-mortem finding.
 | `topology` + `session` | Typed directed graph over declared entities with Honda–Vasconcelos duality + deadlock detection | π-calculus binary sessions |
 | `socket` (v2.3.0) | Session-typed WebSocket transport with credit-refined backpressure, typed reconnection via `cognitive_states`, SSE-as-fragment projection | Caires–Pfenning Curry–Howard + Rast credit-refined types ([paper_websocket_cognitive_primitive.md](docs/papers/paper_websocket_cognitive_primitive.md)) |
 | `immune` + `reflex` + `heal` | KL-divergence anomaly sensor + O(1) signed-trace motor response + Linear-Logic one-shot patch FSM | Cognitive Immune System ([paper_immune_v2.md](docs/papers/paper_immune_v2.md)) |
-| `component` + `view` | Declarative UI with the **same** compile-time κ coverage rule — regulated types need a covering shield or the compiler rejects | Regulatory Type Theory (Fase 9) |
+| `component` + `view` | Declarative UI with the **same** compile-time κ coverage rule — regulated types need a covering shield or the compiler rejects | Regulatory Type Theory |
 
 ### Hard differentiators vs. Terraform / Pulumi / Kubernetes manifests
 
-1. **Compile-time compliance.** `shield<HIPAA>` / `type PatientRecord compliance [HIPAA, GDPR]` are *types*. A `.axon` program that sends PHI to an unshielded endpoint fails `axon check` — same exit code as a syntax error. The rule guards **every κ-carrying boundary**: HTTP endpoints (`axon-T957`), typed channels at declaration (`axon-T1215`, §124 — a `Channel<T>` handle inherits `T`'s κ), and again at π-calculus `publish` for IR that bypassed the checker (the typed bus derives its predicate from the same IR it registers channels from, fail-closed). The audit engine scores **coverage holding**, never label presence.
+1. **Compile-time compliance.** `shield<HIPAA>` / `type PatientRecord compliance [HIPAA, GDPR]` are *types*. A `.axon` program that sends PHI to an unshielded endpoint fails `axon check` — same exit code as a syntax error. The rule guards **every κ-carrying boundary**: HTTP endpoints (`axon-T957`), typed channels at declaration (`axon-T1215`, v4.0.0 — a `Channel<T>` handle inherits `T`'s κ), and again at π-calculus `publish` for IR that bypassed the checker (the typed bus derives its predicate from the same IR it registers channels from, fail-closed). The audit engine scores **coverage holding**, never label presence.
 2. **Blame Calculus (Findler–Felleisen).** Every error is classified as **CT-1** (axon/runtime bug), **CT-2** (program author: anchor breach, expired lease), or **CT-3** (infrastructure: partition, missing credential, provider quota). No silent downgrades.
 3. **Audit-ready artefacts.** `axon dossier` + `axon sbom` + `axon audit --framework {soc2,iso27001,fips,cc,all}` + `axon evidence-package` produce byte-identical, deterministic JSON/ZIP — the SHA-256 of every output is a *contract* against your release.
 4. **100% Rust + C23 runtime, no interpreter.** The whole stack — lexer, parser, type-checker, IR, the algebraic-effects execution engine, the HTTP server, the seven LLM backends, the streaming wire, the session-typed WebSocket driver — is a single native Rust binary; the FIPS-routable cryptographic + tokeniser kernels live in [`axon-csys`](axon-csys/) as standalone C23 (no `unsafe` glue: `_Generic`-dispatched headers, `[[nodiscard]]` everywhere, sanitizer-clean, valgrind-clean). `cargo install axon-lang`. No GC, no interpreter, no runtime dependency.
 5. **Cognitive immune system.** `immune + reflex + heal` is a first-class language primitive, not a plug-in. Signed HMAC traces per firing, three compliance modes (`audit_only` / `human_in_loop` / `adversarial`), Linear-Logic patch FSM preventing double-application.
 6. **Post-Quantum-ready ESK.** HMAC-SHA256 baseline + Ed25519 + ML-DSA-65 (NIST FIPS 204 Dilithium) + Hybrid signer (NIST SP 800-208 transition posture). Feature-gated; no silent classical fallbacks.
 7. **Persistence is a typed cognitive primitive.** A database in AXON is an `axonstore`, not an ORM bolt-on: retrieved rows are born epistemically `Untrusted` and a `confidence_floor` is enforced at read and write; every mutation appends to an HMAC-Merkle audit chain; `retrieve` is a bounded, back-pressured `Stream<Row>`; and store access is capability-typed and checked at *compile time*. No other language treats stored data this way.
-8. **Real-time dialogue is a typed cognitive primitive (v2.3.0).** A WebSocket in AXON is a `socket` over a declared `session`, not a JSON envelope over bytes: the compiler proves the two endpoints are duals (Caires–Pfenning intuitionistic linear logic, `S̄ ≡ S⊥`), so the connection is **deadlock-free and protocol-conformant by construction**; credit-refined backpressure (`backpressure: credit(k)`) is decidable in Presburger arithmetic at compile time; a mid-protocol disconnect seals the residual session-type cursor + credit window into an AAD-bound `cognitive_states` snapshot, and the typed `?resume=` resume restores it under tenant + flow_id binding; a single-polarity protocol's `socket` ALSO speaks W3C Server-Sent Events byte-compat with Fase 33's existing SSE pipeline (`S_SSE = Π_↓(S_WS)`).
-9. **Every boundary is guarded (v2.44.0).** The doctrine `axon://logic/every_boundary_is_guarded`: no `axonendpoint` may dispatch a flow across a trust boundary uncovered by silent omission. It must declare a covering discipline (`requires:` / `shield:` / `compliance:`) **or** the explicit, auditable opt-out `public: true` — omit both and `axon check` fails with **`axon-T890`**, same exit code as a syntax error. The *absence* of a guard is a deliberate, witnessed decision, never a default. The rule is independently re-verified as a Proof-Carrying-Code obligation (`PropertyClass::AuthorizationCoverage`) at the deploy gate, so an unguarded boundary cannot reach production through any door; `axon fix` migrates existing programs. Generalises the §6.1 shield κ-coverage rule from *regulated types* to *every boundary*.
-10. **Every guard is satisfiable (v2.45.0).** The completeness dual of #9: the doctrine `axon://logic/every_requirement_is_grantable`. A `requires: [x]` whose capability `x` no authority in the system can grant is a **dead boundary** — a locked door with no fabricable key, indistinguishable at deploy from a real guard. §90 makes key-existence a proof obligation: a total, injective projection `π` reconciles the two authority representations that otherwise never meet — the control-plane RBAC catalog (colon `resource:action`) and the data-plane `requires:` grammar (dotted `resource.action`) — so a role-derived permission `flow:execute` actually satisfies `requires: [flow.execute]`. The law `requires ⊆ π(grantable_catalog)` is re-verified as a Proof-Carrying-Code obligation (`PropertyClass::CapabilityGrantability`); a dead requirement is refuted with **`axon-T891`** and the deploy gate rejects the bundle fail-closed. Unlike IAM systems that discover unsatisfiable policies at request time (or never), AXON proves *before the surface mounts* that every scope it requires is grantable. Together with #9: **every boundary is guarded, and every guard is openable by exactly the authorities meant to open it.** v2.47.0 closes the converse quantifier (`axon://logic/every_granted_authority_projects`, §93): §90 proved the key *exists in the catalog*; §93 proves the key that is actually *cut* — a granted role, built-in or custom — turns the lock: `π` lifted to held-authority sets is total with **explicit drops** (`auth_scope::project_permission_set` — a tampered authority row degrades with a witness, never silently), authority is derived from live state at verify time (never minted into a claim, so revocation binds next-request), and a permission that cannot project is refused at the write. The **dead authority** — assignable but inert, the principal-side dual of the `axon-T891` dead requirement — becomes unrepresentable.
-11. **Delegation is attenuation (v2.46.0).** The third act of the authority story: the doctrine `axon://logic/authority_only_attenuates`. `credential <Name> { ttl: grants: }` declares an **ephemeral-credential contract** — the exact shape a chat widget on any origin needs — and the `mint` flow verb turns it into a TTL-bounded bearer at runtime, admitted only when `grants ⊆ capabilities(minter)`: a flow can hand a visitor a *slice* of the authority it provably holds, never more. The law is machine-checked at three layers, all fail-closed: compile (**`axon-T893`**–**`axon-T896`** — grantless contracts, TTLs beyond the 24h ephemeral ceiling, ghost mints, and persisting a minted bearer are all rejected), verify/deploy (a Proof-Carrying-Code obligation, `PropertyClass::CredentialAttenuation`, re-derives every contract + mint site from the artifact), and mint time (the dispatch handler AND the `CredentialMinter` port independently enforce the subset law; no port configured ⇒ a loud missing-dependency error, never a silent stub). Stripe-style ephemeral keys, but as *typed language surface with a deploy-time proof* — no SDK call whose scopes are runtime strings. Cognitive time is declared the same release: `now: "<IANA-tz>"` on a `step` or `context` (v2.46.0, §91) injects ONE captured instant per run, DST-correct and recorded as `(captured_utc, tzdb_version, zones)` in the envelope for byte-exact replay — `time_is_an_explicit_input` applied to cognition, with `TemporalContextSoundness` refuting a plausible-but-unknown timezone before deploy.
-12. **Rotation without revelation (§94).** The inbound dual of #11: the doctrine `axon://logic/rotation_without_revelation`. A third-party credential a tenant lends the platform (an OAuth token for a connected CRM) is **custodied, never readable**: `axonstore <N> { backend: secrets  class: crm }` is a read-only *metadata* view over the encrypted secret custody (key / version / created_at / expires_at — the value has no column), so a cron `daemon` enumerates what nears expiry with ordinary §67 time-aware `retrieve`; the `rotate <Store> [where] with <Tool> as <r>` verb renews each matching entry through ONE runtime-mediated exchange per key (reveal into the reserved `axon_rotation` tool envelope → the adopter's tool performs the vendor refresh → CAS commit at version+1, so HA daemon replicas cannot double-spend a refresh token), binding only the `{attempted, rotated, failed}` summary; and `tool <N> { secret: crm.hubspot }` injects the per-tenant value into the tool-server request at dispatch (`axon_secret`) so the consuming flow never touches it. **No term of the language evaluates to a secret value — revelation is unrepresentable, not discouraged.** Machine-checked at three layers, all fail-closed: compile (**`axon-T897`**–**`axon-T900`** + **`axon-T902`** — custody writes, rotations of non-custody stores or ghost tools, class-less views, and credential literals in source are all rejected), verify/deploy (`PropertyClass::SecretCustodySoundness` re-derives every store, rotate site and write verb from the artifact), and dispatch (no custody port ⇒ a loud missing-dependency error; a secret-bearing tool never calls its vendor unauthenticated). AWS-Secrets-Manager-style managed rotation, but the orchestrator itself is *provably unable to read what it rotates*.
+8. **Real-time dialogue is a typed cognitive primitive (v2.3.0).** A WebSocket in AXON is a `socket` over a declared `session`, not a JSON envelope over bytes: the compiler proves the two endpoints are duals (Caires–Pfenning intuitionistic linear logic, `S̄ ≡ S⊥`), so the connection is **deadlock-free and protocol-conformant by construction**; credit-refined backpressure (`backpressure: credit(k)`) is decidable in Presburger arithmetic at compile time; a mid-protocol disconnect seals the residual session-type cursor + credit window into an AAD-bound `cognitive_states` snapshot, and the typed `?resume=` resume restores it under tenant + flow_id binding; a single-polarity protocol's `socket` ALSO speaks W3C Server-Sent Events byte-compat with the existing SSE pipeline (`S_SSE = Π_↓(S_WS)`).
+9. **Every boundary is guarded (v2.44.0).** The doctrine `axon://logic/every_boundary_is_guarded`: no `axonendpoint` may dispatch a flow across a trust boundary uncovered by silent omission. It must declare a covering discipline (`requires:` / `shield:` / `compliance:`) **or** the explicit, auditable opt-out `public: true` — omit both and `axon check` fails with **`axon-T890`**, same exit code as a syntax error. The *absence* of a guard is a deliberate, witnessed decision, never a default. The rule is independently re-verified as a Proof-Carrying-Code obligation (`PropertyClass::AuthorizationCoverage`) at the deploy gate, so an unguarded boundary cannot reach production through any door; `axon fix` migrates existing programs. Generalises the shield κ-coverage rule from *regulated types* to *every boundary*.
+10. **Every guard is satisfiable (v2.45.0).** The completeness dual of #9: the doctrine `axon://logic/every_requirement_is_grantable`. A `requires: [x]` whose capability `x` no authority in the system can grant is a **dead boundary** — a locked door with no fabricable key, indistinguishable at deploy from a real guard. v2.45.0 makes key-existence a proof obligation: a total, injective projection `π` reconciles the two authority representations that otherwise never meet — the control-plane RBAC catalog (colon `resource:action`) and the data-plane `requires:` grammar (dotted `resource.action`) — so a role-derived permission `flow:execute` actually satisfies `requires: [flow.execute]`. The law `requires ⊆ π(grantable_catalog)` is re-verified as a Proof-Carrying-Code obligation (`PropertyClass::CapabilityGrantability`); a dead requirement is refuted with **`axon-T891`** and the deploy gate rejects the bundle fail-closed. Unlike IAM systems that discover unsatisfiable policies at request time (or never), AXON proves *before the surface mounts* that every scope it requires is grantable. Together with #9: **every boundary is guarded, and every guard is openable by exactly the authorities meant to open it.** v2.47.0 closes the converse quantifier (`axon://logic/every_granted_authority_projects`, v2.47.0): v2.45.0 proved the key *exists in the catalog*; v2.47.0 proves the key that is actually *cut* — a granted role, built-in or custom — turns the lock: `π` lifted to held-authority sets is total with **explicit drops** (`auth_scope::project_permission_set` — a tampered authority row degrades with a witness, never silently), authority is derived from live state at verify time (never minted into a claim, so revocation binds next-request), and a permission that cannot project is refused at the write. The **dead authority** — assignable but inert, the principal-side dual of the `axon-T891` dead requirement — becomes unrepresentable.
+11. **Delegation is attenuation (v2.46.0).** The third act of the authority story: the doctrine `axon://logic/authority_only_attenuates`. `credential <Name> { ttl: grants: }` declares an **ephemeral-credential contract** — the exact shape a chat widget on any origin needs — and the `mint` flow verb turns it into a TTL-bounded bearer at runtime, admitted only when `grants ⊆ capabilities(minter)`: a flow can hand a visitor a *slice* of the authority it provably holds, never more. The law is machine-checked at three layers, all fail-closed: compile (**`axon-T893`**–**`axon-T896`** — grantless contracts, TTLs beyond the 24h ephemeral ceiling, ghost mints, and persisting a minted bearer are all rejected), verify/deploy (a Proof-Carrying-Code obligation, `PropertyClass::CredentialAttenuation`, re-derives every contract + mint site from the artifact), and mint time (the dispatch handler AND the `CredentialMinter` port independently enforce the subset law; no port configured ⇒ a loud missing-dependency error, never a silent stub). Stripe-style ephemeral keys, but as *typed language surface with a deploy-time proof* — no SDK call whose scopes are runtime strings. Cognitive time is declared the same release: `now: "<IANA-tz>"` on a `step` or `context` (v2.46.0) injects ONE captured instant per run, DST-correct and recorded as `(captured_utc, tzdb_version, zones)` in the envelope for byte-exact replay — `time_is_an_explicit_input` applied to cognition, with `TemporalContextSoundness` refuting a plausible-but-unknown timezone before deploy.
+12. **Rotation without revelation (v2.48.0).** The inbound dual of #11: the doctrine `axon://logic/rotation_without_revelation`. A third-party credential a tenant lends the platform (an OAuth token for a connected CRM) is **custodied, never readable**: `axonstore <N> { backend: secrets  class: crm }` is a read-only *metadata* view over the encrypted secret custody (key / version / created_at / expires_at — the value has no column), so a cron `daemon` enumerates what nears expiry with ordinary time-aware `retrieve`; the `rotate <Store> [where] with <Tool> as <r>` verb renews each matching entry through ONE runtime-mediated exchange per key (reveal into the reserved `axon_rotation` tool envelope → the adopter's tool performs the vendor refresh → CAS commit at version+1, so HA daemon replicas cannot double-spend a refresh token), binding only the `{attempted, rotated, failed}` summary; and `tool <N> { secret: crm.hubspot }` injects the per-tenant value into the tool-server request at dispatch (`axon_secret`) so the consuming flow never touches it. **No term of the language evaluates to a secret value — revelation is unrepresentable, not discouraged.** Machine-checked at three layers, all fail-closed: compile (**`axon-T897`**–**`axon-T900`** + **`axon-T902`** — custody writes, rotations of non-custody stores or ghost tools, class-less views, and credential literals in source are all rejected), verify/deploy (`PropertyClass::SecretCustodySoundness` re-derives every store, rotate site and write verb from the artifact), and dispatch (no custody port ⇒ a loud missing-dependency error; a secret-bearing tool never calls its vendor unauthenticated). AWS-Secrets-Manager-style managed rotation, but the orchestrator itself is *provably unable to read what it rotates*.
 
 ### External audit readiness
 
@@ -206,7 +206,7 @@ X app.axon  1 error(s)
   error [line 4]: axon-T957 axonendpoint 'Api' carries regulated data
   (kappa = {GDPR, HIPAA}) across a trust boundary but declares no `shield:`.
   Regulated boundaries require a shield whose `compliance:` covers the type's
-  kappa — ESK Fase 6.1 coverage rule. […] Declaring the classes on the
+  kappa — the ESK coverage rule. […] Declaring the classes on the
   endpoint's own `compliance:` does NOT cover them: that list is a label,
   the shield is the control that acts on a breach.
 ```
@@ -223,7 +223,7 @@ The vocabulary itself is closed (`axon-T1214`): `compliance: [HIPPA]` is refused
 - [`examples/banking_reference.axon`](examples/banking_reference.axon) — PCI_DSS + SOX + SOC 2
 - [`examples/government_reference.axon`](examples/government_reference.axon) — FISMA + NIST 800-53 + SOC 2
 - [`examples/ui/healthcare_console.axon`](examples/ui/healthcare_console.axon) — UI built on top of the healthcare backend with compile-time κ-redacted renders
-- [`examples/tool_dispatch.axon`](examples/tool_dispatch.axon) — flow-level `use <Tool> on "${param}"` native tool dispatch with request-parameter binding (§Fase 54)
+- [`examples/tool_dispatch.axon`](examples/tool_dispatch.axon) — flow-level `use <Tool> on "${param}"` native tool dispatch with request-parameter binding
 
 ### Academic references
 
@@ -252,7 +252,7 @@ AXON v2.3.0 is **production-ready**. The full stack is cross-validated, 100% Rus
 - ✅ PostgreSQL persistence with migrations and health checks
 - ✅ Structured observability (JSON logging + request tracing)
 - ✅ LLM call resilience (retry + circuit breaker + fallback)
-- ✅ **2,245 axon-lang + 535 axon-frontend + 13 axon-csys = 2,793 Rust tests**; cross-stack zero-regression discipline. Python side is now a thin PyPI wrapper that downloads + invokes the native Rust binary (the language interpreter is 100% Rust/C23 — the Python suite was retired in Fase 40's *Pure Silicon* pivot).
+- ✅ **2,245 axon-lang + 535 axon-frontend + 13 axon-csys = 2,793 Rust tests**; cross-stack zero-regression discipline. Python side is now a thin PyPI wrapper that downloads + invokes the native Rust binary (the language interpreter is 100% Rust/C23 — the Python suite was retired in the v2.0.0 *Pure Silicon* pivot).
 - ✅ Zero "por ahora", zero "lo mínimo" — production-complete
 
 Designed for cognitive AI applications that require formal semantics, reliability, epistemic rigor, and *provable* regulatory coverage.
@@ -317,7 +317,7 @@ flow AnalyzeContract(doc: Document) -> StructuredReport {
 
 AXON v2.3.0 ships a **production-hardened** 100% Rust + C23 native runtime server with **285+ HTTP routes**, **65+ primitives** wired to runtime, an **algebraic-effects execution engine**, a **real-time SSE / NDJSON / session-typed WebSocket streaming wire**, a full **ℰMCP** (Epistemic Model Context Protocol) implementation, **PostgreSQL persistence**, **structured observability via tracing**, **LLM call resilience** (retry + circuit breaker + fallback chains across seven native backends), and a complete native CLI (`check`, `compile`, `run`, `serve`, `parse`, `dossier`, `sbom`, `audit`, `evidence-package`, and more).
 
-The **Rust + C23 stack is the canonical implementation** of the language. Fase 40 (*Pure Silicon*, v2.0.0) retired the Python interpreter — and the PyPI line has since been closed with a tombstone release that redirects to `cargo install axon-lang` (the historical Python releases remain archived on PyPI, unmaintained). The FIPS-routable cryptographic + tokeniser kernels live in [`axon-csys`](axon-csys/) as standalone C23 (no `unsafe` glue: `_Generic`-dispatched headers, `[[nodiscard]]` everywhere, sanitizer-clean + valgrind-clean CI lanes).
+The **Rust + C23 stack is the canonical implementation** of the language. v2.0.0 (*Pure Silicon*) retired the Python interpreter — and the PyPI line has since been closed with a tombstone release that redirects to `cargo install axon-lang` (the historical Python releases remain archived on PyPI, unmaintained). The FIPS-routable cryptographic + tokeniser kernels live in [`axon-csys`](axon-csys/) as standalone C23 (no `unsafe` glue: `_Generic`-dispatched headers, `[[nodiscard]]` everywhere, sanitizer-clean + valgrind-clean CI lanes).
 
 **Production Foundation (Phase K):**
 - **Observability**: JSON structured logging with request tracing, daily log rotation, configurable levels
@@ -417,10 +417,10 @@ AXON v1.0.0 launched with three production-critical systems that remain the foun
 | MCP resource types | 10 (traces, metrics, backends, flows, dataspaces, axonstores, shields, corpora, mandates, forges) |
 | MCP workflow prompts | 5 (research, decide, secure_transfer, reflect, analyze_image) |
 | `axon-lang` (axon-rs) lib tests | 2,245 |
-| `axon-frontend` lib tests | 535 (incl. §41.a-c algebra + §41.h multiparty) |
+| `axon-frontend` lib tests | 535 (incl. the session-type algebra + multiparty projection) |
 | `axon-csys` lib tests | 13 (Rust wrapper; C23 kernels exercised by `cargo test` + sanitizers/valgrind in CI) |
 | Rust workspace total | 2,793 — zero regressions |
-| Python wrapper tests | 16 (the thin PyPI wrapper that downloads + invokes the native binary; the interpreter was retired in Fase 40) |
+| Python wrapper tests | 16 (the thin PyPI wrapper that downloads + invokes the native binary; the interpreter was retired in v2.0.0) |
 | SQL tables | 12 (traces, sessions, daemons, audit_log, axon_stores, dataspaces, hibernations, event_history, execution_cache, cost_tracking, schedules, backend_registry) |
 | Performance indexes | 15 |
 
@@ -431,7 +431,7 @@ Every AXON operation carries a formal epistemic envelope ψ = ⟨T, V, E=⟨c, �
 - **Theorem 5.1**: Only raw data may carry certainty c=1.0; all derived operations cap at c≤0.99
 - **Epistemic Lattice**: ⊥ ⊑ doubt ⊑ speculate ⊑ believe ⊑ know
 - **Blame Calculus**: CT-2 (caller) / CT-3 (server) / Network attribution on every error
-- **CSP §5.3**: MCP tools carry constraint satisfaction schemas
+- **CSP**: MCP tools carry constraint satisfaction schemas
 
 ### TypeScript SDK
 
@@ -907,9 +907,8 @@ A law firm deploys an agent that autonomously researches case law until it finds
 sufficient precedent — or exhausts its budget and escalates to a human attorney:
 
 ```axon
-// §Fase 119.f — the tools this agent uses must EXIST: an agent naming a
-// tool nobody declared is an incomplete example, not a grammar gap (the
-// same shape as §119.c's block 42).
+// The tools this agent uses must EXIST: an agent naming a tool nobody
+// declared is an incomplete example, not a grammar gap.
 tool WebSearch {
     timeout: 10s
 }
@@ -2576,7 +2575,7 @@ Termination: converges in ≤ ⌈F₀ / (η · ε²)⌉ steps
 
 _Guarantee:_ the active inference loop **provably converges** to a local minimum
 of free energy, meaning the system always reaches a stable epistemic state.
-Combined with the NonDiagnostic type constraint (§4 of PEM), the converged state
+Combined with the NonDiagnostic type constraint (section 4 of the PEM paper), the converged state
 is guaranteed to be a **structural understanding** rather than a clinical
 diagnosis.
 
@@ -3430,9 +3429,8 @@ Every mainstream module system (OCaml, Haskell, Rust, Zig) solves the same probl
 compile files independently, then link them. But none of them operate on *cognitive
 primitives* — and none validate epistemic guarantees across module boundaries.
 
-AXON's **Epistemic Module System (EMS)** — rebuilt natively in Rust in §Fase 115
-(v2.76.0; the original Python implementation was retired with the Python frontend in
-Fase 39) — compiles a multi-file project in five phases: lexer-true import discovery
+AXON's **Epistemic Module System (EMS)** — rebuilt natively in Rust in v2.76.0 (the
+original Python implementation was retired with the Python frontend in v2.0.0) — compiles a multi-file project in five phases: lexer-true import discovery
 over a Kahn-sorted DAG (an import cycle is refused naming its full path,
 `axon-T955`), per-module `.axi` interface generation, the Epistemic Compatibility
 Check, per-module validation in which imported names register with their exported
@@ -3494,7 +3492,7 @@ wholesale.
 A program with no `import` statements never engages the EMS: single-file compilation
 is byte-identical to v2.75.0, including its IR JSON (the new `IRImport` fields and
 the provenance block are skip-serialized at their defaults). The suite pinning all of
-this is `fase115_a`–`g` across `axon-frontend/tests/` and `axon-rs/tests/` — 34
+this spans `axon-frontend/tests/` and `axon-rs/tests/` — 34
 integration tests plus the per-module unit suites, including the paper's own
 two-file example compiling end-to-end and the anti-stub proof (an imported flow's
 steps survive the link).
@@ -4341,11 +4339,11 @@ daemon ComplianceReporter(event: RiskAssessment) -> SARReport {
 > a persistent relation enriched in four orthogonal dimensions no relational
 > model ever carried: an **epistemic** grading, an **audit-chained** mutation
 > history, an **algebraic-effect** (streaming) selection, and a **capability**
-> type. Shipped in v1.30.0 (Fase 35) on a native Rust + `sqlx` PostgreSQL
-> substrate; v1.31.0 (Fase 38) added the *Declared & Compile-Time-Typed Store
+> type. Shipped in v1.30.0 on a native Rust + `sqlx` PostgreSQL
+> substrate; v1.31.0 added the *Declared & Compile-Time-Typed Store
 > Schema* (the `schema { … }` block + the `CREATE TABLE` synthesis); v2.0.0
-> (Fase 39) added the **`FlowEnvelope⟨T⟩` wire contract** (Theorem 5.1, the
-> §40 enterprise binding).
+> added the **`FlowEnvelope⟨T⟩` wire contract** (Theorem 5.1, the
+> enterprise binding).
 
 Every existing LLM framework bolts a database on as an afterthought: wrap a
 SQLAlchemy session in a class, call it "memory", and hope the agent doesn't
@@ -4355,12 +4353,13 @@ cognitive primitive** — its `where` filters compile to parameterized SQL
 mutation is audit-chained, and store access is checked against a capability
 type at compile time.
 
-> **What v2.3.0 ships.** The four pillars below are live and proven end-to-end
-> against a real `postgres:16` in CI. The Fase 38 *typed schema synthesis*
-> (Fase 38.a-i, v1.31.0+) generates `CREATE TABLE` from the `schema { … }`
-> block at compile time, with declared cardinality propagation (Fase 38.x.f).
-> Multi-statement transactions land in 38.x. The Fase 39 *FlowEnvelope* (v2.0.0)
-> formalises the cross-stack T1 wire contract for the §40 enterprise binding.
+> **What ships.** The four pillars below are live and proven end-to-end
+> against a real `postgres:16` in CI. The *typed schema synthesis*
+> (v1.31.0+) generates `CREATE TABLE` from the `schema { … }`
+> block at compile time, with declared cardinality propagation.
+> The *FlowEnvelope* (v2.0.0) formalises the cross-stack T1 wire contract for
+> the enterprise binding; multi-statement transactions are not shipped (see the
+> scope note below).
 
 #### The four pillars
 
@@ -4373,8 +4372,8 @@ type at compile time.
    is a tamper-evident root, `verify()` re-checks the whole history, and an
    `on_breach` policy (`log` / `raise` / `rollback`) fires on a detected tamper.
 3. **Streaming (Pillar III).** `retrieve` is a lazy, back-pressured
-   `Stream<Row>` — it drains a server-side `sqlx` cursor through the Fase 34
-   streaming surface under a `BackpressurePolicy`, so a million-row scan never
+   `Stream<Row>` — it drains a server-side `sqlx` cursor through the tool-streaming
+   surface under a `BackpressurePolicy`, so a million-row scan never
    materialises in memory.
 4. **Capability-typed (Pillar IV).** A `capability: "<slug>"` on the store is a
    typed permission; the frontend type-checker enforces an
@@ -4517,10 +4516,10 @@ Rust's ownership model.
 
 #### 3. Argumento con tres casos de uso
 
-> *Scope note — `schema { … }` is REAL (v1.31.0 / Fase 38: DDL synthesis from
+> *Scope note — `schema { … }` is REAL (v1.31.0: DDL synthesis from
 > the declaration), as are the four pillars (epistemic floor, audit chain,
 > `Stream<Row>`, capability typing, v1.30.0) and the `FlowEnvelope⟨T⟩` wire
-> contract (v2.0.0 / Fase 39). **`transact { … }` was RETRACTED in Fase 111
+> contract (v2.0.0). **`transact { … }` was RETRACTED in v2.67.0
 > (`axon-T938`) and no longer compiles** — it never opened a transaction, so
 > the construct was removed rather than left to look like one; the examples
 > below use the idempotent form instead. `migrate()` illustrates the design
@@ -4567,7 +4566,7 @@ flow RecordTransfer(from_acct: String, to_acct: String, amount: Real) -> LedgerE
 
 - `isolation: serializable` prevents phantom reads during concurrent transfers
 - **Multi-statement transactions are NOT shipped.** `transact { … }` was
-  retracted in §Fase 111 (`axon-T938`): it never opened a transaction, took no
+  retracted in v2.67.0 (`axon-T938`): it never opened a transaction, took no
   lock and rolled nothing back, so writes inside it were exactly as atomic as
   writes outside it. A fabricated atomicity guarantee is worse than an absent
   one, because you only discover it on the failure path. Until real
@@ -4734,29 +4733,7 @@ know {
                               Typed Output (validated, traced, epistemic)
 ```
 
-**v2.3.0 metrics: 100% Rust + C23 native runtime · 285+ routes · 65+ primitives · 2,245 axon-lang + 535 axon-frontend + 13 axon-csys = 2,793 Rust tests · 108 mapped external-audit controls across 4 frameworks**
-
-> **Versioning trail (semver bumps; v2.x.y additions are backward-compatible at the language surface):**
-> - **v1.0.0** — Initial Phase K production release (47 cognitive primitives, 738 tests)
-> - **v1.1.0** — Fases 1–5 Cognitive I/O: `resource` / `fabric` / `manifest` / `observe` / `reconcile` / `lease` / `ensemble` / `topology` / `session` / `immune` / `reflex` / `heal`
-> - **v1.2.0** — Fases 6–7.x ESK: `compliance` annotations + Regulatory Type Theory + audit engine (108 controls across SOC 2 / ISO 27001 / FIPS 140-3 / CC EAL 4+)
-> - **v1.3.0** — Fase 8: native Rust runtime with byte-identical parity + CLI parity (`dossier` / `sbom` / `audit` / `evidence-package`) + binary distribution
-> - **v1.3.1** — Fase 9: UI cognitiva declarativa core primitives (`component` / `view` + compile-time compliance contract)
-> - **v1.4.x–v1.9.x** — Fases 11–14: neuro-symbolic micro-OS, π-calculus mobile typed channels, lossless lexing
-> - **v1.10.0–v1.15.0** — Fases 15–20: runtime wiring (lambda-apply, `let`, IR meta-audit), production hardening, daemon supervisor, the production Shield runtime
-> - **v1.16.0–v1.18.0** — Fases 22–24: seven native Rust LLM backends + the algebraic-effects execution runtime
-> - **v1.19.x–v1.20.0** — Fases 25 + 28: **C23 metal-bound kernels** (`axon-csys`) + adopter diagnostic robustness (multi-file `axon parse`, rustc-style diagnostics)
-> - **v1.21.0–v1.22.0** — Fases 30–31: HTTP transport for algebraic stream effects (SSE / NDJSON) + type-driven wire inference
-> - **v1.23.0–v1.23.1** — Fase 32: `axonendpoint` as a first-class HTTP REST primitive — typed routes, body + output schema validation, `Idempotency-Key`, auth scopes
-> - **v1.24.0–v1.28.0** — Fase 33: SSE as a cognitive primitive — per-`IRFlowNode` async dispatcher, production streaming wiring, wire-format adapters
-> - **v1.29.0** — Fase 34: tools as stream-producers
-> - **v1.30.0** — Fase 35: `axonstore` as a cognitive data plane (four pillars — epistemic / audit-chained / `Stream<Row>` / capability-typed)
-> - **v1.31.0** — Fase 36: Backend Resolution Contract (D1 deterministic precedence ladder) + Fase 36.x mixed-flow streaming
-> - **v1.32.0–v1.40.x** — Fase 37: Request Binding Contract (totality across the runner) + Fase 37.y pooler-coherent store + Fase 38 *Declared & Compile-Time-Typed Store Schema* (CREATE TABLE synthesis from `schema { … }`) + Fase 38.x cardinality propagation + Fase 38.x.f narrow cardinality gate
-> - **v2.0.0** — **Fase 39 (Pure Silicon)**: cross-stack `FlowEnvelope⟨T⟩` wire contract (Theorem 5.1) + **Fase 40 *Enterprise Pure Silicon*** — axon-enterprise rewritten to 100% Rust + C23, consuming axon-lang via a versioned Cargo dependency (no Python interpreter); 23-crate workspace with §40.f RLS policy generators + §40.g Argon2id identity + §40.h closed RBAC catalog + §40.i Ed25519/JWKS + §40.j OIDC/SAML + §40.k AES-256-GCM envelope + §40.l axum integration + §40.o tamper-evident audit hash-chain + §40.t AAD-bound `cognitive_states` snapshots
-> - **v2.1.0** — Fase 40 follow-ups: native-runner multi-arch Docker image (amd64 + arm64; no QEMU)
-> - **v2.2.0** — Fase 40.w.3.1 (D16): public `axon::tenant::scope_tenant` primitive — the auth middleware scopes the tenant task-local so RLS binds automatically (no per-handler `SET LOCAL` contract)
-> - **v2.3.0** — **Fase 41 (WebSocket as a Cognitive Primitive)**: the §41.a binary session-type algebra (duality + regular-coinductive μ-equality, Caires–Pfenning) + §41.b `session` + `socket` declarations (with `select`/`branch` choice grammar) + §41.c **credit-refined backpressure** (Presburger discharge, `backpressure: credit(k)`) + §41.d `tokio` + RFC 6455 WebSocket runtime + §41.e **SSE-as-fragment unification** (`S_SSE = Π_↓(S_WS)`, byte-compat with Fase 33) + §41.f enterprise WS surface (the Kivi single-image unblock) + §41.g typed reconnection via AAD-bound `cognitive_states` snapshots + §41.h **multiparty projection** (Honda–Yoshida–Carbone `GlobalType` + `project_all` safe-realizability gate) + §41.i dedicated CI fuzz lane (6 + 2 surfaces × 50-seed LCG corpus)
+**100% Rust + C23 native runtime** · 65+ language primitives · 108 mapped external-audit controls across SOC 2 / ISO 27001 / FIPS 140-3 / CC EAL 4+. The version-by-version change history lives in the [GitHub Releases](https://github.com/VelitRicardo/axon-lang/releases).
 
 ### 65+ Language Primitives — Cognitive + Cognitive I/O (100% wired to runtime)
 
@@ -4794,10 +4771,10 @@ know {
 | Forge      | `forge`      | Directed creative synthesis (Poincaré pipeline)      |
 | Agent      | `agent`      | Autonomous goal-seeking BDI cognitive system         |
 | Shield     | `shield`     | Compile-time IFC security (taint + capability)       |
-| Savant     | `savant`     | Long-horizon autonomous research orchestrator — budget-bounded, interruptible, fail-closed, provenance-witnessed (§Fase 87) |
-| Synth      | `synth`      | Dynamic tool-synthesis safety envelope — risk ceiling + WASM zero-trust sandbox + Coder/Reviewer consensus (§Fase 87) |
-| Warden     | `warden`     | Authorization-native adversarial security-analysis block — abduction over authorized evidence, emitting attested `Vulnerability` findings (§Fase 88) |
-| Scope      | `scope`      | Named authorization scope — signed envelope (targets allowlist + depth ceiling + approver) a `warden` MUST run within (§Fase 88) |
+| Savant     | `savant`     | Long-horizon autonomous research orchestrator — budget-bounded, interruptible, fail-closed, provenance-witnessed |
+| Synth      | `synth`      | Dynamic tool-synthesis safety envelope — risk ceiling + WASM zero-trust sandbox + Coder/Reviewer consensus |
+| Warden     | `warden`     | Authorization-native adversarial security-analysis block — abduction over authorized evidence, emitting attested `Vulnerability` findings |
+| Scope      | `scope`      | Named authorization scope — signed envelope (targets allowlist + depth ceiling + approver) a `warden` MUST run within |
 | Stream     | `stream`     | Algebraic Effects and Free Monads                     |
 | Effects    | `effects`    | Algebraic effect rows for tool declarations          |
 | PIX        | `pix`        | Structured document index (navigable tree)           |
@@ -4832,13 +4809,13 @@ know {
 | Session    | `session`     | 4     | π-calculus binary session type — Honda–Vasconcelos duality enforced at compile time |
 | Send       | `send`        | 4     | Session step — emit a message of type T                      |
 | Receive    | `receive`     | 4     | Session step — block-await a message of type T               |
-| Immune     | `immune`      | 5     | KL-divergence + Free-Energy anomaly sensor with temporal decay (paper §5.2–5.3) |
-| Reflex     | `reflex`      | 5     | Deterministic O(1) LLM-free motor response with HMAC-signed traces + idempotency (paper §4.2) |
-| Heal       | `heal`        | 5     | Linear-Logic one-shot patch kernel with `audit_only` / `human_in_loop` / `adversarial` modes (paper §6–7) |
+| Immune     | `immune`      | 5     | KL-divergence + Free-Energy anomaly sensor with temporal decay |
+| Reflex     | `reflex`      | 5     | Deterministic O(1) LLM-free motor response with HMAC-signed traces + idempotency |
+| Heal       | `heal`        | 5     | Linear-Logic one-shot patch kernel with `audit_only` / `human_in_loop` / `adversarial` modes |
 | Compliance | `compliance`  | 6.1   | κ regulatory class annotation — closed vocabulary Κ of 15 (HIPAA, PCI_DSS, GDPR, SOX, FINRA, ISO27001, SOC2, FISMA, GxP, CCPA, NIST_800_53, LGPD, LFPDPPP, NOM151, LEY1581), unknown labels refused with a suggestion (`axon-T1214`) |
 | Endpoint   | `axonendpoint`| 6.1   | HTTP boundary with compile-time `shield.compliance ⊇ type.compliance` coverage rule (Regulatory Type Theory) |
 | Component  | `component`   | 9     | Reusable UI fragment with `renders` + `via_shield` + `on_interact` — regulated types require shield coverage at compile time |
-| View       | `view`        | 9     | Top-level UI screen composing declared components with optional `route` + session-typed reactivity (deferred to §9.3.b/§9.4.b renderers) |
+| View       | `view`        | 9     | Top-level UI screen composing declared components with optional `route` + session-typed reactivity (renderers deferred) |
 
 ### Epistemic Type System (Partial Order Lattice)
 
@@ -4910,7 +4887,7 @@ axon-constructor/
 │       │   ├── audit_chain.rs       # Pillar II — HMAC-Merkle mutation chain
 │       │   ├── row_stream.rs        # Pillar III — retrieve as Stream<Row>
 │       │   └── capability.rs        # Pillar IV — capability-typed access
-│       ├── session_runtime/     # §Fase 41 — typed WS dialogue runtime
+│       ├── session_runtime/     # typed WS dialogue runtime
 │       │   ├── state.rs             # SessionRuntime cursor + CreditWindow + seal/resume
 │       │   ├── wire.rs              # Frame { Send, Select, End, Error } JSON envelope
 │       │   ├── ws.rs                # axum WebSocket carrier driver (RFC 6455)
@@ -4935,10 +4912,7 @@ axon-constructor/
 ├── docs/papers/                 # Academic papers (formal proofs, calculus, theorems)
 ├── sdk/                         # TypeScript MCP client SDK
 ├── tests/                       # Wrapper contract tests + CLI smoke tests
-└── .github/workflows/           # CI — per-fase test workflows + release pipelines
-    ├── fase_41_session_types.yml    # 7-lane WS / SSE / fuzz / D8 backwards-compat
-    ├── fase_33_sse_cognitive_primitive.yml
-    └── …                            # one workflow per cycle for clear failure attribution
+└── .github/workflows/           # CI — test lanes + release pipelines
 ```
 
 ---
@@ -4949,7 +4923,7 @@ axon-constructor/
 > runtime, HTTP server, seven LLM backends, the SSE / NDJSON / WebSocket
 > streaming wire, the session-typed dialogue driver — ships as a single native
 > binary, no interpreter required. The Python interpreter was retired in
-> Fase 40 (*Pure Silicon*, v2.0.0); the PyPI package is now a tombstone that
+> v2.0.0 (*Pure Silicon*); the PyPI package is now a tombstone that
 > redirects to `cargo install axon-lang`.
 
 ### Prerequisites
@@ -5156,31 +5130,18 @@ cargo test --test integration              # axon-rs integration tests
 cd ../axon-frontend && cargo test          # compiler frontend tests
 ```
 
-### Current Status (v2.3.0)
+### What the suite covers
 
-```
-axon-lang lib       :  2,245 tests  (the runtime — sessions, backends, runtime, streaming, axonstore)
-axon-frontend lib   :    535 tests  (lexer / parser / type checker / IR / session-type algebra / multiparty)
-axon-csys lib       :     13 tests  (the C23 kernels' Rust wrapper)
-─────────────────────────────────────
-Rust workspace      :  2,793 tests — zero regressions
-```
+The workspace suite (axon-lang + axon-frontend + axon-csys + axon-agora) runs on every
+push; the release lanes add a real-`postgres:16` integration lane for the `axonstore`
+data plane, the WS / SSE / fuzz end-to-end lanes, the typed-schema `CREATE TABLE` and
+cardinality-propagation lanes, and the `FlowEnvelope` wire-contract drift gate. The
+discipline is **zero regressions**: a release does not ship until the full suite is green.
 
-Plus dedicated integration lanes per cycle:
-- §Fase 41 WS / SSE / fuzz E2E lanes (the new `fase_41_session_types.yml` workflow)
-- §Fase 33 SSE family (still green — D8 backwards-compat)
-- §Fase 30/31/32 streaming + REST families
-- §Fase 38 typed schema CREATE TABLE + cardinality propagation
-- §Fase 39 FlowEnvelope wire contract drift gate
-- Real-`postgres:16` integration lane for the `axonstore` data plane
-
-> **Python note.** The Python interpreter was retired in Fase 40 (*Pure Silicon*, v2.0.0), and the PyPI distribution line was closed with a tombstone release that redirects to `cargo install axon-lang`. The root `tests/` directory holds cross-stack golden fixtures (consumed by the Rust drift-gate suites) and k6 load scripts — no Python.
-
-Every development cycle (Fase) lands behind a dedicated CI workflow under
-[`.github/workflows/`](.github/workflows/) — per-fase test lanes, cross-stack
-drift gates, fuzz packs, and a real-`postgres:16` integration lane for the
-`axonstore` data plane. The discipline is **zero regressions**: a cycle does
-not ship until the full suite is green.
+> **Python note.** The Python interpreter was retired in v2.0.0 (*Pure Silicon*), and the
+> PyPI distribution line was closed with a tombstone release that redirects to
+> `cargo install axon-lang`. The root `tests/` directory holds cross-stack golden fixtures
+> (consumed by the Rust drift-gate suites) and k6 load scripts.
 
 **Coverage by area:**
 
@@ -5228,12 +5189,18 @@ Tools are dispatched via `ToolRegistry` with 4 provider adapters:
 | http     | REST via reqwest       | External APIs (configurable URL)   |
 | mcp      | JSON-RPC 2.0 (eMCP)   | MCP-compatible tool servers        |
 
-**Built-in tools (always available, no LLM call):**
+**Built-in tools (native, no LLM call, no runtime URL):**
 
 | Tool         | Backend                  | Capabilities                                              |
 | ------------ | ------------------------ | --------------------------------------------------------- |
 | Calculator   | Native Rust evaluator    | +, -, *, /, %, **, parens, sqrt, sin, cos, log, min, max |
 | DateTimeTool | `std::time` (no deps)   | Current date, time, timestamp, UTC                        |
+
+A built-in still has to be **declared** before an `agent` or a `flow` may name
+it — `tool Calculator { provider: native }` is the whole declaration. The
+compiler resolves tool references against what the program declares (an
+undeclared tool is `Undefined tool 'X'`, a check error), so nothing reaches an
+agent's grant set by being merely available in the runtime.
 
 **Program-defined tools** are declared in `.axon` files via `tool Name { provider: http, runtime: "https://..." }` and dispatched at execution time through the configured provider adapter.
 
@@ -5282,9 +5249,9 @@ model adaptively corrects its logic and structurally self-heals in real-time.
   for passing validation syntactically while failing semantically. Clear,
   logical Anchors are required.
 
-### Phase 4: Logic & Epistemic Anchors
+### Logic & Epistemic Anchors
 
-AXON includes specialized standard library anchors (Phase 4) explicitly designed
+AXON includes specialized standard library anchors explicitly designed
 to work with the Self-Healing engine to enforce logical structures and epistemic
 honesty:
 
@@ -5296,53 +5263,6 @@ honesty:
   citations/URLs blocking unverifiable claims.
 - `AgnosticFallback`: Penalizes unwarranted speculation, forcing the model to
   explicitly state a lack of information when sufficient data is unavailable.
-
----
-
-## Roadmap
-
-| Phase | What                                              | Status  |
-| ----- | ------------------------------------------------- | ------- |
-| 0     | Spec, grammar, type system                        | ✅ Done |
-| 1     | Lexer, Parser, AST, Type Checker                  | ✅ Done |
-| 2     | IR Generator, Compiler Backends                   | ✅ Done |
-| 3     | Runtime (7 modules)                               | ✅ Done |
-| 4     | Standard Library                                  | ✅ Done |
-| 5     | CLI, REPL, Inspect                                | ✅ Done |
-| 6     | Test Suite, Hardening, Docs                       | ✅ Done |
-| 7     | Paradigm Shifts (epistemic/par/hibernate)         | ✅ Done |
-| 8     | Data Science Engine + Runtime Integration         | ✅ Done |
-| 9     | Executor integration + production backends        | ✅ Done |
-| 10    | Compute Budget & Consensus (deliberate/consensus) | ✅ Done |
-| 11    | Directed Creative Synthesis (`forge`)             | ✅ Done |
-| 12    | Autonomous Agents (`agent` BDI primitive)         | ✅ Done |
-| 13    | Security Shields (`shield` IFC primitive)         | ✅ Done |
-| 14    | Epistemic Tool Fortification (stream/effects/FFI) | ✅ Done |
-| 15    | Structured Cognitive Retrieval (`pix`)            | ✅ Done |
-| 16    | Multi-Document Navigation (`corpus` MDN framework)| ✅ Done |
-| 17    | Memory-Augmented MDN (structural learning via μ)  | ✅ Done |
-| 18    | Ontological Tool Synthesis (`ots` primitive)      | ✅ Done |
-| 19    | Epistemic MCP (`mcp`)                            | ✅ Done — `taint` **retracted in §111** (it was a dead `shield` field, never read by the runtime; the epistemic-taint law lives in the lattice: external data is born `Untrusted`, axon-T908) |
-| 20    | Lambda Data (`lambda` — ΛD epistemic state vectors)| ✅ Done |
-| 21    | Deterministic Muscle (`compute` + `logic`)        | 🔴 **Not done.** `logic` **retracted in §111** (reserved keyword, zero parser production). `compute` does **not** execute natively — it binds the literal string `"compute:Name(args)"`; its body is discarded at IR-gen. Under §111 review (implement or retract) |
-| 22    | Reactive Daemons (`daemon` + `listen` π-calculus) | ✅ Done |
-| 23    | AxonServer Process (HTTP/WS API + EventBus FFI)   | ✅ Done |
-| 24    | Transactional Persistence (`axonstore` — HoTT + Linear Logic + DbC + Enterprise hardening) | ✅ Done |
-| 25    | Epistemic Dependency Management (`apx`)           | 🔴 **Retracted in §111.** Never implemented: the policy block was parsed and discarded (`skip_braced_block`), reached no IR, and no MEC/PCC verification, EPR ranking, quarantine or compliance gate ever existed. `import … with apx { … }` is now a compile error |
-| 26    | Native Endpoint Surface (`axonendpoint` / `axpoint` — typed HTTP ingress + flow dispatch + endpoint telemetry) | ✅ Done |
-| **K**     | **Production Hardening — Observability, Resilience, Persistence** | ✅ Done |
-| v1.10–v1.20 | Runtime wiring (`let` / lambda-apply / IR meta-audit) + production hardening + daemon supervisor + 7 native Rust LLM backends + algebraic-effects runtime + adopter diagnostics | ✅ Done |
-| v1.21–v1.22 | HTTP transport for algebraic stream effects (SSE / NDJSON) + type-driven wire inference | ✅ Done |
-| v1.23     | `axonendpoint` as a first-class HTTP REST primitive (schema validation, idempotency, auth scopes) | ✅ Done |
-| v1.24–v1.28 | SSE as a cognitive primitive — per-`IRFlowNode` async dispatcher + production streaming wiring | ✅ Done |
-| v1.29     | Tools as stream-producers                         | ✅ Done |
-| v1.30     | `axonstore` cognitive data plane — four pillars (epistemic / audit-chained / `Stream<Row>` / capability-typed) | ✅ Done |
-| v1.31     | Fase 36: Backend Resolution Contract (D1 deterministic precedence ladder) + Fase 36.x mixed-flow streaming | ✅ Done |
-| v1.32–v1.40 | Fase 37 Request Binding Contract + Fase 38 *Declared & Compile-Time-Typed Store Schema* (DDL synthesis + cardinality propagation) | ✅ Done |
-| **v2.0**  | **Fase 39 + 40 — Pure Silicon**: `FlowEnvelope⟨T⟩` cross-stack wire contract (Theorem 5.1) + axon-enterprise rewritten 100% Rust + C23 (23-crate workspace, no Python interpreter) | ✅ Done |
-| v2.1      | Fase 40 follow-ups: native-runner multi-arch Docker image (amd64 + arm64) | ✅ Done |
-| v2.2      | Fase 40.w.3.1 (D16) `axon::tenant::scope_tenant` primitive — auth middleware scopes RLS task-local automatically | ✅ Done |
-| **v2.3**  | **Fase 41 — WebSocket as a Cognitive Primitive**: session-type algebra (Caires–Pfenning) + `session` + `socket` + credit-refined backpressure (Presburger) + SSE-as-fragment unification + typed reconnection (AAD-bound `cognitive_states`) + multiparty projection (Honda–Yoshida–Carbone) + enterprise WS surface (Kivi single-image unblock) | ✅ Done |
 
 ---
 

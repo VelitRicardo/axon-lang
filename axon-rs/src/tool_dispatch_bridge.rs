@@ -303,8 +303,8 @@ impl Tool for SyncFallbackTool {
             output: format!(
                 "synchronous fallback for provider '{}' tool '{}' — \
                  streaming dispatch only resolves stream-effect tools \
-                 via dedicated provider adapters (Fase 34.e HTTP / \
-                 Fase 34.f MCP).",
+                 via dedicated provider adapters (HTTP / \
+                 MCP).",
                 self.provider, self.name
             ),
             tool_name: self.name.clone(),
@@ -322,14 +322,14 @@ impl Tool for SyncFallbackTool {
         // pending. Any other unknown provider falls here.
         let hint = match provider.as_str() {
             "http" => {
-                "Fase 34.e shipped HTTP streaming — verify the \
+                "HTTP streaming is shipped — verify the \
                  tool's `runtime:` URL starts with http:// or https://"
             }
             "mcp" => {
-                "Fase 34.f shipped MCP streaming — verify the \
+                "MCP streaming is shipped — verify the \
                  tool's `runtime:` URL starts with http:// or https://"
             }
-            _ => "no dedicated streaming adapter — pending later sub-fase",
+            _ => "no dedicated streaming adapter — pending",
         };
         let error_msg = format!(
             "streaming dispatch fallback for provider '{provider}' tool '{name}' \
@@ -600,7 +600,7 @@ mod tests {
         assert!(chunk.is_terminator());
         match chunk.finish_reason {
             Some(ToolFinishReason::Error { ref message }) => {
-                assert!(message.contains("Fase 34.e"));
+                assert!(message.contains("HTTP streaming is shipped"));
                 assert!(message.contains("http"));
                 assert!(
                     message.contains("runtime") || message.contains("URL"),
@@ -624,7 +624,7 @@ mod tests {
         let chunk = stream.next().await.expect("at least one chunk");
         match chunk.finish_reason {
             Some(ToolFinishReason::Error { ref message }) => {
-                assert!(message.contains("Fase 34.f"));
+                assert!(message.contains("MCP streaming is shipped"));
                 assert!(message.contains("mcp"));
                 assert!(
                     message.contains("runtime") || message.contains("URL"),

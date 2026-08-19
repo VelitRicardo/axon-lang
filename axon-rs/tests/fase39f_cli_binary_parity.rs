@@ -62,6 +62,28 @@ fn run_axon(args: &[&str]) -> (i32, String, String) {
 
 // ── §1 — version ────────────────────────────────────────────────
 
+/// `axon --version` and `axon -V` are the clap convention every shell script
+/// and package manager probes. They were disabled (`disable_version_flag`) and
+/// an adopter reported it; both flags now print the same version as `axon
+/// version`, which stays for every caller that learned it from the docs.
+#[test]
+fn version_flag_and_subcommand_agree() {
+    let (code, sub, stderr) = run_axon(&["version"]);
+    assert_eq!(code, 0, "`axon version` MUST exit 0. stderr: {stderr}");
+    for flag in ["--version", "-V"] {
+        let (code, out, stderr) = run_axon(&[flag]);
+        assert_eq!(code, 0, "`axon {flag}` MUST exit 0. stderr: {stderr}");
+        assert!(
+            out.trim().ends_with(axon::runner::AXON_VERSION),
+            "`axon {flag}` MUST end with the canonical version. Got: {out:?}"
+        );
+        assert!(
+            sub.trim().ends_with(axon::runner::AXON_VERSION),
+            "`axon version` and `axon {flag}` MUST agree on the version. Got {sub:?} vs {out:?}"
+        );
+    }
+}
+
 #[test]
 fn fase39f_s1_version_emits_canonical_string() {
     let (code, stdout, stderr) = run_axon(&["version"]);

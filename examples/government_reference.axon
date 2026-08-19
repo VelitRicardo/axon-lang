@@ -26,7 +26,7 @@ type ClassifiedReport compliance [FISMA, NIST_800_53, SOC2] {
 
 // ── Flows ─────────────────────────────────────────────────────────
 
-// §Fase 37 — the Request Binding Contract: every required flow parameter binds
+// The Request Binding Contract: every required flow parameter binds
 // from exactly one declared source, matched BY NAME against a path placeholder,
 // a `query:` field, or a field of the endpoint's `body:` type.
 
@@ -62,7 +62,7 @@ shield PublicRecordShield {
 
 // ── Infrastructure ────────────────────────────────────────────────
 
-// §Fase 113 — `kind:` is a CLOSED catalog (http | https | mysql | postgres |
+// `kind:` is a CLOSED catalog (http | https | mysql | postgres |
 // redis): exactly what the runtime can REACH. `endpoint:` is a CONFIG KEY,
 // never a URL, a DSN or a host:port — the address resolves per deployment
 // (`axon-T942` / `axon-T944`).
@@ -91,12 +91,12 @@ fabric GovCloudVPC {
   shield:     FederalGate
 }
 
-// §Fase 120 — the CONSUMER. `CaseVault` is `lifetime: linear`, and linearity
+// The CONSUMER. `CaseVault` is `lifetime: linear`, and linearity
 // has two halves: at most one holder, and AT LEAST one. The manifest below
 // PROVISIONS the vault; it does not hold it. Without a store the example
 // declared a case database that nothing could ever read.
 //
-// It went unnoticed because `axon check` never ran the §113 laws — the CLI
+// It went unnoticed because `axon check` never ran the resource laws — the CLI
 // takes `TypeChecker::check_with_warnings`, which had drifted from `check`.
 axonstore CaseRecords {
   backend:    postgresql

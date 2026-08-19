@@ -407,7 +407,7 @@ mod tests {
         assert!(archs.contains("cascaded_stt"));
         assert!(archs.contains("cascaded_tts"));
         assert!(archs.contains("fused_realtime"));
-        assert_eq!(UPSTREAM_PRESETS.len(), 6, "the blessed six (grow on adopter demand, §5)");
+        assert_eq!(UPSTREAM_PRESETS.len(), 6, "the blessed six (grow on adopter demand)");
     }
 
     #[test]

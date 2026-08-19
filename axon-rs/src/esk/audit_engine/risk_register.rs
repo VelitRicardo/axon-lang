@@ -349,7 +349,7 @@ pub fn generate_risk_register(program: &IRProgram) -> Vec<Risk> {
                 Treatment::Accept.as_str().to_string(),
                 format!(
                     "{} — NOT ENFORCED: the primitive is declared but has no runtime \
-                     dispatch path, so this risk is accepted, not mitigated (§111 F8)",
+                     dispatch path, so this risk is accepted, not mitigated",
                     tpl.primitive
                 ),
             )

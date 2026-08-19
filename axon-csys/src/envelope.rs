@@ -265,7 +265,7 @@ mod tests {
         let out = validate_degradation(env);
         assert_eq!(
             out.certainty, 1.0,
-            "§39.c.x — non-derived envelope preserves apodictic certainty"
+            "non-derived envelope preserves apodictic certainty"
         );
         assert!(!out.derived_status);
         assert_eq!(out.kind, EpistemicKind::Clean);
@@ -279,7 +279,7 @@ mod tests {
         let out = validate_degradation(env);
         assert_eq!(
             out.certainty, THEOREM_5_1_CEILING,
-            "§39.c.x — derived envelope clamped to Theorem 5.1 ceiling"
+            "derived envelope clamped to Theorem 5.1 ceiling"
         );
         assert!(out.derived_status);
         assert_eq!(out.kind, EpistemicKind::Derived);
@@ -291,7 +291,7 @@ mod tests {
         let out = validate_degradation(env);
         assert_eq!(
             out.certainty, 0.5,
-            "§39.c.x — derived envelope below ceiling passes through unchanged"
+            "derived envelope below ceiling passes through unchanged"
         );
     }
 
@@ -301,7 +301,7 @@ mod tests {
         let out = validate_degradation(env);
         assert_eq!(
             out.certainty, 0.0,
-            "§39.c.x — NaN input coerced to 0.0 (defensive normalisation)"
+            "NaN input coerced to 0.0 (defensive normalisation)"
         );
     }
 
@@ -311,7 +311,7 @@ mod tests {
         let out = validate_degradation(env);
         assert_eq!(
             out.certainty, 0.0,
-            "§39.c.x — +Inf coerced to 0.0 (defensive normalisation)"
+            "+Inf coerced to 0.0 (defensive normalisation)"
         );
     }
 
@@ -321,7 +321,7 @@ mod tests {
         let out = validate_degradation(env);
         assert_eq!(
             out.certainty, 0.0,
-            "§39.c.x — negative certainty coerced to 0.0"
+            "negative certainty coerced to 0.0"
         );
     }
 
@@ -333,7 +333,7 @@ mod tests {
         let out = validate_degradation(env);
         assert_eq!(
             out.certainty, 1.0,
-            "§39.c.x — certainty > 1.0 coerced to 1.0 on non-derived path"
+            "certainty > 1.0 coerced to 1.0 on non-derived path"
         );
     }
 
@@ -343,7 +343,7 @@ mod tests {
         let out = validate_degradation(env);
         assert_eq!(
             out.certainty, THEOREM_5_1_CEILING,
-            "§39.c.x — certainty > 1.0 coerced AND derived → 0.99"
+            "certainty > 1.0 coerced AND derived → 0.99"
         );
     }
 
@@ -367,7 +367,7 @@ mod tests {
         let from_c = theorem_5_1_ceiling_from_c();
         assert_eq!(
             from_c, THEOREM_5_1_CEILING,
-            "§39.c.x DRIFT — Rust THEOREM_5_1_CEILING ({}) MUST match \
+            "DRIFT — Rust THEOREM_5_1_CEILING ({}) MUST match \
              C kernel export ({}). Divergence is a structural bug.",
             THEOREM_5_1_CEILING, from_c
         );
@@ -388,7 +388,7 @@ mod tests {
             let out = validate_degradation(env);
             assert_eq!(
                 out.kind, k,
-                "§39.c.x — EpistemicKind::{k:?} MUST round-trip through FFI"
+                "EpistemicKind::{k:?} MUST round-trip through FFI"
             );
         }
     }

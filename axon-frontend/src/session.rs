@@ -495,7 +495,7 @@ impl fmt::Display for CreditError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             CreditError::SendAtZero { payload } => {
-                write!(f, "send `{payload}` at credit n=0 has no typing rule (D2, §4.2)")
+                write!(f, "send `{payload}` at credit n=0 has no typing rule")
             }
             CreditError::BurstOverflow { payload, budget, burst } => write!(
                 f,

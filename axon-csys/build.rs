@@ -1,4 +1,4 @@
-//! §Fase 25.b — axon-csys build orchestration.
+//! axon-csys build orchestration.
 //!
 //! Compiles the C23 metal-bound kernels into a static archive
 //! (`libaxon_csys.a` on Unix, `axon_csys.lib` on MSVC) that the Rust crate
@@ -16,7 +16,7 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-/// §Fase 25.g — probe whether the host C toolchain supports the C23
+/// Probe whether the host C toolchain supports the C23
 /// `#embed` preprocessor directive. Drives the conditional compilation
 /// of `bpe.c`'s `#embed` block: when supported, the merges tables are
 /// embedded directly via `#embed`; otherwise the Rust shim's
@@ -72,7 +72,7 @@ fn probe_c23_embed(c_src: &Path, out_dir: &Path) -> bool {
 }
 
 fn main() {
-    // §Fase 119.h — without the `native` feature this build script does
+    // Without the `native` feature this build script does
     // NOTHING. `cc::Build::compile` panics when no compiler is present, so
     // running it unconditionally made a C toolchain a hard install
     // requirement; the pure-Rust path exists precisely so it is not one.
@@ -90,7 +90,7 @@ fn main() {
         env::var("OUT_DIR").expect("OUT_DIR is always set by cargo when invoking build scripts"),
     );
 
-    // ─── §Fase 25.g — #embed support probe ────────────────────────────────
+    // ─── #embed support probe ────────────────────────────────
     //
     // Run BEFORE the main `cc::Build` so the probe doesn't pollute the
     // primary build's source list. Outcome drives a conditional
@@ -199,7 +199,7 @@ fn main() {
     build.file(c_src.join("audio").join("resample.c"));
     build.file(c_src.join("buffer").join("pool.c"));
     // 25.e: Algebraic effects FSM dispatcher with computed gotos
-    //       (gcc/clang) + switch fallback (MSVC). Paper §5 delivery —
+    //       (gcc/clang) + switch fallback (MSVC). Paper delivery —
     //       "operaciones atómicas de salto en la pila de CPU sin
     //       objetos de control opacos" finally honoured by the
     //       per-opcode label table. Direct port of
@@ -210,7 +210,7 @@ fn main() {
     //       cases as defensive error codes for the unlikely path
     //       where the compiler missed them.
     build.file(c_src.join("effects").join("dispatch.c"));
-    // §Fase 39.c.x: Epistemic Envelope kernel — Theorem 5.1
+    // Epistemic Envelope kernel — Theorem 5.1
     //       enforcement in silicon for the FlowEnvelope wire
     //       payload (`transport: json`). Pure + total +
     //       deterministic; no allocation. Three functions:
@@ -254,7 +254,7 @@ fn main() {
     // every kernel this project writes — and never the vendored one.
     // Vendored reference code left-shifts negative signed values in its
     // constant-time selects (defined in C23, UB before it, upstream idiom);
-    // it is provenance-pinned byte-identical to upstream (D124.6), so it is
+    // it is provenance-pinned byte-identical to upstream, so it is
     // not patched, and its correctness is held by KATs + cross-
     // implementation interop, not by sanitizing code we must not edit.
     println!("cargo:rerun-if-env-changed=AXON_CSYS_UBSAN");
@@ -268,9 +268,9 @@ fn main() {
 
     build.compile("axon_csys");
 
-    // ─── §Fase 124.b — the VENDORED half of the cryptographic boundary ────────
+    // ─── The VENDORED half of the cryptographic boundary ────────
     //
-    // D124.3 put the whole cryptographic module boundary in axon-csys; D124.6
+    // The whole cryptographic module boundary lives in axon-csys; the vendoring rule
     // settled that it is populated with vetted reference implementations rather
     // than hand-written lattice crypto. `c-src/vendor/PROVENANCE.toml` records
     // repository, commit and per-file SHA-256 for every one of them, and
@@ -317,7 +317,7 @@ fn main() {
     // FIPS 202 (SHA-3 / SHAKE). A prerequisite of ML-DSA-65, which derives its
     // sampling and challenges from SHAKE-128/256 and never from SHA-256.
     vendored.file(vendor.join("pqclean").join("fips202.c"));
-    // §Fase 124.b — ML-DSA-65 (FIPS 204), same upstream, same pinned commit.
+    // ML-DSA-65 (FIPS 204), same upstream, same pinned commit.
     //
     // The scheme's headers include each other flatly (`#include "params.h"`),
     // so its directory joins the include path. Its symbols are all prefixed
@@ -340,9 +340,9 @@ fn main() {
     // The module's entropy source. Keypair generation and FIPS 204's default
     // hedged signing consume OS randomness, and a cryptographic module's RNG
     // is part of the module — injecting entropy across the boundary from the
-    // Rust side would invert the D124.3 architecture.
+    // Rust side would invert the architecture.
     vendored.file(vendor.join("pqclean").join("randombytes.c"));
-    // §Fase 124.b — Ed25519 (orlp/ed25519, ref10 lineage), the CLASSICAL half
+    // Ed25519 (orlp/ed25519, ref10 lineage), the CLASSICAL half
     // of the hybrid evidence signature. Ships its own internal SHA-512.
     // seed.c is deliberately absent — seeds come from the module's
     // randombytes above — and the X25519 units (add_scalar, key_exchange)

@@ -2322,7 +2322,7 @@ mod tests {
             sql,
             "INSERT INTO \"chat_history\" (\"tenant_id\", \"note\", \"n\") \
              VALUES ($1::uuid, $2::text, $3::int4)",
-            "§v1.36.2 — each value placeholder is cast to its column's \
+            "each value placeholder is cast to its column's \
              introspected type so a text-bound value writes into a \
              uuid / int column"
         );
@@ -2346,8 +2346,8 @@ mod tests {
         assert_eq!(
             sql,
             "UPDATE \"t\" SET \"status\" = $1::uuid WHERE \"id\"::text = $2",
-            "§v1.36.2 — the SET value is cast to the column type; `id` \
-             is absent from the type map so §37.x.e (D4) casts the \
+            "the SET value is cast to the column type; `id` \
+             is absent from the type map so the driver casts the \
              WHERE column to `text` for the equality"
         );
     }
@@ -2645,10 +2645,10 @@ mod tests {
         // The cache surface that lets a coherent-session operation skip
         // the transaction on a hit. `connect` is lazy — no database.
         let backend = PostgresStoreBackend::connect(
-            "postgresql://u:p@localhost:5432/fase37xd_cache_rt",
+            "postgresql://u:p@localhost:5432/schema_cache_rt",
         )
         .unwrap();
-        let table = "fase37xd_cache_probe";
+        let table = "schema_cache_probe";
         assert!(
             backend.cached_schema(table).is_none(),
             "a cold cache is a miss"
@@ -2674,10 +2674,10 @@ mod tests {
         // column, so an empty map is a transient failure to retry,
         // never a poisoned cache entry.
         let backend = PostgresStoreBackend::connect(
-            "postgresql://u:p@localhost:5432/fase37xd_cache_empty",
+            "postgresql://u:p@localhost:5432/schema_cache_empty",
         )
         .unwrap();
-        let table = "fase37xd_empty_probe";
+        let table = "schema_empty_probe";
         backend.cache_schema(
             table,
             std::sync::Arc::new(ResolvedTable {
@@ -2897,12 +2897,12 @@ mod tests {
         );
         assert!(
             text.contains("schema:"),
-            "the Fase 38 `schema:` declaration must be named (the \
+            "the `schema:` declaration must be named (the \
              genuinely-superior remedy), got: {text}"
         );
         assert!(
-            text.contains("Fase 38"),
-            "the message must anchor the remedy to Fase 38, got: {text}"
+            text.contains("`schema:` declaration"),
+            "the message must anchor the remedy to the `schema:` declaration, got: {text}"
         );
     }
 

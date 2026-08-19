@@ -2161,7 +2161,7 @@ async fn deploy_handler(
                 }
                 None => {
                     eprintln!(
-                        "axon: socket '{}' declares `protocol: {}`, which is not a declared                          `session` — its WebSocket upgrade will be REFUSED. §111.i: we do not                          serve a protocol the adopter did not write.",
+                        "axon: socket '{}' declares `protocol: {}`, which is not a declared                          `session` — its WebSocket upgrade will be REFUSED: we do not                          serve a protocol the adopter did not write.",
                         sock.name, sock.protocol
                     );
                 }
@@ -5115,7 +5115,7 @@ async fn dataspace_create_handler(
     check_auth(&mut s, &headers, AccessLevel::Write)?;
     Ok(Json(serde_json::json!({
         "success": false,
-        "error": "free-form dataspace creation is retired (§108, D108.6): a dataspace is \
+        "error": "free-form dataspace creation is retired: a dataspace is \
                   DECLARED in a program — `dataspace <Name> { column <name>: <Type> … }` — \
                   and instantiated at deploy, so its schema is a compile-time law \
                   (axon-T928). Deploy a program that declares it.",
@@ -14286,7 +14286,7 @@ async fn mcp_handler(
                     tools.push(serde_json::json!({
                         "name": format!("axon_ds_{}_focus", name),
                         "description": format!(
-                            "σ∘π over declared dataspace '{}' — `where` uses the §35 filter \
+                            "σ∘π over declared dataspace '{}' — `where` uses the store filter \
                              grammar; results carry epistemic taint + scan stats", name
                         ),
                         "inputSchema": {
@@ -16632,7 +16632,7 @@ async fn primitives_handler(
         ("persona", ("wired", "MCP prompts/list + prompts/get", "E6")),
         ("context", ("wired", "MCP prompts/get (system prompt enrichment)", "E6")),
         ("anchor", ("wired", "/v1/execute (anchor_checks, anchor_breaches)", "D")),
-        ("tool", ("wired", "/v1/tools/* (registry, dispatch, CSP §5.3)", "D")),
+        ("tool", ("wired", "/v1/tools/* (registry, dispatch, CSP)", "D")),
         ("memory", ("wired", "/v1/session/remember + /v1/session/recall", "D")),
         ("daemon", ("wired", "/v1/daemons/* (lifecycle, supervisor)", "D")),
         ("agent", ("wired", "/v1/execute/pipeline (multi-flow orchestration)", "D")),
@@ -16747,7 +16747,7 @@ async fn primitives_handler(
             "theorem_5_1": "Epistemic Degradation: only raw may carry c=1.0, derived ≤ 0.99",
             "lattice": "⊥ ⊑ doubt ⊑ speculate ⊑ believe ⊑ know",
             "blame_calculus": "Findler-Felleisen CT-2 (caller) / CT-3 (server) / Network",
-            "csp": "CSP §5.3: tools as constraint satisfaction, anchors as constraints",
+            "csp": "CSP: tools as constraint satisfaction, anchors as constraints",
             "effect_rows": "<io, network?, epistemic:X> computed from backend and certainty",
         },
     })))
@@ -18926,7 +18926,7 @@ async fn ws_session_handler(
             StatusCode::NOT_FOUND,
             Json(serde_json::json!({
                 "error": format!(
-                    "socket '{socket_name}' is not deployed, or its `protocol:` does not name a                      declared `session`. The upgrade is refused: axon does not serve a protocol                      you did not write (§111.i)"
+                    "socket '{socket_name}' is not deployed, or its `protocol:` does not name a                      declared `session`. The upgrade is refused: axon does not serve a protocol                      you did not write"
                 ),
                 "code": "axon.socket.unresolved",
             })),
@@ -21816,7 +21816,7 @@ async fn dynamic_endpoint_handler(
                 tracing::debug!(
                     method = %method_str,
                     path = %path_str,
-                    "axon-rs Fase 32.f D7: Idempotency-Key header ignored on natively-idempotent HTTP method"
+                    "Idempotency-Key header ignored on natively-idempotent HTTP method"
                 );
             }
             None
@@ -22125,7 +22125,7 @@ async fn dynamic_endpoint_handler(
                 Err(e) => {
                     tracing::error!(
                         error = %e,
-                        "axon-rs Fase 32.f+h: failed to read response body for post-dispatch capture"
+                        "failed to read response body for post-dispatch capture"
                     );
                     parts.headers.insert("x-axon-trace-id", trace_hdr);
                     parts.headers.insert("x-axon-backend", backend_hdr);
@@ -22272,7 +22272,7 @@ async fn apply_output_validation_gate(
         Err(e) => {
             tracing::error!(
                 error = %e,
-                "axon-rs Fase 32.d: failed to read response body for output validation"
+                "failed to read response body for output validation"
             );
             return internal_validation_500(&state, route, method_str, path_str, None);
         }
@@ -22392,7 +22392,7 @@ fn internal_validation_500(
             expected = %v.expected,
             got = %v.got,
             trace_id = %trace_id,
-            "axon-rs Fase 32.d D5: output schema violation — flow produced response not matching declared `output:` type"
+            "output schema violation — flow produced response not matching declared `output:` type"
         );
     }
 
@@ -29472,13 +29472,13 @@ run F() as P"#;
         let json = body_json(resp.into_body()).await;
         assert_eq!(
             json["success"], true,
-            "§37.x.g — an unreachable store does not fail the deploy"
+            "an unreachable store does not fail the deploy"
         );
         let warns = json["store_warnings"].as_array().unwrap();
         assert_eq!(
             warns.len(),
             1,
-            "§37.x.g — the unreachable store surfaces one warning"
+            "the unreachable store surfaces one warning"
         );
         assert_eq!(warns[0]["store"], "tenants");
         assert_eq!(warns[0]["d_letter"], "D8");

@@ -181,7 +181,7 @@ pub fn resolve_scan(shield_name: &str, declared_scan: &[String]) -> ScanDisposit
             "shield `{shield_name}` declares `scan: [{}]` and NO scanner is registered under that \
              name, so nothing examined this content. Passing it through would bind a value under a \
              name asserting a property that was never checked — the one result a content barrier \
-             must never fabricate (§111 F12, the posture `warden` already takes for an unread \
+             must never fabricate (the posture `warden` already takes for an unread \
              target). This build ships no scanners for `{shield_name}`: register one via \
              `axon::shield_registry::register_shield_scanner` (the enterprise vertical crates \
              register the HIPAA / legal / AML / prompt-injection scanners), or remove the `scan:` \
@@ -295,7 +295,7 @@ pub fn check_extension_scan_coverage(ir: &crate::ir_nodes::IRProgram) -> Result<
         .collect::<Vec<_>>()
         .join("; ");
     Err(format!(
-        "§Fase 53.e refusing to boot — extension scan categor(ies) declared but \
+        "refusing to boot — extension scan categor(ies) declared but \
          UNSCANNED (no scanner registered): {detail}. An `extension` scan category \
          has no default meaning; serving it as a silent no-op would be a phantom \
          guardrail. Register a scanner for the shield(s) or remove the category."

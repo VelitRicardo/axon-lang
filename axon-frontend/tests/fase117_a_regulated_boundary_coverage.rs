@@ -101,7 +101,7 @@ fn fase117a_missing_shield_is_a_type_error() {
     let m = &errs[0];
     assert!(m.contains("declares no `shield:`"), "message: {m}");
     assert!(m.contains("GDPR") && m.contains("HIPAA"), "must name the uncovered kappa: {m}");
-    assert!(m.contains("ESK Fase 6.1"), "must cite the rule it enforces: {m}");
+    assert!(m.contains("ESK coverage rule"), "must cite the rule it enforces: {m}");
 }
 
 #[test]

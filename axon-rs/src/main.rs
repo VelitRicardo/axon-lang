@@ -1,4 +1,4 @@
-//! AXON CLI nativo — Fase D: Plataforma Runtime.
+//! AXON CLI — the native command-line front door to the compiler and runtime.
 //!
 //! All 14 commands handled natively. Python is no longer required.
 //!   Active:  version, check, compile, run, trace, repl, inspect, ld, serve, deploy, diff, replay, stats, graph
@@ -33,7 +33,10 @@ use std::process;
 #[command(
     name = "axon",
     about = "AXON — A programming language for AI cognition.",
-    disable_version_flag = true,
+    // `axon --version` / `-V` print the same line as `axon version`. Both stay:
+    // the subcommand is what every earlier release documented, the flag is what
+    // every shell script and package manager expects.
+    version = AXON_VERSION,
     arg_required_else_help = true,
 )]
 struct Cli {
@@ -48,12 +51,10 @@ enum Commands {
         file: String,
         #[arg(long)]
         no_color: bool,
-        /// §λ-L-E Fase 13 D4 — promote warnings to errors (CI gate).
-        /// Recommended for adopters preparing for v2.0 string-topic
-        /// removal (see docs/migration_fase_13.md).
+        /// Promote warnings to errors (CI gate).
         #[arg(long)]
         strict: bool,
-        /// §Fase 38.x.d (D3) — directory containing axon-schema
+        /// Directory containing axon-schema
         /// manifests (`.axon-schema.json`) for form (b) `manifest_ref`
         /// and form (c) `env_var` compile-time proof. When set,
         /// `axon check` loads + merges every manifest under the path
@@ -63,13 +64,13 @@ enum Commands {
         ///
         /// Without this flag, forms (b)/(c) silently skip at compile
         /// time exactly as in v1.38.3 (D5 backwards-compat absolute).
-        /// Mirror of `axon serve --schemas-dir` from Fase 38.j; the
+        /// Mirror of `axon serve --schemas-dir`; the
         /// runtime flag stays unchanged.
         #[arg(long, env = "AXON_SCHEMAS_DIR")]
         schemas_dir: Option<String>,
     },
-    /// §Fase 80.g — print the exact lower-level program the `voice` and
-    /// `upstream … from Preset@vN` sugar expands to (D80.6: sugar a
+    /// Print the exact lower-level program the `voice` and
+    /// `upstream … from Preset@vN` sugar expands to (sugar a
     /// compliance reviewer cannot see through would break the
     /// audit-by-construction property; this is the seeing-through).
     Desugar { file: String },
@@ -140,7 +141,7 @@ enum Commands {
         /// PostgreSQL connection URL (also reads DATABASE_URL env var).
         #[arg(long)]
         database_url: Option<String>,
-        /// §Fase 31.f (D6 + D9) — Type-Driven Wire Inference activation.
+        /// Type-Driven Wire Inference activation.
         ///
         /// When set, `POST /v1/execute` promotes to SSE for any flow
         /// the type-checker inferred as stream-producing (D1) regardless
@@ -155,7 +156,7 @@ enum Commands {
         /// D6 default: false in v1.22.x, flips to true in v2.0.0.
         #[arg(long)]
         strict_type_driven_transport: bool,
-        /// §Fase 36.g (D7) — Server-wide default execution backend.
+        /// Server-wide default execution backend.
         ///
         /// Rung 3 of the Backend Resolution Contract: an `axonendpoint`
         /// that declares no `backend:` of its own inherits this server
@@ -169,13 +170,13 @@ enum Commands {
         /// providers).
         #[arg(long)]
         backend: Option<String>,
-        /// §Fase 38.j (D3 + D7 + D8) — Directory containing declared
+        /// Directory containing declared
         /// store-schema manifests (`*.axon-schema.json` files at the
         /// project root and/or under a `schemas/` subdirectory).
         ///
         /// When set, `POST /v1/deploy` loads and merges every manifest
         /// under the directory before running the deploy-time store
-        /// verification pass. Declared columns (Fase 38 schema forms
+        /// verification pass. Declared columns (schema forms
         /// a/b/c) become the authoritative shape — any drift between
         /// the manifest and the LIVE Postgres introspection raises
         /// axon-T807 (DeclaredVsLiveDrift) and fails the deploy.
@@ -183,8 +184,8 @@ enum Commands {
         /// Also readable from the env var `AXON_SCHEMAS_DIR`; the CLI
         /// flag wins when both are set. Unset ≡ no manifest loading —
         /// the v1.37.0 verify_postgres_schemas behavior is preserved
-        /// verbatim (D5 absolute backwards-compat: an adopter who has
-        /// not adopted Fase 38's compile-time schema observes ZERO
+        /// verbatim (absolute backwards-compat: an adopter who has
+        /// not adopted the compile-time schema observes ZERO
         /// behavior change at deploy).
         #[arg(long)]
         schemas_dir: Option<String>,
@@ -258,7 +259,7 @@ enum Commands {
         #[arg(long, default_value = "")]
         auth_token: String,
     },
-    /// Generate a JSON compliance dossier from an .axon file (§ESK Fase 6.6).
+    /// Generate a JSON compliance dossier from an .axon file.
     Dossier {
         file: String,
         #[arg(short, long)]
@@ -288,20 +289,19 @@ enum Commands {
         #[arg(long, default_value = "")]
         note: String,
     },
-    /// §Fase 38.h (D10) — `axonstore` schema introspection / manifest export.
+    /// `axonstore` schema introspection / manifest export.
     Store {
         #[command(subcommand)]
         action: StoreCommands,
     },
-    /// §Fase 51 — Proof-Carrying Code: generate + independently verify
+    /// Proof-Carrying Code: generate + independently verify
     /// machine-checkable proofs of an apx program's declared contract
     /// (compliance / effects / capability / resources / shields).
     Pcc {
         #[command(subcommand)]
         action: PccCommands,
     },
-    /// §Fase 39.f — Multi-file diagnostic aggregator (mirror of
-    /// `axon.cli.parse_cmd` from Fase 28.f). Walks patterns / dirs,
+    /// Multi-file diagnostic aggregator. Walks patterns / dirs,
     /// parses every `.axon` file with recovery, and aggregates
     /// diagnostics across the whole corpus in one pass.
     Parse {
@@ -315,7 +315,7 @@ enum Commands {
         #[arg(long, value_name = "N")]
         max_errors: Option<usize>,
         /// Ignore pattern (substring match — may repeat). Future
-        /// fases extend this to fnmatch glob shapes.
+        /// releases extend this to fnmatch glob shapes.
         #[arg(long = "ignore", value_name = "PATTERN")]
         ignore: Vec<String>,
         /// Worker thread count (accepted for Python-parity; current
@@ -336,8 +336,7 @@ enum Commands {
         #[arg(long)]
         no_color: bool,
     },
-    /// §Fase 39.f — Round-trip formatter (mirror of
-    /// `axon.cli.fmt_cmd` from Fase 14.d). Token-level formatter
+    /// Round-trip formatter. Token-level formatter
     /// preserving comments verbatim; cosmetic normalisation only
     /// (trailing whitespace + final newline).
     Fmt {
@@ -352,13 +351,13 @@ enum Commands {
         #[arg(long)]
         no_color: bool,
     },
-    /// §Fase 89.b.2 — `axon fix`: the AuthorizationCoverage migration
+    /// `axon fix`: the AuthorizationCoverage migration
     /// (doctrine `every_boundary_is_guarded`). Walks `.axon` files and
     /// inserts `public: true` into every DISPATCHING `axonendpoint` that
     /// declares no coverage (no `requires:` / `shield:` / `compliance:`)
-    /// and no `public:` — turning the pre-§89 "silently uncovered" state
+    /// and no `public:` — turning the old "silently uncovered" state
     /// into an explicit, auditable opt-out. This is the one-shot migration
-    /// for the §89.b hard break; it never touches an already-covered or
+    /// for the axon-T890 hard break; it never touches an already-covered or
     /// already-`public` endpoint (idempotent).
     Fix {
         /// File path or directory (walked recursively for `.axon`).
@@ -375,7 +374,7 @@ enum Commands {
 enum StoreCommands {
     /// Introspect one (or more) `postgresql` axonstore's live schema
     /// and emit a canonical `.axon-schema.json` manifest. The manifest
-    /// is the §Fase 38.c durable contract between an adopter's
+    /// is the durable contract between an adopter's
     /// `schema: "qualified.name"` (form b) / `schema: env:VAR` (form
     /// c) declaration and the columns the type-checker proves against
     /// (38.d / 38.e). Unmappable Postgres types (`enum`, `domain`,
@@ -399,9 +398,9 @@ enum StoreCommands {
         /// added/removed columns + type changes + constraint flips.
         #[arg(long)]
         diff: Option<String>,
-        /// §Fase 38.h forward-compat — `--json` is the default + only
+        /// Forward-compat — `--json` is the default + only
         /// supported output format today; `--yaml` (a future
-        /// `yaml-manifest` Cargo feature) is documented in §38.c.2.
+        /// `yaml-manifest` Cargo feature) is reserved.
         /// Accepting the flag now so adopters can pin it before YAML
         /// support lands.
         #[arg(long, default_value = "json")]
@@ -758,7 +757,7 @@ fn run_fix_command(patterns: &[String], check: bool) -> i32 {
     0
 }
 
-/// §Fase 39.f — `axon parse` subcommand dispatcher. Delegates the
+/// `axon parse` subcommand dispatcher. Delegates the
 /// taxonomy + walk to `axon::cli_parse` and emits the report in the
 /// requested format (human / JSON array / NDJSON).
 fn run_parse_command(
@@ -798,10 +797,10 @@ fn run_parse_command(
     axon::cli_parse::exit_code(&diagnostics, &io_errors)
 }
 
-/// §Fase 39.f — `axon fmt` subcommand dispatcher. Reads the file,
+/// `axon fmt` subcommand dispatcher. Reads the file,
 /// runs the token-level round-trip formatter, dispatches to
-/// stdout / --check / --write mode per the Fase 14.d MVP contract.
-/// §Fase 80.g — `axon desugar <file>`: print the exact lower-level program
+/// stdout / --check / --write mode.
+/// `axon desugar <file>`: print the exact lower-level program
 /// the sugar compiled to. For each `voice`, the generated expansion source;
 /// for each preset-instantiated `upstream`, the fully-merged declaration.
 /// A file with no sugar prints a note and exits 0 (nothing was hidden).
@@ -871,7 +870,7 @@ fn run_desugar(file: &str) -> i32 {
                 }
                 if let Some(b) = &s.budget {
                     if let Some(n) = b.max_iterations {
-                        println!("//   budget    → linear compute budget (max_iterations: {n})  [§72]");
+                        println!("//   budget    → linear compute budget (max_iterations: {n})");
                     }
                 }
                 for md in &s.mandates {
@@ -938,7 +937,7 @@ fn run_fmt_command(file: &str, check: bool, write: bool, no_color: bool) -> i32 
     0
 }
 
-/// §Fase 38.h (D10) — `axon store …` subcommand dispatcher. Spins a
+/// `axon store …` subcommand dispatcher. Spins a
 /// one-shot Tokio runtime (the CLI runs in a sync `fn main`; the
 /// introspection uses `sqlx::PgConnection` which is async).
 fn run_store_command(action: StoreCommands) -> i32 {
@@ -1072,7 +1071,7 @@ mod fix_tests {
 
     const FLOW: &str = "flow Chat() -> Unit { step S { ask: \"hi\" } }\n";
 
-    /// Re-run the §89.b type-checker rule on `src` and report whether T890
+    /// Re-run the axon-T890 type-checker rule on `src` and report whether T890
     /// fires — the codemod's output MUST clear it (the strongest pin).
     fn fires_t890(src: &str) -> bool {
         let tokens = axon::lexer::Lexer::new(src, "<t>").tokenize().expect("lex");
@@ -1237,10 +1236,10 @@ fn run_serve_dispatch(
 
 /// The lean build: refuse in writing, and say exactly how to fix it.
 ///
-/// Three things this message must do, each a lesson from an earlier fase:
-///   1. NAME THE REINSTALL COMMAND. §117's `aws-secrets` opt-out was worth
+/// Three things this message must do, each a lesson from an earlier release:
+///   1. NAME THE REINSTALL COMMAND. The 2.81.0 `aws-secrets` opt-out was worth
 ///      nothing to an adopter who could not find the way back in.
-///   2. NAME THE OTHER BINARY. Under D118.1 the server is `axon-server`, not a
+///   2. NAME THE OTHER BINARY. Since 2.82.0 the server is `axon-server`, not a
 ///      flag on `axon` — telling someone only to add a feature would leave them
 ///      running `axon serve` in a build where it will never be the answer.
 ///   3. SAY WHAT STILL WORKS. A refusal that reads as "this install is broken"
@@ -1248,7 +1247,7 @@ fn run_serve_dispatch(
 ///      and governance surface is intact, which is the whole point of the split.
 ///
 /// Exit code 2 — the same code `axon evidence-package` returns for an absent
-/// `documents` feature (§118.b.1). Distinct from 1 (a real failure) so CI can
+/// `documents` feature. Distinct from 1 (a real failure) so CI can
 /// tell "wrong build profile" from "the flow was rejected".
 #[cfg(not(feature = "server"))]
 #[allow(clippy::too_many_arguments)]

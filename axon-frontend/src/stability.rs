@@ -137,13 +137,13 @@ impl fmt::Display for GainError {
                 "the control effort |Kp+Ki+Kd| = {effort} does not exceed the \
                  declared drift bound D = {drift_bound}. The Lyapunov argument \
                  for this mandate is conditional on exceeding it \
-                 (paper_mandate §3), so with these gains the cage does not hold"
+                 (see paper_mandate), so with these gains the cage does not hold"
             ),
             GainError::AboveLipschitzCeiling { effort, ceiling } => write!(
                 f,
                 "the control effort |Kp+Ki+Kd| = {effort} is at or above the \
                  convergence ceiling 1/L = {ceiling}; the refinement loop would \
-                 oscillate or diverge rather than settle (prompt_opt §6.3)"
+                 oscillate or diverge rather than settle"
             ),
             GainError::EmptyBand {
                 drift_bound,
@@ -485,7 +485,7 @@ mod tests {
         assert!(
             !band.is_characterised(),
             "an uncharacterised backend must be visible as a gap; treating this \
-             pass as a real check is exactly the vacuous gate §119.b replaces"
+             pass as a real check is exactly the vacuous gate this judgment replaces"
         );
         assert!(StabilityBand::new(0.5, 0.5).unwrap().is_characterised());
     }

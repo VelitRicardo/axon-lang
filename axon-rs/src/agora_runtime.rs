@@ -179,8 +179,8 @@ pub fn dispatch_agora_outcome(entry: &ToolEntry, argument: &str) -> AgoraOutcome
             &entry.name,
             format!(
                 "no agora connector is registered for platform '{}' — the runtime refuses \
-                 rather than fabricate (D104.6). The enterprise host registers its connector \
-                 cores at boot (§116.c–f); a standalone runtime registers one via \
+                 rather than fabricate. The enterprise host registers its connector \
+                 cores at boot; a standalone runtime registers one via \
                  axon::agora_runtime::register_agora_connector.",
                 platform.as_str()
             ),

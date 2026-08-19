@@ -92,7 +92,7 @@ impl SynthBackend for DenyByDefaultSynth {
         Err(SynthError::ExecutionRefused {
             reason: format!(
                 "the OSS SynthBackend never executes synthesised code (policy '{}'); the enterprise \
-                 Extism/gVisor zero-trust executor (§87.j) is required",
+                 Extism/gVisor zero-trust executor is required",
                 req.policy_name
             ),
         })

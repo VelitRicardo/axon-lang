@@ -214,10 +214,10 @@ mod tests {
         assert_eq!(
             REGULATORY_CLASSES.len(),
             15,
-            "Κ is the canonical registry from the ESK paper §6.1, extended in §124 with the \
+            "Κ is the canonical registry from the ESK paper, extended in v4.0.0 with the \
              four LATAM jurisdictions. Changing its size is a decision about what an adopter \
              may assert, not a refactor — and the paper's own Κ is pinned against this list \
-             by `fase124_the_paper_matches_the_compiler`."
+             by the paper-matches-compiler gate."
         );
         for class in [
             "HIPAA", "PCI_DSS", "GDPR", "SOX", "FINRA", "ISO27001", "SOC2", "FISMA", "GxP",

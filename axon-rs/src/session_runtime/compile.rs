@@ -229,7 +229,7 @@ mod tests {
             schema, expected,
             "the runtime must enforce `?Order.!Fill.end` — the protocol the adopter WROTE. \
              Enterprise substituted a hardcoded chat schema here, so a proven-dual protocol was \
-             deployed and a different one was enforced (§111 §13)"
+             deployed and a different one was enforced"
         );
     }
 

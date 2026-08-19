@@ -29,7 +29,7 @@ context ContractSession {
   max_tokens: 1200
 }
 
-// §Fase 37 — the Request Binding Contract: `text` binds by name from the
+// The Request Binding Contract: `text` binds by name from the
 // `body: ContractInput` declared on the endpoint below.
 flow AnalyzeContract(text: String) -> ContractReport {
   step Analyze {

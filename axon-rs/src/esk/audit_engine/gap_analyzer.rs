@@ -287,7 +287,7 @@ fn assess_control(
             "pending_code",
             format!(
                 "program declares {} but AXON does not enforce {} at runtime — \
-                 the primitive has no dispatch path (§111 F14); declaring it is not evidence",
+                 the primitive has no dispatch path; declaring it is not evidence",
                 declared_but_unenforced.join(", "),
                 if declared_but_unenforced.len() == 1 { "it" } else { "them" },
             ),
@@ -464,7 +464,7 @@ mod tests {
         // declaring them legitimately raises the posture. The engine can say yes.
         assert!(
             with.ready > without.ready,
-            "the six Cognitive-I/O primitives §112 wired (observe/ensemble/immune/reflex/heal/             reconcile) are driven by the supervisor through the real deploy path. Declaring them              MUST now raise the score — an engine that can only say no is honest and useless.              ready went {} -> {}",
+            "the six Cognitive-I/O primitives the supervisor wired (observe/ensemble/immune/reflex/heal/             reconcile) are driven by the supervisor through the real deploy path. Declaring them              MUST now raise the score — an engine that can only say no is honest and useless.              ready went {} -> {}",
             without.ready,
             with.ready
         );
@@ -482,13 +482,13 @@ mod tests {
         // arc of §111 → §112 → §113.
         assert!(
             with.declared_but_unenforced.is_empty(),
-            "as of §113 every primitive in this stack is on a production path; the analysis              must report NOTHING as declared-but-unenforced. Got: {:?}",
+            "as of v2.67.0 every primitive in this stack is on a production path; the analysis              must report NOTHING as declared-but-unenforced. Got: {:?}",
             with.declared_but_unenforced
         );
         for f in ["has_lease", "has_resource", "has_immune", "has_heal", "has_reconcile", "has_ensemble", "has_observe"] {
             assert!(
                 !with.declared_but_unenforced.contains(&f.to_string()),
-                "`{f}` runs on a production path (§112 supervisor / §113 resource+lease) — it                  must NOT be reported as unenforced"
+                "`{f}` runs on a production path (supervisor / resource+lease) — it                  must NOT be reported as unenforced"
             );
         }
 

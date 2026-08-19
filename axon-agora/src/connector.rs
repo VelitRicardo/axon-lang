@@ -116,12 +116,12 @@ impl std::fmt::Display for ConnectorError {
             ConnectorError::MissingCredential { platform } => write!(
                 f,
                 "no access token available for {} — neither custody injection (axon_secret, \
-                 §94.c) nor connector config supplies one; the call fails closed (never an \
+                 secret custody) nor connector config supplies one; the call fails closed (never an \
                  unauthenticated vendor call)",
                 platform.as_str()
             ),
             ConnectorError::QuotaExhausted => {
-                write!(f, "publish quota exhausted (the §72 budget is spent for this window)")
+                write!(f, "publish quota exhausted (the budget is spent for this window)")
             }
             ConnectorError::Protocol(v) => write!(
                 f,

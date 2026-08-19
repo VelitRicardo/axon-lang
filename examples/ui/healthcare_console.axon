@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════
 //  AXON UI — Healthcare Console
 //
-//  §λ-L-E Fase 9 reference: a 100%-.axon clinical dashboard on top of
+//  Reference: a 100%-.axon clinical dashboard on top of
 //  examples/healthcare_reference.axon. The UI shares the same κ
 //  (regulatory class) discipline as the backend — the compiler rejects
 //  any component that renders a regulated type without a shield whose
@@ -62,7 +62,7 @@ shield TrialShield {
   compliance: [HIPAA, GxP, SOC2]
 }
 
-// ── UI components (Fase 9 primitives) ─────────────────────────────
+// ── UI components ─────────────────────────────────────────────────
 //
 //  Each component's `renders` target carries κ; its `via_shield`
 //  MUST cover that κ — otherwise the compiler rejects the program.

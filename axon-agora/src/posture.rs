@@ -56,9 +56,9 @@ pub fn posture_check(
     if platform == Platform::LinkedIn && op.is_write() && target == TargetKind::MemberAccount {
         return Err(PostureRefusal {
             code: "axon-T958",
-            reason: "LinkedIn's API Terms of Use §3.1(26) prohibit using the APIs to automate posting on LinkedIn; member-level automation is forbidden.",
+            reason: "LinkedIn's API Terms of Use section 3.1(26) prohibit using the APIs to automate posting on LinkedIn; member-level automation is forbidden.",
             fix: "Target an organization Page (OwnedOrganization) under an approved Community Management use case.",
-            source: "paper_axon_agora.md §2.1 [L-TOS]",
+            source: "paper_axon_agora.md section 2.1 [L-TOS]",
         });
     }
 
@@ -72,7 +72,7 @@ pub fn posture_check(
             code: "axon-T958",
             reason: "Instagram content publishing via the official API is available only to professional (business/creator) accounts.",
             fix: "Convert the target to an Instagram professional account (OwnedProfessionalAccount).",
-            source: "paper_axon_agora.md §2.3 [IG-CP]",
+            source: "paper_axon_agora.md section 2.3 [IG-CP]",
         });
     }
 
@@ -84,7 +84,7 @@ pub fn posture_check(
                 code: "axon-T958",
                 reason: "TikTok restricts unaudited API clients to SELF_ONLY (private) posting; public posting requires passing TikTok's audit.",
                 fix: "Complete TikTok's Content Posting API audit before publishing publicly.",
-                source: "paper_axon_agora.md §2.4 [TT-CSG]",
+                source: "paper_axon_agora.md section 2.4 [TT-CSG]",
             });
         }
         if attendance == Attendance::Unattended {
@@ -92,7 +92,7 @@ pub fn posture_check(
                 code: "axon-T958",
                 reason: "TikTok requires express, per-post user consent before content is transmitted; fully unattended public posting is not permitted.",
                 fix: "Route TikTok publishing through a per-post human-confirmation step (Attendance::HumanConfirmed).",
-                source: "paper_axon_agora.md §2.4 [TT-CSG]",
+                source: "paper_axon_agora.md section 2.4 [TT-CSG]",
             });
         }
     }
@@ -115,7 +115,7 @@ mod tests {
         )
         .unwrap_err();
         assert_eq!(r.code, "axon-T958");
-        assert!(r.reason.contains("§3.1(26)"));
+        assert!(r.reason.contains("section 3.1(26)"));
         assert!(!r.fix.is_empty());
     }
 

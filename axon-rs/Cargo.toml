@@ -6,12 +6,12 @@ edition = "2021"
 rust-version = "1.95"
 license = "AGPL-3.0-or-later"
 repository = "https://github.com/VelitRicardo/axon-lang"
-# §Fase 119.g — D119.2 named the canonical documentation host. Until now BOTH
+# The canonical documentation host. Until 2.83.0 BOTH
 # fields were absent, so the crates.io page showed no documentation link at
 # all: an adopter landing there had nowhere to go but the README.
 homepage = "https://www.ricardovelit.com/axon-docs"
 documentation = "https://www.ricardovelit.com/axon-docs"
-# §Fase 117.b — package-LOCAL readme. This used to point at `../README.md`, and
+# Package-LOCAL readme. This used to point at `../README.md`, and
 # cargo overrode it on every publish ("there is already a file named README.md in
 # the root of the package. The archived crate will contain the copy in the root")
 # — a warning ignored across at least six releases. The consequence: crates.io
@@ -20,11 +20,11 @@ documentation = "https://www.ricardovelit.com/axon-docs"
 readme = "README.md"
 keywords = ["axon", "compiler", "runtime", "ai", "language"]
 categories = ["compilers", "development-tools::ffi", "asynchronous"]
-# §Fase 117.c — the `Dockerfile` is a monorepo build recipe whose paths
+# The `Dockerfile` is a monorepo build recipe whose paths
 # (`axon-rs/Dockerfile`, `../axon-frontend`) do not exist inside the extracted
 # crate: dead weight, and actively misleading to anyone who unpacks it.
 #
-# `tests/**` is DELIBERATELY NOT EXCLUDED, and the measurement is why. §117 set
+# `tests/**` is DELIBERATELY NOT EXCLUDED, and the measurement is why. 2.81.0 set
 # out to drop it — 262 files, 4,017,705 bytes, 34.9% of the package, never built
 # by `cargo install`. Excluding it does work: 523 -> 260 files, 11.0 -> 7.1 MiB
 # raw, 2.4 -> 1.6 MiB compressed. But cargo then emits ~190 warnings on every
@@ -39,7 +39,7 @@ categories = ["compilers", "development-tools::ffi", "asynchronous"]
 # Weighed against what it buys: 0.8 MiB compressed out of a 44 MiB `cargo
 # install` (1.8%), where the DEPENDENCY TREE dominates by roughly 50x — and that
 # is what `default = []` below actually attacks. Paying 190 permanent publish
-# warnings for under 2% is a bad trade, and this fase has direct evidence of the
+# warnings for under 2% is a bad trade, and this package has direct evidence of the
 # cost: the crates.io README stayed wrong for six releases behind exactly ONE
 # ignored `cargo package` warning. Drowning that signal is the last thing this
 # package needs.
@@ -58,14 +58,14 @@ name = "axon"
 path = "src/main.rs"
 
 [dependencies]
-# §Fase 12.a — compiler frontend (lexer/parser/AST/type_checker/IR/checker +
-# closed catalogs for Fase 11.a/11.c/11.e) lives in its own crate with
+# Compiler frontend (lexer/parser/AST/type_checker/IR/checker +
+# closed catalogs) lives in its own crate with
 # zero runtime deps so tooling (axon-lsp, analyzers) can consume it
 # without dragging tokio/axum/sqlx/aws. Path is used for in-tree builds;
 # `version` makes the dep cargo-publishable (crates.io requires non-path
 # deps to carry a version specifier).
 axon-frontend = { path = "../axon-frontend", version = "=3.0.0" }
-# §Fase 116.a — the axon-agora protocol layer (the first official library):
+# The axon-agora protocol layer (the first official library):
 # Platform/Operation enums, the SocialConnector seam, scope/protocol/posture/
 # quota single-source-of-truth. Pure data + traits (serde only) — the network
 # cores plug in via `agora_runtime::register_agora_connector`.
@@ -75,53 +75,53 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "blo
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["full"] }
-# §Fase 41.d — the `ws` feature exposes `axum::extract::ws::{WebSocketUpgrade,
+# The `ws` feature exposes `axum::extract::ws::{WebSocketUpgrade,
 # WebSocket, Message}`, the server-side half of RFC 6455 (handshake + frame
 # loop) over `tokio-tungstenite`. This is the carrier for the session-typed
 # dialogue runtime — its operational rules (send/recv/select/branch/credit)
 # live in `src/session_runtime/` over the typed channel, transport-agnostic.
 #
-# §Fase 118.b.2 — OPTIONAL behind `server`. This is the dependency the fase
+# OPTIONAL behind `server`. This is the dependency the feature
 # exists for: `axum` + its `hyper`/`tower` service stack is what every adopter
 # compiled to run `axon check`. `upstream_runtime` keeps its own RFC 6455 CLIENT
 # (tokio-tungstenite, below) and is NOT gated — so a lean build still dials OUT
 # to a vendor, it just does not accept inbound connections.
 axum = { version = "0.8", features = ["ws"], optional = true }
-# §Fase 80.d — the CLIENT half of RFC 6455: `upstream` dials OUT to a
+# The CLIENT half of RFC 6455: `upstream` dials OUT to a
 # third-party vendor (STT/TTS/realtime speech), so `src/upstream_runtime.rs`
 # can `connect_async`; `rustls-tls-webpki-roots` unlocks `wss://` (vendor
 # endpoints are TLS-only) with the same rustls stack reqwest/sqlx already use —
 # no OpenSSL surface added.
 #
-# §Fase 117.c — pinned to 0.29 to MATCH what `axum 0.8`'s `ws` feature pulls.
+# Pinned to 0.29 to MATCH what `axum 0.8`'s `ws` feature pulls.
 # The comment here used to claim this was the "same library axum's `ws` feature
 # already pulls in server-side". `cargo tree -i` said otherwise: 0.24 had
 # exactly one parent (axon-lang), axum used 0.29, and the binary linked TWO
 # complete RFC 6455 implementations — one driving `upstream` (client) and one
 # driving `socket` (server). Two implementations of one protocol, in one
-# process, is the asymmetry §111.i already cost a fase to discover. The comment
+# process, is the asymmetry that already cost a release cycle to discover. The comment
 # was worse than no comment: it documented an invariant that did not hold.
 tokio-tungstenite = { version = "0.29", features = ["rustls-tls-webpki-roots"] }
-# §Fase 118.b.2 — both are `server`-only. `tower` is used by the router's test
+# Both are `server`-only. `tower` is used by the router's test
 # harness (`ServiceExt::oneshot`); `tower-http` provides the `CorsLayer` that
-# `cors::build_cors_layer` materialises. The §83 CORS *declaration* still
+# `cors::build_cors_layer` materialises. The CORS *declaration* still
 # type-checks without either — only serving it needs the layer.
 tower = { version = "0.5", optional = true }
 tower-http = { version = "0.6", features = ["cors"], optional = true }
-# §Fase 118.a — the HTTP primitives (`HeaderMap`, `HeaderValue`, `StatusCode`)
+# The HTTP primitives (`HeaderMap`, `HeaderValue`, `StatusCode`)
 # as a direct dependency rather than through `axum::http::…`. They ARE the `http`
 # crate — axum only re-exports them — and modules like `auth_scope` need header
 # types, not a web framework. Naming the real source lets those modules stay out
 # of the `server` feature. Zero cost: `http` 1.x is already resolved in the tree
 # via axum / reqwest / hyper.
 #
-# §Fase 118.b.2 — `http` earns its keep here. It is what `auth_middleware`,
+# `http` earns its keep here. It is what `auth_middleware`,
 # `cors` and `request_middleware` actually needed all along; naming it directly
 # keeps all three OUT of the `server` feature (and `auth_middleware` out of it
 # ENTIRELY — it turned out to need no framework at all). Zero cost: `http` 1.x is
 # already resolved via reqwest/hyper regardless of the profile.
 http = "1"
-# §Fase 118.b.2 — `server`-only: used solely to collect a response body in
+# `server`-only: used solely to collect a response body in
 # `axon_server`'s router tests.
 http-body-util = { version = "0.1", optional = true }
 tracing = "0.1"
@@ -129,8 +129,8 @@ tracing-subscriber = { version = "0.3", features = ["json", "fmt", "env-filter"]
 tracing-appender = "0.2"
 uuid = { version = "1", features = ["v4"] }
 #
-# §Fase 118.b.3 — OPTIONAL behind `postgres`. THIS is the dependency the fase is
-# actually about. Measured against the real tree (§1.1.c) it is **36 crates**,
+# OPTIONAL behind `postgres`. THIS is the dependency the feature split is
+# actually about. Measured against the real tree it is **36 crates**,
 # four times `server` and `documents` combined — and it held up when their
 # estimates collapsed, because `sqlx` is the one candidate `reqwest` does not
 # subsidise: it brings its own Postgres wire protocol, its own SCRAM hashing
@@ -138,12 +138,12 @@ uuid = { version = "1", features = ["v4"] }
 # primitives.
 sqlx = { version = "0.8", features = ["runtime-tokio", "tls-rustls", "postgres", "json", "chrono", "migrate", "uuid", "bigdecimal"], optional = true }
 chrono = { version = "0.4", features = ["serde"] }
-# §Fase 71.b — IANA timezone database for the `window` temporal guard. The
+# IANA timezone database for the `window` temporal guard. The
 # frontend format-checks a tz name (zero-dependency); the runtime does the
 # authoritative IANA resolution + DST-correct local-time math here.
 chrono-tz = "0.10"
 base64 = "0.22"
-# §Fase 116.c.5 — OPTIONAL behind the default-on `aws-secrets` feature: the
+# OPTIONAL behind the default-on `aws-secrets` feature: the
 # per-tenant API-key resolution chain (`tenant_secrets.rs`, M3) can read
 # `axon/tenants/{tenant}/{provider}_api_key` from AWS Secrets Manager. Most
 # adopters never touch AWS — `--no-default-features` skips compiling the whole
@@ -151,28 +151,28 @@ base64 = "0.22"
 # so 2.x semver behavior is unchanged.
 aws-config = { version = "1", features = ["behavior-version-latest"], optional = true }
 aws-sdk-secretsmanager = { version = "1", optional = true }
-# §λ-L-E Fase 5 — cognitive immune system needs SHA-256 + HMAC for signed traces.
+# Cognitive immune system needs SHA-256 + HMAC for signed traces.
 sha2 = "0.10"
 hmac = "0.12"
 rand = "0.9"
-# §ESK Fase 6.6 — deterministic ZIP bundle for the audit evidence packager.
+# Deterministic ZIP bundle for the audit evidence packager.
 #
-# §Fase 118.b — OPTIONAL behind `documents`. The §118.a closure measurement found
+# OPTIONAL behind `documents`. The 2.81.0 closure measurement found
 # this is the ONE heavy dependency the compiler + governance CLI actually reaches
 # (via `esk::audit_engine`'s re-export of `evidence_packager`), so it is what
-# separates `axon evidence-package` and the OOXML surface (§99/§100/§106) from a
+# separates `axon evidence-package` and the OOXML surface from a
 # pure type-checking install. Pure Rust — `flate2 -> miniz_oxide`, no `*-sys` —
 # so having it on costs compile time, never a C toolchain.
 zip = { version = "2", default-features = false, features = ["deflate"], optional = true }
-# §Fase 86 — the `forge` novelty engine's compressor: NCD (Normalized
+# The `forge` novelty engine's compressor: NCD (Normalized
 # Compression Distance) needs a real compressor C(·); deflate is the standard
 # NCD choice (CompLearn/zlib precedent). Already in the tree via `zip`.
 flate2 = "1"
-# §Fase 10.e — JWT signature verification + JWKS client for the Rust
+# JWT signature verification + JWKS client for the Rust
 # tenant extractor. Closes the pre-10.e gap where `tenant.rs` extracted
 # `tenant_id` from the JWT payload without checking the signature.
 jsonwebtoken = "9"
-# §Fase 11.a — Temporal Algebraic Effects + Trust Types.
+# Temporal Algebraic Effects + Trust Types.
 # Ed25519 is the fourth member of the CLOSED trust catalog (alongside
 # HMAC-SHA256, JWT signature, OAuth2 PKCE S256 code exchange). Any
 # addition to the catalog requires a compiler PR + security review;
@@ -180,15 +180,15 @@ jsonwebtoken = "9"
 ed25519-dalek = { version = "2", features = ["rand_core"] }
 subtle = "2"
 urlencoding = "2"
-# §Fase 11.c — ReplayLog trait needs async for the enterprise-adapter
+# ReplayLog trait needs async for the enterprise-adapter
 # shape (Postgres writes) even though the in-memory impl is sync.
 async-trait = "0.1"
-# §Fase 24.b — Native Rust backends shared infra.
+# Native Rust backends shared infra.
 # `regex`: compile-time `LOCKED_PARAMETER_MODELS` patterns (port of
 #   v1.16.2 — Kimi K2.x / OpenAI o1 / OpenAI o3 dispatch).
 # `futures`: `Stream` trait + `StreamExt` for the streaming response
 #   surface (`Backend::stream() -> Pin<Box<dyn Stream<...>>>`).
-# `axon-csys`: §Fase 25.g — offline BPE tokenizer for OpenAI / Kimi /
+# `axon-csys`: offline BPE tokenizer for OpenAI / Kimi /
 #   GLM model families. Replaces the prior tiktoken-rs dep; the C23
 #   merge engine + #embed-baked merges tables ship inside axon-csys.
 #   Anthropic uses an HTTP-API tokenizer when needed; Gemini falls
@@ -196,28 +196,28 @@ async-trait = "0.1"
 #   the synchronous path.
 regex = "1"
 futures = "0.3"
-# §Fase 33.d — Native backend streaming consumes reqwest's bytes_stream(),
+# Native backend streaming consumes reqwest's bytes_stream(),
 # which surfaces `bytes::Bytes`. The crate is re-exported by reqwest but
 # only via the `stream` feature; pinning a direct dep keeps the surface
 # stable across reqwest minor bumps.
 bytes = "1"
-#   §Fase 119.h — consumed WITHOUT its `native` feature. `cc::Build::compile`
+#   Consumed WITHOUT its `native` feature. `cc::Build::compile`
 #   panics when no C compiler is present, so an unconditional axon-csys made a
 #   C toolchain a hard REQUIREMENT of `cargo install axon-lang` — not a slow
 #   install, a FAILED one (verified: exit 101, "ToolNotFound"). Turn the
 #   kernels back on with `--features csys-native`.
 axon-csys = { path = "../axon-csys", version = "=0.4.1", default-features = false }
-# §Fase 101.e — the IDP-E sidecar's hostile image DECODE (PNG/JPEG/BMP/TIFF).
+# The IDP-E sidecar's hostile image DECODE (PNG/JPEG/BMP/TIFF).
 # OPTIONAL + behind the `idpe-sidecar` feature so the main runtime NEVER links a
 # CVE-prone image parser: decode runs ONLY in the isolated `idpe-sidecar` binary
-# (its own crash domain, D101.5). The deterministic front-end math (Perona-Malik,
+# (its own crash domain). The deterministic front-end math (Perona-Malik,
 # Gabor) has no such dep and always ships in the core.
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "bmp", "tiff"], optional = true }
 
 [features]
-# §Fase 117.c (D117.1, RATIFIED 2026-08-03) — `aws-secrets` is OPT-IN.
+# `aws-secrets` is OPT-IN (since 2.81.0).
 #
-# §116.c.5 made the AWS SDK opt-OUT and left the default ON "so 2.x semver
+# 2.77.0 made the AWS SDK opt-OUT and left the default ON "so 2.x semver
 # behavior is unchanged". Measured on the published 2.80.0 artifact, that
 # default cost every adopter:
 #   +57 crates and +15.90 MiB of the 44.02 MiB download (36%);
@@ -244,13 +244,13 @@ image = { version = "0.25", default-features = false, features = ["png", "jpeg",
 # loud release note, on the grounds that the behavior is preserved and the only
 # known downstream consumer does not use the path.
 #
-# §Fase 118.b — `default` now names the ADDITIVE features below. It still turns
-# on everything that was unconditional at 2.81.0, so this sub-fase is
+# `default` names the ADDITIVE features below. At 2.82.0 it still turned
+# on everything that was unconditional at 2.81.0, so that step was
 # behaviour-preserving by construction: a consumer who says nothing gets exactly
-# what they got before. Moving the default to `["cli"]` — D118.1's two-binary
-# shape — is §118.c, deliberately a separate commit with its own release note,
+# what they got before. Moving the default to `["cli"]` — the two-binary
+# shape — was deliberately a separate commit with its own release note,
 # because THAT is the change an adopter feels.
-# §Fase 118.c (D118.1, RATIFIED 2026-08-04 as option (c)) — the default is the
+# The default is the
 # COMPILER, and the runtime is a separate artefact.
 #
 #   cargo install axon-lang                      -> `axon` alone
@@ -261,12 +261,12 @@ image = { version = "0.25", default-features = false, features = ["png", "jpeg",
 #   `axon`    36.1 MiB -> 19.1 MiB (-47%)
 #   crates    235 -> 187
 #
-# The five-minute target §117 left open is NOT reached — 7m 05s — and the plan
-# vivo records that as missed rather than quietly restating it. What remains is
+# The five-minute install target is NOT reached — 7m 05s — and it is
+# recorded as missed rather than quietly restating it. What remains is
 # `reqwest` (the seven LLM backends), `tokio`, rustls and the ESK crypto: the
 # product, not packaging.
 #
-# SEMVER, in the first line rather than a footnote (the §117 precedent): removing
+# SEMVER, in the first line rather than a footnote: removing
 # features from `default` is a MAJOR change by the Cargo Book, because a
 # downstream crate relying on the implicit default loses it silently. Shipped as
 # a MINOR because every capability remains REACHABLE — `axon serve` stays in
@@ -277,22 +277,22 @@ image = { version = "0.25", default-features = false, features = ["png", "jpeg",
 #
 # The one KNOWN downstream consumer, `axon-enterprise`, needs
 # `features = ["server", "postgres", "documents"]` — audited, not assumed
-# (§118.d): 12 server items, 3 postgres + 3 store submodules, and 4 `ooxml`
-# items via §106's enterprise-only Governed Document Egress.
+# (measured at 2.82.0): 12 server items, 3 postgres + 3 store submodules, and 4 `ooxml`
+# items via the enterprise-only Governed Document Egress.
 default = ["cli"]
 
-# ── The additive core (§Fase 118) ─────────────────────────────────────────────
+# ── The additive core (since 2.82.0) ─────────────────────────────────────────
 #
 # `cli` is the compiler + governance surface: check, compile, parse, fmt, fix,
 # desugar, inspect, trace, stats, graph, estimate, diff, ld, repl, dossier, sbom,
-# audit, prove, verify. It adds NO dependencies — that is the point. The §118.a
+# audit, prove, verify. It adds NO dependencies — that is the point. The 2.81.0
 # closure measurement put this surface at 36 modules reaching exactly one heavy
 # dependency (`zip`, and only for `evidence-package`), which is why `cli` is an
 # empty feature list rather than a bundle: the work was making the code reach
 # nothing, not making the manifest list less.
 cli = []
 
-# `documents` — the OOXML surface (§99 synthesis / §100 ingestion+edit / §106
+# `documents` — the OOXML surface (synthesis / ingestion+edit /
 # governed egress) and the ESK evidence packager, which writes a deterministic
 # `.evidence.zip`. `axon evidence-package` requires it.
 documents = ["dep:zip"]
@@ -308,18 +308,18 @@ documents = ["dep:zip"]
 #   - `session_runtime::{compile, state, wire}` — the protocol, its runtime and
 #     its frame encoding are transport-agnostic, so `axon check` still proves a
 #     socket's session type dual in a `cli` build.
-#   - `cors::{CorsConfig, CorsUpdate, apply_update}` — §83's endpoint property is
+#   - `cors::{CorsConfig, CorsUpdate, apply_update}` — the endpoint's CORS property is
 #     data; only `build_cors_layer` is a tower service.
 #   - `request_middleware`'s config/stats surface, and `graceful_shutdown`'s
 #     coordinator — a lean binary can still install a signal handler and drain.
 #
 # `axon serve` STAYS IN `--help` under every profile and refuses in writing,
-# naming the exact reinstall command and the `axon-server` binary. §111 doctrine:
+# naming the exact reinstall command and the `axon-server` binary. Doctrine:
 # the advertised surface stays advertised.
 #
 # MEASURED, so nobody re-derives it: turning this off removes SIX crates from the
 # real tree (235 -> 229) — `axum`, `axum-core`, `httpdate`, `matchit`, `mime`,
-# `serde_path_to_error`. NOT the 22 the §118 census predicted.
+# `serde_path_to_error`. NOT the 22 the 2.81.0 census predicted.
 #
 # `tower`, `tower-http` and `http-body-util` are correctly listed here and
 # correctly `optional`, and they DO NOT LEAVE THE TREE: `reqwest` — the
@@ -333,17 +333,17 @@ server = ["dep:axum", "dep:tower", "dep:tower-http", "dep:http-body-util"]
 # `postgres` — the SQL data plane: the driver-facing half of `axonstore`
 # (`store/{postgres_backend, store_conn, row_stream, introspect_cli}`), the
 # tenant-scoped `storage_postgres` RLS layer, the pool (`db_pool`) and the
-# migrations. 36 crates — the single largest lever in this fase.
+# migrations. 36 crates — the single largest lever in the feature split.
 #
 # WHAT IS DELIBERATELY *NOT* IN HERE. Half of `store/` needs no driver, and
 # gating it wholesale would have cost real coverage for zero crates — the same
-# correction §118.b.2 had to make for `server`:
+# correction the `server` split had to make:
 #   - `store::registry` — resolution, caching, the `StoreHandle` catalog.
 #   - `store::{filter, epistemic, capability, audit_chain, pin_observability}` —
-#     the WHERE algebra, the born-Untrusted lattice, the §94 capability view, the
-#     §35 audit hash-chain, the §37.x.j pin telemetry. Governance, not SQL.
+#     the WHERE algebra, the born-Untrusted lattice, the capability view, the
+#     audit hash-chain, the pin telemetry. Governance, not SQL.
 #   - `store::{error, row, pooler_mode}` — extracted in `b2d50c5b`; the error
-#     catalog, the row shape, the pool size and §96's pooler-mode decision were
+#     catalog, the row shape, the pool size and the pooler-mode decision were
 #     all trapped in the driver module until then.
 #   - `storage.rs` — the `StorageBackend` port and its in-memory implementation.
 #
@@ -353,15 +353,15 @@ postgres = ["dep:sqlx"]
 
 aws-secrets = ["dep:aws-config", "dep:aws-sdk-secretsmanager"]
 # Enables the isolated image-decode sidecar binary. Off by default: adopters who
-# only ingest OOXML (§100) or feed pre-decoded rasters never pull `image`.
+# only ingest OOXML or feed pre-decoded rasters never pull `image`.
 idpe-sidecar = ["dep:image"]
 
-# §Fase 119.h — the C23 kernels, OPT-IN.
+# The C23 kernels, OPT-IN.
 #
-# §118 measured install time and binary size and left one wall standing that
+# 2.82.0 measured install time and binary size and left one wall standing that
 # neither metric shows: without a C compiler `cargo install axon-lang` does not
 # take longer, it FAILS. That is the only defect in the adopter path that can
-# leave someone at zero, and the memory of §118 flagged it as the recommended
+# leave someone at zero, and that measurement flagged it as the recommended
 # next step for exactly that reason.
 #
 # What the flag actually buys, stated without inflation:
@@ -379,7 +379,7 @@ idpe-sidecar = ["dep:image"]
 # flag did not create them; it made them reachable.
 csys-native = ["axon-csys/native"]
 
-# §Fase 118.b.2 — D118.1 (RATIFIED 2026-08-04, option (c)): the second binary.
+# The second binary.
 #
 # `axon` is the compiler and governance CLI; `axon-server` is the runtime that
 # executes governed flows. This is a ROLE boundary, not the open-core boundary —
@@ -391,7 +391,7 @@ csys-native = ["axon-csys/native"]
 # `required-features` means `cargo install axon-lang --no-default-features
 # --features cli` builds `axon` alone and cargo simply does not produce this
 # target — no linker error, no half-built binary. Moving `default` to `["cli"]`
-# so that is what a bare `cargo install` does is §118.c.
+# so that is what a bare `cargo install` does (since 2.82.0).
 [[bin]]
 name = "axon-server"
 path = "src/bin/axon_server_bin.rs"
@@ -403,10 +403,10 @@ path = "src/bin/idpe_sidecar.rs"
 required-features = ["idpe-sidecar"]
 
 [dev-dependencies]
-# (§Fase 41.d's dev-only `tokio-tungstenite` moved to [dependencies] in
-# §Fase 80.d — the `upstream` runtime needs the RFC 6455 CLIENT half in
+# (The once dev-only `tokio-tungstenite` moved to [dependencies] because
+# the `upstream` runtime needs the RFC 6455 CLIENT half in
 # production; tests keep using the same dep.)
-# §Fase 116.a — the fase116_a integration test names axon-agora directly
+# The agora integration test names axon-agora directly
 # (Platform/Operation/required_scopes) to pin the .axon surface's `requires:`
 # ≡ the crate's scope matrix. It is a normal dep of the lib; a dev-dep line
 # makes it usable from the tests/ crate too.

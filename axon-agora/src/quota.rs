@@ -36,13 +36,13 @@ pub fn publish_quota(platform: Platform) -> Option<Quota> {
             limit: 100,
             window_secs: 86_400,
             scope: QuotaScope::PerAccount,
-            source: "paper_axon_agora.md §2.3 [IG-CP]",
+            source: "paper_axon_agora.md section 2.3 [IG-CP]",
         }),
         Platform::TikTok => Some(Quota {
             limit: 15,
             window_secs: 86_400,
             scope: QuotaScope::PerCreator,
-            source: "paper_axon_agora.md §2.4 [TT-CSG]",
+            source: "paper_axon_agora.md section 2.4 [TT-CSG]",
         }),
         Platform::LinkedIn | Platform::FacebookPages => None,
     }

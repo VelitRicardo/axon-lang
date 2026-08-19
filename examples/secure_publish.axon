@@ -1,16 +1,16 @@
 // ─────────────────────────────────────────────────────────────────────
-//  examples/secure_publish.axon — Fase 13 ESK enforcement showcase.
+//  examples/secure_publish.axon — ESK enforcement showcase.
 //
-//  Demonstrates how `publish` is shield-mediated (D8, paper §3.4) and
+//  Demonstrates how `publish` is shield-mediated and
 //  how `discover` mirrors that gate so a downstream consumer can only
 //  acquire a handle whose channel was published through a shield with
 //  matching compliance coverage.
 //
 //  Compile-time guarantees demonstrated:
-//    • κ(message) ⊆ shield.compliance  — Fase 6.1 RTT enforcement
-//    • publish requires a non-empty `within Shield`        (D8)
+//    • κ(message) ⊆ shield.compliance  — RTT enforcement
+//    • publish requires a non-empty `within Shield`
 //    • discover only resolves on channels that declare a shield
-//    • δ_pub envelope penalty (paper §3.4)                — runtime-side
+//    • δ_pub envelope penalty                             — runtime-side
 //
 //  `axon check` clean (0 errors, 0 warnings under --strict).
 // ─────────────────────────────────────────────────────────────────────
@@ -41,7 +41,7 @@ channel PatientStream {
 // Producer — extrudes the handle through ClinicalGate.  The runtime
 // stamps a δ_pub penalty on the issued capability so any downstream
 // holder's certainty envelope is strictly less than the producer's
-// (paper §6.2 — "no certainty laundering").
+// ("no certainty laundering").
 flow expose_stream() -> PatientStream {
     publish PatientStream within ClinicalGate
     return PatientStream

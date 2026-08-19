@@ -461,9 +461,9 @@ mod tests {
         assert_eq!(
             variants,
             &["stop", "error", "cancelled"],
-            "33.b D1 closed-catalog: ToolFinishReason has EXACTLY 3 \
+            "closed-catalog: ToolFinishReason has EXACTLY 3 \
              reachable states (stop / error / cancelled). Adding a 4th \
-             requires a deliberate sub-fase + cross-stack drift gate \
+             requires a deliberate change + cross-stack drift gate \
              update + adopter docs update."
         );
         // Compile-time enumeration pin — every variant MUST be \

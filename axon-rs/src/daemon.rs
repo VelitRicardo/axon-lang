@@ -487,7 +487,7 @@ pub fn deliver_typed_event_reliable(
             });
             if let DeliveryOutcome::DeadLettered { attempts, last_error } = &outcome {
                 eprintln!(
-                    "§74.b daemon '{daemon_name}' listener on '{channel}' DEAD-LETTERED after \
+                    "daemon '{daemon_name}' listener on '{channel}' DEAD-LETTERED after \
                      {attempts} attempts: {last_error}"
                 );
             }
@@ -621,7 +621,7 @@ pub async fn deliver_and_record(
             // (the delivery already happened; the receipt is best-effort here,
             // hardened in the §74.f durable audit-chain sink).
             if let Err(e) = log.append(token).await {
-                eprintln!("§74.e deliver token append failed for '{channel}': {e}");
+                eprintln!("deliver token append failed for '{channel}': {e}");
             }
         }
     }
@@ -697,7 +697,7 @@ pub async fn run_daemon(
         SharedBudget,
     ) = {
         let Some(daemon) = ir.daemons.iter().find(|d| d.name == daemon_name) else {
-            eprintln!("§52.c.2 run_daemon: daemon '{daemon_name}' not in IR — nothing to drive");
+            eprintln!("run_daemon: daemon '{daemon_name}' not in IR — nothing to drive");
             return;
         };
         let window = bound_window(&ir, daemon).cloned();
@@ -727,7 +727,7 @@ pub async fn run_daemon(
                 let now = clock.now();
                 let Some(next) = next_fire_after(&schedule, now) else {
                     eprintln!(
-                        "§52.c.2 daemon '{daemon_name}' listener '{channel}': schedule never \
+                        "daemon '{daemon_name}' listener '{channel}': schedule never \
                          fires within the horizon — stopping this listener"
                     );
                     return;
@@ -743,7 +743,7 @@ pub async fn run_daemon(
                                 WindowAction::Fire => {} // inside → fall through and fire.
                                 WindowAction::Skip => {
                                     eprintln!(
-                                        "§71.c daemon '{daemon_name}' tick at {next} is OUTSIDE \
+                                        "daemon '{daemon_name}' tick at {next} is OUTSIDE \
                                          window '{}' (on_outside: skip) — dropped",
                                         w.name
                                     );
@@ -751,7 +751,7 @@ pub async fn run_daemon(
                                 }
                                 WindowAction::Warn => {
                                     eprintln!(
-                                        "§71.c daemon '{daemon_name}' tick at {next} is OUTSIDE \
+                                        "daemon '{daemon_name}' tick at {next} is OUTSIDE \
                                          window '{}' (on_outside: warn) — firing anyway",
                                         w.name
                                     );
@@ -763,7 +763,7 @@ pub async fn run_daemon(
                                     // True coalesced fire-once-when-open is the §71.d
                                     // enterprise defer-ledger.
                                     eprintln!(
-                                        "§71.c daemon '{daemon_name}' tick at {next} is OUTSIDE \
+                                        "daemon '{daemon_name}' tick at {next} is OUTSIDE \
                                          window '{}' (on_outside: defer) — OSS degrades defer to \
                                          skip (next opening {open_at:?}); the enterprise \
                                          defer-ledger fires it once when the window opens",
@@ -778,7 +778,7 @@ pub async fn run_daemon(
                         for (flow, res) in results {
                             if let Err(e) = res {
                                 eprintln!(
-                                    "§52.c.2 daemon '{daemon_name}' tick → flow '{flow}' failed: {e}"
+                                    "daemon '{daemon_name}' tick → flow '{flow}' failed: {e}"
                                 );
                             }
                         }

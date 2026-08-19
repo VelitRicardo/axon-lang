@@ -114,7 +114,7 @@ impl fmt::Display for StoreError {
                 "CT-2 ANCHOR BREACH — axonstore `{store}` was used, but the `lease {lease}` over \
                  its resource `{resource}` is no longer held: {detail}. A lease is a τ-decaying \
                  affine capability: using the resource after expiry is the breach, and this is \
-                 the moment it fires. (Until §Fase 113 a flow could not USE a resource at all, \
+                 the moment it fires. (Until v2.67.0 a flow could not USE a resource at all, \
                  so this guarantee was structurally impossible to violate — and therefore \
                  structurally impossible to keep.)"
             ),
@@ -181,7 +181,7 @@ impl fmt::Display for StoreError {
                  not disambiguate it; either narrow the role's \
                  `search_path` so exactly one of the resolving schemas \
                  is visible, or declare the target schema explicitly on \
-                 the `axonstore` (the Fase 38 `schema:` declaration, \
+                 the `axonstore` (the `schema:` declaration, \
                  incl. `schema: env:VAR` per-tenant)",
                 schemas.len(),
                 schemas.join(", "),

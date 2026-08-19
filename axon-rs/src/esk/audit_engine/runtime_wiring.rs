@@ -91,11 +91,11 @@ impl Wiring {
             Wiring::Wired(sym) => format!("enforced at runtime by `{sym}`"),
             Wiring::Orphaned(module) => format!(
                 "NOT ENFORCED — `{locator}` exists in `{module}` but has no production caller; \
-                 declaring the primitive does not cause it to run (§111 F8)"
+                 declaring the primitive does not cause it to run"
             ),
             Wiring::Absent => format!(
                 "NOT ENFORCED — `{locator}` does not exist in the codebase; \
-                 dangling evidence anchor inherited from the removed Python runtime (§111 F8)"
+                 dangling evidence anchor inherited from the removed Python runtime"
             ),
         }
     }
@@ -141,21 +141,21 @@ const WIRING_TABLE: &[(&str, Wiring)] = &[
     // "observed" state to the manifest's own declaration (so drift was structurally
     // always zero). An orphaned kernel is not idle code — it is code whose
     // correctness was never tested against reality, and it rots.
-    ("AnomalyDetector", Wiring::Wired("runtime::immune::detector (via cognitive_io_supervisor, §112.d)")),
-    ("axon.runtime.immune.AnomalyDetector", Wiring::Wired("runtime::immune::detector (via cognitive_io_supervisor, §112.d)")),
-    ("AnomalyDetector + ReflexEngine", Wiring::Wired("runtime::immune::{detector,reflex} (via cognitive_io_supervisor, §112.d)")),
-    ("axon.runtime.immune + esk.eid", Wiring::Wired("runtime::immune (via cognitive_io_supervisor, §112.d)")),
-    ("HealKernel", Wiring::Wired("runtime::immune::heal (via cognitive_io_supervisor, §112.d)")),
-    ("axon.runtime.immune.HealKernel", Wiring::Wired("runtime::immune::heal (via cognitive_io_supervisor, §112.d)")),
-    ("HealDefinition.mode", Wiring::Wired("runtime::immune::heal (via cognitive_io_supervisor, §112.d)")),
+    ("AnomalyDetector", Wiring::Wired("runtime::immune::detector (via cognitive_io_supervisor)")),
+    ("axon.runtime.immune.AnomalyDetector", Wiring::Wired("runtime::immune::detector (via cognitive_io_supervisor)")),
+    ("AnomalyDetector + ReflexEngine", Wiring::Wired("runtime::immune::{detector,reflex} (via cognitive_io_supervisor)")),
+    ("axon.runtime.immune + esk.eid", Wiring::Wired("runtime::immune (via cognitive_io_supervisor)")),
+    ("HealKernel", Wiring::Wired("runtime::immune::heal (via cognitive_io_supervisor)")),
+    ("axon.runtime.immune.HealKernel", Wiring::Wired("runtime::immune::heal (via cognitive_io_supervisor)")),
+    ("HealDefinition.mode", Wiring::Wired("runtime::immune::heal (via cognitive_io_supervisor)")),
     // §113.d — the lease has a USE-SITE: `StoreRegistry::charge_lease` runs on every
     // `resolve()` of a leased store, so a store operation IS a use of the resource and
     // the post-expiry one is the CT-2 Anchor Breach.
     ("LeaseKernel", Wiring::Wired("store::registry::charge_lease")),
     ("axon.runtime.lease_kernel.LeaseKernel", Wiring::Wired("store::registry::charge_lease")),
-    ("ReconcileLoop", Wiring::Wired("runtime::reconcile_loop (via cognitive_io_supervisor, §112.e)")),
-    ("axon.runtime.reconcile_loop.ReconcileLoop", Wiring::Wired("runtime::reconcile_loop (via cognitive_io_supervisor, §112.e)")),
-    ("axon.runtime.ensemble_aggregator", Wiring::Wired("runtime::ensemble_aggregator (via cognitive_io_supervisor, §112.c)")),
+    ("ReconcileLoop", Wiring::Wired("runtime::reconcile_loop (via cognitive_io_supervisor)")),
+    ("axon.runtime.reconcile_loop.ReconcileLoop", Wiring::Wired("runtime::reconcile_loop (via cognitive_io_supervisor)")),
+    ("axon.runtime.ensemble_aggregator", Wiring::Wired("runtime::ensemble_aggregator (via cognitive_io_supervisor)")),
 
     // ── ABSENT — the cited symbol does not exist in any language ──────────
     //
@@ -292,7 +292,7 @@ mod tests {
             unclassified.is_empty(),
             "RuntimeInvariant control(s) cite evidence with no entry in WIRING_TABLE.\n\
              You must state, on the record, whether the kernel is Wired / Orphaned / Absent.\n\
-             An unclassified runtime claim is how §111 F8 happened.\n{}",
+             An unclassified runtime claim is how the dangling-evidence defect happened.\n{}",
             unclassified.join("\n")
         );
     }
@@ -337,7 +337,7 @@ mod tests {
         let w = wiring_or_absent("axon.runtime.lease_kernel.LeaseKernel");
         assert!(
             w.is_enforced(),
-            "§113.d — `LeaseKernel` is on a production path: `StoreRegistry::charge_lease` runs \
+            "`LeaseKernel` is on a production path: `StoreRegistry::charge_lease` runs \
              on every resolve of a leased store, so a store operation IS a use of the resource \
              and the post-expiry one is the CT-2 Anchor Breach. SOC2 CC6.3 may now cite it and \
              MEAN it."
@@ -371,7 +371,7 @@ mod tests {
         ] {
             assert!(
                 feature_is_enforced(f),
-                "`{f}` is driven by the CognitiveIoSupervisor (§112) and must now count"
+                "`{f}` is driven by the CognitiveIoSupervisor and must now count"
             );
         }
     }
@@ -385,10 +385,10 @@ mod tests {
         for f in ["has_lease", "has_resource"] {
             assert!(
                 feature_is_enforced(f),
-                "§113 — `{f}` is enforced. A `resource` governs what runs (an `axonstore` \
+                "`{f}` is enforced. A `resource` governs what runs (an `axonstore` \
                  derives its DSN and its POOL SIZE from it), and `lease`'s CT-2 Anchor Breach \
                  has a moment to fire in: the store operation IS the use of the resource. \
-                 Before §113 that guarantee was structurally IMPOSSIBLE, not merely unwired — \
+                 Before v2.67.0 that guarantee was structurally IMPOSSIBLE, not merely unwired — \
                  and an impossible guarantee is one that cannot be KEPT, not merely one that \
                  cannot be broken."
             );
@@ -418,8 +418,8 @@ mod tests {
     fn the_unenforced_ledger_is_empty_and_that_emptiness_is_earned() {
         assert!(
             unenforced_features().is_empty(),
-            "the ledger is expected empty as of §113. Adding an entry back is CORRECT and \
-             honest when a kernel does not run — but say so out loud in the fase that adds \
+            "the ledger is expected empty as of v2.67.0. Adding an entry back is CORRECT and \
+             honest when a kernel does not run — but say so out loud in the change that adds \
              it, because it means the compliance engine can no longer say yes for that \
              feature. That admission is the point."
         );

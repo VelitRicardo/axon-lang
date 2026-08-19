@@ -383,7 +383,7 @@ pub async fn retrieve_metadata(
     if !aggregate.trim().is_empty() || !group_by.trim().is_empty() {
         return Err(
             "aggregate:/group_by: over a secrets store are not supported in v1 — \
-             the envelope carries `count`; open a fase if a real aggregation \
+             the envelope carries `count`; open an issue if a real aggregation \
              need appears"
                 .to_string(),
         );

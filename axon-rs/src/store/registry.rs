@@ -148,7 +148,7 @@ impl fmt::Display for RegistryError {
                 f,
                 "axonstore `{store}` declares unknown backend `{backend}` \
                  — the v1.30.0 closed catalog is {{in_memory, postgresql}} \
-                 (sqlite is a documented future fase)"
+                 (sqlite is documented future scope)"
             ),
             RegistryError::DuplicateStore { store } => write!(
                 f,

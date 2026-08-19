@@ -124,9 +124,9 @@ impl Handler for LiveHandler {
         _continuation: &mut Continuation<'_>,
     ) -> Result<HandlerOutcome, HandlerError> {
         Err(HandlerError::caller(format!(
-            "`provision` of manifest '{}' is not implemented (§112.a). A `resource` does not yet \
+            "`provision` of manifest '{}' is not implemented. A `resource` does not yet \
              govern anything that runs — `resource.endpoint` and `axonstore.connection` are the \
-             same fact declared twice, and nothing links them (§111 islands). §113 makes \
+             same fact declared twice, and nothing links them. The resource catalog makes \
              `resource` the single source of truth; provisioning lands there. Refusing rather \
              than reporting a success that created nothing.",
             manifest.name
@@ -500,7 +500,7 @@ mod tests {
                 &HashMap::new(),
                 &mut identity_continuation(),
             )
-            .expect_err("provision must refuse in §112.a");
-        assert!(format!("{}", err.message).contains("§113"));
+            .expect_err("provision must refuse");
+        assert!(format!("{}", err.message).contains("single source of truth"));
     }
 }

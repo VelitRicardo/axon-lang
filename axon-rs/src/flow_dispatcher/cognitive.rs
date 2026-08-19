@@ -1711,7 +1711,7 @@ mod tests {
         assert_eq!(
             store.batches()[0].provenance().taint,
             crate::emcp::EpistemicTaint::Untrusted,
-            "born-Untrusted (§98)"
+            "born-Untrusted"
         );
         assert_eq!(store.batches()[0].provenance().source_sha256.len(), 64);
         // The summary binds under the step name for downstream refs.
@@ -1771,7 +1771,7 @@ mod tests {
             DispatchError::BackendError { message, .. } => {
                 assert!(
                     message.contains("BEFORE parse"),
-                    "bounds precede parsing (§100): {message}"
+                    "bounds precede parsing: {message}"
                 );
             }
             other => panic!("expected BackendError, got {other:?}"),

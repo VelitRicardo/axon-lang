@@ -2331,7 +2331,7 @@ impl Parser {
                 return Err(ParseError {
                     message: format!(
                         "unknown import annotation '@{}' — the only import annotation is \
-                         `@allow_downgrade` (the §115 epistemic-downgrade acknowledgment).",
+                         `@allow_downgrade` (the epistemic-downgrade acknowledgment).",
                         ident.value
                     ),
                     line: at_tok.line,
@@ -2363,12 +2363,12 @@ impl Parser {
         if self.current().value == "with" && next_is_apx {
             let tok = self.current().clone();
             return Err(ParseError {
-                message: "`import … with apx { … }` is RETRACTED (§111). The apx policy block was \
+                message: "`import … with apx { … }` is RETRACTED (v2.67.0). The apx policy block was \
                           parsed and silently DISCARDED — it never reached the IR, and no epistemic \
                           dependency manager exists: no MEC/PCC verification, no EPR ranking, no \
                           quarantine, no compliance gate. Declaring it verified nothing while \
                           implying your supply chain was checked. Remove the `with apx { … }` \
-                          clause; the plain `import` resolves through the §115 Epistemic Module \
+                          clause; the plain `import` resolves through the Epistemic Module \
                           System."
                     .to_string(),
                 line: tok.line,
@@ -2713,12 +2713,12 @@ impl Parser {
             if let Some((field_name, line, column)) = unknown_fields.into_iter().next() {
                 let (surface, valid) = if node.target.is_some() {
                     (
-                        "technician tool (§Fase 84 D84.13)",
+                        "technician tool",
                         "provider, parameters, output_type, timeout, effects, target, risk, argv",
                     )
                 } else {
                     (
-                        "web-acquisition tool (§Fase 98 D98.2)",
+                        "web-acquisition tool",
                         "provider, parameters, output_type, timeout, effects, secret, \
                          secret_partition, cache, scrape",
                     )
@@ -2781,7 +2781,7 @@ impl Parser {
                 other => {
                     return Err(self.error(&format!(
                         "unknown scrape field `{other}` — the `scrape: {{ … }}` block is a \
-                         closed catalog (§Fase 98 D98.2); valid fields: engine, impersonate, \
+                         closed catalog; valid fields: engine, impersonate, \
                          render_wait, proxy, respect_robots, extract, adaptive, \
                          similarity_floor, follow, max_depth, max_pages, concurrency, \
                          politeness, checkpoint"
@@ -6387,7 +6387,7 @@ impl Parser {
     /// Until 108.c the body was consumed by `skip_braced_block()`. Now it
     /// is a closed grammar: `format:` (raw here; required + validated by
     /// `axon-T929`) and an optional `limits { … }` block whose bounds are
-    /// enforced on the raw byte stream BEFORE parsing (§100). An unknown
+    /// enforced on the raw byte stream BEFORE parsing. An unknown
     /// body entry is a parse error.
     fn parse_ingest_step(&mut self) -> Result<FlowStep, ParseError> {
         let tok = self.current().clone();
@@ -6446,7 +6446,7 @@ impl Parser {
                                             "Unknown ingest limit `{other}`. The closed \
                                              limits grammar is `max_bytes: <N>` and \
                                              `max_rows: <N>` — bounds enforced on the raw \
-                                             stream BEFORE parsing (§100).",
+                                             stream BEFORE parsing.",
                                         ),
                                         line: bound.line,
                                         column: bound.column,
@@ -8658,7 +8658,7 @@ impl Parser {
                         message: format!(
                             "Unknown column type `{}` for column `{}` in \
                              axonstore `{}` `schema:` block. The closed \
-                             v1.38.0 column-type catalog (Fase 38.b D1) \
+                             v1.38.0 column-type catalog \
                              is {{{known}}} (plus common lowercase \
                              aliases — `int`/`integer`/`int4` for \
                              `Int`, `bool`/`boolean` for `Bool`, etc.).\
@@ -11306,7 +11306,7 @@ impl Parser {
                                          containing duplicate placeholder '{{{}}}'. \
                                          Each `{{name}}` in a `path:` must be \
                                          unique — the runtime cannot bind two \
-                                         path segments to the same name (Fase 37.y D1).",
+                                         path segments to the same name.",
                                         node.name, node.path, dup,
                                     ),
                                     line: cur.line,
@@ -11344,7 +11344,7 @@ impl Parser {
                                     "axonendpoint '{}' declares `query: {{ … }}` \
                                      more than once. The query-parameter block \
                                      is unique per endpoint; combine all params \
-                                     into a single block (Fase 37.y D2).",
+                                     into a single block.",
                                     node.name,
                                 ),
                                 line: lbrace_tok.line,
@@ -11366,7 +11366,7 @@ impl Parser {
                                         "axonendpoint '{}' declares duplicate \
                                          query param '{}' inside `query: {{ … }}`. \
                                          Each name must appear at most once \
-                                         (Fase 37.y D2).",
+                                         .",
                                         node.name, field_name,
                                     ),
                                     line: name_tok.line,
@@ -11411,7 +11411,7 @@ impl Parser {
                                          a generic type `{}<{}>`. Query params \
                                          take a primitive type from the closed \
                                          catalog ({}); the `?` suffix marks \
-                                         optional.{} (Fase 37.y D2).",
+                                         optional.{} .",
                                         node.name,
                                         field_name,
                                         type_expr.name,
@@ -11453,7 +11453,7 @@ impl Parser {
                                 return Err(ParseError {
                                     message: format!(
                                         "axonendpoint '{}' query param '{}' has \
-                                         unsupported type '{}'.{} (Fase 37.y D2).",
+                                         unsupported type '{}'.{} .",
                                         node.name, field_name, type_expr.name,
                                         hint_text,
                                     ),

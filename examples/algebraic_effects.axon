@@ -1,4 +1,4 @@
-// AXON — Algebraic effects (§Fase 120)
+// AXON — Algebraic effects
 //
 //  The point of this example is the ONE property nothing else in the language
 //  can express: `study` performs an effect it knows nothing about, and an
@@ -6,8 +6,7 @@
 //  changed, recompiled, or even aware a handler exists.
 //
 //  Plotkin/Pretnar handlers with one-shot delimited continuations. The theory
-//  is docs/papers/paper_algebraic_effects_streaming.md; the operational spec is
-//  docs/fase/fase_23_algebraic_effects_runtime.md §3.6/§3.7.
+//  is docs/papers/paper_algebraic_effects_streaming.md.
 
 // ── The effect declaration ────────────────────────────────────────────────────
 //
@@ -77,7 +76,7 @@ flow stream_findings(topic: Text) -> Text {
 //
 // Deleting the `handle` above and calling `run study(...)` directly is a
 // COMPILE error (axon-T966), not a runtime surprise: `study`'s effect row
-// still carries `Delivery` at the entry point, and fase_23 D9 forbids a runtime
+// still carries `Delivery` at the entry point, and the language forbids a runtime
 // fallback. An effect with no handler has nowhere to yield to, so the program
 // that would discover it in production does not build.
 //
