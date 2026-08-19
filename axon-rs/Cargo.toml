@@ -1,6 +1,6 @@
 [package]
 name = "axon-lang"
-version = "4.0.0"
+version = "4.1.0"
 authors = ["AXON Project", "Ricardo Velit"]
 edition = "2021"
 rust-version = "1.95"
@@ -64,12 +64,12 @@ path = "src/main.rs"
 # without dragging tokio/axum/sqlx/aws. Path is used for in-tree builds;
 # `version` makes the dep cargo-publishable (crates.io requires non-path
 # deps to carry a version specifier).
-axon-frontend = { path = "../axon-frontend", version = "=3.0.0" }
+axon-frontend = { path = "../axon-frontend", version = "=3.1.0" }
 # The axon-agora protocol layer (the first official library):
 # Platform/Operation enums, the SocialConnector seam, scope/protocol/posture/
 # quota single-source-of-truth. Pure data + traits (serde only) — the network
 # cores plug in via `agora_runtime::register_agora_connector`.
-axon-agora = { path = "../axon-agora", version = "=0.1.1" }
+axon-agora = { path = "../axon-agora", version = "=0.1.2" }
 clap = { version = "4.5", features = ["derive", "env"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "blocking", "rustls-tls", "stream"] }
 serde = { version = "1", features = ["derive"] }
@@ -206,7 +206,7 @@ bytes = "1"
 #   C toolchain a hard REQUIREMENT of `cargo install axon-lang` — not a slow
 #   install, a FAILED one (verified: exit 101, "ToolNotFound"). Turn the
 #   kernels back on with `--features csys-native`.
-axon-csys = { path = "../axon-csys", version = "=0.4.1", default-features = false }
+axon-csys = { path = "../axon-csys", version = "=0.4.2", default-features = false }
 # The IDP-E sidecar's hostile image DECODE (PNG/JPEG/BMP/TIFF).
 # OPTIONAL + behind the `idpe-sidecar` feature so the main runtime NEVER links a
 # CVE-prone image parser: decode runs ONLY in the isolated `idpe-sidecar` binary
@@ -410,7 +410,7 @@ required-features = ["idpe-sidecar"]
 # (Platform/Operation/required_scopes) to pin the .axon surface's `requires:`
 # ≡ the crate's scope matrix. It is a normal dep of the lib; a dev-dep line
 # makes it usable from the tests/ crate too.
-axon-agora = { path = "../axon-agora", version = "=0.1.1" }
+axon-agora = { path = "../axon-agora", version = "=0.1.2" }
 
 # ─── target/ bloat control (disk hygiene) ────────────────────────────
 # axon-rs/target grew 5.76 → 176 → 382 GB in 3 cycles: the 174 files under

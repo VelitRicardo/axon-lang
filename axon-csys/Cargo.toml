@@ -1,6 +1,6 @@
 [package]
 name = "axon-csys"
-version = "0.4.1"
+version = "0.4.2"
 authors = ["AXON Project", "Ricardo Velit"]
 edition = "2021"
 rust-version = "1.95"
