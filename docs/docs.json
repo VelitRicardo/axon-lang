@@ -51,5 +51,15 @@
   "logo": {
     "light": "/docs/images/ChatGPTImage20ago2026,15_18_38.png",
     "dark": "/docs/images/logoaxonlang.png"
+  },
+  "background": {
+    "decoration": "grid",
+    "color": {
+      "light": "#ebebeb",
+      "dark": "#6b6b6b"
+    }
+  },
+  "icons": {
+    "library": "tabler"
   }
 }
