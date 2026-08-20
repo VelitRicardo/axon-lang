@@ -4,7 +4,7 @@
   "name": "AXON — the language that compiles to LLMs",
   "description": "The formal cognitive language — a deterministic, proof-carrying AI runtime.",
   "colors": {
-    "primary": "#ebebeb",
+    "primary": "#fffefe",
     "light": "#00ff88",
     "dark": "#050505"
   },
