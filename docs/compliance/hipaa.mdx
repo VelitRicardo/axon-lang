@@ -1,0 +1,158 @@
+---
+title: "HIPAA — Health Insurance Portability and Accountability Act"
+description: "Which AXON annotations cover which HIPAA requirements — what the compiler enforces statically, what the runtime enforces, what the adopter must still attest manually."
+---
+
+**Scope:** PHI (Protected Health Information) handled by a US
+Covered Entity or Business Associate. Touches the Privacy Rule, the
+Security Rule, and the Breach Notification Rule.
+
+This page maps **AXON annotations** to **HIPAA controls** —
+specifically the section 164 series. It is not a substitute for a BAA
+(Business Associate Agreement) or for a SRA (Security Risk
+Assessment); it documents what the AXON layer enforces.
+
+## Declaring HIPAA on a primitive
+
+The canonical annotation is `compliance: [HIPAA]` on a `type`,
+`axonstore`, `axonendpoint`, `shield`, `flow`, or `socket`.
+The annotation is **closed**: only `HIPAA` (uppercase) is
+recognised by the type checker. Combine with other frameworks in
+the same list:
+
+```text
+type PatientRecord compliance [HIPAA] {
+    mrn: String,
+    diagnosis: String,
+    procedures: List<String>,
+    notes: String
+}
+
+axonstore EHR
+    compliance: [HIPAA, SOC2]
+    backend: postgresql
+    isolation: serializable
+    encryption: at_rest
+
+axonendpoint ScheduleAppointment {
+    flow: ScheduleAppointmentFlow
+    method: POST
+    route: "/v1/patients/{id}/appointments"
+    compliance: [HIPAA]
+}
+```
+
+## What the compiler enforces statically
+
+| HIPAA control | AXON enforcement |
+|---|---|
+| section 164.502(a) — minimum necessary use | `tool` calls with `legal:HIPAA.164_502` effect qualifier are rejected when the receiver's `effects:` row does not also carry `legal:HIPAA.164_502` (no untracked egress). |
+| section 164.502(b) — disclosures for treatment/payment/operations | A `flow` whose body emits a `tool` call with `network` effect over a HIPAA-annotated `axonendpoint` requires an explicit `legal_basis:` field on the `socket` or endpoint. |
+| section 164.514(b) — de-identification (Safe Harbor) | A `type` annotated `compliance [HIPAA]` cannot leave the program through an endpoint whose `compliance:` list omits HIPAA, unless it passes through a registered `shield` declaring `strategy: pattern` over the 18 Safe Harbor identifiers. |
+| section 164.512 — required disclosures | A `flow` that emits PHI to a non-HIPAA receiver carries an explicit `legal_basis:` (e.g. `legal:HIPAA.164_512.judicial_proceeding`) — otherwise the type checker rejects the egress. |
+| section 164.530(j) — workforce training documentation | No static check (procedural). |
+
+## What the runtime enforces
+
+| HIPAA control | AXON runtime enforcement |
+|---|---|
+| section 164.308(a)(5)(ii)(D) — access tracking | Every emission across a HIPAA-annotated boundary is recorded in the audit hash-chain with `(actor, role, action, target, timestamp, legal_basis)`. The audit log is append-only and the chain head is signed. |
+| section 164.312(a)(1) — access control | `axonendpoint` routes with `compliance: [HIPAA]` are protected by the section 40.w auth layer; access decisions are recorded in the chain. |
+| section 164.312(b) — audit controls | `axonstore` mutations on HIPAA-tagged tables emit audit rows with `category: session:phi_mutation` and `evidence_pointer: <ots-hash>`. |
+| section 164.312(c)(1) — integrity | The audit chain is hash-linked (SHA-256); tampering with any historical row breaks the chain head, surfaced by `axon-emcp.audit verify`. |
+| section 164.312(e)(1) — transmission security | A HIPAA-tagged `socket` rejects insecure transports (the socket carrier must be `wss://`); the `legal_basis:` field flows into every frame's audit row. |
+| section 164.530(c)(1) — safeguards | A HIPAA-tagged `shield` with `strategy: classifier` runs on every input/output emission; rejections are quarantined per the shield's `on_breach:` policy. |
+
+## What you still attest manually
+
+The compiler cannot enforce these — they are organizational,
+contractual, or physical. The compliance program must cover them
+externally.
+
+- **Business Associate Agreement (BAA)** with every downstream
+  service (LLM provider, cloud host, monitoring vendor).
+- **Workforce sanctions policy** for unauthorized PHI access.
+- **Risk assessment** (section 164.308(a)(1)(ii)(A)) — at least annual.
+- **Breach notification procedures** (section 164.404) — 60-day window;
+  AXON emits the structured evidence record but the notification
+  workflow is outside the language.
+- **Physical safeguards** (section 164.310) — facility access, workstation
+  use, device controls.
+- **Encryption choices.** AXON accepts an `encryption: at_rest`
+  annotation and lets the runtime select FIPS 140-3 validated
+  modules (v1.19.1 + v1.21.0+); the adopter is responsible for
+  selecting the validated configuration.
+
+## Common patterns
+
+### Pattern 1 — PHI ingestion into an `axonstore`
+
+```text
+type LabResult compliance [HIPAA] {
+    patient_mrn: String,
+    test_code: String,
+    value: Number,
+    drawn_at: String
+}
+
+axonstore LabResults
+    compliance: [HIPAA, SOC2]
+    backend: postgresql
+    isolation: serializable
+    encryption: at_rest
+    on_breach: raise
+
+flow IngestLabResult(lr: LabResult) {
+    step Persist {
+        given: lr
+        persist: LabResults
+        legal_basis: HIPAA.164_502.treatment
+    }
+}
+```
+
+### Pattern 2 — PHI egress through a redaction shield
+
+```text
+shield PhiRedactor
+    strategy: pattern
+    on_breach: sanitize_and_retry
+    redact: [ssn, dob, mrn]
+    compliance: [HIPAA]
+
+axonendpoint PatientSummary {
+    flow: SummarizePatient
+    method: GET
+    route: "/v1/patients/{id}/summary"
+    compliance: [HIPAA]
+    shield: PhiRedactor
+}
+```
+
+The shield's pattern catalog includes the 18 Safe Harbor identifiers
+(names, dates, phone, fax, email, SSN, MRN, account, license plate,
+device id, URL, IP, biometric, full-face photo, …).
+
+### Pattern 3 — Multi-tenant PHI isolation
+
+`axon-enterprise` extends `compliance: [HIPAA]` with the
+**tenant_id** column proof: every HIPAA-tagged store is statically
+proven to carry `tenant_id`, and every retrieval is required to
+filter on it. See the v1.31.0 column-proof rule.
+
+## When NOT to use HIPAA
+
+- **Outside the US healthcare context.** GDPR, PIPEDA, LGPD, or the
+  jurisdiction-specific framework applies. Do not annotate PHI as
+  HIPAA when it falls under PHIPA (Ontario) or NHS data (UK) —
+  use the framework with the correct provenance.
+- **De-identified data per Safe Harbor.** Once a record passes the
+  Safe Harbor redaction (or expert determination), HIPAA no longer
+  applies and the tag should be dropped — `compliance: []` (or
+  `compliance: [SOC2]`) is the honest annotation.
+- **PHI handled solely between a patient and their own access
+  request.** The section 164.524 right-of-access exception still requires
+  audit but does not require BAAs for the patient themselves.
+
+For the full legal-basis catalogue of HIPAA section qualifiers,
+see `axon-frontend/src/legal_basis.rs` and the v2.0.0 plan.

@@ -1,0 +1,156 @@
+---
+title: "PCI DSS v4 — Payment Card Industry Data Security Standard"
+description: "AXON annotations covering PCI DSS v4 — what the compiler enforces on cardholder data, what the runtime enforces, what the QSA still has to attest."
+---
+
+**Scope:** PAN (Primary Account Number) and sensitive
+authentication data handled by any entity that stores, processes,
+or transmits cardholder data. PCI DSS v4.0 effective from 2024-03;
+v3.2.1 retired 2024-03-31.
+
+This page maps **AXON annotations** to **PCI DSS controls** — the
+12 requirements grouped under "Build & Maintain Secure Networks",
+"Protect Account Data", "Maintain a Vulnerability Management
+Program", "Implement Strong Access Control", "Regularly Monitor &
+Test", and "Maintain an Information Security Policy".
+
+## Declaring PCI DSS
+
+```text
+type CardholderData compliance [PCI_DSS] {
+    pan: String,            # primary account number — full PAN
+    cardholder_name: String,
+    expiration: String,
+    service_code: String
+}
+
+axonstore PaymentVault
+    compliance: [PCI_DSS, SOX, SOC2]
+    backend: postgresql
+    isolation: serializable
+    encryption: at_rest
+    on_breach: raise
+    retention: 1y           # PCI DSS Req 3.2 — minimise storage
+```
+
+## What the compiler enforces statically
+
+| PCI DSS req | AXON enforcement |
+|---|---|
+| Req 3.2 — do not store SAD after authorisation | A `type` field annotated `category: sad` (e.g. CVV, full track data, PIN) cannot appear in a `axonstore` declaration. The type checker rejects PCI-tagged stores that include SAD fields. |
+| Req 3.4 — render PAN unreadable | A PCI-tagged `axonendpoint` whose `output:` type includes a PAN field requires a bound `shield` with `strategy: pattern` over the PAN field, OR an explicit `pan_format:` annotation declaring tokenisation/truncation. |
+| Req 3.5 — protect cryptographic keys | The runtime key-management binding is out of scope for the static check; the compiler verifies that PCI-tagged `axonstore` declarations declare an `encryption:` field. |
+| Req 4.2 — strong cryptography in transit | A PCI-tagged `socket` rejects `ws://`; only `wss://` (TLS 1.2+) carriers are accepted. |
+| Req 6.5 — secure coding practices | A PCI-tagged `flow` whose body emits a `tool` call with `network` effect to an external service requires the `tool` to declare `effects: <network, legal:PCI_DSS.v4_Req4>` to acknowledge the egress. |
+| Req 8.3 — multi-factor authentication | A PCI-tagged `axonendpoint` requires an `auth:` field referencing an MFA-capable strategy; the static check is structural (the runtime enforces the actual MFA). |
+
+## What the runtime enforces
+
+| PCI DSS req | AXON runtime enforcement |
+|---|---|
+| Req 10.1–10.5 — audit trails | Every access to PCI-tagged data emits an audit row with `(actor, action, target, timestamp, source_ip)`. The chain is hash-linked + signed (Req 10.5.5 integrity). |
+| Req 10.2.1 — individual user accesses | The audit row's `actor` is the authenticated subject from the v2.0.0 OIDC layer, not a shared service account. |
+| Req 10.7 — retain audit history | Audit retention is 12 months online + 12 months archived (configurable per deployment); the default matches the PCI minimum. |
+| Req 11.3 — penetration testing | Out of scope. |
+| Req 11.5 — change-detection | The hash-linked audit chain detects unauthorised modifications to historical rows; the v1.19.1 FIPS-friendly hash makes after-the-fact tampering detectable. |
+| Req 12.10 — incident response | The compliance event store emits structured incident records consumable by the IR playbook; the playbook itself is operational. |
+
+## What you still attest manually
+
+- **Scope identification** (the cardholder data environment, CDE).
+- **Network segmentation** validation.
+- **Quarterly ASV scans** of all CDE-facing IPs.
+- **Annual penetration tests** + segmentation tests.
+- **QSA assessment** + AOC/RoC.
+- **Vendor management** — every service provider's PCI status.
+- **Key custodian** assignments and key-ceremony documentation.
+- **Cryptographic algorithm choices** — AXON accepts the
+  `encryption:` annotation; the operator selects the actual cipher
+  suite (AES-256-GCM recommended).
+
+## SAD vs. CHD field model
+
+PCI DSS distinguishes Cardholder Data (CHD) from Sensitive
+Authentication Data (SAD). The model AXON enforces:
+
+| Field | Class | May be stored? | Annotation |
+|---|---|:---:|---|
+| `pan` (full PAN) | CHD | ✓ (with strong crypto) | `category: chd` |
+| `truncated_pan` (last 4) | non-CHD | ✓ | (none) |
+| `cardholder_name` | CHD | ✓ | `category: chd` |
+| `expiration_date` | CHD | ✓ | `category: chd` |
+| `service_code` | CHD | ✓ | `category: chd` |
+| `full_track_data` | SAD | ✗ (Req 3.2) | `category: sad` |
+| `cvv2` / `cvc2` / `cid` | SAD | ✗ (Req 3.2) | `category: sad` |
+| `pin` / `pin_block` | SAD | ✗ (Req 3.2) | `category: sad` |
+
+A `type` declaring a `category: sad` field cannot land in an
+`axonstore` — the compiler emits a structured diagnostic referring
+to Req 3.2.
+
+## Common patterns
+
+### Pattern 1 — Tokenisation at ingress
+
+```text
+shield PanTokenizer
+    strategy: pattern
+    on_breach: sanitize_and_retry
+    redact: [pan, cvv]
+    compliance: [PCI_DSS]
+
+axonendpoint AcceptPayment {
+    flow: ProcessPayment
+    method: POST
+    route: "/v1/payments"
+    compliance: [PCI_DSS]
+    shield: PanTokenizer        # PAN replaced with token before flow body
+}
+```
+
+### Pattern 2 — Tokenised store
+
+```text
+type PaymentRef {
+    token: String,              # opaque PCI-DSS-vault reference
+    last4: String,
+    bin: String,
+    cardholder_name: String     # CHD — annotated separately if needed
+}
+
+axonstore Payments
+    backend: postgresql
+    isolation: serializable
+    encryption: at_rest
+    compliance: [PCI_DSS]
+```
+
+The token replaces the PAN; the store no longer holds CHD. Many
+QSAs will descope a tokenised store from PCI requirements.
+
+### Pattern 3 — Audit query for Req 10
+
+```text
+flow QueryAuditForReq10(window: TimeWindow) -> List<AuditRow> {
+    step Query {
+        given: window
+        retrieve: AuditLog where tag = "PCI_DSS"
+        output: List<AuditRow>
+    }
+    return Query.output
+}
+```
+
+## When NOT to use PCI DSS
+
+- **You never touch a PAN.** A merchant using a payment processor's
+  iframe (Stripe Elements, Braintree, …) often falls under SAQ A.
+  AXON should still annotate the tokenised reference with
+  `compliance: [PCI_DSS]` to keep the audit boundary explicit, but
+  the section 164 SAD prohibitions only apply if you ever see CHD/SAD.
+- **Refund records that contain only the truncated PAN.** Truncated
+  PAN (first 6 + last 4 or fewer) is **not** considered cardholder
+  data per PCI DSS v4 — the compliance tag is optional.
+- **Internal employee credit cards used for corporate expenses.**
+  Those are typically covered by your employer's program, not by
+  the merchant scope.

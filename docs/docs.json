@@ -145,6 +145,17 @@
         ]
       },
       {
+        "group": "Compliance",
+        "pages": [
+          "compliance/regulatory-classes",
+          "compliance/gdpr",
+          "compliance/gxp",
+          "compliance/hipaa",
+          "compliance/pci_dss",
+          "compliance/sox"
+        ]
+      },
+      {
         "group": "Templates",
         "pages": [
           "templates/banking",

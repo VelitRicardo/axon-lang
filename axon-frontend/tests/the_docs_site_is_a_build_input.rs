@@ -318,3 +318,153 @@ fn every_axon_snippet_on_the_site_compiles() {
 fn indent(s: &str) -> String {
     s.lines().map(|l| format!("      {l}")).collect::<Vec<_>>().join("\n")
 }
+
+// ── 5. every compliance label on the site is a member of Κ ──────────────────
+//
+// The site teaches `compliance [...]` annotations. Κ — `REGULATORY_CLASSES` —
+// is CLOSED: `axon-T1214` rejects any label outside it. So a page that shows
+// `compliance: [FedRAMP_Moderate]` is teaching a declaration the compiler will
+// not accept, and the adopter finds out at their first `axon check`.
+//
+// This is not hypothetical. The knowledge corpus this site is built from
+// carries four such labels across four of its nine framework guides —
+// `FedRAMP_Moderate` (eleven times), `FedRAMP_Low`, `SOC2_A`, `SOC2_P` — all of
+// them baseline or criterion levels, which Κ deliberately does not model. Those
+// four guides are held back from the site until that is resolved one way or the
+// other, and this law is what keeps them held: it fails the build rather than
+// letting a later regeneration quietly publish them.
+//
+// Law 4 does not catch this. Every one of those blocks is a FRAGMENT — a bare
+// `compliance: [...]` line is not a top-level declaration — so it carries a
+// plain fence, and law 4 only compiles `axon` fences. The teaching is wrong in
+// a block no compiler ever sees. Hence a law that reads the text.
+//
+// Κ is read from `axon_frontend::compliance::REGULATORY_CLASSES` — the array
+// the type checker itself consults. There is no second copy of the list here to
+// drift away from it.
+
+/// Every identifier inside a `compliance [...]` / `compliance: [...]` list.
+///
+/// Scoped to the list on purpose. Prose that discusses FedRAMP as an assessment
+/// programme is legitimate — the FISMA guide explains the baselines in exactly
+/// those terms — and banning the word would be a gate that fights its own
+/// documentation. What may not appear is the label in DECLARABLE position.
+fn compliance_labels(text: &str) -> Vec<(usize, String)> {
+    let mut out = Vec::new();
+    for (n, line) in text.lines().enumerate() {
+        let mut rest = line;
+        while let Some(at) = rest.find("compliance") {
+            rest = &rest[at + "compliance".len()..];
+            let after = rest.trim_start();
+            let after = after.strip_prefix(':').unwrap_or(after).trim_start();
+            let Some(body) = after.strip_prefix('[') else { continue };
+            let Some(close) = body.find(']') else { continue };
+            // `<Tag1>` is a GRAMMAR METAVARIABLE, not a label. Every primitive
+            // page opens with a grammar block written in that convention, so
+            // reading the placeholder as a class would make the gate fire on
+            // the one part of the site that is deliberately abstract.
+            let mut ident = String::new();
+            let mut angled = false;
+            let mut prev = '[';
+            for c in body[..close].chars().chain(std::iter::once(',')) {
+                if c.is_ascii_alphanumeric() || c == '_' {
+                    if ident.is_empty() {
+                        angled = prev == '<';
+                    }
+                    ident.push(c);
+                } else {
+                    if !ident.is_empty()
+                        && !angled
+                        && !ident.chars().next().unwrap().is_ascii_digit()
+                    {
+                        out.push((n + 1, std::mem::take(&mut ident)));
+                    }
+                    ident.clear();
+                }
+                prev = c;
+            }
+        }
+    }
+    out
+}
+
+#[test]
+fn every_compliance_label_the_site_teaches_is_a_member_of_kappa() {
+    let kappa = axon_frontend::compliance::REGULATORY_CLASSES;
+    let mut hits = Vec::new();
+
+    for page in site_pages() {
+        let Ok(text) = std::fs::read_to_string(&page) else { continue };
+        // A page may name a label OUTSIDE Κ in exactly one circumstance: to show
+        // it being refused. `quickstart` teaches that `[HIPPA]` does not compile,
+        // and the concepts page shows the same typo with the diagnostic under it
+        // — that teaching is the whole point of a closed vocabulary, and a gate
+        // that forbade it would forbid documenting its own guarantee.
+        //
+        // The exemption is deliberately narrow: the page must carry a line that
+        // names BOTH `axon-T1214` and that exact label. Mentioning the code once
+        // somewhere does not launder every label on the page, which is what
+        // separates a counter-example from a guide that simply teaches the wrong
+        // vocabulary — the four framework guides held out of `docs/` teach
+        // `FedRAMP_Moderate` as valid and never show it refused, so they stay out.
+        let refuted = |label: &str| {
+            text.lines()
+                .any(|l| l.contains("axon-T1214") && l.contains(label))
+        };
+        for (line, label) in compliance_labels(&text) {
+            if !kappa.contains(&label.as_str()) && !refuted(&label) {
+                hits.push(format!(
+                    "  {}:{} — `{}` is not a regulatory class",
+                    page.strip_prefix(repo_root()).unwrap_or(&page).display(),
+                    line,
+                    label
+                ));
+            }
+        }
+    }
+
+    assert!(
+        hits.is_empty(),
+        "the documentation site teaches a compliance label the compiler REFUSES. Κ is closed \
+         and `axon-T1214` rejects anything outside it, so an adopter following this page writes \
+         a program that does not compile.\n\n{}\n\nΚ is: {}\n\nIf the label names a baseline or \
+         a criterion level rather than a framework, say so in prose and declare the framework. \
+         If the framework genuinely belongs in Κ, that is a product decision with a written \
+         justification behind it — make it there, not by relaxing this gate.",
+        hits.join("\n"),
+        kappa.join(", "),
+    );
+}
+
+#[test]
+fn compliance_labels_are_read_from_declarable_position_only() {
+    // declarable — both spellings the grammar accepts
+    assert_eq!(
+        compliance_labels("    compliance: [FISMA, NIST_800_53]"),
+        vec![(1, "FISMA".into()), (1, "NIST_800_53".into())]
+    );
+    assert_eq!(
+        compliance_labels("type Profile compliance [GDPR] {"),
+        vec![(1, "GDPR".into())]
+    );
+
+    // prose about a framework is not a declaration and must not be read as one
+    assert!(compliance_labels("FISMA travels with a FedRAMP baseline.").is_empty());
+    assert!(compliance_labels("| **Moderate** | Serious effect | FedRAMP Moderate |").is_empty());
+    assert!(compliance_labels("the compliance annotation is checked at compile time").is_empty());
+
+    // grammar metavariables are placeholders, not labels
+    assert!(compliance_labels("    compliance: [<Tag1>, ...]").is_empty());
+    assert!(compliance_labels("[compliance [<Tag1>, <Tag2>, ...]]").is_empty());
+    // ...but a real label beside one is still read
+    assert_eq!(
+        compliance_labels("compliance: [<Tag1>, HIPAA]"),
+        vec![(1, "HIPAA".into())]
+    );
+
+    // the line number is the reader's line, not an offset
+    assert_eq!(
+        compliance_labels("a\nb\n  compliance: [SOX]"),
+        vec![(3, "SOX".into())]
+    );
+}

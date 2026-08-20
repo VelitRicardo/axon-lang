@@ -1,0 +1,171 @@
+---
+title: "GDPR — General Data Protection Regulation (EU 2016/679)"
+description: "AXON annotations covering EU GDPR — lawful basis, data subject rights, cross-border transfer, and the audit obligations the compiler can verify statically vs. runtime vs. process."
+---
+
+**Scope:** personal data of EU/EEA data subjects, regardless of
+where the processing occurs. Applicable since 2018-05-25.
+
+This page maps **AXON annotations** to **GDPR controls** — the
+articles most likely to require code-level enforcement (Art. 5,
+6, 7, 9, 15, 17, 25, 30, 32, 35, 44–49). The annotation is
+`compliance: [GDPR]` on a `type`, `axonstore`, `axonendpoint`,
+`shield`, `flow`, or `socket`.
+
+## Declaring GDPR
+
+```text
+type EuResident compliance [GDPR] {
+    name: String,
+    email: String,
+    member_state: String,
+    consent_record: ConsentRef
+}
+
+axonstore EuMembers
+    compliance: [GDPR, SOC2]
+    backend: postgresql
+    isolation: serializable
+    encryption: at_rest
+    retention: 2y
+
+axonendpoint UpdateProfile {
+    flow: UpdateProfileFlow
+    method: PUT
+    route: "/v1/eu-members/{id}"
+    compliance: [GDPR]
+}
+```
+
+## Lawful basis — the v2.0.0 legal-basis catalogue
+
+GDPR Art. 6 requires every processing of personal data to rest on
+one of six lawful bases. AXON's `legal_basis:` field draws from a
+**closed catalogue** that maps directly to Art. 6:
+
+| GDPR Article | `legal_basis:` value | Use case |
+|---|---|---|
+| Art. 6(1)(a) | `consent` | Marketing emails, optional cookies, voluntary profiling |
+| Art. 6(1)(b) | `contract` | Account creation, order fulfilment, subscription billing |
+| Art. 6(1)(c) | `legal_obligation` | Tax records, KYC/AML, court orders |
+| Art. 6(1)(d) | `vital_interest` | Emergency medical situations |
+| Art. 6(1)(e) | `public_task` | Public-authority duties (limited applicability) |
+| Art. 6(1)(f) | `legitimate_interest` | Fraud prevention, security logging, internal analytics |
+
+Special-category data (Art. 9 — race, health, biometrics,
+political views, sexual orientation) requires an additional
+qualifier: `legal:GDPR.Art9.<exception>` where `<exception>` ∈
+`{explicit_consent, employment_law, vital_interest, not_for_profit,
+public_data, legal_claim, public_interest_health, scientific_research}`.
+
+## What the compiler enforces statically
+
+| GDPR control | AXON enforcement |
+|---|---|
+| Art. 5(1)(b) — purpose limitation | A `flow` that touches a GDPR-tagged `type` must declare a `legal_basis:` field on its `run`; a `tool` using such data must declare a matching `legal:GDPR.<art>` effect qualifier. |
+| Art. 5(1)(c) — data minimisation | A `step` projecting fewer fields than its source `type` declares is encouraged via the `output:` schema; explicit projection is documented in the audit row. |
+| Art. 5(1)(e) — storage limitation | `axonstore` with `retention: <duration>` is required for GDPR-tagged stores; the type checker rejects GDPR-tagged stores without retention. |
+| Art. 9 — special categories | A `type` tagged `compliance [GDPR]` AND containing a field marked `category: special` requires an `Art9.<exception>` qualifier on every downstream flow's `legal_basis:`. |
+| Art. 25 — data protection by design | A GDPR-tagged `axonendpoint` requires either a bound `shield` with privacy strategy OR an explicit `privacy_review:` annotation pointing to a DPIA artifact. |
+| Art. 32 — security of processing | A GDPR-tagged `axonstore` rejects `encryption: none` and requires `isolation: serializable` or `repeatable_read`. |
+
+## What the runtime enforces
+
+| GDPR control | AXON runtime enforcement |
+|---|---|
+| Art. 5(2) — accountability | The audit hash-chain records every access to GDPR-tagged data with `(actor, action, legal_basis, purpose, timestamp)`. |
+| Art. 15 — right of access | The section 40 `cognitive_states` API answers data-subject access requests with the union of every audit row referencing the subject. |
+| Art. 17 — right to erasure | `mutate` and `purge` steps respect the per-store `on_breach:` policy; a successful purge emits a `session:erasure_complete` audit row with cryptographic evidence. |
+| Art. 30 — record of processing | The audit chain *is* the Art. 30 record; it can be exported via `axon-enterprise diagnostics gate --export gdpr-art30`. |
+| Art. 32(1)(b) — encryption | The runtime selects FIPS-validated (or OpenSSL-FIPS-validated) modules for at-rest and in-transit encryption when the data is GDPR-tagged. |
+| Art. 33–34 — breach notification | The compliance event store emits a structured breach record with severity, scope, and clock; the 72-hour notification workflow is outside the language but receives the evidence packager output. |
+| Art. 44–49 — international transfers | A GDPR-tagged `tool` with `network` effect targeting a non-EU endpoint requires a documented adequacy/SCC/BCR provenance recorded in the audit row. |
+
+## What you still attest manually
+
+- **DPIA** (Art. 35) for high-risk processing — the
+  `privacy_review:` annotation points to an external document.
+- **Data Processing Agreement (DPA)** with every processor.
+- **Controller/processor designation** in your privacy notice.
+- **Subprocessor list** publication and onward authorisation.
+- **Cross-border transfer mechanism** (adequacy decision, SCC,
+  BCR, derogation under Art. 49).
+- **Records of consent** — AXON stores `consent_record:
+  ConsentRef` references; the consent capture UI is outside the
+  language.
+- **Data subject rights workflows** — AXON gives the evidence
+  packager; the 30-day response calendar is operational.
+
+## Common patterns
+
+### Pattern 1 — Consent-gated processing
+
+```text
+flow SendMarketingEmail(user: EuResident, campaign: Campaign) {
+    step CheckConsent {
+        given: user.consent_record
+        ask: "Is consent for campaign category active?"
+        output: ConsentVerdict
+    }
+    if CheckConsent.output.granted {
+        step Send {
+            given: { to: user.email, body: campaign.body }
+            apply: SendEmail
+            output: EmailResult
+        }
+    }
+}
+run SendMarketingEmail(u, c)
+    constrained_by [GDPRConsentAnchor]
+    legal_basis: consent
+```
+
+### Pattern 2 — Right-of-erasure
+
+```text
+flow ExerciseErasure(subject_id: SubjectId) {
+    step Discover {
+        given: subject_id
+        ask: "Locate every row referencing this subject"
+        output: List<RowRef>
+    }
+    for row in Discover.output {
+        step Erase {
+            given: row
+            mutate: row.store
+            ask: "Erase or pseudonymise per the v1.12.0 verdict"
+        }
+    }
+}
+run ExerciseErasure(s)
+    legal_basis: legal_obligation     # Art. 17 itself is the basis
+```
+
+### Pattern 3 — Cross-border transfer with SCC
+
+```text
+axonendpoint SyncToUSPartner {
+    flow: SyncRoutine
+    method: POST
+    route: "https://partner.us/sync"
+    compliance: [GDPR]
+    transfer_mechanism: SCC_2021_914   # closed catalogue
+}
+```
+
+The `transfer_mechanism:` field is a `compliance:`-side annotation
+specific to GDPR-tagged endpoints; the runtime refuses to dispatch
+to a non-EU endpoint without it.
+
+## When NOT to use GDPR
+
+- **Data subjects entirely outside the EU/EEA**. Check local
+  law — CCPA/CPRA (California), LGPD (Brazil), PIPEDA (Canada),
+  POPIA (South Africa), etc.
+- **Anonymous data** that survives the Art. 29 WP 216 / EDPB
+  anonymisation test. AXON's `shield strategy: pattern` over
+  pseudonymisation does **not** convert pseudonymous data into
+  anonymous data — pseudonymous remains personal data.
+- **Household exception** (Art. 2(2)(c)) processing — purely
+  personal/household activity. Almost never applies to deployed
+  AXON programs.

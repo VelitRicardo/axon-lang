@@ -1,0 +1,166 @@
+---
+title: "GxP — Good Practice (FDA 21 CFR Part 11 + EMA Annex 11)"
+description: "AXON annotations covering FDA 21 CFR Part 11 + EMA Annex 11 electronic-records / electronic-signatures requirements — what the compiler proves about identity, integrity, and audit trail; what the validation team still has to attest."
+---
+
+**Scope:** systems that produce, capture, or maintain records
+required by FDA-regulated pharmaceutical, medical-device, and
+clinical-research processes (and the EU equivalents per EMA
+Annex 11).
+
+The annotation is `compliance: [GxP]`, almost always combined with
+HIPAA (PHI overlap) and SOC2 (baseline controls).
+
+## Declaring GxP
+
+```text
+type ClinicalTrialRecord compliance [GxP, HIPAA] {
+    subject_id: String,
+    site_id: SiteId,
+    visit_number: Int,
+    observations: List<Observation>,
+    signed_by: SignatureRef,
+    signed_at: Timestamp
+}
+
+axonstore TrialDatabase
+    compliance: [GxP, HIPAA, SOC2]
+    backend: postgresql
+    isolation: serializable
+    encryption: at_rest
+    retention: 25y           # 21 CFR 312.62 — investigator records: 2y post-approval
+    on_breach: raise
+
+axonendpoint RecordObservation {
+    flow: RecordObservationFlow
+    method: POST
+    route: "/v1/trials/{trial_id}/observations"
+    compliance: [GxP, HIPAA]
+    requires: [trial.write]
+}
+```
+
+## What the compiler enforces statically
+
+| 21 CFR Part 11   | AXON enforcement |
+|---|---|
+| 11.10(a) — validation | Out of scope (validation deliverables). |
+| 11.10(b) — accurate records | A GxP-tagged `axonendpoint` whose body type has refinements requires the v2.0.0 D4 body schema validation. |
+| 11.10(c) — record protection | A GxP-tagged `axonstore` requires `encryption: at_rest` AND `retention:` ≥ project minimum (configurable; default 7y). |
+| 11.10(d) — access limitation | A GxP-tagged endpoint requires `requires:` capability list (no wildcard, no anonymous). |
+| 11.10(e) — secure, computer-generated audit trail | All GxP-tagged emissions land in the hash-linked audit chain (always-on). |
+| 11.10(g) — authority checks | A GxP-tagged endpoint with a state-changing method (POST/PUT/DELETE) requires a `mandate:` referencing the role authority. |
+| 11.30 — open systems | A GxP-tagged `socket` requires `wss://` AND a documented `legal_basis:`. |
+| 11.50 — signature manifestations | A GxP-tagged record type that contains a `SignatureRef` field automatically receives the signature-binding gate (the runtime ensures the signature references the actor's verified identity). |
+| 11.70 — signature/record linking | The audit row binds `(record_hash, signature_hash, actor_subject)` atomically; the compiler verifies the record type contains a signature reference. |
+| 11.100 — electronic signatures | Out of scope (signature implementation); the runtime selects FIPS-validated signing. |
+| 11.200(a)(1) — two distinct identification components | Enforced at runtime by the OIDC/MFA layer; not statically checkable. |
+| 11.300 — non-biometric controls (passwords) | Out of scope (operational). |
+
+## What the runtime enforces
+
+| Control | AXON runtime enforcement |
+|---|---|
+| 11.10(e) — secure audit trail | Hash-linked + signed audit chain; any post-hoc modification breaks the head. |
+| 11.10(e) — timestamping | Audit rows carry a runtime-issued, monotonic UTC timestamp; clock-skew is bounded by the v2.0.0 deploy gate. |
+| 11.10(k) — system controls / change management | Configuration changes to GxP-tagged stores emit `system:config_change` audit rows with full diff hashes. |
+| 11.50 — signature manifestation | The runtime renders the signature with the actor's printed name, the signing reason, and the UTC timestamp on every signed record. |
+| 11.70 — signature/record linking | The signature's cryptographic binding includes the record's content hash; tampering with the record invalidates the signature on next verification. |
+| 11.200 — identification components | The OIDC layer + MFA challenge produce the two factors; the audit row records both factor types per signing event. |
+| 11.300(b) — periodic check, password aging | OIDC token expiry; reset cadence is operational. |
+
+## What you still attest manually
+
+- **Computer System Validation (CSV)** lifecycle (IQ/OQ/PQ).
+- **Validation Master Plan (VMP)** and **Validation Report (VR)**.
+- **User requirements specification (URS)** — sometimes the AXON
+  source IS the URS, but the formal document is separate.
+- **GAMP 5 categorisation** of the software.
+- **Risk-based testing** evidence per ICH Q9.
+- **Standard Operating Procedures (SOPs)** for the system's
+  intended use.
+- **Training records** for every user role.
+- **Periodic review** + **change-control board** sign-offs.
+- **Annex 11 section 1 risk management** documentation (EU).
+
+## Common patterns
+
+### Pattern 1 — Signed observation record
+
+```text
+type Observation {
+    parameter: String,
+    value: Number,
+    unit: Unit
+}
+
+type SignedObservation compliance [GxP, HIPAA] {
+    observation: Observation,
+    signed_by: SignatureRef,        # binds to actor's verified identity
+    signing_reason: SigningReason,  # closed catalogue (approval, review, …)
+    signed_at: Timestamp
+}
+
+flow RecordSignedObservation(req: SignedObservation) {
+    step Persist {
+        given: req
+        persist: TrialDatabase
+        legal_basis: GxP.21CFR11.50
+    }
+}
+```
+
+The v1.4.0 record-signature binding happens automatically because
+the type carries a `SignatureRef`.
+
+### Pattern 2 — Two-person review (Annex 11 section 5)
+
+```text
+mandate IndependentReview
+    requires: capability("trial.review")
+    excludes_requester: true # Annex 11 section 5 — second person
+    on_breach: raise
+
+axonendpoint FinalizeRecord {
+    flow: FinalizeRecordFlow
+    method: POST
+    route: "/v1/trials/records/{id}/finalize"
+    compliance: [GxP]
+    mandate: IndependentReview
+}
+```
+
+### Pattern 3 — Audit-trail export
+
+```text
+flow ExportAuditTrail(case_id: CaseId, window: TimeWindow) -> AuditPackage {
+    step Query {
+        given: { case_id, window }
+        retrieve: AuditLog where case_id AND window AND tag = "GxP"
+        output: List<AuditRow>
+    }
+    step Package {
+        given: Query.output
+        ask: "Render the audit trail as a tamper-evident PDF + JSON"
+        output: AuditPackage
+    }
+    return Package.output
+}
+```
+
+The PDF carries the audit-chain head hash; the inspector can
+verify the chain integrity independently.
+
+## When NOT to use GxP
+
+- **Pre-clinical research** that does not produce records the FDA
+  will inspect. Often SOC2 + HIPAA is enough.
+- **Medical-device firmware development** — that's IEC 62304, not
+  Part 11 per se.
+- **Patient-facing apps** that show but never modify regulated
+  records. The data store may be GxP-tagged but the read-only
+  endpoint can use a lighter compliance set.
+
+For combined GxP + HIPAA scenarios (clinical-trial PHI), declare
+both: `compliance: [GxP, HIPAA]`. The section 40 legal-basis catalogue
+includes both `HIPAA.<section>` and `GxP.<section>` qualifiers.

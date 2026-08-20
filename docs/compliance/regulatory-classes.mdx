@@ -1,0 +1,47 @@
+---
+title: "Regulatory classes"
+description: "The closed vocabulary of compliance labels an AXON declaration may assert. Anything outside this list is a compile error, not a warning."
+---
+
+A `compliance` annotation may only name a class from this list. The list is **closed**:
+the compiler rejects any other label with `axon-T1214` rather than accepting a string it
+cannot reason about. That is the point — a free-text compliance field lets every codebase
+invent its own spelling, and an auditor reading `[hipaa]`, `[HIPAA]` and `[HIPAA_164]`
+has three classes that look like one.
+
+Membership is **case-sensitive**. The canonical spelling is the one below.
+
+| Class | Scope | What it covers |
+| --- | --- | --- |
+| `HIPAA` | US · health | Protected health information. US Department of Health and Human Services. |
+| `PCI_DSS` | Global · payments | Cardholder data. PCI Security Standards Council. |
+| `GDPR` | EU · privacy | Personal data of EU data subjects. Regulation (EU) 2016/679. |
+| `SOX` | US · financial reporting | Financial-reporting controls for US public companies. Sarbanes–Oxley. |
+| `FINRA` | US · securities | Broker-dealer records and communications supervision. |
+| `ISO27001` | Global · infosec | Information-security management system certification. |
+| `SOC2` | US · service orgs | AICPA Trust Services Criteria for service organisations. |
+| `FISMA` | US · federal | Federal information systems. 44 U.S.C. section 3554. |
+| `GxP` | Global · life sciences | Good practice regulations — GMP, GCP, GLP — including 21 CFR Part 11. |
+| `CCPA` | US · California privacy | Consumer personal information. California Civil Code 1798.100. |
+| `NIST_800_53` | US · federal controls | Security and privacy control catalogue for federal systems. |
+| `NOM151` | México · data sealing | NOM-151-SCFI-2016 — conservation of data messages. |
+| `LFPDPPP` | México · privacy | Ley Federal de Protección de Datos Personales en Posesión de los Particulares. |
+| `LGPD` | Brasil · privacy | Lei Geral de Proteção de Dados — Lei 13.709/2018. |
+| `LEY1581` | Colombia · privacy | Ley 1581 de 2012 — protección de datos personales. |
+
+## What the list does not model
+
+A class covers itself and nothing else. The compiler will not infer that SOC 2 implies
+ISO 27001, or that GDPR implies CCPA — cross-framework overlap is a judgement a
+regulator makes, not something a type system may assume on your behalf.
+
+Nor does a class carry a **baseline or criterion level**. FedRAMP Low/Moderate/High and
+the AICPA Trust Services categories are assessment parameters, not separate frameworks,
+and they are not members of this list. Declare the framework; record the baseline where
+your assessment programme records it.
+
+## Adding a class
+
+A new entry becomes a label every adopter can assert, and the assertion is what a
+regulated reader trusts. It is a deliberate product decision with a written
+justification behind it — not a convenience change.
