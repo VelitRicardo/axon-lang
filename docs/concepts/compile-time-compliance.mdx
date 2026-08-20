@@ -1,0 +1,106 @@
+---
+title: "Compile-time compliance"
+description: "Regulatory class is a type. Coverage is a set difference. The vocabulary is closed. Here is exactly what that proves — and what it does not."
+---
+
+Most systems treat compliance as a process: a policy document, a review, an
+audit that happens after the code exists. AXON treats it as a **property of the
+type system**, checked before anything runs.
+
+## Class is a type
+
+```axon
+type PatientRecord compliance [HIPAA, GDPR] { ssn: String }
+```
+
+`PatientRecord` does not merely *have* a comment saying it is sensitive. Its
+regulatory classes — written **κ** — travel with it through the program:
+through a `flow`'s parameters, through an `axonendpoint`'s `body:` and
+`output:`, through a `Channel<PatientRecord>` handle, into an `axonstore`.
+
+Four declarations may carry a class: `type`, `shield`, `axonendpoint` and
+`manifest`.
+
+## Coverage is a set difference
+
+The rule is one sentence:
+
+> Every boundary that carries a regulated class must declare a shield whose
+> `compliance:` list covers that class.
+
+"Covers" means a real set difference, not a presence check. A shield that covers
+*some* of the classes fails, and the diagnostic names exactly the ones it
+misses:
+
+```
+axon-T957 axonendpoint 'Api' declares `shield: PartialShield`, but that shield
+does not cover kappa = {GDPR} carried across the boundary — the ESK coverage
+rule. Add [GDPR] to shield 'PartialShield's `compliance:` list, or name a shield
+that already covers them.
+```
+
+The rule guards every κ-carrying boundary:
+
+| where | code |
+| --- | --- |
+| HTTP endpoints | `axon-T957` |
+| typed channels, at declaration | `axon-T1215` |
+| π-calculus `publish`, at runtime, for IR that bypassed the checker | fail-closed |
+
+<Warning>
+  **The label is not the control.** Declaring `compliance: [HIPAA, GDPR]` on the
+  endpoint itself does *not* satisfy the rule. That list says what the boundary
+  carries; the shield is what acts when a breach is detected. A system that
+  accepted the label as coverage would let a program certify itself.
+</Warning>
+
+## The vocabulary is closed
+
+```text
+type Record compliance [HIPPA] { ssn: String }   // deliberately misspelled
+```
+
+```
+axon-T1214 type 'Record' declares `HIPPA`, which is not a regulatory class.
+Did you mean `HIPAA`?
+```
+
+The canonical registry has fifteen members, and membership is case-sensitive:
+
+`HIPAA` · `PCI_DSS` · `GDPR` · `SOX` · `FINRA` · `ISO27001` · `SOC2` ·
+`FISMA` · `GxP` · `CCPA` · `NIST_800_53` · `NOM151` · `LFPDPPP` · `LGPD` ·
+`LEY1581`
+
+Closure is not tidiness — it is what makes the coverage rule *sound*. If the
+vocabulary were open, a symmetric typo on both the type and the shield would
+satisfy the set difference while protecting nothing at all. That is the failure
+the closed catalogue makes unrepresentable.
+
+## Verified again at deploy
+
+Compile-time checking answers "did this source pass?". A deploy gate has a
+harder question: "does this *artifact* satisfy the obligations, whoever built
+it?"
+
+`axon pcc prove` emits a proof object; `axon pcc verify` re-derives the
+obligations from the artifact independently. So a program whose IR never met the
+checker still cannot extrude a regulated payload — the typed bus derives its
+predicate from the same IR it registers channels from, and fails closed.
+
+## What this proves, precisely
+
+Being honest about the boundary is part of the design, so:
+
+**What is machine-checked:** vocabulary closure (`axon-T1214`) and shield
+coverage at every κ-carrying boundary (`axon-T957`, `axon-T1215`), re-verified
+at deploy and at `publish`. The audit engine scores *coverage holding*, never
+label presence.
+
+**What is not:** the *semantic* obligations of each regulation. What HIPAA
+requires operationally is your shield and flow design. AXON gives the mechanism
+— NOM151 maps to `axonstore` sealed audit chains; LFPDPPP, LGPD and LEY1581 to
+`shield` redaction and κ-coverage — and you supply the policy. The audit engine
+states that qualifier in the evidence it emits.
+
+The FIPS 140-3 posture is *algorithmically conformant, not formally validated*.
+CAVP and CMVP are laboratory engagements, and no compiler can close them.

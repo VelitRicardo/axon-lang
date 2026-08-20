@@ -1,0 +1,48 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "AXON",
+  "description": "The formal cognitive language — a deterministic, proof-carrying AI runtime.",
+  "colors": {
+    "primary": "#2563EB",
+    "light": "#60A5FA",
+    "dark": "#1E3A8A"
+  },
+  "favicon": "/favicon.svg",
+  "navigation": {
+    "groups": [
+      {
+        "group": "Getting started",
+        "pages": [
+          "index",
+          "quickstart",
+          "install"
+        ]
+      },
+      {
+        "group": "The idea",
+        "pages": [
+          "concepts/compile-time-compliance",
+          "concepts/epistemic-types"
+        ]
+      }
+    ]
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "crates.io",
+        "href": "https://crates.io/crates/axon-lang"
+      }
+    ],
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/VelitRicardo/axon-lang"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/VelitRicardo/axon-lang"
+    }
+  }
+}

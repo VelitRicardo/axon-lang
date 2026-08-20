@@ -1,0 +1,82 @@
+---
+title: "Installation"
+description: "One binary from crates.io, what it needs from the host, and what the optional features actually cost."
+---
+
+## The canonical channel
+
+```bash
+cargo install axon-lang
+```
+
+That installs the `axon` binary. The crate publishes as `axon-lang`; the library
+import is `use axon::*`.
+
+<Note>
+  The historical PyPI line is closed. The Python interpreter was retired in
+  v2.0.0 and the package is now a tombstone that redirects here. The language
+  implementation is 100% Rust + C23.
+</Note>
+
+## Prerequisites
+
+| Requirement | Why |
+| --- | --- |
+| [Rust](https://rustup.rs) **1.95+** | The `rust-version` in every manifest. An older toolchain fails with an MSRV error, not a compile error. |
+| A working **C compiler** (MSVC / clang / gcc) | `ring` — reached through `rustls`, which is how this compiler speaks HTTPS to every model provider — compiles C unconditionally in its build script. On Windows the MSVC Build Tools suffice; on Debian or Ubuntu, `build-essential`. |
+
+These are checked at **build** time, not install time. If `cargo install` stops
+with a `cc` or linker error rather than a Rust error, the C toolchain is what is
+missing.
+
+<Info>
+  **On the C requirement, precisely.** There used to be two sources of it. One
+  was ours: `axon-csys`, which compiles the C23 tokenizer and cryptographic
+  kernels, was a hard dependency — so a machine without `cc` did not get a slow
+  install, it got exit 101. That one is gone. The kernels now live behind
+  `--features csys-native`, and the default build serves the same API from
+  pure-Rust twins that the same drift gates judge.
+
+  The other source is `ring`, and it is not ours to remove.
+</Info>
+
+## Features
+
+The default install is the compiler and the governance CLI — `check`, `compile`,
+`run`, `dossier`, `sbom`, `audit`, `pcc prove`, `pcc verify` — and it adds no
+dependencies beyond that. Everything heavier is opt-in:
+
+| Feature | What it turns on | What it costs |
+| --- | --- | --- |
+| `cli` *(default)* | the compiler + governance surface | — |
+| `server` | the HTTP / SSE / NDJSON / WebSocket server, and the `axon-server` binary | the `axum` service stack |
+| `postgres` | the `axonstore` data plane against real PostgreSQL | ~36 crates — the single largest lever on install time |
+| `documents` | the OOXML surface and `axon evidence-package` | pure-Rust compression |
+| `csys-native` | the C23 kernels: exact BPE token counts, the crypto boundary | needs a C toolchain |
+
+Leaving `csys-native` off is bounded and labelled, not silent: `count_tokens`
+returns an *estimate* instead of an exact BPE count, and `mandate` drops its
+Tier 1 logit-bias bans — while Tier 2, the refinement loop that *is* the
+guarantee, is untouched.
+
+## Verify the install
+
+```bash
+axon --version
+axon check app.axon
+```
+
+Both `axon --version` and `axon version` print the same string.
+
+## Build from source
+
+```bash
+git clone https://github.com/VelitRicardo/axon-lang
+cd axon-lang/axon-rs
+cargo build --release
+```
+
+The workspace is four crates: `axon-lang` (the runtime and CLI),
+`axon-frontend` (lexer, parser, type checker, IR generator — zero runtime
+dependencies), `axon-csys` (the C23 kernels) and `axon-agora` (the governed
+social connectors).

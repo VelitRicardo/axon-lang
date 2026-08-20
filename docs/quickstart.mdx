@@ -1,0 +1,101 @@
+---
+title: "Quickstart"
+description: "Thirty seconds to a program the compiler refuses — and the one-line change that makes it refuse."
+---
+
+The fastest way to understand AXON is to watch it say no.
+
+<Steps>
+  <Step title="Install">
+    ```bash
+    cargo install axon-lang
+    ```
+
+    One binary, `axon`. It needs a C compiler on the host (the cryptographic and
+    tokenizer kernels are C23); on Windows, MSVC satisfies that.
+  </Step>
+
+  <Step title="Write a program that carries regulated data">
+    ```axon
+    type PatientRecord compliance [HIPAA, GDPR] { ssn: String }
+    shield PHIShield { scan: [pii_leak] on_breach: halt severity: critical
+                       compliance: [HIPAA, GDPR] }
+    axonendpoint Api { method: POST path: "/p" body: PatientRecord
+                       execute: F output: FlowEnvelope<PatientRecord> shield: PHIShield
+                       backend: anthropic compliance: [HIPAA, GDPR] }
+    flow F(ssn: String) -> PatientRecord {
+      step R { ask: "summarize" output: PatientRecord } }
+    ```
+
+    Save it as `app.axon`. Four declarations: a **type** that carries two
+    regulatory classes, a **shield** that covers them, an **endpoint** that
+    crosses a trust boundary, and a **flow** that does the cognitive work.
+  </Step>
+
+  <Step title="Check it">
+    ```bash
+    axon check   app.axon   # compile-time compliance verification
+    axon dossier app.axon   # regulatory posture, as JSON
+    axon audit   app.axon --framework all   # per-framework gap analysis
+    ```
+
+    `axon check` exits `0`. The endpoint carries `PatientRecord`, whose classes
+    are `{HIPAA, GDPR}`, and `PHIShield` covers both.
+  </Step>
+
+  <Step title="Now break it">
+    Delete `shield: PHIShield` from the endpoint and check again:
+
+    ```
+    X app.axon  1 error(s)
+      error [line 4]: axon-T957 axonendpoint 'Api' carries regulated data
+      (kappa = {GDPR, HIPAA}) across a trust boundary but declares no `shield:`.
+      Regulated boundaries require a shield whose `compliance:` covers the type's
+      kappa — the ESK coverage rule. […] Declaring the classes on the
+      endpoint's own `compliance:` does NOT cover them: that list is a label,
+      the shield is the control that acts on a breach.
+    ```
+
+    `axon check` exits `1`.
+  </Step>
+</Steps>
+
+## Why that matters
+
+That failure is a **type error, not a lint warning**. Nothing downstream
+builds.
+
+And the rule is a real set difference over the regulatory classes carried by the
+boundary's `body:` and `output:` types — so a shield that covers *some* of them
+fails too, naming exactly the ones it misses. It is not a presence check on a
+label.
+
+<Warning>
+  The last sentence of the diagnostic is the load-bearing one. Declaring
+  `compliance: [HIPAA, GDPR]` on the endpoint itself does **not** satisfy the
+  rule. That list is a *label*; the shield is the *control that acts on a
+  breach*. A system that accepted the label would let you certify yourself.
+</Warning>
+
+## The typo cannot save you either
+
+The regulatory vocabulary is closed (`axon-T1214`). `compliance: [HIPPA]` does
+not compile — it is refused with the suggestion `HIPAA`. That closure is what
+makes the coverage rule sound: without it, a symmetric typo on both the type and
+the shield would satisfy the set difference while protecting nothing.
+
+The same set-difference rule guards `channel` declarations (`axon-T1215`: a
+channel whose payload carries a regulated class needs a covering shield before
+`publish` may extrude it), and is re-checked at runtime `publish` for IR that
+never met the checker.
+
+## Where to go next
+
+<CardGroup cols={2}>
+  <Card title="Compile-time compliance" icon="scale-balanced" href="/concepts/compile-time-compliance">
+    The rule in full, and precisely what it does and does not prove.
+  </Card>
+  <Card title="Installation options" icon="download" href="/install">
+    Building from source, the server binary, and the feature flags.
+  </Card>
+</CardGroup>

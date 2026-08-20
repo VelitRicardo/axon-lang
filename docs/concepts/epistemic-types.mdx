@@ -1,0 +1,76 @@
+---
+title: "Epistemic types"
+description: "A model's output is not a string. It carries how much the system is entitled to believe it — and the compiler will not let a guess become a fact."
+---
+
+Every framework treats an LLM's output as a `string`. AXON treats it as a value
+on a **typed epistemic lattice**: the text, plus how much the system is entitled
+to believe it.
+
+## The lattice
+
+```text
+doubt  <  speculate  <  believe  <  know
+```
+
+An epistemic mode is written as a scope, and the compiler maps it to a
+constraint function — a temperature and nucleus-sampling override, plus a set of
+auto-injected anchors the generation must satisfy:
+
+```text
+C : Mode → (τ, p, A)
+
+C(know)      = (0.1, 0.3, {RequiresCitation, NoHallucination})
+C(believe)   = (0.3, 0.5, {NoHallucination})
+```
+
+So `know` is not a comment about your intent. It is a narrower sampling window
+*and* a citation requirement, applied by the compiler.
+
+## The law that makes it load-bearing
+
+A lattice nobody enforces is decoration. The rule that gives it teeth is at the
+**egress boundaries** — the points where a value stops being internal state and
+becomes something a person or a system of record will act on:
+
+- `document` — a generated artifact with assertive slots
+- `deliver` — a write into a CRM
+- `notify` — a message that spends a human's attention
+
+At each of those, a value carrying a lower level cannot be presented as a fact.
+The diagnostic names it directly:
+
+> A value leaving the epistemic lattice into a system of record cannot be more
+> confident than the reasoning that produced it.
+
+The escape hatch is explicit and auditable, never silent: attach the provenance
+(each field arrives with its level, confidence and source — a guess labelled as a
+guess), or vouch for the values inside an `epistemic { know }` scope, which makes
+the claim *yours*.
+
+<Warning>
+  This is the "assertion laundering" barrier, and it is the reason the lattice
+  is not cosmetic. Without it, a `speculate` value could be written into a CRM
+  as though it were `know`, and nothing downstream could tell the difference —
+  which is exactly the failure mode that makes people distrust generated
+  content.
+</Warning>
+
+## Data is born untrusted
+
+The same discipline covers ingress. Content that comes from outside — scraped
+web pages, ingested documents, rows retrieved from a store — is **born
+`Untrusted`** by law, not by convention, and it degrades what it touches.
+
+A separate trust lattice governs how it may be cleaned:
+
+```text
+Untrusted  <  Scanned  <  Sanitized  <  Trusted
+```
+
+and the compiler verifies statically that every path from an untrusted source to
+a trusted sink passes through at least one `shield`.
+
+That is why a flow which acquires adversarial ingress content and feeds it to a
+cognitive step with no shield in scope is refused at compile time, rather than
+producing a plausible answer derived from a poisoned input.

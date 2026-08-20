@@ -1,0 +1,64 @@
+---
+title: "AXON"
+description: "A compiled language that targets LLMs instead of CPUs — where regulatory compliance is a type error, not a runbook."
+---
+
+AXON is a **compiled language whose target is a model, not a processor**. You
+write a program; the compiler type-checks it, lowers it to an IR, and a native
+Rust runtime executes it against an LLM backend — with the same determinism,
+diagnostics and exit codes you expect from a compiler.
+
+The point is not that it orchestrates prompts. It is what the compiler can
+*refuse*.
+
+## The claim, in one sentence
+
+**A program that sends regulated data across an unguarded boundary does not
+compile.**
+
+Not "raises a warning at runtime". Not "fails an audit later". `axon check`
+exits `1`, the same as a syntax error, and nothing downstream builds.
+
+<Card title="See it fail" icon="shield-halved" href="/quickstart">
+  Thirty seconds: install, write a program that carries PHI, delete its shield,
+  watch the compiler refuse it by name.
+</Card>
+
+## What that buys you
+
+<CardGroup cols={2}>
+  <Card title="Compile-time compliance" icon="scale-balanced" href="/concepts/compile-time-compliance">
+    `type PatientRecord compliance [HIPAA, GDPR]` is a **type**. Every boundary
+    that carries it must declare a shield whose coverage is a real set
+    difference over the regulatory classes — and the vocabulary itself is
+    closed, so a typo cannot satisfy it.
+  </Card>
+  <Card title="Epistemic types" icon="brain" href="/concepts/epistemic-types">
+    A model's output is not a string. It carries a level — `know`, `believe`,
+    `speculate`, `doubt` — and the language refuses to let a guess be laundered
+    into a fact at an egress boundary.
+  </Card>
+  <Card title="One binary" icon="box" href="/install">
+    `cargo install axon-lang`. A native Rust + C23 runtime: lexer, parser, type
+    checker, IR generator, the effects runtime, the HTTP/WebSocket surface. No
+    interpreter, no Python.
+  </Card>
+  <Card title="Proof-carrying" icon="file-signature">
+    `axon pcc prove` emits an independently verifiable proof object;
+    `axon pcc verify` re-derives the obligations from the artifact, so a
+    deploy gate can check what a build claimed without trusting the builder.
+  </Card>
+</CardGroup>
+
+## What it does not claim
+
+Honesty is cheaper than a retraction, so: what membership in the regulatory
+vocabulary buys is **machine-checked at compile time** — vocabulary closure and
+shield coverage at every boundary that carries a regulated class, re-verified at
+deploy.
+
+What it does **not** buy is the *semantic* obligation of each regulation. What
+HIPAA requires operationally is your shield and flow design. AXON supplies the
+mechanism; you supply the policy. The audit engine says so in the evidence it
+emits, and its FIPS 140-3 posture is *algorithmically conformant, not formally
+validated* — CAVP and CMVP are laboratory engagements no compiler can close.
