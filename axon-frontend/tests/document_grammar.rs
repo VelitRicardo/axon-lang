@@ -1,6 +1,6 @@
 //! v2.53.0 — grammar + AST + IR + structure checker + the
 //! assertion-laundering barrier for Native Document Synthesis (`document`).
-//! See `docs/cycle/native_document_synthesis.md` (axon-enterprise).
+//! See `the design plan` (axon-enterprise).
 //!
 //! Pinned properties:
 //! 1. A `document` parses into `DocumentDefinition` with a block tree.

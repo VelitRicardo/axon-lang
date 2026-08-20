@@ -34,7 +34,7 @@ pub mod continuity_token;
 /// of the specification.
 pub mod density_matrix;
 /// v2.83.0 — `e(t)` for `mandate`. The paper places the semantic validator
-/// inside the PEM engine (`docs/papers/paper_mandate.md`), so it lives here.
+/// inside the PEM engine (`papers/paper_mandate.md`), so it lives here.
 pub mod semantic_validator;
 /// v2.88.0 — a declared `type` lowered into the constraint set that
 /// `validate … against:` scores a response with. Reuses the v2.83.0 CSR rather

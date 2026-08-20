@@ -16,7 +16,7 @@ This page is the reference for the rules. The implementation lives
 in [`axon-frontend/src/session.rs`](https://github.com/VelitRicardo/axon-lang/blob/master/axon-frontend/src/session.rs)
 and [`axon-frontend/src/multiparty.rs`](https://github.com/VelitRicardo/axon-lang/blob/master/axon-frontend/src/multiparty.rs);
 the math is in
-[`docs/papers/paper_websocket_cognitive_primitive.md`](https://github.com/VelitRicardo/axon-lang/blob/master/docs/papers/paper_websocket_cognitive_primitive.md).
+[`papers/paper_websocket_cognitive_primitive.md`](https://github.com/VelitRicardo/axon-lang/blob/master/papers/paper_websocket_cognitive_primitive.md).
 
 ## The four-pillar v2.3.0 algebra
 

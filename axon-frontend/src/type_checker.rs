@@ -15530,7 +15530,7 @@ mod cardinality_tests {
 // ════════════════════════════════════════════════════════════════════
 //
 // Anchor -assertions for step 39.a per the plan vivo
-// `docs/cycle/pure_silicon_cognition.md`. Acceptance criterion:
+// `the design plan`. Acceptance criterion:
 //   declared_cardinality("FlowEnvelope<List<X>>") == Wrapped(Plural("X"))
 // + transparent unwrap behavior at the gate
 // + nested generic parser support (parse_type_expr recurses)

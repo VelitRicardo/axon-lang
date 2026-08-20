@@ -1,6 +1,6 @@
 //! v2.46.0 — grammar + AST + IR + type-checker for `credential`
 //! (the ephemeral-credential contract) and `mint` (the minting flow verb) —
-//! `docs/cycle/ephemeral_visitor_credentials.md`, axon-enterprise repo.
+//! `the design plan`, axon-enterprise repo.
 //!
 //! Pinned properties:
 //! 1. A full `credential` parses into `CredentialDefinition` (ttl + grants).

@@ -1,6 +1,6 @@
 //! v2.40.0 — grammar + AST + IR + type-checker for the native `cache`
 //! primitive (`cache <Name> { … }` + `tool.cache:` / `retrieve.cache:`).
-//! See `docs/cycle/native_cache_primitive.md` (axon-enterprise repo).
+//! See `the design plan` (axon-enterprise repo).
 //!
 //! Pinned properties:
 //! 1. A full `cache` parses into `CacheDefinition` (every field).

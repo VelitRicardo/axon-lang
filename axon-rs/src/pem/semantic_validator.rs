@@ -15,8 +15,8 @@
 //! component among several; it is the only place where the guarantee touches
 //! reality. If `e(t)` is fabricated, every theorem downstream is decoration.
 //!
-//! `docs/papers/paper_mandate.md` leaves `e(t)` abstract. The companion paper,
-//! `docs/papers/paper_mathematical_prompt_optimization.md`, makes it concrete —
+//! `papers/paper_mandate.md` leaves `e(t)` abstract. The companion paper,
+//! `papers/paper_mathematical_prompt_optimization.md`, makes it concrete —
 //! and its definition is the right one for a `mandate`, because a mandate *is* a
 //! set of constraints:
 //!

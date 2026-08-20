@@ -1,6 +1,6 @@
 //! v2.48.0 — the `tool { secret: <key> }` dispatch-injection field
 //! (doctrine `rotation_without_revelation`) —
-//! `docs/cycle/secret_custody_lifecycle.md`, axon-enterprise repo.
+//! `the design plan`, axon-enterprise repo.
 //!
 //! Pinned properties:
 //! 1. `secret:` parses as a dotted config key into `ToolDefinition.secret`.

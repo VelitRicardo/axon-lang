@@ -139,7 +139,7 @@ pub enum Declaration {
     /// config-resolved OUTBOUND connection to a third-party vendor, typed by
     /// the same v2.3.0 session algebra on the axon-facing side and transcoded
     /// to the vendor's wire frames by a declared total projection
-    /// (docs/cycle/upstream_design.md).
+    /// (the design plan).
     Upstream(UpstreamDefinition),
     /// v2.37.0 — the voice-agent simplicity layer: macro-expands
     /// (inspectable via `axon desugar`, the design decision) to `ots` + carrier
@@ -149,11 +149,11 @@ pub enum Declaration {
     Voice(VoiceDefinition),
     /// v2.38.0 — a named, referenced browser-origin policy (mirrors
     /// `shield`'s shape exactly), resolved per `axonendpoint.cors:`
-    /// reference (docs/cycle/cors_first_class_endpoint_property.md).
+    /// reference (the design plan).
     Cors(CorsDefinition),
     /// v2.40.0 — a named, referenced result-memoization policy (mirrors
     /// `cors`'s shape), resolved per `tool.cache:` / `retrieve.cache:`
-    /// (docs/cycle/native_cache_primitive.md).
+    /// (the design plan).
     Cache(CacheDefinition),
     /// v2.42.0 — the long-horizon autonomous research primitive: a governed
     /// ORCHESTRATOR (not a monolith) that composes existing primitives
@@ -162,7 +162,7 @@ pub enum Declaration {
     /// budget-bounded, interruptible, fail-closed, provenance-witnessed
     /// research loop. Enterprise-exclusive at scale (charter split R1); the
     /// keyword + type discipline + ports live in OSS
-    /// (docs/cycle/savant_2.md).
+    /// (the design plan).
     Savant(SavantDefinition),
     /// v2.42.0 — a dynamic tool-synthesis policy: the closed set of
     /// conditions (risk ceiling, source language, mandatory WASM zero-trust
@@ -178,14 +178,14 @@ pub enum Declaration {
     /// block MUST run `within`. The load-bearing safety construct that makes
     /// warden a governed auditor, not a weapon: no in-scope authorization ⇒ no
     /// analysis (fail-closed). Referenced by `warden(t) within <Scope>`
-    /// (docs/cycle/warden_2.md).
+    /// (the design plan).
     Scope(ScopeDefinition),
     /// v2.46.0 — a named ephemeral-credential contract: TTL-bounded,
     /// capability-attenuated bearer minting (`authority_only_attenuates` —
     /// grants ⊆ the minter's own capabilities at mint, TTL ≤ the closed
     /// ceiling). Declared once (the `cors`/`scope` shape), referenced by the
     /// `mint <Credential> as <binding>` flow verb
-    /// (docs/cycle/ephemeral_visitor_credentials.md).
+    /// (the design plan).
     Credential(CredentialDefinition),
     /// v2.4.0 — a Pauli-sum observable `M = Σ cₖ Pₖ` that a `quant`
     /// block measures against (paper section 3.2; plan D5).
@@ -200,7 +200,7 @@ pub enum Declaration {
     /// serializer, not a capability (the design decision — identical effect rows). The
     /// assertion-laundering barrier refuses a value below `believe` in
     /// an assertive slot without an `attribute:` or a shield
-    /// (docs/cycle/native_document_synthesis.md).
+    /// (the design plan).
     Document(DocumentDefinition),
     /// v2.60.0 — Governed CRM Delivery: a declarative, compile-time-validated
     /// egress of assertions into a system of record (a CRM). The dual of
@@ -208,7 +208,7 @@ pub enum Declaration {
     /// human artifact, `deliver` leaves it into a machine system others treat as
     /// fact. The provenance-stripping barrier (the design decision, axon-T920) refuses a
     /// `provenance: cleared` delivery of an unshielded flow value — a guess must
-    /// arrive labeled as a guess (docs/cycle/governed_crm_delivery.md).
+    /// arrive labeled as a guess (the design plan).
     Deliver(DeliverDefinition),
     /// v2.66.0 — governed human notification.
     Notify(NotifyDefinition),
@@ -1050,7 +1050,7 @@ pub struct CacheDefinition {
 /// primitives Axon already ships (memory/corpus retention, `par` swarms, the
 /// `quant` Hilbert substrate, `forge` novelty synthesis, the `daemon` host, the
 /// v2.28.0 linear budget, the v2.36.0 interruptible session, the v2.34.0 signed egress)
-/// into a single governed research loop. The paper's vision (docs/papers/
+/// into a single governed research loop. The paper's vision (papers/
 /// paper_primitiva_savant.md) grounded to real primitives in its section 9.
 ///
 /// v2.42.0 parses the FULL block surface; the semantics land incrementally:
@@ -3510,7 +3510,7 @@ pub struct ShieldApplyStep {
 ///
 /// **v2.83.0 — and v2.67.0 closed that with the WRONG SHAPE.** It gave the block a
 /// `body: Vec<FlowStep>`, which no published block and no paper writes. The
-/// specified surface — `docs/cycle/algebraic_effects_runtime.md` section 3.7, whose D8
+/// specified surface — `the design plan` section 3.7, whose D8
 /// promises *"backward compat for `stream<τ>` 100%, cero cambios en `.axon`
 /// source files de adopters"* — is `stream<T> { on_chunk: B₁ on_complete: B₂ }`,
 /// and README block 15 publishes exactly that. Measured before this landed:
@@ -3581,7 +3581,7 @@ pub struct StreamBlock {
 // a no-op, which is precisely the v2.67.0 defect this cycle exists not to repeat.
 // the design decision: the effect machine is the DISPATCHER, and the instruction alphabet is
 // `IRFlowNode`, so a handler clause can `emit`, `use` a tool or `persist` like
-// any other body. See `docs/cycle/the_effect_system.md`.
+// any other body. See `the design plan`.
 
 /// `effect SSE { Emit(token: Token) -> Unit  Done() -> Never }` — a top-level
 /// declaration, a peer of `tool` / `persona` / `anchor` per `the design plan` section 3.1.
@@ -3912,7 +3912,7 @@ pub struct WardenBlock {
 }
 
 /// v2.4.0 — the `quant` cognitive primitive block surface
-/// (`docs/papers/paper_primitiva_quant.md`; enterprise v2.4.0).
+/// (`papers/paper_primitiva_quant.md`; enterprise v2.4.0).
 ///
 /// `quant` projects an MEK semantic tensor into a complex Hilbert space,
 /// evolves it under a variational / kernel-feature map, and collapses back to

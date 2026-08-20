@@ -1,7 +1,7 @@
 //! v2.60.0 — grammar + AST + IR + structure checker + the provenance-stripping
 //! barrier for Governed CRM Delivery (`deliver`). The egress-dual of `scrape`
 //! (v2.52.0) and the egress-form of v2.53.0's assertion-laundering barrier.
-//! See `docs/cycle/governed_crm_delivery.md` (axon-enterprise).
+//! See `the design plan` (axon-enterprise).
 //!
 //! Pinned properties:
 //! 1. A `deliver` parses into `DeliverDefinition` with an operation list.

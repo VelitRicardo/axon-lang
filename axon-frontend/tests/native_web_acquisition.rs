@@ -1,7 +1,7 @@
 //! v2.52.0 — grammar + AST + IR + type-checker for Native Web
 //! Acquisition (`scrape_http` / `scrape_dom` / `scrape_crawl` providers + the
 //! closed-catalog `scrape: { … }` block + the `web` effect base).
-//! See `docs/cycle/native_web_acquisition.md` (axon-enterprise).
+//! See `the design plan` (axon-enterprise).
 //!
 //! Pinned properties:
 //! 1. A full scrape `tool` parses into `ToolDefinition.scrape` (ScrapeSpec).

@@ -1,6 +1,6 @@
 //! v2.48.0 — grammar + AST + IR + type-checker for the `backend:
 //! secrets` metadata store (doctrine `rotation_without_revelation`) —
-//! `docs/cycle/secret_custody_lifecycle.md`, axon-enterprise repo.
+//! `the design plan`, axon-enterprise repo.
 //!
 //! Pinned properties:
 //! 1. `axonstore X { backend: secrets  class: crm }` parses; AST carries

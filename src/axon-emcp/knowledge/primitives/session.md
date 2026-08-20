@@ -168,5 +168,5 @@ restores the exact cursor position.
   four pillars + practical agent recipes.
 - `axon://primitives/axonendpoint` — REST endpoint primitive
   for non-dialogue request/response.
-- [`docs/papers/paper_websocket_cognitive_primitive.md`](https://github.com/VelitRicardo/axon-lang/blob/master/docs/papers/paper_websocket_cognitive_primitive.md)
+- [`papers/paper_websocket_cognitive_primitive.md`](https://github.com/VelitRicardo/axon-lang/blob/master/papers/paper_websocket_cognitive_primitive.md)
   — the four-pillar paper underpinning v2.3.0.

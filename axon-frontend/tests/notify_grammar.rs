@@ -1,5 +1,5 @@
 //! v2.66.0 — `notify`: grammar + the three laws of governed human
-//! notification. See `docs/cycle/governed_human_notification.md`.
+//! notification. See `the design plan`.
 //!
 //! Pinned properties:
 //! 1. The declaration parses (channel / `to: secret(...)` / template /

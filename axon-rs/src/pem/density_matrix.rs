@@ -1,7 +1,7 @@
 //! v2.83.0 — the `mandate` controller: PID, anti-windup, convergence, and
 //! the stability band the compiler must check.
 //!
-//! Named for `density_matrix.py` in `docs/papers/paper_mandate.md`, which places
+//! Named for `density_matrix.py` in `papers/paper_mandate.md`, which places
 //! the controller inside the PEM engine. The name is part of the specification;
 //! inventing a different one would break the correspondence between the paper
 //! and the code that is supposed to implement it.

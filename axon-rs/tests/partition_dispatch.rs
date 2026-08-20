@@ -5,7 +5,7 @@
 #![cfg(feature = "server")]
 
 //! v2.49.0 — runtime for the parametric secret injection
-//! (`docs/cycle/secret_partition_2.md`, axon-enterprise repo), doctrine
+//! (`the design plan`, axon-enterprise repo), doctrine
 //! `selection_without_revelation`.
 //!
 //! Pinned properties:

@@ -1,6 +1,6 @@
 //! v2.42.0 — grammar + AST + IR for the `savant` primitive
 //! (`savant <Name> { domain:, cognition{…}, memory{…}, budget{…},
-//! mandate <M> {…} }`). See `docs/cycle/savant_2.md` (axon-enterprise repo).
+//! mandate <M> {…} }`). See `the design plan` (axon-enterprise repo).
 //!
 //! Pinned properties (surface only — the v2.42.0 checker owns semantics):
 //! 1. A full `savant` parses into `SavantDefinition` (every field + sub-block).

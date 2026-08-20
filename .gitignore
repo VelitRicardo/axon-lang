@@ -58,19 +58,33 @@ temp_*.txt
 # SDK (not part of this repo)
 sdk/
 
-# docs/ is internal working material (fase logs, vision drafts, adopter
-# upgrade notes, investor prep) — kept local, not published. Only the
-# academic papers stay public.
-/docs/*
-!/docs/papers/
+# `documents/` is internal working material — cycle plans, vision drafts,
+# adopter upgrade notes, investor prep, compliance submission templates. It
+# describes HOW axon is built, cycle by cycle, and it is NOT part of the public
+# surface. Files stay on disk locally; this rule keeps them out of git.
+#
+# A FLAT ignore, deliberately: the rule it replaces was `/docs/*` plus an
+# `!/docs/papers/` exception, and an exception is a thing you have to remember
+# to maintain — one new public folder under the ignored tree and it silently
+# never ships. Nothing under `documents/` is public, so nothing needs an escape
+# hatch.
+#
+# The two directories this replaces (`docs/fase/`, `docs/vision/`) are gone:
+# `docs/` now means the OPPOSITE. See the note below.
+/documents/
 
-# Private internal know-how (plan vivos, design notes, vision docs).
-# These describe HOW we construct axon cycle-by-cycle — not part of the
-# public surface adopters depend on. Public guides for adopters live at
-# docs/ root (see ADOPTER_*.md / MIGRATION_*.md) and in docs/papers/.
-# Files stay on disk locally; gitignore just prevents accidental re-tracking.
-docs/fase/
-docs/vision/
+# `docs/` and `papers/` are PUBLIC by definition and are NOT ignored:
+#   - `docs/`   — the adopter documentation site (docs.ricardovelit.com).
+#   - `papers/` — the academic papers the compiler's own gates read
+#                 (`the_paper_matches_the_compiler.rs` includes one at compile
+#                 time), linked from the README.
+#
+# Because `docs/` used to hold the internal material, muscle memory is a real
+# hazard: a cycle plan written to `docs/fase/` would now be COMMITTED and
+# PUBLISHED. A gitignore cannot warn about that — it is silent by construction —
+# so the rule is enforced loudly by a test instead
+# (`axon-rs/tests/the_public_docs_tree_is_public.rs`), which also fails if this
+# `/documents/` line is ever removed.
 
 # §Fase 117.b — the founder's working file, kept at the repo root. It is not
 # part of the public surface and must never be committed; ignoring it also

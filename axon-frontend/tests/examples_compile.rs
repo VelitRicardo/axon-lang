@@ -1,5 +1,5 @@
 //! v2.81.0 — **every published example compiles**. The ratchet that makes
-//! the shop window a build input — `docs/cycle/the_public_artifact.md`,
+//! the shop window a build input — `the design plan`,
 //! axon-enterprise repo.
 //!
 //! **What was wrong.** `ci.yml` gated exactly ONE example —

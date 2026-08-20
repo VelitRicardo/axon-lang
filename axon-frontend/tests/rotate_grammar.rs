@@ -1,6 +1,6 @@
 //! v2.48.0 — grammar + AST + IR + type-checker for the `rotate` flow
 //! verb (mediated secret renewal, doctrine `rotation_without_revelation`)
-//! `docs/cycle/secret_custody_lifecycle.md`, axon-enterprise repo.
+//! `the design plan`, axon-enterprise repo.
 //!
 //! Pinned properties:
 //! 1. `rotate <Store> where "…" with <Tool> as <binding>` parses into

@@ -9,7 +9,7 @@
 //! moderate, reply, publish) as one step in a multi-tool flow. The protocol layer
 //! — the capability×scope matrix, the session-typed publish protocols, the
 //! owned-only posture refusals, the consumable quotas — lives in the `axon-agora`
-//! crate (`docs/papers/paper_axon_agora.md`); this module is the runtime seam.
+//! crate (`papers/paper_axon_agora.md`); this module is the runtime seam.
 //!
 //! **Routing.** A surface `tool` declares `provider: agora_<platform>` (the
 //! CLOSED v2.69.0 catalog) and names its operation in `runtime:` — the same slug

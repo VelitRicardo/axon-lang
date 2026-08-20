@@ -30,7 +30,7 @@ over chunk embeddings.
 
 There is **no embedding pipeline, no vector database, and no cosine
 similarity** anywhere in a PIX. The formal basis is
-`docs/papers/paper_pix_formal_research.md` (the Chunking Destruction
+`papers/paper_pix_formal_research.md` (the Chunking Destruction
 Theorem; monotone conditional-entropy reduction; reasoning-path
 explainability).
 
@@ -127,5 +127,5 @@ content; trusted but unverified until validated.
 - `axon://primitives/corpus` — the multi-document corpus a PIX can index.
 - `axon://primitives/ledger` — the audit chain (former Provenance-Index
   reading of `pix`).
-- `docs/papers/paper_pix_formal_research.md` — the formal framework.
-- `docs/papers/paper_multi_document.md` — MDN, cross-corpus navigation.
+- `papers/paper_pix_formal_research.md` — the formal framework.
+- `papers/paper_multi_document.md` — MDN, cross-corpus navigation.

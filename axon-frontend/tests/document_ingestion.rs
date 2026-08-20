@@ -1,5 +1,5 @@
 //! v2.54.0 — the parse/infer provenance split in the type system.
-//! See `docs/cycle/document_ingestion_surgical_edit.md`.
+//! See `the design plan`.
 //!
 //! Pinned properties:
 //! 1. `ingest:parsed` / `ingest:inferred` are valid provenance annotations

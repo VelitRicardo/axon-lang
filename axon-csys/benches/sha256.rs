@@ -6,7 +6,7 @@
 //! compile to the same canonical FIPS 180-4 transform; the C kernel's
 //! win, when present, comes from removing the `sha2` crate's generic
 //! `Digest` dispatch overhead at small input sizes. We document
-//! measured numbers in `docs/cycle/silicon_cognition.md` 25.j row.
+//! measured numbers in `the design plan` row.
 
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use sha2::Digest;

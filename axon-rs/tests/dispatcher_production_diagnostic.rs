@@ -65,7 +65,7 @@
 //! traverses. The gap this captures is the wiring between the
 //! production handler and the structurally-complete dispatcher.
 //!
-//! # D-letter anchors (proposed — see docs/cycle/dispatcher_production_wiring.md)
+//! # D-letter anchors (proposed — see the design plan)
 //!
 //! - **D1** — Single hot path through the dispatcher.
 //!   Pre-33.z.c: production hot path branches on

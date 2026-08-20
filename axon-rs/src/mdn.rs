@@ -1,6 +1,6 @@
 //! v2.12.0 — Multi-Document Navigation (MDN).
 //!
-//! A faithful implementation of `docs/papers/paper_multi_document.md`: a document
+//! A faithful implementation of `papers/paper_multi_document.md`: a document
 //! corpus as a **labeled directed graph** `C = (D, R, τ, ω, σ)`, navigated by
 //! relationship rather than by embedding similarity. This module ships **v2.12.0
 //! — the corpus graph + signed Epistemic PageRank (EPR)**, the paper's most

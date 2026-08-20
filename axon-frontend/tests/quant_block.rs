@@ -1,6 +1,6 @@
 //! v2.4.0 — the `quant { … }` cognitive block surface
-//! (`axon-enterprise/docs/cycle/quant_cognitive_primitive.md`;
-//! paper `docs/papers/paper_primitiva_quant.md`).
+//! (`axon-enterprise/the design plan`;
+//! paper `papers/paper_primitiva_quant.md`).
 //!
 //! `quant` projects an MEK semantic tensor into a complex Hilbert space. This
 //! test pins the FRONTEND surface only (51.a): the keyword parses as a flow-body

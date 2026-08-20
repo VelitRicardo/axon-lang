@@ -1,6 +1,6 @@
 //! v2.12.0 — the PIX retrieval navigator.
 //!
-//! A faithful implementation of `docs/papers/paper_pix_formal_research.md`:
+//! A faithful implementation of `papers/paper_pix_formal_research.md`:
 //! **embeddings-free** structured retrieval by intentional tree navigation.
 //! There is no embedding, no vector store, and no cosine similarity here. A
 //! document is a tree `D = (N, E, ρ, κ)`; retrieval is a bounded breadth-first

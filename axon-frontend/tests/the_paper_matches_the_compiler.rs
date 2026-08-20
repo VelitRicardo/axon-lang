@@ -2,7 +2,7 @@
 //!
 //! # Why a test over a document
 //!
-//! `docs/papers/paper_compliance.md` is the public justification for the
+//! `papers/paper_compliance.md` is the public justification for the
 //! compliance work. It is read by regulated buyers and by auditors, and the
 //! rule the founder ratified for it is absolute:
 //!
@@ -31,7 +31,7 @@
 //! tense, and the sections that do so are marked as pending in the text itself.
 
 /// The paper, embedded at compile time so a change to it rebuilds this test.
-const PAPER: &str = include_str!("../../docs/papers/paper_compliance.md");
+const PAPER: &str = include_str!("../../papers/paper_compliance.md");
 
 /// Extract the members of the `\mathrm{K} = { … }` set from the paper's LaTeX.
 ///

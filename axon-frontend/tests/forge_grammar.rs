@@ -1,6 +1,6 @@
 //! v2.41.0 — grammar + AST + IR + type-checker for the REAL `forge`
 //! Directed Creative Synthesis primitive (replacing the pre-v2.41.0 no-op stub).
-//! See `docs/cycle/forge_creative_synthesis.md` (axon-enterprise repo).
+//! See `the design plan` (axon-enterprise repo).
 //!
 //! Pinned properties:
 //! 1. A full `forge Name(seed: "...") -> Type { mode, novelty, depth, branches,

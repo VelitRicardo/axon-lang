@@ -6,7 +6,7 @@
 //! baseline — each later step (36.b–36.l) inverts a piece of it.
 //!
 //! The three conspiring breaks + one piece of dead code (verified
-//! 2026-05-17, see `docs/cycle/axonendpoint_production_execution.md`):
+//! 2026-05-17, see `the design plan`):
 //!
 //!   A. `dynamic_endpoint_handler` hardcodes `backend: "auto"`; `"auto"`
 //!      scores ONLY `state.backend_registry`, which is empty unless an

@@ -441,7 +441,7 @@ impl std::error::Error for ParseError {}
 //
 // Mirror of Python's `axon.compiler.parser.ParseResult` (v1.20.0).
 // The rationale, sync semantics, and test contract are documented in
-// `docs/cycle/adopter_diagnostic_robustness.md`. The Rust frontend
+// `the design plan`. The Rust frontend
 // must produce structurally identical error lists to the Python parser
 // when handed the same source — that is the cross-stack drift gate
 // (D7 ratified 2026-05-10: byte-identical error lists).
@@ -7987,7 +7987,7 @@ impl Parser {
     /// v2.83.0 — `pid { Kp: <f>, Ki: <f>, Kd: <f> }`.
     ///
     /// The gains of the Cybernetic Refinement Calculus controller
-    /// (`docs/papers/paper_mandate.md` section 3): `u(t) = Kp·e(t) + Ki·∫e + Kd·de/dt`.
+    /// (`papers/paper_mandate.md` section 3): `u(t) = Kp·e(t) + Ki·∫e + Kd·de/dt`.
     /// Accepts both capitalised (`Kp`, the papers' and README's notation) and
     /// lower-case spellings, because the flat `kp:` form was already accepted and
     /// removing it would break programs that use it.
@@ -9653,7 +9653,7 @@ impl Parser {
 
     /// v2.37.0 — parse `upstream Name [from Preset@vN] { fields }`.
     ///
-    /// Field grammar per `docs/cycle/upstream_design.md` section 1–2. The
+    /// Field grammar per `the design plan` section 1–2. The
     /// parser fixes the *shape* only; catalog membership (`transport:`,
     /// `auth:`, `overflow:`, `on_exhausted:`), key charsets and projection
     /// totality are v2.37.0 type-checker laws (T849–T851), mirroring how

@@ -287,12 +287,24 @@ fn has_ext(p: &Path, exts: &[&str]) -> bool {
 
 // ───────────────────────────── the surface ─────────────────────────────
 
-/// The one file that necessarily carries the banned vocabulary: this gate,
-/// which has to spell out what it refuses. Nothing else is exempt — the sweep
-/// that widened the scan to whole files renamed every `faseNNN_*` test and
-/// fixture and rewrote every comment, so the carve-out that used to sit here
-/// for `advertised.rs` is gone.
-const SELF: &str = "adopter_surface_speaks_versions.rs";
+/// The only files that may carry the banned vocabulary: the gates that exist to
+/// REFUSE it, and therefore have to spell it out. A gate cannot enforce a
+/// pattern it is forbidden to name.
+///
+/// This list is deliberately two entries long and each one is justified. It is
+/// NOT a place to park a file that merely happens to mention a cycle number —
+/// the sweep that widened this scan to whole files renamed every `faseNNN_*`
+/// test and fixture and rewrote every comment, so the carve-out that used to sit
+/// here for `advertised.rs` is gone and should stay gone.
+const ENFORCERS: &[&str] = &[
+    // this gate: the vocabulary it bans appears in `banned()` and in its own
+    // self-tests, which assert that `§`, `Fase` and a decision id are caught.
+    "adopter_surface_speaks_versions.rs",
+    // the docs-tree gate: `internal_shape()` matches the NAMES the internal
+    // material uses (`fase*`, `vision*`, `presentation_*`), so it must contain
+    // them as literals, and its probe paths name `documents/fase/…`.
+    "the_public_docs_tree_is_public.rs",
+];
 
 fn must_exist(p: &Path) -> &Path {
     assert!(p.exists(), "adopter-surface gate: expected {} to exist — the surface list is out of date, not the repo", p.display());
@@ -384,7 +396,11 @@ fn the_adopter_surface_carries_no_phase_numbers() {
             walk(must_exist(tree), &mut files);
         }
         for f in files {
-            if f.file_name().and_then(|n| n.to_str()) == Some(SELF) {
+            if f
+                .file_name()
+                .and_then(|n| n.to_str())
+                .is_some_and(|n| ENFORCERS.contains(&n))
+            {
                 continue;
             }
             if !has_ext(&f, &["rs", "c", "h", "yml", "yaml", "toml", "md", "axon", "axi", "json", "pinned", "js", "sh", "ps1", "txt"]) {

@@ -1,5 +1,5 @@
 //! v2.81.0 — **the published package stays lean** —
-//! `docs/cycle/the_public_artifact.md`, axon-enterprise repo.
+//! `the design plan`, axon-enterprise repo.
 //!
 //! Nothing had ever gated the artefact. Not `cargo package`, not its contents,
 //! not the dependency tree, not the install time. Measured on 2.80.0:

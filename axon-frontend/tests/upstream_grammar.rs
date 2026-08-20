@@ -1,5 +1,5 @@
 //! v2.37.0 — grammar + AST + IR + type-checker for `upstream`
-//! (the outbound vendor connection — `docs/cycle/upstream_design.md`).
+//! (the outbound vendor connection — `the design plan`).
 //!
 //! Pinned properties:
 //! 1. A full `upstream` parses into `UpstreamDefinition` (every field).

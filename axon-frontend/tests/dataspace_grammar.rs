@@ -1,6 +1,6 @@
 //! v2.63.0 — the typed `dataspace` declaration: grammar + AST + the
 //! schema law (`axon-T928`) + IR emission (un-skipped `dataspace_specs`).
-//! See `docs/cycle/deterministic_data_plane.md` (axon-enterprise).
+//! See `the design plan` (axon-enterprise).
 //!
 //! Pinned properties:
 //! 1. `dataspace X { column a: Int … }` parses into typed `DataspaceColumn`s;

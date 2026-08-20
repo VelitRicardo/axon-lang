@@ -2,7 +2,7 @@
 //! `FlowEnvelope<T>` wire envelope.
 //!
 //! These tests anchor the v2.0.0 wire contract per the plan vivo
-//! `docs/cycle/pure_silicon_cognition.md`:
+//! `the design plan`:
 //!
 //! - section 1 STATIC grep gate: every public-facing `serde_json::to_value`
 //!    of a `ServerExecutionResult` MUST be gone from the response

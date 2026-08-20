@@ -47,7 +47,7 @@
 //! uses the in-tree `stub` backend so the test is hermetic +
 //! deterministic + fast.
 //!
-//! # D-letter anchors (proposed — see docs/cycle/algebraic_streaming_dispatcher.md)
+//! # D-letter anchors (proposed — see the design plan)
 //!
 //! - **D1** — Per-IRFlowNode async dispatch is total. Pre-33.y.b:
 //!   `unsupported_feature_reason` returns `Some(_)` for 44 of 45

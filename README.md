@@ -127,11 +127,11 @@ backpressure), and the compiler proves the two endpoints are duals
 (Caires–Pfenning linear-logic Curry–Howard); the runtime enforces every step,
 seals the residual cursor on disconnect for typed reconnection, and projects
 to W3C Server-Sent Events when the protocol is single-polarity. See
-[`docs/papers/paper_websocket_cognitive_primitive.md`](docs/papers/paper_websocket_cognitive_primitive.md).
+[`papers/paper_websocket_cognitive_primitive.md`](papers/paper_websocket_cognitive_primitive.md).
 
 It is **not** a Python library, a LangChain wrapper, a YAML DSL, or a Terraform
 replacement. It is a *new kind of calculus* — see
-[`docs/papers/paper_lambda_lineal_epistemico.md`](docs/papers/paper_lambda_lineal_epistemico.md)
+[`papers/paper_lambda_lineal_epistemico.md`](papers/paper_lambda_lineal_epistemico.md)
 for the formal semantics (Cálculo Lambda Lineal Epistémico).
 
 ---
@@ -152,8 +152,8 @@ error**, not a post-mortem finding.
 | `lease`     | τ-decaying affine capability; post-expiry use is a CT-2 *Anchor Breach* | Hybrid affine + revocation (D2) |
 | `ensemble`  | Byzantine quorum aggregator over N observations with common-knowledge fusion | Fagin–Halpern `Cφ` |
 | `topology` + `session` | Typed directed graph over declared entities with Honda–Vasconcelos duality + deadlock detection | π-calculus binary sessions |
-| `socket` (v2.3.0) | Session-typed WebSocket transport with credit-refined backpressure, typed reconnection via `cognitive_states`, SSE-as-fragment projection | Caires–Pfenning Curry–Howard + Rast credit-refined types ([paper_websocket_cognitive_primitive.md](docs/papers/paper_websocket_cognitive_primitive.md)) |
-| `immune` + `reflex` + `heal` | KL-divergence anomaly sensor + O(1) signed-trace motor response + Linear-Logic one-shot patch FSM | Cognitive Immune System ([paper_immune_v2.md](docs/papers/paper_immune_v2.md)) |
+| `socket` (v2.3.0) | Session-typed WebSocket transport with credit-refined backpressure, typed reconnection via `cognitive_states`, SSE-as-fragment projection | Caires–Pfenning Curry–Howard + Rast credit-refined types ([paper_websocket_cognitive_primitive.md](papers/paper_websocket_cognitive_primitive.md)) |
+| `immune` + `reflex` + `heal` | KL-divergence anomaly sensor + O(1) signed-trace motor response + Linear-Logic one-shot patch FSM | Cognitive Immune System ([paper_immune_v2.md](papers/paper_immune_v2.md)) |
 | `component` + `view` | Declarative UI with the **same** compile-time κ coverage rule — regulated types need a covering shield or the compiler rejects | Regulatory Type Theory |
 
 ### Hard differentiators vs. Terraform / Pulumi / Kubernetes manifests
@@ -227,9 +227,9 @@ The vocabulary itself is closed (`axon-T1214`): `compliance: [HIPPA]` is refused
 
 ### Academic references
 
-- [`docs/papers/paper_lambda_lineal_epistemico.md`](docs/papers/paper_lambda_lineal_epistemico.md) — λ-L-E calculus: Theorem 5.1 *Stochastic Degenerative Soundness*
-- [`docs/papers/paper_immune_v2.md`](docs/papers/paper_immune_v2.md) — Cognitive Immune System with red-teaming metrics (F1 ≥ 0.80 per class)
-- [`docs/papers/paper_esk.md`](docs/papers/paper_esk.md) — Regulatory Type Theory for Cognitive Systems (Theorems 10.1–10.5)
+- [`papers/paper_lambda_lineal_epistemico.md`](papers/paper_lambda_lineal_epistemico.md) — λ-L-E calculus: Theorem 5.1 *Stochastic Degenerative Soundness*
+- [`papers/paper_immune_v2.md`](papers/paper_immune_v2.md) — Cognitive Immune System with red-teaming metrics (F1 ≥ 0.80 per class)
+- [`papers/paper_esk.md`](papers/paper_esk.md) — Regulatory Type Theory for Cognitive Systems (Theorems 10.1–10.5)
 
 ---
 
@@ -3477,7 +3477,7 @@ IR is the same artifact shape the enterprise deploy path stores and re-hydrates.
 The full design — the seven paradigms it synthesizes (OCaml signatures, 1ML
 unification, Backpack two-phase checking, GHC ABI hashes, Zig lazy discovery,
 Nix/Bazel content addressing, Rust behavioral contracts) and the theoretical
-guarantees — is the EMS paper: `docs/papers/paper_ems_axon.md`.
+guarantees — is the EMS paper: `papers/paper_ems_axon.md`.
 
 #### The Novel Contribution: Epistemic Compatibility Checking (ECC)
 
@@ -4941,7 +4941,7 @@ axon-constructor/
 │   └── tests/                       # sanitizer-clean + valgrind-clean CI lanes
 ├── axon/                        # Python — thin PyPI wrapper (downloads + invokes the Rust binary)
 ├── examples/                    # Reference .axon programs (healthcare, banking, government…)
-├── docs/papers/                 # Academic papers (formal proofs, calculus, theorems)
+├── papers/                 # Academic papers (formal proofs, calculus, theorems)
 ├── sdk/                         # TypeScript MCP client SDK
 ├── tests/                       # Wrapper contract tests + CLI smoke tests
 └── .github/workflows/           # CI — test lanes + release pipelines

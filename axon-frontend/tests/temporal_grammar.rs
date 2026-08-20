@@ -1,6 +1,6 @@
 //! v2.46.0 — grammar + AST + IR + type-checker for `now:` (declared
 //! cognitive time — the cognitive completion of `time_is_an_explicit_input`;
-//! `docs/cycle/temporal_cognitive_context.md`, axon-enterprise repo).
+//! `the design plan`, axon-enterprise repo).
 //!
 //! Pinned properties:
 //! 1. A step-level `now: "<IANA-tz>"` parses into `StepNode.now_tz`.

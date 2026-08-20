@@ -644,7 +644,7 @@ pub const PRIMITIVE_REGISTRY: &[PrimitiveInfo] = &[
         // optional segregation of duties." That is a DIFFERENT PRIMITIVE. It
         // described v2.45.0 grantability and v2.56.0 segregation of duties, neither of
         // which `mandate` has ever done, and it cost two wrong scopes before
-        // anyone opened `docs/papers/paper_mandate.md`. The registry is the
+        // anyone opened `papers/paper_mandate.md`. The registry is the
         // artefact v2.67.0 built to stop primitives from being misdescribed, and
         // nothing audits that a summary matches the README — so this one rotted
         // in the one file least likely to be doubted.

@@ -118,7 +118,7 @@ pub mod advertised;
 pub mod primitive_registry;
 
 // v2.76.0 — the Epistemic Module System, rebuilt natively in Rust
-// (docs/papers/paper_ems_axon.md). The retired Python EMS (v0.23.0,
+// (papers/paper_ems_axon.md). The retired Python EMS (v0.23.0,
 // gone since v2.0.0) advertised separate compilation the Rust toolchain
 // never had: `import` parsed, lowered, and resolved NOTHING. v2.76.0 makes
 // it real — and goes one phase further: the LINKER exists, so a

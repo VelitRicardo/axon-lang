@@ -3,7 +3,7 @@
 //! provenance / 39.c.z blame).
 //!
 //! Anchors the v2.0.0 epistemic envelope contract per the plan vivo
-//! `docs/cycle/pure_silicon_cognition.md` section 3 + section 5:
+//! `the design plan` section 3 + section 5:
 //!
 //! - section 1 — C23 kernel `axon_csys_envelope_validate_degradation` is
 //!     the canonical entry for Theorem 5.1 enforcement; the Rust

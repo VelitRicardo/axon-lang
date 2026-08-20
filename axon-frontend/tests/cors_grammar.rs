@@ -1,6 +1,6 @@
 //! v2.38.0 — grammar + AST + IR + type-checker for `cors`
 //! (the named, referenced browser-origin policy —
-//! `docs/cycle/cors_first_class_endpoint_property.md`, axon-enterprise repo).
+//! `the design plan`, axon-enterprise repo).
 //!
 //! Pinned properties:
 //! 1. A full `cors` parses into `CorsDefinition` (every field).

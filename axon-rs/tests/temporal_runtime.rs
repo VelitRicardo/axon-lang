@@ -1,5 +1,5 @@
 //! v2.46.0 — runtime for `now:` declared cognitive time
-//! (`docs/cycle/temporal_cognitive_context.md`, axon-enterprise repo).
+//! (`the design plan`, axon-enterprise repo).
 //!
 //! Pinned properties (through the PRODUCTION engine — `execute_server_flow`
 //! runs the unified dispatcher via the BufferSink collector, v2.15.0):

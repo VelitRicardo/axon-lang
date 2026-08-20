@@ -172,8 +172,8 @@ fn iso_27001_controls() -> Vec<Control> {
 fn fips_140_3_controls() -> Vec<Control> {
     vec![
         ctl!(Fips140_3, "FIPS.ALG_APPROVED", "Only FIPS-approved algorithms used", "HMAC-SHA256 + SHA-256 + Ed25519 + ML-DSA-65", RuntimeInvariant, "axon.runtime.esk.provenance"),
-        ctl!(Fips140_3, "FIPS.BOUNDARY", "Cryptographic boundary defined", "ESK-CB: provenance.py + secret.py + attestation.py", ManualPolicy, "docs/compliance/fips_140_3_submission_template.md"),
-        ctl!(Fips140_3, "FIPS.FSM", "Finite State Model", "POWER-OFF → INITIALIZED → OPERATIONAL", ManualPolicy, "docs/compliance/fips_140_3_submission_template.md, section 6"),
+        ctl!(Fips140_3, "FIPS.BOUNDARY", "Cryptographic boundary defined", "ESK-CB: provenance.py + secret.py + attestation.py", ManualPolicy, "documents/compliance/fips_140_3_submission_template.md"),
+        ctl!(Fips140_3, "FIPS.FSM", "Finite State Model", "POWER-OFF → INITIALIZED → OPERATIONAL", ManualPolicy, "documents/compliance/fips_140_3_submission_template.md, section 6"),
         ctl!(Fips140_3, "FIPS.KAT_HMAC", "HMAC-SHA256 Known Answer Test", "Test with fixed key/message → known tag", TestSuite, "tests/test_phase6_runtime.py"),
         ctl!(Fips140_3, "FIPS.KAT_SHA", "SHA-256 Known Answer Test", "SHA-256('abc') verification", TestSuite, "tests/test_phase6_runtime.py"),
         // v4.0.0 — this control carried the literal locator "PENDING"

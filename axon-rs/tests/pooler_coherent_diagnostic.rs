@@ -12,7 +12,7 @@
 //! capture the current behaviour with `eprintln!`, assert it minimally,
 //! and let a post-fix regression surface as an anchor-inversion failure.
 //!
-//! # The four findings (see `docs/cycle/pooler_coherent_store.md` section 2)
+//! # The four findings (see `the design plan` section 2)
 //!
 //!  - **A** — `column_types()` introspects on its own `&self.pool`
 //!    checkout, separate from the operation's checkout.

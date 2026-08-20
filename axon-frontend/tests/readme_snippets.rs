@@ -1,7 +1,7 @@
 //! v2.81.0 — **the README is a build input**. Every ` ```axon ` block in
 //! the published README is compiled by the real `axon check`, and the set of
 //! blocks that do NOT compile is a checked-in ledger that may only SHRINK —
-//! `docs/cycle/the_public_artifact.md`, axon-enterprise repo.
+//! `the design plan`, axon-enterprise repo.
 //!
 //! **What was wrong.** Nothing compiled the README. Measured 2026-08-03 against
 //! the published 2.80.0 binary: **52 of 56 blocks failed**, most on hard PARSE

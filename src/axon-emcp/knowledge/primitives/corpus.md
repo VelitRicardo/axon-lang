@@ -310,6 +310,6 @@ can be traced back to its source.
 - `axon://primitives/pix` — single-document structural retrieval
   navigator; `navigate`/`drill`/`trail` operate over a `pix` (tree)
   or a `corpus` graph (MDN).
-- `docs/papers/paper_multi_document.md` — the MDN framework
+- `papers/paper_multi_document.md` — the MDN framework
   (signed Epistemic PageRank, ε-informative navigation);
   `paper_memory_augmented_mdn.md` — the `adaptive:` endofunctor.

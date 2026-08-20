@@ -5,7 +5,7 @@
 #![cfg(feature = "server")]
 
 //! v2.48.0 — runtime for the secret-custody lifecycle
-//! (`docs/cycle/secret_custody_lifecycle.md`, axon-enterprise repo):
+//! (`the design plan`, axon-enterprise repo):
 //! the `backend: secrets` metadata retrieve, the mediated `rotate`
 //! exchange, and the `tool { secret: }` dispatch injection.
 //!

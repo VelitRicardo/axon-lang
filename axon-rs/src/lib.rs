@@ -440,7 +440,7 @@ pub mod wire_format;
 // v2.0.0 — Pure Silicon Cognition wire envelope. The canonical
 // `FlowEnvelope` payload for `transport: json` axonendpoint responses
 // + legacy `POST /v1/execute`. Isomorphic serialization of the
-// ψ-vector `⟨T, V, E⟩`. See `docs/cycle/pure_silicon_cognition.md`.
+// ψ-vector `⟨T, V, E⟩`. See `the design plan`.
 pub mod wire_envelope;
 // v2.0.0 — Wire envelope producer helpers. Closed-taxonomy
 // translators from runtime execution metadata into the wire envelope's

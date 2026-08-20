@@ -214,5 +214,5 @@ remains available over WebSocket.
   the `reconnect:` field hooks into.
 - `axon://compliance/legal_basis_catalog` — the closed catalog the
   `legal_basis:` field draws from.
-- [`docs/papers/paper_websocket_cognitive_primitive.md`](https://github.com/VelitRicardo/axon-lang/blob/master/docs/papers/paper_websocket_cognitive_primitive.md)
+- [`papers/paper_websocket_cognitive_primitive.md`](https://github.com/VelitRicardo/axon-lang/blob/master/papers/paper_websocket_cognitive_primitive.md)
   — the four-pillar paper underpinning v2.3.0.

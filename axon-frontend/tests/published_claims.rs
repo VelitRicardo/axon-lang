@@ -1,5 +1,5 @@
 //! v2.81.0 — **the published metadata tells the truth** —
-//! `docs/cycle/the_public_artifact.md`, axon-enterprise repo.
+//! `the design plan`, axon-enterprise repo.
 //!
 //! Two claims an adopter acts on before a single line of their code runs: what
 //! toolchain they need, and where the compiler sends them for help. Both were

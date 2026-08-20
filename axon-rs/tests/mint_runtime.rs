@@ -1,5 +1,5 @@
 //! v2.46.0 — runtime for `mint <Credential> as <binding>`
-//! (`docs/cycle/ephemeral_visitor_credentials.md`, axon-enterprise repo).
+//! (`the design plan`, axon-enterprise repo).
 //!
 //! Pinned properties:
 //! 1. Happy path: a mint with a configured port + a capability context

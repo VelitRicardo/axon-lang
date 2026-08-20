@@ -1,6 +1,6 @@
 //! v2.42.0 — grammar + AST + IR + static discipline for the `synth`
 //! dynamic tool-synthesis policy (`synth <Name> { target:, risk:, language:,
-//! sandbox:, review:, max_lines: }`). See `docs/cycle/savant_2.md`.
+//! sandbox:, review:, max_lines: }`). See `the design plan`.
 //!
 //! `synth` is the paper's "OTS = Ontological Tool Synthesis" grounded to a real
 //! keyword (`ots` already means one-shot media transform — paper section 9.1). It

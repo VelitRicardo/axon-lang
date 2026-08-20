@@ -47,7 +47,7 @@
 //! - **Pillar IV (Capability)** — `blame_attribution` (carries
 //!   `BlameKind` of failure when present)
 //!
-//! See plan vivo `docs/cycle/pure_silicon_cognition.md` section 4 for
+//! See plan vivo `the design plan` section 4 for
 //! the full wire-shape contract.
 
 use serde::{Deserialize, Serialize};

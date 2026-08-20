@@ -21,7 +21,7 @@
 //! - [`connector`] — the uniform [`SocialConnector`] seam every platform's native core
 //!   implements, reached in production as a tool provider.
 //!
-//! Every platform fact encoded here is sourced to `docs/papers/paper_axon_agora.md` II, itself
+//! Every platform fact encoded here is sourced to `papers/paper_axon_agora.md` II, itself
 //! confirmed against primary platform documentation (2026-07).
 
 pub mod connector;

@@ -1,6 +1,6 @@
 //! v2.49.0 — the `tool { secret_partition: <param> }` parametric-injection
 //! field (doctrine `selection_without_revelation`) —
-//! `docs/cycle/secret_partition_2.md`, axon-enterprise repo.
+//! `the design plan`, axon-enterprise repo.
 //!
 //! Pinned properties:
 //! 1. `secret_partition:` parses as a bare parameter reference into

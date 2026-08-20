@@ -1,6 +1,6 @@
 //! v2.43.0 — grammar + AST + IR for the `warden` adversarial-analysis
 //! flow-body block + the `scope` authorization-policy declaration. See
-//! `docs/cycle/warden_2.md` (axon-enterprise repo).
+//! `the design plan` (axon-enterprise repo).
 //!
 //! Pinned properties (surface only — the v2.43.0 checker owns semantics):
 //! 1. A full `scope` parses into `ScopeDefinition` (targets/depth/approver).

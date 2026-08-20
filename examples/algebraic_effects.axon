@@ -6,7 +6,7 @@
 //  changed, recompiled, or even aware a handler exists.
 //
 //  Plotkin/Pretnar handlers with one-shot delimited continuations. The theory
-//  is docs/papers/paper_algebraic_effects_streaming.md.
+//  is papers/paper_algebraic_effects_streaming.md.
 
 // ── The effect declaration ────────────────────────────────────────────────────
 //

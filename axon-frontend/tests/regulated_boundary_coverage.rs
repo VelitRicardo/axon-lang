@@ -1,6 +1,6 @@
 //! v2.81.0 — `axon-T957` **RegulatedBoundaryCoverage**: the ESK
 //! κ-coverage law, scoped at last to the `axonendpoint` —
-//! `docs/cycle/the_public_artifact.md`, axon-enterprise repo.
+//! `the design plan`, axon-enterprise repo.
 //!
 //! **What was wrong.** The README has promised since v1.x that removing the
 //! `shield` from a regulated endpoint makes `axon check` refuse — *"That

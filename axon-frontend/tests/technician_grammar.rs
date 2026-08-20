@@ -1,6 +1,6 @@
 //! v2.39.0 — grammar + AST + IR + type-checker for the Remote
 //! Hands technician-command surface on `tool` (`target:` / `risk:` / `argv:`).
-//! See `docs/cycle/remote_hands_technician_protocol.md` (axon-enterprise).
+//! See `the design plan` (axon-enterprise).
 //!
 //! Pinned properties:
 //! 1. A full technician `tool` parses into `ToolDefinition` (target/risk/argv).

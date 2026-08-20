@@ -1,7 +1,7 @@
 //! v2.65.0 — `grad` over the closed `Expr`: grammar + the two laws
 //! (axon-T931 differentiability / axon-T932 resolution) + the IR artifact
 //! (the SIMPLIFIED derivative rides `IRGradStep.derivatives`).
-//! See `docs/cycle/grad_over_expr.md` (axon-enterprise).
+//! See `the design plan` (axon-enterprise).
 
 use axon_frontend::ir_generator::IRGenerator;
 use axon_frontend::lexer::Lexer;
