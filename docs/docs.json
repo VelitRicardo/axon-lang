@@ -45,7 +45,8 @@
   },
   "footer": {
     "socials": {
-      "github": "https://github.com/VelitRicardo/axon-lang"
+      "github": "https://github.com/VelitRicardo/axon-lang",
+      "linkedin": "https://www.linkedin.com/in/ricardovelit"
     }
   },
   "logo": {
@@ -69,5 +70,13 @@
     "body": {
       "family": "Roboto"
     }
+  },
+  "styling": {
+    "eyebrows": "breadcrumbs",
+    "codeblocks": "dark",
+    "latex": true
+  },
+  "metadata": {
+    "timestamp": true
   }
 }
