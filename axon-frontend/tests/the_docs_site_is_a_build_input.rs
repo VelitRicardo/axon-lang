@@ -11,16 +11,19 @@
 //! serves. This gate extends the same discipline to the site the moment it
 //! exists, rather than after it has taught someone something false.
 //!
-//! Three laws:
+//! Four laws:
 //!
 //! 1. **`docs.json` is valid and complete** — it parses, and it carries the four
 //!    fields Mintlify requires (`name`, `theme`, `colors.primary`, `navigation`).
 //!    A malformed one fails the deployment with a message that says nothing
 //!    useful, so catching it here is strictly cheaper.
-//! 2. **Every page the navigation names exists.** A dangling entry renders as a
+//! 2. **Every asset the manifest declares exists.** A declared favicon or logo
+//!    that is not on disk does not fail Mintlify's build — it serves a broken
+//!    icon, which is the kind of defect nobody files and everybody notices.
+//! 3. **Every page the navigation names exists.** A dangling entry renders as a
 //!    404 in the site's own sidebar — the worst kind of broken link, because the
 //!    reader assumes the page was deleted on purpose.
-//! 3. **Every ` ```axon ` block on the site compiles**, through the same
+//! 4. **Every ` ```axon ` block on the site compiles**, through the same
 //!    `run_check` the `axon` CLI runs. No ledger of known-failing blocks: the
 //!    site is new, so it starts clean and stays that way. If a block is meant to
 //!    fail — showing a diagnostic — write the diagnostic in a plain fence, not
@@ -138,6 +141,48 @@ fn docs_json_exists_and_carries_what_mintlify_requires() {
     assert!(
         json_has_key(&src, "primary"),
         "docs/docs.json needs `colors.primary` — a hex brand colour."
+    );
+}
+
+// ── 1b. the assets the manifest declares exist ──────────────────────────────
+
+/// A declared asset that is not on disk is the same defect class as a dangling
+/// navigation entry, and it was found the same way: this commit's `docs.json`
+/// declared `"favicon": "/favicon.svg"` and no such file existed. Mintlify does
+/// not fail the build for it — it serves the site with a broken icon, which is
+/// the kind of defect nobody files and everybody notices.
+#[test]
+fn every_asset_the_manifest_declares_exists() {
+    let manifest = docs_dir().join("docs.json");
+    let src = std::fs::read_to_string(&manifest).expect("docs.json is readable");
+
+    let mut missing = Vec::new();
+    for key in ["favicon", "logo"] {
+        let needle = format!("\"{key}\"");
+        let Some(idx) = src.find(&needle) else { continue };
+        let rest = &src[idx + needle.len()..];
+        // `"favicon": "/favicon.svg"` — take the next quoted value. A nested
+        // object (`"logo": { "light": …, "dark": … }`) yields its first path,
+        // which is enough to catch the common single-asset case; extend this
+        // when a themed logo actually lands.
+        let Some(open) = rest.find('"') else { continue };
+        let after = &rest[open + 1..];
+        let Some(close) = after.find('"') else { continue };
+        let value = &after[..close];
+        if value.is_empty() || value.starts_with("http") || value == "light" || value == "dark" {
+            continue;
+        }
+        let rel = value.trim_start_matches('/');
+        if !docs_dir().join(rel).is_file() {
+            missing.push(format!("  {key}: \"{value}\" — expected docs/{rel}"));
+        }
+    }
+
+    assert!(
+        missing.is_empty(),
+        "docs.json declares {} asset(s) that do not exist:\n{}",
+        missing.len(),
+        missing.join("\n")
     );
 }
 

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="AXON">
+  <title>AXON</title>
+  <rect width="32" height="32" rx="7" fill="#1E3A8A"/>
+  <!-- an axon: a soma, the branching hillock, and the terminal it fires into -->
+  <circle cx="8" cy="16" r="3.4" fill="#60A5FA"/>
+  <path d="M11.4 16 H21" stroke="#60A5FA" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M21 16 L25.6 11.2 M21 16 L25.6 20.8" stroke="#93C5FD" stroke-width="2.2" stroke-linecap="round"/>
+  <circle cx="26.4" cy="10.4" r="1.9" fill="#DBEAFE"/>
+  <circle cx="26.4" cy="21.6" r="1.9" fill="#DBEAFE"/>
+</svg>
