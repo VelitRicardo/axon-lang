@@ -1,0 +1,83 @@
+---
+title: "Every boundary is guarded — the AuthorizationCoverage law (`public: true`)"
+description: "The transversal law that no endpoint may dispatch a flow across a trust boundary without either declaring a covering authorization discipline (requires / shield / compliance) OR the explicit, auditable opt-out `public: true`. A boundary…"
+---
+
+Every `axonendpoint` that names an `execute:` flow is, implicitly, opening a
+door: a request that crosses the network reaches real computation. Most of the
+field guards those doors with a middleware chain — an interceptor someone has to
+remember to wire, whose *absence* is invisible. AXON does not. This page is the
+law.
+
+> **No endpoint may dispatch a flow across a trust boundary unless it is covered
+> by ≥1 authorization discipline (`requires:` / `shield:` / `compliance:`) OR
+> declares the explicit opt-out `public: true`.** A boundary uncovered by silent
+> omission is a compile error — never a default.
+
+It is the same honest-compiler reflex as `axon://logic/no_unwitnessed_advantage`
+(don't claim what you can't prove) and `axon://logic/dispatch_vs_cognition`
+(don't fake determinism), applied to the trust boundary: **the *absence* of a
+guard must be a deliberate, witnessed decision, not an accident.**
+
+## The opt-out is the point
+
+Public endpoints are legitimate — a health check, an open webhook receiver. The
+law does not forbid them; it forbids them being *silent*.
+
+```text
+axonendpoint Health { method: GET path: "/healthz" execute: Ping public: true }
+```
+
+`public: true` is a **coverage** opt-out, not an authentication bypass — the
+platform's transport auth is a separate concern. It declares, auditably, "this
+boundary intentionally carries no capability / shield / compliance gate." Omit
+BOTH a covering discipline and `public: true`, and `axon check` fails:
+
+> `axon-T890`: axonendpoint 'Api' dispatches a flow but declares no authorization
+> coverage (no `requires:`, no `shield:`, no `compliance:`) and is not marked
+> `public: true` — an unguarded boundary (`every_boundary_is_guarded`).
+
+## What the compiler proves vs what the deploy gate enforces
+
+- **`axon check` proves coverage at the source** (`axon-T890`): every dispatching
+  endpoint is covered or explicitly public. This generalises the section 6.1 shield
+  κ-coverage rule from *regulated types* to *every boundary*.
+- **The deploy gate re-derives it independently** (`PropertyClass::AuthorizationCoverage`,
+  a PCC proof): the enterprise runtime refutes a pre-compiled IR whose endpoint is
+  uncovered, so the rule holds even if the source type-check was bypassed. An
+  unguarded boundary cannot reach production through any door.
+
+## Completeness, not just per-edge
+
+The law reaches beyond the endpoint. Its siblings close the other trust edges —
+egress (`publish within <Shield>`, mandatory), adversarial analysis
+(`warden(t) within <Scope>`, mandatory), scheduled autonomy (`daemon:run` gates
+mounting), tool execution (`destructive` forces confirmation). The doctrine's
+completeness claim is that **no reserved authority is a dead letter**: every RBAC
+permission has an enforcement call-site, or is explicitly accounted for. A guard
+that is declared but never invoked is theatre — and theatre is a hole.
+
+## The four pillars
+
+| | Every boundary is guarded |
+|---|---|
+| **Mathematics** | coverage is a total function over the program's boundary graph — every dispatching edge maps to ≥1 discipline or an explicit opt-out |
+| **Logic** | the coverage verdict is a proof obligation — re-checkable against the artifact (PCC `AuthorizationCoverage`), not trusted from the compiler |
+| **Philosophy** | the *absence* of authority must be declared; an ungoverned door is not "open by default", it is unaccounted-for |
+| **Computation** | the check is a compile error + a deploy-gate refutation; an unguarded boundary is not deployable, quietly or otherwise |
+
+## Why this exists
+
+The most expensive lie in a control plane is **"someone must have wired the
+guard."** A route with no capability check, a permission declared but enforced
+nowhere, a security surface whose guard is fail-closed but whose *door was never
+hung* — each is a hole that reads as coverage until an audit finds it. AXON makes
+the guard a *coverage property of the language*: it will not let you deploy an
+unguarded boundary believing it is protected, and it makes every deliberate
+opt-out say so out loud.
+
+## See also
+
+- `axon://logic/no_unwitnessed_advantage` — the sibling honest-compiler law (prove the claim).
+- `axon://primitives/shield` — the covering discipline for information-flow + compliance.
+- `axon://primitives/scope` — the mandatory authorization envelope a `warden` runs within.

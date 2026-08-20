@@ -1,0 +1,98 @@
+---
+title: "Rotation without revelation — custodied secrets have lifecycles, not readers (v2.48.0)"
+description: "The law governing the secret-custody lifecycle (`backend: secrets` + `rotate` + `tool { secret: }`, v2.48.0): a secret's whole life — seed, use, enumerate, rotate, expire — completes without the value ever entering the COGNITION space…"
+---
+
+The canonical adopter scenario: a SaaS executes actions in the CRMs its
+tenants connect (OAuth). The tenant's `access_token` expires every ~30
+minutes; the `refresh_token` renews it against the vendor's token
+endpoint, and the renewed pair must be persisted — encrypted — forever
+onward. Someone has to own that loop. If the flow owns it, the token is
+a `String` in cognition space: it rides epistemic envelopes, prompts,
+logs, an accidental `persist`. If nobody owns it, the adopter builds a
+side-channel cron in another language and the program lies about its
+own effects.
+
+> **The law.** A custodied secret is *authority*, not *data*. The
+> program may know **that** a secret exists, **when** it expires, and
+> **whether** its renewal succeeded — never **what** it is. The only
+> two morphisms on the value are custody → tool-exchange (reveal) and
+> tool-exchange → custody (commit), both runtime-mediated. No term of
+> the language evaluates to a secret value: revelation is
+> unrepresentable, not discouraged.
+
+## The three surfaces
+
+1. **Enumerate** — `axonstore CrmTokens { backend: secrets  class: crm }`
+   is a READ-ONLY metadata view over the tenant's custody, scoped to a
+   declared class (`crm.*`). Its schema is law, synthesized by the
+   compiler: `key`, `version`, `created_at`, `expires_at` — the value
+   has no column. A daemon's `retrieve CrmTokens where "expires_at <
+   now() + interval '10 minutes'"` is ordinary v2.21.0 time-aware source.
+2. **Rotate** — `rotate CrmTokens where "…" with RefreshCrmToken as r`
+   renews every matching entry through ONE mediated exchange per key:
+   the runtime reveals the current value only INTO the tool request
+   (the reserved `axon_rotation` envelope), the adopter's tool performs
+   the vendor exchange and answers `axon_rotated`, the runtime commits
+   CAS at `version + 1` (two daemon replicas cannot double-spend a
+   refresh credential — the loser degrades with a witness). The binding
+   receives `{attempted, rotated, failed}` — metadata, nothing else.
+3. **Use** — `tool CrmCrearContacto { secret: crm.hubspot }` injects the
+   per-tenant value into the tool-server request under the reserved
+   `axon_secret` field at dispatch. The flow calls
+   `use CrmCrearContacto(...)` and never touches the credential.
+
+## Three layers, all fail-closed
+
+1. **Compile.** A write verb against a secrets store is rejected
+   (`axon-T897` — custody is written only by the seeding API and the
+   mediated rotate commit); a `rotate` of a non-secrets store
+   (`axon-T898`) or an undeclared tool (`axon-T899`) is rejected; a
+   class-less secrets store — which would enumerate the tenant's ENTIRE
+   secret namespace — is unrepresentable (`axon-T900`); a `secret:`
+   that is not a config KEY is rejected (`axon-T902` — a credential
+   literal in source is unrepresentable, the v2.37.0 posture).
+2. **Verify/deploy.** The `SecretCustodySoundness` proof re-derives
+   every secrets store, rotate site and write verb from the compiled
+   IR — a stale or hand-edited artifact that smuggles a ghost rotation
+   tool, a class-less store, or a custody write is REFUTED before it
+   mounts.
+3. **Dispatch.** No custody port configured ⇒ a loud
+   missing-dependency error on every surface (never a silent stub,
+   never an LLM fallthrough — a hallucinated rotation summary over
+   untouched custody is the exact lie the law exists to prevent). A
+   secret-bearing tool with no custody does NOT call its vendor
+   unauthenticated — the dispatch fails with a witness.
+
+## The honest perimeter
+
+The adopter's tool-server DOES see plaintext — it must: it performs the
+vendor exchange and the authenticated call. That is the same trust
+domain that already receives whatever a flow sends it. The law governs
+the *cognition* space — what the program itself can name, bind, store,
+or utter. Availability degrades toward LESS authority, never more: a
+custody outage means nothing rotates and nothing dispatches
+authenticated, each with a typed witness.
+
+## Relation to the other laws
+
+- **The inbound dual of
+  [`authority_only_attenuates`](axon://logic/authority_only_attenuates)**
+  (v2.46.0): that law governs authority we hand DOWN (a mint can only
+  attenuate, and the bearer is never persisted — `axon-T896`); this law
+  governs authority a third party lends US (a borrowed credential is
+  custodied, renewed in custody, and never readable). Together they
+  close the perimeter: **no authority — own or borrowed — exists as
+  data in cognition space.**
+- [`time_is_an_explicit_input`](axon://logic/time_is_an_explicit_input)
+  (v2.27.0/v2.46.0): `expires_at` is *declared* metadata, written by the seeder
+  and the rotation commit — expiry drives the daemon's filter, never a
+  hidden clock.
+- `dispatch_vs_cognition` (v2.9.0): the flow decides WHEN to rotate
+  (cognition); the runtime performs the exchange (dispatch). The verb
+  exists precisely so that split is structural.
+
+The honest test: if any expressible program can print a custodied
+secret, your secret store is a database with extra steps. AXON rejects
+that program at compile time, refutes it at deploy time, and refuses it
+at dispatch.

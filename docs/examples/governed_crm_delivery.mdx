@@ -1,0 +1,64 @@
+---
+title: "Governed CRM delivery — acquire → enrich → deliver, provenance intact"
+description: "`deliver` (v2.60.0): the egress-dual of acquisition. A partial lead is enriched (v2.58.0 — the resolved email is born `speculate`/`believe`, Untrusted, NEVER `know`) and then DELIVERED to the CRM. With `provenance: attached` (the default)…"
+---
+
+**Primitives used:** `deliver` · `tool` · `flow`
+
+```axon
+// The lead-gen vertical's last hop: acquire (v2.56.0) → enrich (v2.58.0) →
+// DELIVER (v2.60.0). This example shows the deliver primitive — the governed
+// egress of assertions into a system of record.
+
+// v2.58.0 — a governed enrichment tool. The resolved contact is born INFERRED
+// (a vendor's probabilistic guess): its fields carry a confidence + an
+// epistemic level bounded at `believe` (never `know`), and the value is
+// Untrusted until a shield clears it. Enrichment resolves the missing
+// email/phone from a partial (name + company).
+tool Enrich {
+    provider: scrape_enrich
+    parameters: { name: String, company: String }
+    output_type: Json
+    effects: <network, web>
+}
+
+// v2.60.0 — the governed CRM delivery. This is the point where a value LEAVES
+// the epistemic lattice into a machine others treat as fact.
+//   - target: crm         — the system-of-record class (a vendor is the
+//                           enterprise transducer's per-tenant config; the
+//                           language binds no vendor).
+//   - provenance: attached — the DEFAULT: every field lands with its origin
+//                           (level + confidence + source), so a `speculate`
+//                           email arrives LABELED a guess. `cleared` (bare
+//                           values) is a compile-time refusal (axon-T920)
+//                           unless the flow vouched via `epistemic { believe }`.
+// - secret: crm_api_key — the per-tenant credential resolved via v2.48.0
+//                           custody at dispatch; the flow never touches it.
+//   - effects: <web>      — a CRM write crosses the network trust boundary.
+// Every operation carries an idempotency `key:` (a natural key like the
+// email) so an at-least-once retry NEVER double-creates a record.
+deliver PushLead {
+    target:     crm
+    provenance: attached
+    secret:     crm_api_key
+    effects:    <web>
+
+    upsert_contact {
+        key:       lead_email
+        email:     lead_email
+        firstname: lead_name
+        company:   lead_company
+    }
+}
+
+// The flow that feeds the delivery. It enriches the partial lead; the
+// deliver's `ref` fields (lead_email / lead_name / lead_company) resolve
+// against the flow's bindings by name at dispatch. The enriched value is
+// Untrusted — a real pipeline routes it through a `shield` + an `anchor`
+// (confidence_floor) before booking it; here we keep the example focused on
+// the deliver surface.
+flow CaptureLead(name: String, company: String) -> Json {
+    use Enrich(name = name, company = company)
+    return Enrich.output
+}
+```

@@ -1,0 +1,38 @@
+---
+title: "Minimal flow with one step, persona, and anchor"
+description: "The smallest complete AXON program — declares an identity (persona), grounds it (anchor), and runs one reasoning step inside a flow."
+---
+
+**Primitives used:** `persona` · `anchor` · `flow` · `step`
+
+```axon
+// The smallest complete AXON program: persona + anchor + flow + step.
+// Every AXON application starts here; subsequent examples add one
+// idea on top of this base.
+
+persona Assistant {
+    domain: ["general"]
+    tone: precise
+    confidence_threshold: 0.7
+    cite_sources: true
+}
+
+anchor NoHallucination {
+    require: source_citation
+    confidence_floor: 0.7
+    unknown_response: "I don't have enough information to answer that confidently."
+    on_violation: raise AnchorBreachError
+}
+
+type Question { text: String }
+type Answer   { text: String }
+
+flow Respond(req: Question) -> Answer {
+    step Reply {
+        given: req
+        ask: "Answer the question precisely; cite any factual claim."
+        output: Answer
+    }
+    return Reply.output
+}
+```

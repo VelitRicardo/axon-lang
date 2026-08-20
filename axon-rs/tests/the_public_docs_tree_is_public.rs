@@ -197,3 +197,104 @@ fn the_compliance_paper_is_where_the_gate_expects_it() {
          includes it at compile time and will fail to build."
     );
 }
+
+// ── 5. no published page names a path on somebody's machine ─────────────────
+//
+// This law exists because the generator that produced the examples pages leaked
+// one. It quoted a compiler diagnostic verbatim, and the diagnostic ended with
+// `: searched C:\Users\<name>\AppData\Local\Temp\…\axon\security.axon` — the
+// author's home directory, on its way to a public documentation site.
+//
+// The class is wider than that one generator: any page that pastes tool output,
+// a stack trace, a build log or a shell transcript can carry an absolute path
+// out of the machine that produced it. A path like that is never useful to a
+// reader — it does not exist on their disk — and it discloses a username and a
+// directory layout. So the rule is flat: the public tree names no local path.
+//
+// What is NOT banned: repository-relative paths (`docs/examples/…`), URLs, and
+// the `/images/…` site paths the manifest uses. Those are the paths a reader
+// can act on.
+
+/// A path rooted on a specific machine, as opposed to a path relative to a
+/// repository or a URL. Each pattern is anchored on the ROOT, so a relative
+/// mention (`home/config`) does not match.
+fn machine_path(line: &str) -> Option<&'static str> {
+    // Windows: a drive letter followed by a separator.
+    let bytes = line.as_bytes();
+    for i in 0..bytes.len() {
+        let c = bytes[i] as char;
+        if c.is_ascii_alphabetic()
+            && i + 2 < bytes.len()
+            && bytes[i + 1] == b':'
+            && (bytes[i + 2] == b'\\' || bytes[i + 2] == b'/')
+        {
+            // `C:\Users\…` — but not a URL scheme, which has no single letter.
+            let before = if i == 0 { ' ' } else { bytes[i - 1] as char };
+            if !before.is_ascii_alphanumeric() {
+                return Some("a Windows drive path");
+            }
+        }
+    }
+    for root in ["/Users/", "/home/", "/root/", "/var/folders/", "/private/var/"] {
+        if line.contains(root) {
+            return Some("a Unix home or temp path");
+        }
+    }
+    if line.contains("AppData") || line.contains("%USERPROFILE%") {
+        return Some("a Windows profile directory");
+    }
+    None
+}
+
+#[test]
+fn no_published_page_names_a_path_on_somebodys_machine() {
+    let docs = repo_root().join("docs");
+    if !docs.exists() {
+        return;
+    }
+    let mut entries = Vec::new();
+    walk(&docs, &mut entries);
+
+    let mut hits = Vec::new();
+    for p in entries {
+        if p.is_dir() {
+            continue;
+        }
+        let Ok(text) = std::fs::read_to_string(&p) else { continue };
+        for (n, line) in text.lines().enumerate() {
+            if let Some(kind) = machine_path(line) {
+                hits.push(format!(
+                    "  {}:{} — {kind}\n      {}",
+                    p.strip_prefix(repo_root()).unwrap_or(&p).display(),
+                    n + 1,
+                    line.trim(),
+                ));
+            }
+        }
+    }
+
+    assert!(
+        hits.is_empty(),
+        "a page under `docs/` names a path on the machine that WROTE it. `docs/` is published \
+         to the adopter documentation site, so this discloses a username and a directory layout, \
+         and the path means nothing on the reader's disk.\n\n{}\n\nUsually the cause is pasted \
+         tool output: quote the diagnostic, not the file it searched.",
+        hits.join("\n")
+    );
+}
+
+#[test]
+fn machine_paths_are_recognised_and_repository_paths_are_not() {
+    // caught
+    assert!(machine_path(r"searched C:\Users\home\AppData\Local\Temp\b.axon").is_some());
+    assert!(machine_path("/Users/rv/src/axon/main.axon").is_some());
+    assert!(machine_path("/home/runner/work/axon/axon").is_some());
+    assert!(machine_path("/var/folders/xy/T/tmp123").is_some());
+
+    // allowed — these are the paths a reader can actually use
+    assert_eq!(machine_path("see docs/examples/module_imports.mdx"), None);
+    assert_eq!(machine_path("![logo](/images/logoaxonlang.svg)"), None);
+    assert_eq!(machine_path("https://docs.ricardovelit.com/quickstart"), None);
+    assert_eq!(machine_path("run `axon check src/main.axon`"), None);
+    assert_eq!(machine_path("the axon/security.axon module"), None);
+}

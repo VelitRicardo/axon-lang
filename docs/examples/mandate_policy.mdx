@@ -1,0 +1,34 @@
+---
+title: "Mandate with PID coefficients and violation policy"
+description: "A `mandate` declares a constraint the runtime enforces with a PID-style controller. `kp/ki/kd/tolerance/max_steps` shape the corrective loop; `on_violation:` picks from the closed catalog (`coerce | halt | retry`) — DIFFERENT from…"
+---
+
+**Primitives used:** `mandate`
+
+```axon
+// `mandate` is the policy-as-code primitive — declares a named
+// constraint the runtime PID-controls. `on_violation:` is a CLOSED
+// catalog SPECIFIC to mandate: {coerce, halt, retry}. (Compare with
+// `shield.on_breach:` which has its OWN closed catalog —
+// {deflect, escalate, halt, quarantine, sanitize_and_retry}.)
+
+mandate FinancialApproval {
+    constraint:   "Posting > $10k requires CFO + Controller dual approval"
+    kp:           1.0
+    ki:           0.1
+    kd:           0.0
+    tolerance:    0.05
+    max_steps:    10
+    on_violation: halt
+}
+
+mandate ConsentRequired {
+    constraint:   "PHI access requires written patient consent on file"
+    kp:           0.8
+    ki:           0.0
+    kd:           0.0
+    tolerance:    0.01
+    max_steps:    1
+    on_violation: halt
+}
+```

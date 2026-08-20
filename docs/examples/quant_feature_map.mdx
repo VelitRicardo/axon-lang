@@ -1,0 +1,47 @@
+---
+title: "quant feature map — two observables into a projected/seed kernel"
+description: "Declares Hermitian observables and projects a continuous carrier into a Hilbert space with quant blocks, reading one expectation per observable to assemble a quantum feature vector — the basis for a classically-assembled projected/seed…"
+---
+
+**Primitives used:** `observable` · `quant`
+
+```axon
+// A `quant` FEATURE MAP. Each `quant` block yields ONE scalar expectation
+// ⟨ψ(carrier)|M|ψ⟩ of ONE observable. To build a k-dimensional quantum
+// feature vector φ(x) = [⟨M₁⟩, …, ⟨Mₖ⟩], declare k observables and run one
+// quant block per observable; the projected/seed kernel k(x,y)=sim(φ(x),φ(y))
+// is then assembled CLASSICALLY. The grammar below is the exact form that
+// passes `axon check`:
+//
+//   • `observable Name { qubits: n  term: <coeff> * "<Pauli>" }`  (term is
+//     repeatable; the Pauli is a STRING LITERAL, one letter per qubit, MSB-first)
+//   • `quant(encoding: …, observable: …, qubits: …) { … }`  (attributes in
+//     PARENTHESES; the braces hold flow steps)
+//   • `yield <reference>`  (a let-bound name or flow param — NO ⟨⟩ brackets)
+//   • the carrier must be a continuous type (Tensor), else axon-E0782.
+
+observable EnergyZ {
+    qubits: 2
+    term: 1.0 * "ZI"
+    term: 1.0 * "IZ"
+}
+
+observable CorrelationZZ {
+    qubits: 2
+    term: 1.0 * "ZZ"
+}
+
+flow QuantFeatureMap(carrier: Tensor) -> String {
+    // Feature 1 — ⟨EnergyZ⟩ over the carrier (amplitude encoding).
+    quant(encoding: amplitude, observable: EnergyZ, qubits: 2) {
+        let surrogate = carrier
+        yield surrogate
+    }
+    // Feature 2 — ⟨CorrelationZZ⟩ over the same carrier (angle encoding).
+    quant(encoding: angle, observable: CorrelationZZ, qubits: 2) {
+        let surrogate = carrier
+        yield surrogate
+    }
+    return "features computed"
+}
+```

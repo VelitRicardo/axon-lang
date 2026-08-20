@@ -1,0 +1,219 @@
+---
+title: "AXON EBNF — abridged grammar reference"
+description: "An abridged Extended Backus-Naur Form of the AXON language. Pinned to the v2.x parser; the full canonical EBNF ships in the language paper."
+---
+
+This page reproduces the **production rules an agent most often
+needs**: program structure, declarations, the flow body, type
+expressions, and the session-types fragment.
+
+The **full canonical EBNF** lives in the language paper
+[`papers/paper_axon_language.md`](https://github.com/VelitRicardo/axon-lang/blob/master/papers/paper_axon_language.md);
+the parser implementation lives in
+[`axon-frontend/src/parser.rs`](https://github.com/VelitRicardo/axon-lang/blob/master/axon-frontend/src/parser.rs).
+This abridged version is curated for agent consumption: tokens that
+matter, productions that compile, omissions clearly marked.
+
+## Lexical surface
+
+```ebnf
+identifier        = letter , { letter | digit | "_" } ;
+integer           = digit , { digit } ;
+number            = integer , [ "." , digit , { digit } ] ;
+duration          = integer , ( "ms" | "s" | "m" | "h" ) ;
+string_literal    = '"' , { utf8_char } , '"' ;
+bcp47             = '"' , language_subtag , { "-" , subtag } , '"' ;
+```
+
+Comments are `//` line comments. Whitespace is non-significant
+except where the dotted-slug grammar (`legal:HIPAA.164_502`) requires
+token adjacency.
+
+## Program
+
+```ebnf
+program           = { declaration | import | run } ;
+import            = "import" , identifier , "{" , identifier_list , "}" ;
+declaration       = persona_def
+                  | context_def
+                  | flow_def
+                  | anchor_def
+                  | tool_def
+                  | type_def
+                  | session_def
+                  | socket_def
+                  | axonendpoint_def
+                  | axonstore_def
+                  | shield_def
+                  | mandate_def
+                  | compute_def
+                  | lambda_def
+                  | daemon_def
+                  | (* …65+ total — see axon://grammar/top_level *) ;
+run               = "run" , identifier , "(" , arg_list? , ")"
+                  , [ "as" , identifier ]
+                  , [ "within" , identifier ]
+                  , [ "constrained_by" , "[" , identifier_list , "]" ]
+                  , [ "on_failure" , ":" , failure_policy ]
+                  , [ "output_to" , ":" , string_literal ]
+                  , [ "effort" , ":" , effort_level ] ;
+```
+
+## Persona
+
+```ebnf
+persona_def       = "persona" , identifier , "{" , persona_field+ , "}" ;
+persona_field     = "domain"               , ":" , string_list
+                  | "tone"                 , ":" , tone_ident
+                  | "confidence_threshold" , ":" , number
+                  | "cite_sources"         , ":" , bool
+                  | "refuse_if"            , ":" , bracketed_identifiers
+                  | "language"             , ":" , bcp47
+                  | "description"          , ":" , string_literal ;
+
+tone_ident        = "analytical" | "assertive" | "casual" | "diplomatic"
+                  | "empathetic" | "formal"    | "friendly" | "precise" ;
+```
+
+## Flow + step
+
+```ebnf
+flow_def          = "flow" , identifier , "(" , param_list? , ")"
+                  , [ "->" , type_expr ]
+                  , "{" , { flow_step } , "}" ;
+param_list        = parameter , { "," , parameter } ;
+parameter         = identifier , ":" , type_expr ;
+
+flow_step         = step_node
+                  | if_stmt | for_stmt | let_stmt | return_stmt
+                  | break_stmt | continue_stmt
+                  | reason_step | probe_step | validate_step | refine_step
+                  | weave_step | use_step | par_block | hibernate_step
+                  | listen_step | retrieve_step | persist_step | mutate_step
+                  | deliberate_step | navigate_step | drill_step | trail_step
+                  | (* …complete list in parser.rs::parse_flow_step *) ;
+
+deliberate_step   = "deliberate" , "{" , { flow_step } , "}" ;
+(* v2.12.0/63 — cognitive retrieval over a `pix` tree OR a `corpus`
+   graph (a corpus WITH `relations:` is an MDN graph). Dispatch is by
+   the referenced declaration, not by keyword. *)
+navigate_step     = "navigate" , identifier
+                  , "{" , { navigate_field } , "}" ;
+navigate_field    = "query"  , ":" , expression
+                  | "from"   , ":" , identifier        (* seed document *)
+                  | "budget" , ":" , number            (* max documents  *)
+                  | "trail"  , ":" , boolean
+                  | "output" , ":" , identifier ;
+drill_step        = "drill"  , identifier , "{" , { navigate_field } , "}" ;
+trail_step        = "trail"  , identifier , "{" , { navigate_field } , "}" ;
+
+step_node         = "step" , identifier , [ "use" , identifier ]
+                  , "{" , step_field+ , "}" ;
+step_field        = "given"            , ":" , expression
+                  | "ask"              , ":" , string_literal
+                  | "output"           , ":" , type_expr
+                  | "confidence_floor" , ":" , number
+                  | "navigate"         , ":" , dotted_identifier
+                  | "apply"            , ":" , identifier
+                  | sub_construct ;
+sub_construct     = ( "use" | "probe" | "reason" | "weave" | "stream" ) , … ;
+
+reason_step       = "reason" , [ identifier ] , [ "{" , (* skipped *) , "}" ] ;
+```
+
+## Type expressions
+
+```ebnf
+type_expr         = identifier , [ "<" , type_expr , ">" ] , [ "?" ] ;
+type_def          = "type" , identifier
+                  , [ "(" , number , ".." , number , ")" ]
+                  , [ "where" , expression ]
+                  , [ "compliance" , bracketed_identifiers ]
+                  , [ "{" , type_field_list , "}" ] ;
+type_field_list   = type_field , { "," , type_field } ;
+type_field        = identifier , ":" , type_expr ;
+```
+
+Recursive generics like `FlowEnvelope<List<TenantRecord>>` are
+accepted since v2.0.0.
+
+## Anchor
+
+```ebnf
+anchor_def        = "anchor" , identifier , "{" , anchor_field+ , "}" ;
+anchor_field      = "require"          , ":" , identifier
+                  | "reject"           , ":" , bracketed_identifiers
+                  | "enforce"          , ":" , identifier
+                  | "description"      , ":" , string_literal
+                  | "confidence_floor" , ":" , number
+                  | "unknown_response" , ":" , string_literal
+                  | "on_violation"     , ":" , violation_policy ;
+violation_policy  = ( "raise" | "fallback" ) , identifier
+                  | identifier ;
+```
+
+## Tool
+
+```ebnf
+tool_def          = "tool" , identifier , "{" , tool_field+ , "}" ;
+tool_field        = "provider"    , ":" , identifier
+                  | "max_results" , ":" , integer
+                  | "filter"      , ":" , filter_expr
+                  | "timeout"     , ":" , duration
+                  | "runtime"     , ":" , identifier
+                  | "sandbox"     , ":" , bool
+                  | "effects"     , ":" , effect_row ;
+effect_row        = "<" , effect_term , { "," , effect_term } , ">" ;
+effect_term       = effect_name , [ ":" , qualifier_value ] ;
+effect_name       = "io" | "network" | "pure" | "random" | "storage"
+                  | "stream" | "trust" | "sensitive" | "legal" | "ots" ;
+qualifier_value   = dotted_slug ;
+```
+
+## Session types (v2.3.0)
+
+```ebnf
+session_def       = "session" , identifier , "{"
+                  , "client" , ":" , session_type
+                  , "server" , ":" , session_type
+                  , "}" ;
+session_type      = "[" , session_action , { "," , session_action } , "]" ;
+session_action    = "send" , type_expr
+                  | "receive" , type_expr
+                  | "select" , "{" , session_branch , { "," , session_branch } , "}"
+                  | "branch" , "{" , session_branch , { "," , session_branch } , "}"
+                  | "loop"
+                  | "end" ;
+session_branch    = identifier , ":" , session_type ;
+
+socket_def        = "socket" , identifier , "{" , socket_field+ , "}" ;
+socket_field      = "protocol"      , ":" , identifier
+                  | "backpressure"  , ":" , "credit" , "(" , integer , ")"
+                  | "reconnect"     , ":" , "cognitive_state"
+                  | "legal_basis"   , ":" , identifier ;
+```
+
+The duality + credit-refined backpressure constraints
+(`peer ≡ self⊥`, Presburger discharge) live in the type checker,
+not the grammar — they are *typing rules*, enforced after the
+parser has produced the AST.
+
+## What this page does NOT include
+
+This is the **abridged** grammar reference. Productions deliberately
+omitted (covered in dedicated resources or in the paper):
+
+- The full `flow_step` enumeration (~30+ kinds — see
+  `parser.rs::parse_flow_step` for the canonical list).
+- The full `axonendpoint`, `axonstore`, `daemon`, `shield`, `psyche`,
+  `ots`, `agent`, `lambda`, `compute`, `resource`, `fabric`,
+  `manifest`, `observe`, `reconcile`, `lease`, `ensemble`, `pix`,
+  `mandate`, `mcp`, `taint`, `logic`, `corpus`, `dataspace`
+  declarations.
+- Compliance-annotation dotted-slug grammar (covered under each
+  `axon://compliance/<framework>` resource).
+- The Honda-Yoshida-Carbone multiparty projection rules (covered
+  under `axon://logic/session_duality` and the v2.3.0 paper).
+
+For those productions, consult the linked sources or the
+per-primitive resources via `axon.primitives` + `axon.primitive_doc`.

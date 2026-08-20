@@ -1,0 +1,87 @@
+---
+title: "A channel's declared delivery guarantee is enforced, or the program is flagged — never…"
+description: "The law that a typed `channel`'s declared delivery semantics (`qos` + `persistence`) are ENFORCED by the runtime, or the program is honestly flagged — the language NEVER declares a delivery it does not make. A flow's `emit…"
+---
+
+A typed `channel` declares HOW its events are delivered:
+
+```text
+channel SessionHibernated {
+    message:     SessionHibernated
+    qos:         at_least_once          # delivered ≥1×, redelivered until acked
+    persistence: persistent_axonstore   # durable — survives the consumer being down
+}
+```
+
+Before v2.31.0, that declaration was a **lie of omission**: the grammar
+type-checked `qos: at_least_once  persistence: persistent_axonstore`, but
+the runtime delivered NONE of it — a flow's `emit` buffered in-process and
+never reached a daemon's `listen`, which the supervisor silently dropped
+(the v2.4.0 `axon-W009` honesty boundary named the gap). A guarantee with
+no backing is exactly what
+[`no_unwitnessed_advantage`](axon://logic/no_unwitnessed_advantage)
+condemns.
+
+> **The law.** A channel's declared delivery semantics (`qos` +
+> `persistence`) are **enforced by the runtime**, or the program is
+> **honestly flagged**. The language never declares a delivery it does not
+> make. An `emit Channel(payload)` actually delivers to a `listen Channel`;
+> a `listen`er on a channel nothing produces is flagged, not silently dead.
+
+## What "enforced" means (the Computing + Logic pillars)
+
+- **Durable** — a `persistent_axonstore` channel's `emit` APPENDS to a
+  durable outbox (an append-only log + a processed cursor). The event stays
+  redeliverable until acked, so a consumer that was DOWN when the event was
+  emitted picks the backlog up when it returns. (The crash-durable
+  per-tenant Postgres outbox is the enterprise sink; the open standard is
+  the abstraction + the in-memory reference.)
+- **At-least-once** — a delivered body that fails is RETRIED up to a bounded
+  ceiling, then DEAD-LETTERED (recorded, never silently lost, never an
+  infinite-redelivery storm — delivery stays TOTAL). An `at_most_once`
+  channel is best-effort by DECLARATION (one attempt, dropped on failure) —
+  honest because the program asked for it.
+- **Fan-out honored** — `broadcast` delivers to EVERY listener; every other
+  qos is single-consumer (one listener fires). The qos catalog MEANS what
+  it says on the delivery path.
+- **Replayable** — every `emit` (Chan-Output) and every delivery
+  (Chan-Input) records a `ReplayToken` (effect `emit:`/`deliver:<channel>`,
+  the deterministic `axon.builtin.channel.v1` slug) in the v1.4.0 audit
+  chain. Channel delivery is mechanical → it replays bit-for-bit.
+
+## What "flagged, not silently dead" means (the Philosophy pillar)
+
+A delivery the runtime CANNOT make is surfaced, never hidden:
+
+- A `daemon` `listen`er on a channel **nothing emits to** can never fire
+  (it waits for an event no producer raises — the Kivi brief #39 defect).
+  The compiler says so (**`axon-W009`**, the v2.4.0 diagnostic reworked: it
+  fires precisely when the channel has no producer, and is SILENT when a
+  producer exists, because v2.31.0 delivers that), and the deploy gate proves
+  it independently (the PCC **`ChannelDeliverySoundness`** refutes a
+  consumed channel with no producer).
+- This is the same posture as
+  [`axon://logic/dispatch_vs_cognition`](axon://logic/dispatch_vs_cognition)'s
+  `axon-W004` and the v2.4.0 boundary: the compiler never lets a program
+  rely on a guarantee the runtime does not back.
+
+## Relation to the other laws
+
+- The delivery analog of
+  [`effects_are_linear`](axon://logic/effects_are_linear) (a budgeted effect
+  is a kept linear contract) and
+  [`open_data_is_total`](axon://logic/open_data_is_total) (a declared shape
+  is a checkable expectation, never an enforced lie): each generalises the
+  honesty pillar to a new surface — effects, open data, and now message
+  delivery.
+- Carries [`no_unwitnessed_advantage`](axon://logic/no_unwitnessed_advantage)
+  into the transport: a delivery guarantee with no backing is presented as
+  what it is (flagged), never overstated. The outbox row + the ack + the
+  ReplayToken are the machine-checkable witness that the event was
+  delivered.
+
+The honest test: if a channel declares `at_least_once` /
+`persistent_axonstore`, the runtime makes that delivery — durably,
+retried, replayable — or the compiler + the deploy gate tell you exactly
+why it cannot (no producer). A declared delivery is a kept promise, or it
+is a flagged defect; it is never a silent lie.

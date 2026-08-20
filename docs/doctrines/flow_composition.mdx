@@ -1,0 +1,190 @@
+---
+title: "Flow composition — when to nest, when to declare top-level"
+description: "Decision rules for when an operation should be inlined as a step, lifted to a sub-flow invoked via `apply`, or split into a separate top-level declaration entirely."
+---
+
+When an agent is writing AXON it constantly faces a choice: *should
+this be another `step` in the current flow, or should it be a
+sub-flow I `apply`?* This page is the decision rule.
+
+## The two compositions
+
+AXON has exactly two ways to compose work inside the cognitive
+layer:
+
+1. **Inline as a step.** The operation happens within the current
+   flow's body, with its `given:` flowing from the previous step's
+   output and its `output:` feeding the next.
+2. **Lift to a sub-flow + `apply`.** The operation is declared as a
+   top-level `flow` and invoked from a step via `apply: <FlowName>`.
+
+There is **no third path**. Anonymous sub-flows do not exist, and
+`step` declarations are not top-level. Choose between these two.
+
+## The decision rule
+
+Lift to a sub-flow when **any** of these is true. Inline as a step
+otherwise.
+
+### 1. The operation is reused
+
+If the same logical operation appears in two flows, **lift it**.
+The cost of declaring a sub-flow is one keyword (`flow`); the
+benefit is one canonical implementation, one audit trail row per
+invocation, one place to fix bugs.
+
+```text
+# Reused — lift.
+flow ExtractEntities(doc: Document) -> EntityMap { … }
+
+flow AnalyzeContract(doc: Document) -> ContractAnalysis {
+    step Extract { apply: ExtractEntities  given: doc  output: EntityMap }
+    …
+}
+
+flow SummarizeBrief(doc: Document) -> BriefSummary {
+    step Extract { apply: ExtractEntities  given: doc  output: EntityMap }
+    …
+}
+```
+
+### 2. The operation needs its own anchor/persona binding
+
+Anchors and personas bind at the `run` site, and they are
+**flow-scoped**. If one operation needs `LegalExpert` and a sterner
+anchor than the surrounding flow, that operation is its own flow.
+
+```text
+# The contract-clause review needs a stricter persona — lift it.
+flow ReviewLiabilityClause(clause: Clause) -> RiskScore { … }
+run  ReviewLiabilityClause(c)
+     as SeniorLegalCounsel
+     constrained_by [NoLegalAdvice, EvidenceBacked, ZeroHallucination]
+```
+
+### 3. The operation has a clean typed interface
+
+If the operation's input and output have well-defined types
+(`given: Document → output: EntityMap`), lift it. The type checker
+will enforce signature compatibility at the call site, and the
+sub-flow becomes independently testable through `axon check` +
+`harness`.
+
+### 4. The operation is more than ~5 steps
+
+A flow body with 10+ steps is unreadable — and unreviewable. Lift
+clusters of related steps into sub-flows that name *what they do*.
+The outer flow then reads like a table of contents.
+
+```text
+# Outer flow reads as the high-level narrative.
+flow EndToEndContractReview(doc: Document) -> Report {
+    step Ingest        { apply: NormalizeContract        given: doc  output: NormalisedDoc }
+    step Extract       { apply: ExtractEntities           given: Ingest.output  output: EntityMap }
+    step Risk          { apply: AssessRisks               given: Extract.output  output: RiskAnalysis }
+    step Mitigation    { apply: ProposeMitigations        given: Risk.output  output: MitigationPlan }
+    step ReportRender  { apply: RenderReport              given: Mitigation.output  output: Report }
+}
+```
+
+### 5. The operation needs to be exposed over the wire
+
+If the operation will be invoked from outside the program — by an
+`axonendpoint` HTTP route, by a `socket`, by another agent over MCP
+— it must be a top-level flow. The wire primitives bind to flows,
+not to steps.
+
+```text
+axonendpoint ExtractEntitiesAPI {
+    flow: ExtractEntities          # must be a top-level flow
+    method: POST
+    route: "/v1/extract"
+}
+```
+
+## When to NOT lift
+
+Inline as a step when **all** of these hold:
+
+- The operation appears exactly once.
+- It runs under the same persona and anchors as the surrounding flow.
+- It is conceptually a *micro-step* — one prompt, one typed output,
+  no internal control flow.
+- It does not need to be tested in isolation.
+- It is not exposed over the wire.
+
+Most leaf operations meet this bar. Most `flow`s have between 3 and
+8 inline steps with at most 1–2 sub-flow `apply`s.
+
+## Anti-patterns
+
+### Anti-pattern A — over-lifting
+
+```text
+# Don't.
+flow EmitGreeting(g: Greeting) -> Greeting { step Emit { given: g  output: Greeting } }
+
+flow GreetUser(name: String) -> Greeting {
+    step Compose { … }
+    step Emit    { apply: EmitGreeting  given: Compose.output  output: Greeting }
+}
+```
+
+`EmitGreeting` is one inline step. Lifting it gains nothing and
+adds an extra audit row.
+
+### Anti-pattern B — under-lifting
+
+```text
+# Don't.
+flow EndToEndContractReview(doc: Document) -> Report {
+    step S1  { … }
+    step S2  { … }
+    step S3  { … }
+    step S4  { … }
+    step S5  { … }
+    step S6  { … }
+    step S7  { … }
+    step S8  { … }
+    step S9  { … }
+    step S10 { … }
+    step S11 { … }
+    step S12 { … }
+}
+```
+
+12 inline steps with no logical grouping is unreviewable. Lift
+related clusters into named sub-flows.
+
+### Anti-pattern C — apply-chain disguised as composition
+
+```text
+# Don't.
+flow A(x: T) -> T { step Pass { apply: B  given: x  output: T } }
+flow B(x: T) -> T { step Pass { apply: C  given: x  output: T } }
+flow C(x: T) -> T { step Pass { apply: D  given: x  output: T } }
+flow D(x: T) -> T { step Pass { apply: E  given: x  output: T } }
+flow E(x: T) -> T { step Work { given: x  ask: "…"  output: T } }
+```
+
+Each "flow" does one passthrough. Collapse to a single flow with one
+meaningful step.
+
+## Composition meta-rules
+
+- **Sub-flows compose linearly**, not as a DAG. Inside a `step`
+  body, exactly one `apply:` is permitted. To compose multiple
+  sub-flows, sequence them as multiple `step`s in the outer flow.
+- **Cycles compile but are flagged**. `axon check --strict` rejects
+  any `apply:` chain whose transitive closure leads back to the
+  caller (mutual recursion through flows). Production discipline:
+  rewrite as iteration via `for` + a stop condition.
+- **Sub-flows do NOT inherit the caller's anchor stack.** The
+  `run`-level anchors only apply to the *top* flow. A sub-flow that
+  needs its own anchors must be invoked through its own `run` (rare
+  in well-factored code; usually the top-flow's anchors are
+  sufficient).
+
+For the structural grammar — what may nest inside what — read
+`axon://grammar/top_level` and `axon://grammar/composition`. This
+page covers *when* to compose; those pages cover *how*.

@@ -1,0 +1,39 @@
+---
+title: "Anchor with grounding requirements and breach policy"
+description: "Anchor declares the invariants every step's output must satisfy — `require:` (source_citation | evidence_backed), `confidence_floor:` (0..1), `unknown_response:` (the literal text when the floor is undercut), `on_violation:` (closed…"
+---
+
+**Primitives used:** `persona` · `flow` · `anchor`
+
+```axon
+// An anchor declares the typed safety invariants that every output
+// reaching the user must satisfy. The runtime audits each step's
+// output against the anchor; on breach it applies the declared
+// policy (raise <Error> | retry | log | ...).
+
+persona Doctor {
+    domain: ["internal-medicine"]
+    tone: precise
+    confidence_threshold: 0.9
+    cite_sources: true
+}
+
+anchor EvidenceBacked {
+    require: evidence_backed
+    confidence_floor: 0.85
+    unknown_response: "I don't have enough clinical evidence to answer that safely."
+    on_violation: raise AnchorBreachError
+}
+
+type Question { text: String }
+type Answer   { text: String }
+
+flow ClinicalAnswer(q: Question) -> Answer {
+    step Reply {
+        given: q
+        ask: "Answer the clinical question; cite the supporting evidence."
+        output: Answer
+    }
+    return Reply.output
+}
+```

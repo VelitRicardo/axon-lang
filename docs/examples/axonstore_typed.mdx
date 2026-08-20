@@ -1,0 +1,28 @@
+---
+title: "Typed persistent store with closed-catalog column types"
+description: "`axonstore` declares a typed persistent store. Column types are a CLOSED v1.38.0 catalog — `Uuid | Text | Int | BigInt | Float | Double | Bool | Timestamp | Timestamptz | Date | Time | Json | Jsonb | Bytea | Numeric`. The general `type`…"
+---
+
+**Primitives used:** `axonstore`
+
+```axon
+// `axonstore` is the four-pillar persistent store. Column types map
+// to SQL backend types directly (the closed v1.38.0 catalog). Note
+// `Text` not `String`, `Numeric` not `Number` — `axonstore` lives at
+// the data-plane layer, below the general `type` system.
+
+axonstore PaymentVault {
+    backend:     postgresql
+    connection:  "postgres://payments.internal/vault"
+    isolation:   serializable
+    on_breach:   raise
+    capability:  "payment.write"
+    schema {
+        txn_id:     Text primary_key
+        amount:     Numeric not_null
+        card_token: Text not_null
+        cardholder: Text
+        posted_at:  Timestamp not_null
+    }
+}
+```

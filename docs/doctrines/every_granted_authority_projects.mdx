@@ -1,0 +1,117 @@
+---
+title: "Every granted authority is live — the dead-authority closure of the grantability law"
+description: "The second half of every_requirement_is_grantable. v2.45.0 proved every declared guard is satisfiable by SOME authority in the catalog; this law proves the converse direction at the principal: every authority actually granted to a…"
+---
+
+`axon://logic/every_requirement_is_grantable` proved that every guard a boundary
+declares can be opened by *some* authority in the catalog. This page is the
+converse obligation, at the principal instead of the catalog:
+
+> **Every authority actually granted to a principal must project into the
+> enforcement namespace and be live at every gate that names it.** A granted
+> authority that no enforcement point can see is a DEAD authority — assignable
+> but inert — and the system must make that state unrepresentable at the write,
+> or degrade it with an explicit witness at the read. Never silently.
+
+## The dual failure the sister law missed
+
+The grantability law asks: *for this requirement, does a key exist in the
+catalog?* It quantifies over the **catalog**. But a second quantifier was left
+open — over the **principal**: *when a key is actually cut and handed to
+someone, does it turn the lock?*
+
+A system can pass the first check and fail the second. The catalog says
+`tenant:update` is grantable; an operator creates a custom role, attaches
+`tenant:update` to it, assigns it to a service account — and the enforcement
+point never reads that table. The role is visible everywhere authority is
+*written* (it lists, it assigns, it audits) and invisible everywhere authority
+is *read*. Every request 403s. At the console, the grant looks real; at the
+gate, it does not exist.
+
+That state — **declarable-but-inert authority** — is a silent lie in the
+authority store, precisely as expensive as the dead requirement it mirrors:
+the operator "fixes" it by weakening the whole surface (`public: true`
+everywhere) because the strict path visibly doesn't work.
+
+## The law, in three seams
+
+1. **Derivation, not minting.** A principal's effective authority is derived
+   from live authority state at *verify time* — the union of its built-in role
+   expansions and its stored custom-role rows, closed over role inheritance —
+   and is never baked into a credential at mint. Revoking a role, or detaching
+   a permission from it, binds on the next request within a bounded staleness
+   window. A long-lived token cannot outlive a revocation.
+
+2. **Total projection with explicit drops.** The projection `π` lifted to a
+   held-authority set is total: every well-formed authority projects; a
+   malformed one (a tampered or legacy row) is **dropped with a witness** — a
+   structured record naming the row and the reason — never swallowed. On
+   failure of the resolver itself, the system under-approximates: less
+   authority, never more, never an outage.
+
+3. **Refusal at the write.** The authority store's write surface refuses a
+   permission that is not in the catalog or does not project. The dead
+   authority is not detected later — it is not representable through the API
+   at all. Rows written *around* the API (direct SQL, migration drift) fall
+   back to seam 2: they confer nothing, loudly.
+
+## What the law rejects
+
+```
+role dashboard_writer          # custom role, tenant-scoped
+  += tenant:update             # catalog permission, attached
+assign dashboard_writer → SA   # granted
+
+PATCH /…  requires: [tenant.update]   → 403   # the gate never read the role
+```
+
+Under the law this trace is impossible: either the attach is refused (the
+permission doesn't project), or the gate sees `π({tenant:update}) =
+{tenant.update}` in the principal's capability set and admits the request.
+There is no third state where the grant exists and the gate is blind to it.
+
+## Corollary: authority never rides in a claim
+
+If effective authority is *derived*, then a claim carrying catalog-shaped
+authority strings is either redundant or an escalation attempt. The law
+therefore forecloses the channel: catalog-namespace entries in an
+adopter-controlled claim are stripped at verify for human principals — the
+ONLY source of colon-form authority on a principal is the verify-time
+derivation itself. (Machine grants are validated at credential creation and
+are exempt; ephemeral principals hold exactly their attenuated grant slice,
+`axon://logic/authority_only_attenuates`.)
+
+## Superior to the field
+
+Keycloak and Auth0 resolve custom roles — into the **token at mint**, so a
+revocation waits for expiry. IAM engines evaluate policy live but discover an
+inert policy attachment only by probing 403s. This law demands both halves at
+once: live derivation (revocation binds next-request) *and* a machine-checked
+guarantee that a granted authority reaches every enforcement point — with the
+enforcement-time set introspectable by the bearer (`whoami`), so "what can I
+actually do right now" is one request, not a forensic session.
+
+## The four pillars
+
+| | Every granted authority is live |
+|---|---|
+| **Mathematics** | effective authority is a closure (role union ∘ inheritance ∘ π); π lifted to sets is total; liveness is `E(p) ∪ π(E(p)) ⊆ capabilities(p)` |
+| **Logic** | the two quantifiers close the square: ∀ requirement ∃ authority (v2.45.0) ∧ ∀ granted authority ∀ gate, the gate sees it (v2.47.0) |
+| **Philosophy** | an authority store that writes what the gates don't read is documentation cosplaying as security; the store must be the single live source of truth |
+| **Computation** | write-refusal (422) + verify-time derivation under a bounded cache + drop-witnesses; resolver failure degrades toward LESS authority, never more |
+
+## Why this exists
+
+The most expensive lie about authority is the **grant that isn't**. It passes
+every review — the role exists, the permissions are attached, the assignment
+is audited — and fails only at the gate, silently, as a 403 indistinguishable
+from a correct denial. Teams respond the only way a silent lie allows:
+they stop trusting the mechanism and weaken the surface. AXON closes the
+state instead: a granted authority provably projects, or the grant itself is
+refused with an exact witness.
+
+## See also
+
+- `axon://logic/every_requirement_is_grantable` — the sister law (the key exists in the catalog); this one proves the cut key turns the lock.
+- `axon://logic/every_boundary_is_guarded` — the first side of the triangle: the lock exists.
+- `axon://logic/authority_only_attenuates` — delegation hands down a *slice* of live authority; attenuation presupposes the minter's own authority is live.

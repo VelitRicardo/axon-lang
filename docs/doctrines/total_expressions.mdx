@@ -1,0 +1,90 @@
+---
+title: "Every control-flow / data predicate is a total, pure expression (v2.26.0)"
+description: "The law that every expression AXON evaluates for control flow or a data predicate — an `if` condition, and (incrementally) `let` values and `where:` clauses — is TOTAL (always terminates), PURE (no side effects, no I/O), and statically…"
+---
+
+AXON separates two kinds of work sharply: **cognition** (an LLM reasoning
+step — `step … ask:`, `apply: <Tool>`) and **dispatch** (everything
+mechanical the runtime decides itself). The doctrine
+[`axon://logic/dispatch_vs_cognition`](axon://logic/dispatch_vs_cognition)
+says the mechanical must never masquerade as the cognitive. v2.26.0 makes
+that **executable** for the one place it used to leak: deciding control flow.
+
+Before v2.26.0, an elementary check like *"have we made too many calls?"* —
+`recent.length >= limit` — had no native form. An adopter had to reach for
+`use Tool(...)` or an LLM step to count and compare. That is the exact
+anti-pattern `dispatch_vs_cognition` condemns: a deterministic, total
+computation dressed up as cognition, paying latency, cost, and
+non-determinism for arithmetic.
+
+> **The law.** Every expression AXON evaluates for control flow or a data
+> predicate is a **total, pure, side-effect-free** value in a **closed,
+> statically-typed** sublanguage. It always terminates; it touches no I/O,
+> no store, no model; its type is checked at `axon check` against the
+> flow's scope. A constant expression is **decided by the compiler**; a
+> dynamic one is evaluated deterministically by the runtime — never by an
+> LLM.
+
+## Why it is total (decidable by construction)
+
+The expression grammar (v2.26.0) is a **closed catalog**: literals, references,
+arithmetic (`+ - * / %`), comparison (`== != < <= > >=`), boolean
+(`and`/`or`/`not`), the collection/string builtins (`.length`, `.count`,
+`.is_empty`, `.is_null`, `.contains`, `.starts_with`, `.ends_with`), and
+field/index access (`.field`, `[i]`). There is **no recursion**, **no
+user-defined functions**, and **no unbounded loop** — iteration is the
+flow-level `for`, bounded by a collection's cardinality, never an
+expression. So every expression is a finite fold over its syntax tree:
+termination is structural, not a runtime hope.
+
+This is the **Logic pillar made executable**. A total, pure fragment is
+exactly the part of a program a compiler can reason about completely:
+
+- **Const-folding.** When every leaf is a literal, the compiler evaluates
+  the expression at `axon check`. `if 2 + 2 == 4 { … }` is decided to
+  `true`; the `else` branch is statically dead. AXON emits **`axon-W008`**
+  ("condition is always true/false — the `{branch}` branch is
+  unreachable"), so a constant condition is caught as a lint, not shipped
+  as dead code.
+- **Static typing.** The expression is typed against the flow's scope
+  (parameters, and incrementally let-bindings + step outputs). A
+  type-incoherent predicate is a compile error, not a runtime surprise:
+  `axon-T810` (non-numeric arithmetic), `axon-T811` (incompatible
+  comparison), `axon-T812` (non-boolean `and`/`or`/`not`), `axon-T813`
+  (builtin arity), `axon-T814` (builtin receiver/argument). A reference of
+  unknown static type stays permissive — the compiler errs toward silence,
+  never a false positive.
+
+## Why it is pure (deterministic at runtime)
+
+A condition is evaluated by a single total function over the bound scope.
+It reads values; it writes nothing. It cannot persist, mutate, retrieve,
+navigate, call a tool, or invoke a model. Integer arithmetic is exact;
+overflow and division-by-zero **fail closed** (the branch is not taken)
+rather than wrap or panic. The same expression over the same scope yields
+the same value, bit-for-bit — the precondition for replay and audit.
+
+## What this forbids
+
+- **No cognition in a condition.** A branch decision never calls an LLM.
+  If a decision genuinely needs judgement, that is a `step` whose typed
+  output a later condition reads — the cognition is explicit and audited,
+  not hidden inside an `if`.
+- **No side effects in a predicate.** An expression cannot change state.
+  Effects are the structural verbs (`persist`, `mutate`, `navigate`, …),
+  sequenced as flow nodes — never smuggled into a boolean.
+- **No non-termination.** There is no construct in the expression grammar
+  that can loop or recurse, so no condition can hang the runtime.
+
+## Relation to the other laws
+
+- Generalises [`dispatch_vs_cognition`](axon://logic/dispatch_vs_cognition):
+  that law says *don't fake determinism with an LLM*; this law gives the
+  deterministic surface to use instead.
+- Mirrors [`no_unwitnessed_advantage`](axon://logic/no_unwitnessed_advantage)
+  in spirit: a claim with no machine-checkable backing degrades; here, a
+  computation with a total, checkable form is never delegated to cognition.
+
+The honest test: if a check is a finite function of values you already
+hold, it is an **expression**, and AXON computes it — totally, purely, and
+under the type checker's eye.

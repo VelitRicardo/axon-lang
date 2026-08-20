@@ -1,0 +1,104 @@
+---
+title: "An effect under a budget is a linear resource — no unbudgeted emission (v2.28.0)"
+description: "The law that an external effect declared under a `budget { rate/max … on Tool(X) }` is a LINEAR resource: the runtime may not emit it without consuming a token from a renewable bucket (a `rate:` quota) or a fixed window (a `max:` quota),…"
+---
+
+A rate limiter bolted on beside a program — a Redis token bucket in
+middleware, a Sidekiq throttle, an Airflow pool — is invisible to the
+type system and to the program's own reasoning. The program *believes*
+it can call a tool; an external counter, somewhere else, sometimes says
+no. v2.28.0 moves that contract INTO the language: an effect under a
+`budget` is a linear resource the compiler sees and the runtime
+co-enforces.
+
+> **The law.** An external effect declared under a `budget { … on
+> Tool(X) }` is a **linear resource**. The runtime may not emit it
+> without **consuming a token**; over-emission is **impossible by
+> construction**. Token present ⇒ proceed (consume); token absent ⇒
+> `block` / `defer` / `shed` per `on_exhausted` — never an emission over
+> budget.
+
+## Why it is linear (the affine discipline, refilling)
+
+The lease/reconcile kernel already implements affine resources for
+*intra-flow* handles: a `LeaseToken` is single-use and decays over τ —
+acquire it, and it is yours until it expires, then it is gone. v2.28.0
+generalizes that token into a **`RateLease`** for *external effects*:
+
+- A **`rate:` quota** is a token bucket of capacity `limit` that refills
+  `limit` tokens per period (continuously, `limit/period` per second). It
+  permits a burst up to `limit`, then a steady rate. Refilling, but
+  bounded — never more than `limit` in flight.
+- A **`max:` quota** is a fixed window: at most `limit` consumptions per
+  period, the counter resetting only when the window rolls. A hard cap,
+  no intra-window refill.
+
+Both keep the linearity invariant the affine token has: **a consumed
+token is gone until it is refilled**. The difference from the lease
+token is only the refill — single-use becomes N-use — not the
+discipline. This is the same Logic-pillar affine algebra, applied at the
+boundary where the program touches the world instead of an internal
+handle.
+
+## Why it is deterministic
+
+A budget decision is a pure function. The bucket's available tokens are
+`min(capacity, prior + elapsed × rate)`; the window's availability is
+`limit − consumed`, rolling when `now − window_start ≥ period`. Refill is
+LAZY — computed from the elapsed wall-clock at each acquisition — so the
+verdict never depends on a background tick's granularity. Given the same
+`(bucket state, now)`, `acquire` yields the same grant/deny, and the same
+post-state, bit-for-bit. Every acquire/deny is therefore replayable and
+auditable: an over-budget call did not "probably" fail — it provably
+never emitted.
+
+## The exhaustion policies — all honest
+
+When a token is absent, the daemon's `on_exhausted` decides, from a
+closed catalog:
+
+- **`block`** (the fail-closed default) — the step fails with the typed
+  `EffectQuotaExhausted` (`axon-E0810`). The call is not emitted.
+- **`defer`** — the tick reschedules to the next instant a token frees up
+  (`EffectDeferred`, `axon-E0811`), reusing the v2.27.0 coalesced defer
+  ledger. The work is preserved, not dropped, and not over-emitted.
+- **`shed`** — best-effort: the call is skipped, the flow continues, and
+  the skip is audited (`effect:shed`) — never silent.
+
+None of these emits over budget. They differ only in what happens to the
+*rest* of the work, not in whether the budget holds.
+
+## What this forbids
+
+- **No unbudgeted emission.** A tool under a `budget` cannot be called
+  without a token. There is no path in the dispatcher that emits the
+  effect while bypassing the gate.
+- **No advisory-only limiting.** The budget is not a counter the program
+  may consult and ignore; the dispatch gate consumes-or-denies before the
+  effect, so the limit is structural, not a suggestion.
+- **No silent overshoot under a single replica.** The in-process kernel
+  is exact. (The enterprise multi-replica binding is honest about its
+  bound — at-most-N with a small overshoot window, fail-open on a Redis
+  error — and says so; it does not claim distributed exactly-once it
+  cannot deliver.)
+
+## Relation to the other laws
+
+- Generalizes the affine discipline of the lease kernel from intra-flow
+  handles to external effects — the same linearity, now at the boundary.
+- The effect-rate sibling of
+  [`time_is_an_explicit_input`](axon://logic/time_is_an_explicit_input):
+  that law makes *when* an effect runs a pure function of recorded inputs;
+  this one makes *how often* it may run a linear resource. A `daemon` that
+  declares both a `window` and a `budget` has its timing AND its rate
+  co-enforced, deterministically.
+- Carries the spirit of
+  [`no_unwitnessed_advantage`](axon://logic/no_unwitnessed_advantage):
+  there, no claim without a machine-checkable witness; here, no emission
+  without a consumed token — and the v2.28.0 `EffectBudgeted` proof makes
+  the budget's soundness an independently-verifiable object.
+
+The honest test: if your rate limit lives beside the program and the
+program cannot reason about it, your effects are not linear — they are
+hopefully-bounded. AXON makes the budget a resource the program holds and
+the runtime cannot overspend.

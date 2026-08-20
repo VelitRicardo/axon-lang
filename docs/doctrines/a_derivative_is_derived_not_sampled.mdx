@@ -1,0 +1,86 @@
+---
+title: "A derivative is DERIVED, not sampled — the proof-carrying gradient (v2.65.0)"
+description: "The law governing `grad` (v2.65.0). Everywhere else, a gradient is something you must trust: a runtime tape ran over open Python (JAX/PyTorch — powerful, opaque, unverifiable) or a finite-difference quotient approximated it (with a…"
+---
+
+Ask any agent stack for a sensitivity — "how much does the score move if
+the weight moves?" — and you get one of three things:
+
+1. **A finite difference**: `(f(x+h) − f(x))/h`, an *approximation* whose
+   error depends on an `h` nobody states.
+2. **A tape**: reverse-mode autograd re-ran your open-ended program and
+   recorded what it saw. Powerful — and opaque: the gradient is a runtime
+   artifact you must trust.
+3. **A narration**: the model says "about 3". Unfalsifiable.
+
+axon refuses all three. **v2.65.0** makes the derivative a *compile-time
+theorem about your declared expression*:
+
+```
+flow Score(x: Float, y: Float) -> Text {
+    let total = 3.0 * x + y * y
+    grad total wrt [x, y] as g
+    return g
+}
+```
+
+## The theorem — differential closure
+
+The differentiable fragment of the closed `Expr` (v2.26.0) — numeric
+literals, references, negation, `+ − × ÷`, and the `as_float`
+embedding — is **closed under differentiation**: every section 5.2 rule's
+right-hand side is built from members of the fragment. So a derivative
+is *another closed expression*: evaluable by the evaluator that already
+exists, checkable by the checker that already exists, and differentiable
+again — grad-of-grad is well-defined by construction.
+
+## The derivation — at compile time, into the IR
+
+`grad total wrt [x, y]` resolves the expression the prior rich `let`
+bound (its AST already rides the IR), applies the symbolic rules
+(linearity; product `(e₁e₂)' = e₁'e₂ + e₁e₂'`; quotient; chain by
+structural recursion), then runs the **deterministic simplifier**
+(`0+e→e`, `1·e→e`, constant folding — to fixpoint). The result — here
+`∂/∂x = 3.0`, `∂/∂y = y + y` — is stored in `IRGradStep.derivatives`:
+an artifact you can READ.
+
+## The laws
+
+- **`axon-T932`** — the target must be a **prior** rich `let` in the
+  same flow, with at least one `wrt`. grad differentiates the declared
+  EXPRESSION, never a runtime value.
+- **`axon-T931`** — a non-differentiable construct (`mod`, a comparison,
+  a logical, `length()`, field/index access) is a **compile refusal
+  naming the construct and its position**. Never a silent zero: a
+  gradient over `len(s)` does not exist, and axon does not fabricate one.
+
+## The proof — at deploy
+
+PCC **`GradientSoundness`** re-differentiates every grad's original
+expression (the same rules, the same simplifier — prover and verifier
+agree post-simplification, the design decision) and structurally compares with the
+stored derivatives. Swap a derivative for a flattering constant in a
+hand-edited artifact and the deploy is refused (409).
+
+## The evaluation — at runtime, trivially
+
+The handler evaluates the stored derivatives at the current bindings
+with the SAME total evaluator `let` uses. No LLM, no tape, 0 tokens.
+An unbound variable or a domain error (division by zero) **refuses** —
+a gradient is never fabricated.
+
+## The honest perimeter
+
+Scalars. First order. The arithmetic fragment. No tensors, no matrices,
+no NN-training claims, no performance claims until the Sandbox. The
+fragment is small and the guarantee is **total** — that trade is the
+product: *axon's gradient is a theorem about your declared expression,
+not a measurement of your runtime.*
+
+## See also
+
+- `analysis_is_algebra_not_conversation` (v2.63.0) — the data plane this
+  composes with (gradients over aggregates are the declared future).
+- `effects_are_linear` / `dispatch_vs_cognition` — why a derivative is
+  control-plane math, not an effect (no RBAC, no audit row: nothing
+  leaves the lattice).

@@ -1,0 +1,83 @@
+---
+title: "No unwitnessed advantage — the Advantage Witness law (`witness { … }`)"
+description: "The transversal law that no primitive may claim an advantage over a cheaper baseline unless it carries a machine-checkable witness that the advantage is real and exceeds its cost threshold on real data. Unwitnessed sophistication…"
+---
+
+Every sophisticated construct — a quantum kernel, a re-ranker, a multi-step
+deliberation, an adaptive memory loop — is, implicitly, making a *claim*: **"I am
+worth more than the cheaper thing I replaced."** Most of the field ships that claim
+on faith. AXON does not. This page is the law.
+
+> **No primitive may claim an advantage over a cheaper baseline unless it carries a
+> machine-checkable witness that the advantage is real and exceeds its cost
+> threshold on real data.** Unwitnessed sophistication degrades, honestly, to the
+> baseline.
+
+It is the same honest-compiler reflex as `axon://logic/dispatch_vs_cognition` (don't
+fake LLM determinism) and the capability-aware model resolver (declare the need, fail
+closed), generalised into one rule that reaches **every** primitive.
+
+## The `witness` declaration
+
+```text
+witness SeedKernelBeatsCosine {
+    claim:     SeedKernel              # the sophisticated construct
+    against:   cosine                  # the cheaper baseline it claims to beat
+    metric:    geometric_difference    # how advantage is measured (closed catalog)
+    threshold: 0.05                    # the minimum advantage that justifies the cost
+    data:      mdn_embeddings          # the REAL data it is witnessed on
+}
+```
+
+The metric is drawn from a **closed catalog** (extending it is a deliberate PR, never
+an open set): `geometric_difference` and `kernel_target_alignment` (quant kernels),
+`ranking_lift` (retrieval / navigate), `outcome_lift` (deliberation). The witness is
+transversal — the *same* surface works for any primitive; only the metric changes.
+
+## What the compiler proves vs what is measured
+
+- **`axon check` proves the witness is well-FORMED** (`axon-E0790`): a known metric, a
+  finite `threshold ≥ 0`, and the required references present. In particular **`data:`
+  is required** — you cannot claim advantage *in the abstract*. The advantage is always
+  relative to a baseline, on real data.
+- **The advantage VALUE is computed on that real data at deploy / runtime** and carried
+  as a verdict `{ metric, measure, threshold, holds, baseline }` (an independently-
+  verifiable PCC proof object). `holds = measure > threshold`.
+
+## Fail-closed honesty — degrade to the baseline
+
+When `measure ≤ threshold`, the verdict is `holds: false`, and the compiler / runtime
+tells the truth and names the gap — it does **not** silently ship the construct as
+advantage. For a quant kernel that resolves to classical cosine (amplitude encoding +
+fixed Pauli observables — see `axon://primitives/quant`), the witness fails and
+`axon-W007` recommends the baseline:
+
+> `axon-W007`: no measurable quantum advantage (provably cosine for amplitude+Pauli)
+> — use classical cosine, or a re-uploading feature map.
+
+For any other primitive whose advantage falls at or below its threshold, `axon-W008`
+gives the generic "no measurable advantage — degrade to the baseline."
+
+## The four pillars
+
+| | The Advantage Witness |
+|---|---|
+| **Mathematics** | advantage is a *measured* quantity over a baseline (`g`, KTA, ranking lift), not a vibe |
+| **Logic** | the verdict is a proof obligation — `holds` is re-checkable against the artifact (PCC `AdvantageWitnessed`) |
+| **Philosophy** | a claim must be *earned*, not asserted; the cheaper baseline is the honest null hypothesis |
+| **Computation** | the witness is evaluated on real data; unwitnessed sophistication is dead code paying rent |
+
+## Why this exists
+
+The most expensive lie in applied ML is **"this complexity is worth it."** A quantum
+kernel that is secretly cosine, a re-ranker that does not out-rank, a multi-agent loop
+that does not out-reason — each ships cost without benefit, and nobody measures. AXON
+makes the measurement a *language feature*: it will not let you deploy theater —
+quantum or otherwise — believing it is advantage. And it is honest in both directions:
+where a construct genuinely beats its baseline, the witness *proves* it.
+
+## See also
+
+- `axon://primitives/quant` — the first witnessed primitive (the amplitude-fidelity ≡
+  cosine theorem; the geometric-difference metric; data re-uploading as the real escape).
+- `axon://logic/dispatch_vs_cognition` — the sibling honest-compiler law.

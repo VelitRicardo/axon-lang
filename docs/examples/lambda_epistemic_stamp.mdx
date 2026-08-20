@@ -1,0 +1,49 @@
+---
+title: "Epistemic stamp via top-level `lambda` declaration"
+description: "A `lambda` carries `(ontology, certainty, temporal_frame, provenance, derivation)` — the epistemic-metadata primitive that production flows in regulated domains declare on every inferred derivation so the audit trail records its…"
+---
+
+**Primitives used:** `persona` · `flow` · `lambda`
+
+```axon
+// `lambda` is NOT λ-calculus abstraction; it is the epistemic-metadata
+// primitive that carries (ontology, certainty, temporal_frame,
+// provenance, derivation). Production flows in regulated domains
+// declare a lambda alongside their inference flow so the audit trail
+// records the derivation context for every produced value.
+
+persona Diagnoser {
+    domain: ["clinical-inference"]
+    tone: analytical
+    confidence_threshold: 0.85
+    cite_sources: true
+}
+
+// The lambda declares the epistemic stamp the runtime applies to
+// outputs of the matching flow / step under the runtime's binding.
+lambda DiagnosisCandidate {
+    ontology:       "ClinicalInference"
+    certainty:      0.85
+    temporal_frame: "2025-01-01" "2026-12-31"
+    provenance:     "EHR cohort 2024 + clinical guideline ICD-11"
+    derivation:     inferred
+}
+
+type SymptomList       { items: String }
+type ClusteredSymptoms { items: String }
+type Diagnosis         { label: String }
+
+flow Diagnose(symptoms: SymptomList) -> Diagnosis {
+    step Cluster {
+        given: symptoms
+        ask: "Cluster the symptoms by aetiology."
+        output: ClusteredSymptoms
+    }
+    step Decide {
+        given: Cluster.output
+        ask: "Emit the diagnosis from the clustered symptoms."
+        output: Diagnosis
+    }
+    return Decide.output
+}
+```

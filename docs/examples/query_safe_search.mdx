@@ -1,0 +1,61 @@
+---
+title: "HTTP QUERY (RFC 10008) — a complex read whose safety is a compile-time proof"
+description: "`method: QUERY` (section 107): the HTTP method RFC 10008 added in June 2026 — safe + idempotent + cacheable, WITH a request body. It is the honest method for a complex read (a filter DSL that does not fit in a URI, and that a POST would…"
+---
+
+**Primitives used:** `axonendpoint` · `flow` · `cors`
+
+```axon
+// RFC 10008 (June 2026) gave HTTP its first new method in two decades: QUERY —
+// safe + idempotent + cacheable, WITH a request body. It exists for exactly this
+// shape: a complex read whose filter does not fit in a URI, and which a POST
+// would MISDESCRIBE (a POST is not safe, not idempotent, not cacheable).
+
+axonstore leads { backend: in_memory }
+
+// The flow only READS. That is not a comment — it is a compile-time fact the
+// method depends on. Add a `persist` / `mutate` / `emit` / `publish` anywhere in
+// this body (including nested inside an `if`, a `for`, a `par` branch or a
+// `warden`) and axon-T927 refuses the program:
+//
+//   axon-T927 axonendpoint 'LeadSearch' declares `method: QUERY`, but its flow
+// 'SearchLeads' performs a declared write (`persist`). RFC 10008 section 2: a QUERY
+//   MUST be processed in a SAFE and IDEMPOTENT manner — caches, proxies and
+//   clients are entitled to retry and cache it freely, so a QUERY that changes
+//   state is a correctness + security bug, not a style choice.
+//
+// Everyone else's QUERY is safe by convention. This one is safe by construction:
+// the PCC class `QuerySafetySoundness` re-derives the law from the stored IR, so
+// a hand-edited artifact cannot smuggle a write behind a safe method either.
+flow SearchLeads(industry: Text, min_score: Int) -> Unit {
+    retrieve leads { where: "industry = ${industry}" as: hits }
+}
+
+// The RFC does NOT safelist QUERY, so a browser preflights it — an adopter must
+// declare it (the cors catalog reuses the endpoint method catalog, axon-T855).
+cors PublicApi {
+    allow_origins: ["https://app.example"]
+    allow_methods: [QUERY]
+}
+
+// The endpoint. The filter (`industry`, `min_score`) binds from the REQUEST BODY
+// — the Request Binding Contract is method-agnostic, so a QUERY's body binds to
+// the flow's declared parameters exactly like a POST's would.
+//
+// The server honours the RFC's MUSTs: a QUERY with no `Content-Type` is 400, an
+// unsupported media type is 415, and every response advertises `Accept-Query` so
+// a client discovering the API learns what query shape to send. No idempotency
+// key is demanded — QUERY is idempotent BY DEFINITION.
+// Every endpoint is a trust boundary (v2.44.0, `every_boundary_is_guarded`), and a
+// safe method is no exception: QUERY changes no state, but it still READS data
+// that may be nobody's business. `requires:` covers the boundary — safety and
+// authorization are orthogonal guarantees, and axon insists on both.
+axonendpoint LeadSearch {
+    method:   QUERY
+    path:     "/leads/search"
+    execute:  SearchLeads
+    backend:  stub
+    cors:     PublicApi
+    requires: [flow.execute]
+}
+```

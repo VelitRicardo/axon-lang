@@ -1,0 +1,54 @@
+---
+title: "A governed notification — daemon → aggregate → notify (v2.66.0)"
+description: "The founder's sales-drop case end to end: a `daemon` (v2.4.0) schedules a flow whose `aggregate` (v2.63.0) COMPUTES the signal; the flow's `if` binds the alert only when the declared threshold holds; `notify` (v2.66.0) fires post-run only…"
+---
+
+**Primitives used:** `dataspace` · `flow` · `daemon`
+
+```axon
+// Governed human notification (v2.66.0), end to end — the sales-drop
+// alert. The number in the SMS was COMPUTED (v2.63.0), the recipient
+// lives under custody (v2.48.0), and the interruption is bounded (T935).
+
+dataspace Ventas {
+    column region: Text
+    column monto:  Float
+}
+
+// The signal is ALGEBRA, not a model's opinion: γ over the batches,
+// with scan stats riding the envelope.
+flow ChequeoVentas() -> Text {
+    aggregate Ventas { compute: [sum(monto), count], as: totales }
+
+    // The flow's own logic IS the trigger: `resumen` binds
+    // only under the declared condition, and the notify below fires
+    // only when it resolved — an unresolved ref is a witnessed no-op.
+    if totales.sum_monto < 15000.0 {
+        let resumen = totales
+    }
+    return "ok"
+}
+
+// Every 30 minutes, fire-once across replicas (v2.4.0).
+daemon VigiaVentas {
+    every: "*/30 * * * *"
+    run ChequeoVentas
+}
+
+// The governed egress. Three laws, all compile-time:
+//  T933 — `attached` (default): ${resumen} arrives WITH its evidence
+//         line ("computed over N rows, taint: untrusted"). A guess
+//         arrives labeled as a guess.
+// T934 — the recipient is a v2.48.0 custody ref. Write a literal phone
+//         number here and compilation refuses, teaching this form.
+//  T935 — the window is MANDATORY: at most one of these per 4h per
+//         recipient, enforced durably; suppressions are audited.
+notify BajaDeVentas {
+    channel:    sms
+    to:         secret(ops.oncall_phone)
+    template:   "Alerta ventas: ${resumen}"
+    window:     4h
+    provenance: attached
+    effects:    <web>
+}
+```

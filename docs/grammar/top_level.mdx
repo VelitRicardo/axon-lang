@@ -1,0 +1,141 @@
+---
+title: "Top-level vs. nested primitives"
+description: "Closed table of every AXON primitive's surface — what stands alone at the program root, what only appears nested inside another construct."
+---
+
+Every AXON primitive is either **top-level** (it stands alone at the
+program root) or **nested** (it only appears inside another
+construct). The compiler enforces this at parse time: a `step`
+declaration outside any `flow` is a syntax error; a `flow` declaration
+*inside* another `flow` is too.
+
+This page is the authoritative table. When an agent is unsure where a
+primitive belongs, it should consult this resource — every decision
+follows from one row.
+
+## How to read this table
+
+- **Surface** — the AXON keyword as it appears in source.
+- **Top-level** — `✓` if the keyword starts a top-level declaration;
+  `✗` if it only appears nested.
+- **Lives inside** — for nested primitives, the parent construct(s)
+  that may contain it.
+- **Category** — the family the primitive belongs to (drives the
+  `axon.primitives(filter)` facet).
+- **Since** — the cycle that introduced it.
+
+## Cognition
+
+| Surface | Top-level | Lives inside | Since |
+|---|:---:|---|---|
+| `persona`  | ✓ | — (referenced by `run … as` and `step … use`) | v0.1.0 |
+| `context`  | ✓ | — (referenced by `run … within`)              | v0.1.0 |
+| `flow`     | ✓ | —                                              | v0.1.0 |
+| `anchor`   | ✓ | — (referenced by `run … constrained_by [...]`) | v0.1.0 |
+| `tool`     | ✓ | — (referenced implicitly by the tool surface)  | v0.1.0 |
+| `intent`   | ✓ | —                                              | v0.1.0 |
+| `memory`   | ✓ | —                                              | v0.1.0 |
+| `agent`    | ✓ | —                                              | v0.1.0 |
+| `step`     | ✗ | `flow`                                         | v0.1.0 |
+| `reason`   | ✗ | `flow` (sibling of `step`) — also `step` body  | v0.1.0 |
+| `probe`    | ✗ | `flow`, `step` body                            | v0.1.0 |
+| `validate` | ✗ | `flow`                                         | v0.1.0 |
+| `refine`   | ✗ | `flow`                                         | v0.1.0 |
+| `weave`    | ✗ | `flow`                                         | v0.1.0 |
+| `use`      | ✗ | `flow`, `step` header                          | v0.1.0 |
+
+## Cognitive I/O
+
+| Surface | Top-level | Lives inside | Since |
+|---|:---:|---|---|
+| `resource`  | ✓ | — | v1.2.0 |
+| `fabric`    | ✓ | — | v1.2.0 |
+| `manifest`  | ✓ | — | v1.2.0 |
+| `observe`   | ✓ | — | v1.2.0 |
+| `reconcile` | ✓ | — | v1.2.0 |
+| `lease`     | ✓ | — | v1.2.0 |
+| `ensemble`  | ✓ | — | v1.2.0 |
+| `session`   | ✓ | — (referenced by `socket protocol:`) | v2.3.0 |
+
+## Data plane
+
+| Surface | Top-level | Lives inside | Since |
+|---|:---:|---|---|
+| `axonstore` | ✓ | — | v1.31.0 |
+| `dataspace` | ✓ | — | v1.31.0 |
+| `corpus`    | ✓ | — | v1.31.0 |
+| `pix`       | ✓ | — | v1.14.0 |
+| `ledger`    | ✓ | — | v2.12.0 |
+| `type`      | ✓ | — | v0.1.0  |
+
+## Session types & wire
+
+| Surface | Top-level | Lives inside | Since |
+|---|:---:|---|---|
+| `session`        | ✓ | — | v2.3.0 |
+| `socket`         | ✓ | — | v2.3.0 |
+| `axonendpoint`   | ✓ | — | v1.23.0 |
+| `axpoint`        | ✓ | — | v1.23.0 |
+| `daemon`         | ✓ | — | v1.11.0 |
+| `mcp`            | ✓ | — | v1.24.0+ |
+| `listen`         | ✗ | `flow`, `daemon` body | v1.11.0 |
+| `channel`        | ✓ | — | v1.6.0 |
+| `emit`           | ✗ | `flow`, `daemon` body | v1.6.0 |
+| `publish`        | ✗ | `flow`, `daemon` body | v1.6.0 |
+| `discover`       | ✗ | `flow`, `daemon` body | v1.6.0 |
+
+> The `taint` keyword is a reserved word in the lexer but has no
+> parser production today (it appears in the epistemic-uncertainty
+> lattice in `axon-frontend::epistemic`, not as a top-level
+> declaration). If a future cycle introduces a `taint <Name> { … }`
+> declaration the registry + this table grow together.
+
+## Operators
+
+| Surface | Top-level | Lives inside | Since |
+|---|:---:|---|---|
+| `shield`   | ✓ | — | v1.13.1 |
+| `mandate`  | ✓ | — | v1.13.1 |
+| `compute`  | ✓ | — | v1.12.0 |
+| `lambda`   | ✓ | — | v1.10.0 |
+| `forge`    | ✗ | `flow` | v1.12.0 |
+| `ots`      | ✓ | — | v1.4.0 |
+| `psyche`   | ✓ | — | v1.5.2 |
+| `agent`    | ✓ | — | v1.12.0 |
+
+> The `logic` keyword is a reserved word in the lexer but — like
+> `taint` (v1.2.0) — has no parser production today. If a future
+> cycle introduces a `logic <Name> { … }` declaration the registry +
+> this table grow together.
+
+## Statements (not primitives, but parsed at flow body)
+
+These are statements an agent treats as the body of a `flow`. They
+are NEVER top-level.
+
+| Surface | Lives inside | What it does |
+|---|---|---|
+| `if … else`   | `flow` body | Conditional branch |
+| `for x in …`  | `flow` body | Bounded iteration |
+| `let x = …`   | `flow` body | Local binding |
+| `return …`    | `flow` body | Early/explicit return |
+| `break`       | inside `for` | Loop early-exit |
+| `continue`    | inside `for` | Next iteration |
+| `run …`       | top-level — but it is a *binding*, not a declaration | Binds a flow to a persona+context+anchors |
+| `apply`       | `step` body field | Invoke another flow |
+
+## Composition discipline
+
+- **Flows compose by `apply`, not by nesting.** A `flow` declaration
+  cannot appear inside another `flow`. Sub-flows are *referenced*
+  from a `step` body via `apply: <FlowName>`.
+- **Anchors and shields bind through `run`, not the flow header.** A
+  flow does not list its constraints; the `run` statement that
+  executes it does, via `constrained_by [...]`.
+- **Personas, contexts, and tools are referenced, not redeclared.** A
+  flow that uses a persona references it (`as <Persona>` on the
+  `run`, or `use <Persona>` per step). It does not embed a fresh
+  declaration.
+
+For the *why* behind these rules, read
+`axon://logic/flow_composition`.

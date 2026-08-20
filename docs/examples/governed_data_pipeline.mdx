@@ -1,0 +1,44 @@
+---
+title: "A governed data pipeline — ingest → σ → γ, every number COMPUTED (v2.63.0)"
+description: "The deterministic data plane end-to-end (v2.63.0): a typed `dataspace` (axon-T928), a governed `ingest` (axon-T929 — declared format, bounds BEFORE parse v2.54.0, refusal-not-coercion, batches born Untrusted v2.52.0), then `focus` (σ∘π)…"
+---
+
+**Primitives used:** `dataspace` · `flow`
+
+```axon
+// The deterministic data plane (v2.63.0), end to end. The number this flow
+// returns was COMPUTED — scanned, filtered, grouped over typed columnar
+// batches — not narrated by a language model.
+
+// (1) The store: a dataspace IS its typed schema (axon-T928). Each type
+//     maps 1:1 to a physical buffer layout; batches are append-only.
+dataspace Sales {
+    column region:  Text
+    column amount:  Float
+    column sold_at: Timestamp
+}
+
+// (2) The pipeline. `raw` arrives as a flow parameter (bound from the
+//     request body — or from a prior tool/scrape step in a larger flow).
+flow RegionReport(raw: Text) -> Text {
+    // Governed load (axon-T929): declared format, bounds enforced on the
+    // RAW stream before any parsing (v2.54.0). A value that does not fit its
+    // column refuses the whole batch, naming row + column — refusal, not
+    // coercion. The batch lands stamped source + sha256 + born-Untrusted.
+    ingest raw into Sales { format: csv, limits { max_bytes: 1048576, max_rows: 100000 } }
+
+    // σ∘π (axon-T930): the `where:` is the ONE data-plane filter grammar
+    // (v1.30.0, shared with retrieve/navigate — closed, injection-safe).
+    // Batches whose zone maps PROVABLY exclude the predicate are pruned;
+    // the pruning is observable in the result's `stats`.
+    focus Sales { where: "amount >= 100.0", select: [region, amount], as: big_sales }
+
+    // γ over the closed aggregate catalog {count, sum, avg, min, max}.
+    // Output rows are sorted — deterministic, always. The envelope's
+    // `taint` is the epistemic meet: an aggregate over untrusted batches
+    // is born untrusted; no algebra step can raise trust.
+    aggregate Sales { group_by: [region], compute: [count, sum(amount), avg(amount)], as: by_region }
+
+    return by_region
+}
+```

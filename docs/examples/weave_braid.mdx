@@ -1,0 +1,57 @@
+---
+title: "Weave braid — composing multiple sub-derivations"
+description: "`weave` is the multi-thread reasoning braid — reads N step outputs, applies a composition style (`synthesise | reconcile | rank`), emits one typed result bound to the `target:` name (NOT `target.output`)."
+---
+
+**Primitives used:** `persona` · `flow` · `step` · `weave`
+
+```axon
+// `weave` is a flow-body block (sibling of `step`). It braids
+// multiple independent sub-derivations into one unified conclusion
+// under an explicit composition style — the canonical primitive for
+// ensemble cognition at the flow level (no `ensemble` declaration
+// required for the simple case).
+//
+// IMPORTANT: downstream steps reference the result as `<target>`
+// (NOT `<target>.output` — weave writes a FLAT flow-scope binding).
+
+persona Diagnoser {
+    domain: ["clinical-inference"]
+    tone: analytical
+    confidence_threshold: 0.85
+    cite_sources: true
+}
+
+type SymptomList    { items: String }
+type PatientHistory { record: String }
+type DiagnosisList  { items: String }
+type Diagnosis      { label: String }
+
+flow DiagnoseCase(symptoms: SymptomList, history: PatientHistory) -> Diagnosis {
+    step ProposeFromSymptoms {
+        given: symptoms
+        ask: "Propose 3 differential diagnoses from the symptoms alone."
+        output: DiagnosisList
+    }
+    step ProposeFromHistory {
+        given: history
+        ask: "Propose 3 differential diagnoses from the patient history."
+        output: DiagnosisList
+    }
+    // Braid the two independent derivations into one. Result binds
+    // to `Unified` (FLAT, not `Unified.output`).
+    weave {
+        sources:  [ProposeFromSymptoms, ProposeFromHistory]
+        target:   Unified
+        format:   structured
+        priority: [ProposeFromHistory, ProposeFromSymptoms]
+        style:    reconcile
+    }
+    step Decide {
+        given: Unified
+        ask: "Emit the single most-likely diagnosis."
+        output: Diagnosis
+    }
+    return Decide.output
+}
+```

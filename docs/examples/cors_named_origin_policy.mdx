@@ -1,0 +1,51 @@
+---
+title: "CORS as a named, referenced origin policy"
+description: "`cors` declares a browser-origin policy ONCE, referenced from any `axonendpoint` via `cors: <Name>` — mirrors `shield:` exactly. Absent `cors:` means no CORS headers, ever (secure by default); `allow_origins: [\\\"*\\\"]` combined with…"
+---
+
+**Primitives used:** `flow` · `cors` · `axonendpoint`
+
+```axon
+// `cors` is a top-level declaration, exactly like `shield` — declared once,
+// referenced from any number of `axonendpoint`s. This is what makes CORS a
+// property of the ENDPOINT (resolved per the tenant's live deployed bundle),
+// not a single process-wide knob every other framework bolts on once.
+
+type ReviewInput   { q: String }
+type ReviewOutput  { reply: String }
+type ReviewRequest { req: ReviewInput }
+
+flow Review(req: ReviewInput) -> FlowEnvelope<ReviewOutput> {
+    step Reply {
+        given: req
+        ask: "Review the input and produce a typed reply."
+        output: FlowEnvelope<ReviewOutput>
+    }
+    return Reply.output
+}
+
+// A single leading-wildcard host label is the only glob shape accepted
+// (no full regex) — "https://*.kivi.io" covers every tenant subdomain
+// without opening the door to an arbitrary pattern.
+cors PublicWebCors {
+    allow_origins:      ["https://app.example.com", "https://*.kivi.io"]
+    allow_methods:      [GET, POST]
+    allow_headers:      ["Content-Type", "Authorization"]
+    allow_credentials:  true
+    max_age:            3600s
+    expose_headers:     ["X-Request-Id"]
+}
+
+axonendpoint ReviewAPI {
+    method:  post
+    path:    "/v1/review"
+    body:    ReviewRequest
+    execute: Review
+    output:  FlowEnvelope<ReviewOutput>
+    cors:    PublicWebCors
+    // `cors:` is a browser-origin policy, NOT authorization coverage — this
+    // endpoint still needs a covering discipline or `public: true`
+    // (axon://logic/every_boundary_is_guarded).
+    public:  true
+}
+```

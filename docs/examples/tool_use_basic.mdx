@@ -1,0 +1,45 @@
+---
+title: "Flow that uses a tool with a declared backend"
+description: "Shows the `tool` primitive — a named backend with effects, timeout, and provider — invoked from a step via `apply:`. (For typed, schema-validated tool calls with structured arguments, see the flow-level `use <Tool>(k = v, …)` form in…"
+---
+
+**Primitives used:** `persona` · `flow` · `step` · `tool`
+
+```axon
+// A step invokes a named tool via `apply:` — running the tool as
+// that step's backend. The tool declares its provider + effects +
+// timeout once; every step that uses it inherits those constraints.
+//
+// This is ONE of two canonical tool surfaces. The other is the
+// flow-level `use <Tool>(k = v, …)` dispatch (typed, schema-
+// validated structured args, real HTTP/MCP dispatch) — see
+// `axon://primitives/tool`. Use `apply:` to run a tool as a step's
+// backend; use `use <Tool>(…)` for an explicit, typed call whose
+// result a later step consumes.
+
+persona Translator {
+    domain: ["translation"]
+    tone: precise
+    confidence_threshold: 0.9
+    cite_sources: false
+}
+
+tool TranslationBackend {
+    // LLM-routed: the tool IS the model. No `provider:` (v2.69.0).
+    effects:  <network>
+    timeout:  30s
+}
+
+type Input  { text: String, target_lang: String }
+type Output { text: String }
+
+flow Translate(req: Input) -> Output {
+    step Render {
+        given: req
+        apply: TranslationBackend
+        ask: "Translate the input text into the target language."
+        output: Output
+    }
+    return Render.output
+}
+```

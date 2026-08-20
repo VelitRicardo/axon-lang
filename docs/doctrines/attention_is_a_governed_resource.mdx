@@ -1,0 +1,89 @@
+---
+title: "Attention is a governed resource — governed human notification (v2.66.0)"
+description: "The law governing `notify` (v2.66.0), the third egress dual: `deliver` (v2.60.0) writes into systems of record, `document` (v2.62.0) produces artifacts, `notify` SPENDS HUMAN ATTENTION — and all three carry their lineage or refuse. A…"
+---
+
+Every stack can send an SMS. What no stack governs is what crosses in it:
+a Python notification is a string plus a Twilio call — the assertion, its
+confidence, its provenance, and the condition that triggered it were all
+destroyed before sending. The human reads *"ventas bajando"* and **acts**.
+
+axon treats a notification as what it is: **the most dangerous egress in
+the system** — the only one that interrupts a person and asks for action
+now. v2.66.0 makes it the third egress dual:
+
+> `deliver` writes into systems of record · `document` produces
+> artifacts · **`notify` spends human attention** — and all three carry
+> their lineage or refuse.
+
+```
+notify LowSales {
+    channel:    sms
+    to:         secret(ops.oncall_phone)
+    template:   "Ventas 7d: ${resumen}"
+    window:     4h
+    provenance: attached
+    effects:    <web>
+}
+```
+
+## The three laws
+
+**T933 — the evidence barrier.** A guess reaching a person's pocket
+labeled as fact is assertion-laundering at its fastest (T920's sibling,
+harder consequence). `cleared` + flow values ⇒ refusal unless vouched.
+Under `attached`, every bound value crosses WITH its label — and a v2.63.0
+envelope ref appends its evidence line:
+
+> *Ventas 7d: $12.4k [computed: 7/1204 rows, taint: untrusted]*
+
+The notification that explains its own evidence. Nobody else has this,
+because nobody else still HAS the evidence at send time.
+
+**T934 — recipient custody.** `to:` accepts only a v2.48.0 secret-class
+ref. A literal phone number in source is a compile refusal that TEACHES
+the custody form. The value resolves at dispatch, tenant-scoped, inside
+the enterprise transducer — it never rides source, IR, prompts, or
+audit rows.
+
+**T935 — the mandatory window.** A `notify` with no `window:` is an
+unbounded interruption channel — refused, not defaulted. At-most-once-
+per-window per recipient is enforced by a durable ledger across
+replicas, and every suppression is a witnessed audit row: **governed
+silence is still accountable**.
+
+## The trigger needs no new machinery
+
+The founder's case — *"notificar baja en las ventas"* — is a `daemon`
+(v2.4.0) running a flow whose `aggregate` (v2.63.0) **computes** the signal
+(scan stats and all), an `if` that binds `resumen` only when the
+declared threshold holds, and fire-on-resolution: the `notify`
+fires post-run only when its `${ref}` resolved. An unresolved ref is a
+witnessed no-op. The alert's evidence is a computation, never a model's
+opinion.
+
+## The proof
+
+PCC **`NotificationProvenanceSoundness`** re-derives all three laws
+from the stored IR at deploy — a hand-edited artifact that launders a
+guess, drops the window, or smuggles a literal recipient is refuted
+(409). And the runtime is fail-closed end to end: no transducer mounted
+⇒ a structured refusal, never a silent drop and never a fabricated
+"sent".
+
+## Honest perimeter
+
+axon proves content discipline, recipient hygiene, and attention
+governance. It does NOT prove vendor delivery (an accepted API call is
+not a read message — receipts are declared tail), and recipient-level
+consent is the adopter's legal obligation in v1 (`notify.enabled` is
+per-tenant and OFF by default; messaging is consent territory). Three
+channels, text templates — the boundary is the product, not the catalog.
+
+## See also
+
+- `delivery_is_assertion_egress` (v2.60.0) — the system-of-record dual.
+- `analysis_is_algebra_not_conversation` (v2.63.0) — where the evidence
+  in the notification comes from.
+- `rotation_without_revelation` (v2.48.0) — the custody discipline the
+  recipient ref rides on.

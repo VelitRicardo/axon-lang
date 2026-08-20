@@ -1,0 +1,41 @@
+---
+title: "WebSocket transport bound to a session protocol"
+description: "A `socket` transports a `session` over RFC 6455 WebSocket — `protocol:` resolves to the typed dialogue declaration; `backpressure:` adds credit-flow control."
+---
+
+**Primitives used:** `session` · `socket`
+
+```axon
+// A socket is the transport; the session is the type-of-connection.
+// Compile-time the parser verifies the protocol reference resolves
+// and the two session roles are algebraic duals.
+
+type Utterance { text: String }
+type Token     { piece: String }
+
+session ChatProto {
+    client: [
+        select {
+            ask:    [send Utterance, branch {
+                        token: [receive Token, end],
+                        done:  [end]
+                    }]
+        }
+    ]
+    server: [
+        branch {
+            ask:    [receive Utterance, select {
+                        token: [send Token, end],
+                        done:  [end]
+                    }]
+        }
+    ]
+}
+
+socket ChatWS {
+    protocol:     ChatProto
+    backpressure: credit(8)
+    reconnect:    cognitive_state
+    legal_basis:  legitimate_interest
+}
+```

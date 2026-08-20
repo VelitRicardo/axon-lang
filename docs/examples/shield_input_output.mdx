@@ -1,0 +1,61 @@
+---
+title: "Defensive shield wrapping a flow's input/output"
+description: "Declares a `shield` with `scan:` checks, `on_breach:` policy from the closed catalog, and `compliance:` markers. The endpoint references it via `shield:` to enforce protection on every request."
+---
+
+**Primitives used:** `persona` · `flow` · `shield` · `anchor` · `axonendpoint`
+
+```axon
+// A shield is defensive composition: it scans for breaches before
+// and after the protected primitive runs. `on_breach:` is a closed
+// catalog — {deflect, escalate, halt, quarantine, sanitize_and_retry}.
+
+persona Reviewer {
+    domain: ["review"]
+    tone: precise
+    confidence_threshold: 0.85
+    cite_sources: true
+}
+
+anchor SafeReply {
+    require: source_citation
+    confidence_floor: 0.7
+    unknown_response: "I cannot answer that safely."
+    on_violation: raise AnchorBreachError
+}
+
+shield InputOutputShield {
+    scan:       [prompt_injection, pii_leak, data_exfil]
+    on_breach:  sanitize_and_retry
+    // v2.69.0 (axon-T952): `sanitize_and_retry` must name what it masks.
+    redact:     [email, phone]
+    severity:   high
+    compliance: [SOC2]
+}
+
+type Query  { text: String }
+type Reply  { text: String }
+type ReviewRequest { q: Query }
+
+flow Review(q: Query) -> FlowEnvelope<Reply> {
+    step Think {
+        given: q
+        ask: "Review the input and produce a safe reply."
+        output: FlowEnvelope<Reply>
+    }
+    return Think.output
+}
+
+axonendpoint ReviewAPI {
+    method:     post
+    path:       "/v1/review"
+    body:       ReviewRequest
+    execute:    Review
+    output:     FlowEnvelope<Reply>
+    shield:     InputOutputShield
+    backend:    auto
+    compliance: [SOC2]
+    retries:    1
+    timeout:    10s
+}
+```

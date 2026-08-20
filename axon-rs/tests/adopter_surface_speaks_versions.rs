@@ -345,7 +345,11 @@ fn the_adopter_surface_carries_no_phase_numbers() {
     // the rule by review.
     let mut dirs: Vec<PathBuf> = Vec::new();
     if monorepo {
-        for rel in ["examples", "packaging", "infrastructure", "scripts", "project"] {
+        // `docs/` is the adopter documentation SITE — the single surface an
+        // adopter reads before they read any code. It joined this list the day
+        // it was born: 151 pages were published with nothing checking their
+        // PROSE, while the docs-tree gate next door checked only their NAMES.
+        for rel in ["examples", "packaging", "infrastructure", "scripts", "project", "docs"] {
             dirs.push(root.join(rel));
         }
     }

@@ -1,0 +1,42 @@
+---
+title: "Typed tool call with structured keyword arguments"
+description: "Shows the flow-level `use <Tool>(k = v, …)` dispatch — a tool with a typed `parameters:` input schema + `output_type:`, called with named, schema-validated arguments (the v2.8.0 canonical multi-field form). For the `apply:` step-backend…"
+---
+
+**Primitives used:** `flow` · `step` · `tool`
+
+```axon
+// A tool declares a TYPED input schema (`parameters:`) and an
+// `output_type:`. A flow-level `use <Tool>(k = v, …)` calls it with
+// NAMED arguments, each validated against that schema at compile time
+// (an unknown / duplicate / missing-required arg or a literal type
+// mismatch is CALLER blame, before any dispatch — v2.8.0). At runtime the
+// args assemble a typed JSON body POSTed to the tool-server, and the
+// typed result binds under `CrmRadar_result` for a later step.
+//
+// Contrast with `tool_use_basic`, which runs a tool as a STEP backend
+// via `apply:`. Both surfaces are canonical: `apply:` for "this step IS
+// the tool", `use <Tool>(…)` for an explicit, typed call whose result a
+// subsequent step consumes.
+
+tool CrmRadar {
+    provider: http
+    parameters: { company: String, max_results: Int, active: Bool }
+    output_type: CrmReport
+    effects: <network>
+    timeout: 10s
+}
+
+type CrmReport { summary: String }
+
+flow ScanCrm(company: String) -> CrmReport {
+    // Each named arg is checked against CrmRadar.parameters: `company`
+    // binds the flow parameter; the Int / Bool literals are type-validated.
+    use CrmRadar(company = company, max_results = 5, active = true)
+
+    step Summarize {
+        ask: "Summarize the CRM matches for the user"
+        output: CrmReport
+    }
+}
+```

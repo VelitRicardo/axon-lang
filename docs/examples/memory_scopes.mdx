@@ -1,0 +1,41 @@
+---
+title: "Two memory primitives with different lifecycle scopes"
+description: "The `store:` field is the closed lifecycle catalog (`ephemeral | none | session | persistent`). Each `memory` primitive picks ONE scope; multiple memories with different scopes coexist in one program."
+---
+
+**Primitives used:** `persona` · `memory`
+
+```axon
+// The closed memory lifecycle catalog:
+//   ephemeral  — single-turn; cleared as the writing step returns
+//   none       — alias for ephemeral; explicit "intentionally amnesiac"
+//   session    — lives across the conversation; cleared on disconnect
+//   persistent — survives reconnect, scoped by tenant + user
+
+persona Tutor {
+    domain: ["education"]
+    tone: friendly
+    confidence_threshold: 0.7
+    cite_sources: false
+}
+
+// Per-turn scratch — gone the moment the step returns.
+memory ScratchPad {
+    store:     ephemeral
+    retrieval: exact
+}
+
+// Lives for the duration of the conversation.
+memory SessionState {
+    store:     session
+    retrieval: semantic
+}
+
+// Survives reconnect — tenant + user scoped.
+memory StudentProgress {
+    store:     persistent
+    backend:   pgvector
+    retrieval: semantic
+    decay:     never
+}
+```

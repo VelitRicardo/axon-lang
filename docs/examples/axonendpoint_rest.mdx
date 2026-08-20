@@ -1,0 +1,52 @@
+---
+title: "REST endpoint exposing a flow over HTTP"
+description: "`axonendpoint` is the HTTP boundary primitive — `method:` from the closed catalog (get|post|put|delete), `body:` is a type, `execute:` references a flow, and the response shape mirrors the flow's `-> Output`."
+---
+
+**Primitives used:** `persona` · `flow` · `axonendpoint`
+
+```axon
+// `axonendpoint` exposes a flow as a typed HTTP REST resource.
+// `body:` field names match the flow's parameter names (v1.32.0 + v1.32.0
+// D3 — Request Binding Contract).
+
+persona Reviewer {
+    domain: ["review"]
+    tone: precise
+    confidence_threshold: 0.85
+    cite_sources: true
+}
+
+type ReviewInput   { q: String }
+type ReviewOutput  { reply: String }
+type ReviewRequest { req: ReviewInput }
+
+// v2.0.0 wire contract (v2.0.0 D2 + D12): JSON-transport responses
+// MUST wrap the payload in `FlowEnvelope<T>` so the ψ-vector slot
+// `result` carries the structured value alongside `certainty`,
+// `provenance_chain`, and the rest of the envelope. Bare types are
+// rejected at type-check.
+flow Review(req: ReviewInput) -> FlowEnvelope<ReviewOutput> {
+    step Reply {
+        given: req
+        ask: "Review the input and produce a typed reply."
+        output: FlowEnvelope<ReviewOutput>
+    }
+    return Reply.output
+}
+
+axonendpoint ReviewAPI {
+    method:  post
+    path:    "/v1/review"
+    body:    ReviewRequest
+    execute: Review
+    output:  FlowEnvelope<ReviewOutput>
+    backend: auto
+    retries: 1
+    timeout: 10s
+    // Every endpoint is a trust boundary (axon://logic/every_boundary_is_guarded):
+    // declare a covering discipline (`requires:` / `shield:` / `compliance:`) OR
+    // the explicit opt-out `public: true`, else `axon check` fails (axon-T890).
+    public:  true
+}
+```

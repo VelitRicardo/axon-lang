@@ -1,0 +1,116 @@
+---
+title: "Every guard is satisfiable — the CapabilityGrantability law (`π`, axon-T891)"
+description: "The completeness dual of every_boundary_is_guarded. A boundary may declare a guard (requires: [x]) that no authority in the system can ever grant — a locked door with no fabricable key, indistinguishable at deploy from a real guard. This…"
+---
+
+`axon://logic/every_boundary_is_guarded` proved that every trust boundary
+*declares* a guard. This page is its silent partner obligation: that the guard
+can actually be *opened*.
+
+> **Every capability a boundary requires must be grantable through the authority
+> system, and the runtime must project the authorities a principal holds into the
+> requirement namespace totally and soundly.** A `requires: [x]` whose `x` no
+> authority can grant is a DEAD boundary — declarable but never satisfiable — and
+> is rejected fail-closed (`axon-T891`).
+
+A guard you can declare but never satisfy is not a guard. It is a locked door
+with no key — and at deploy time it is *indistinguishable* from a real one. The
+request simply 403s forever, and the operator discovers it in production. v2.45.0
+makes key-existence a proof obligation, the exact dual of the v2.44.0 dead-permission
+rule: v2.44.0 forbids a permission no boundary uses; v2.45.0 forbids a requirement no
+authority grants.
+
+## Why it was needed: two namespaces that never met
+
+An authority has two representations in a real control plane, and they drifted
+apart:
+
+- The **control-plane** RBAC catalog is colon: `flow:execute`, `tenant:update`.
+  Roles map to these; `authorize()` checks them.
+- The **data-plane** `requires:` grammar is dotted: `flow.execute`, `a.b.c`. The
+  dispatch gate checks the bearer's capability set against these.
+
+Nothing bridged them. A user with the role granting `flow:execute` could never
+satisfy `requires: [flow.execute]` — different string, no normalization. So the
+`requires:` gate, left to itself, 403s every request: the door is guarded by a
+lock whose key the authority system does not know how to cut.
+
+## `π` — the projection that reconciles them
+
+The law is grounded in a total, injective projection `π` from the authority
+catalog into the canonical (dotted) capability namespace:
+
+```
+π(resource:action) = resource.action        # colon perm ↦ canonical cap
+π(store.platform_read) = store.platform_read # already canonical ↦ identity
+```
+
+- **Total** — every well-formed catalog authority has a canonical image; the
+  mint that projects a principal's authorities never fails on a valid set.
+- **Injective on the single-colon catalog** — the unique dot in `r.a` can only
+  have come from the unique colon in `r:a`, so distinct authorities never
+  collapse into one capability. A genuine cross-collision (a colon perm
+  projecting onto a reserved dotted cap) is *detected and refused*, never
+  silently resolved — a fractured namespace is a hole.
+
+A principal's capability set is `π(roles→perms ⊕ SA-grants ⊕ platform-derived)`;
+the dispatch gate `requires ⊆ π(authorities)` is then satisfiable by exactly the
+authorities meant to open the boundary. `π` creates no authority — it makes the
+*representation* of held authority match the *representation* the boundary
+requires.
+
+## What the law rejects
+
+```text
+axonendpoint Write { method: POST path: "/write" execute: Persist requires: [tenant.write] }
+```
+
+If the catalog grants `tenant:update` but not `tenant:write`, then `tenant.write`
+is in no authority's image. The deploy gate refuses:
+
+> `axon-T891`: `requires: [tenant.write]` is not grantable — no authority in the
+> catalog grants it (a dead boundary, declarable but never satisfiable;
+> `every_requirement_is_grantable`).
+
+## What proves it vs where it lives
+
+- **The PCC obligation** (`PropertyClass::CapabilityGrantability`) re-derives the
+  whole-program `requires:` set from the IR, RE-PROJECTS the authority catalog
+  through `π` (re-checking that no two authorities fracture into one capability),
+  and refutes a dead requirement — never trusting a pre-computed grantable list.
+- **Grantability needs an authority catalog**, and the authority system is the
+  enterprise's RBAC. So `axon-T891` is a deploy-gate + proof refutation, not a
+  pure-OSS compile error: pure OSS has no roles/permissions — its `requires:`
+  capabilities come from the adopter's IdP, so the grantable set is supplied, not
+  intrinsic. The enterprise supplies its live RBAC catalog and gates the deploy.
+
+## Superior to the field
+
+IAM systems (AWS, GCP, Kubernetes RBAC) discover an unsatisfiable policy at
+request time — or never. AXON proves, *before the surface mounts*, that every
+scope it requires is grantable by some authority. A dead scope is a build error,
+not a production 403.
+
+## The four pillars
+
+| | Every guard is satisfiable |
+|---|---|
+| **Mathematics** | `π` is a total, injective function; grantability is the decidable subset predicate `requires ⊆ π(catalog)` |
+| **Logic** | the grantability verdict is a proof obligation — re-checkable against the artifact (PCC `CapabilityGrantability`), not trusted from the compiler |
+| **Philosophy** | a requirement the authority system cannot satisfy is not "strict security", it is an unaccounted-for dead boundary; the key must provably exist |
+| **Computation** | a dead requirement is a deploy-gate refutation (`axon-T891`); it is not deployable, quietly or otherwise |
+
+## Why this exists
+
+The most expensive lie about authorization is **"stricter is safer."** A
+`requires:` scope nothing can grant *looks* like maximal security — until every
+request 403s and the team weakens the whole surface in a panic to restore
+production. AXON refuses to let you ship a guard whose key does not exist: it
+proves the requirement is grantable, or it does not deploy.
+
+## See also
+
+- `axon://logic/every_boundary_is_guarded` — the sister law (declare the guard); this one proves the guard is openable.
+- `axon://logic/every_granted_authority_projects` — the converse quantifier at the principal: the key that is actually cut must turn the lock (the dead-authority closure).
+- `axon://logic/no_unwitnessed_advantage` — the same honest-compiler reflex applied to advantage claims.
+- `axon://primitives/scope` — the mandatory authorization envelope a `warden` runs within.

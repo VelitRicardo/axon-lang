@@ -30,6 +30,121 @@
         ]
       },
       {
+        "group": "Examples · Agents",
+        "pages": [
+          "examples/agent_react",
+          "examples/reflex_to_immune"
+        ]
+      },
+      {
+        "group": "Examples · Composition",
+        "pages": [
+          "examples/flow_chaining",
+          "examples/flow_step_basic",
+          "examples/grad_proof_carrying",
+          "examples/module_imports",
+          "examples/quant_feature_map",
+          "examples/temporal_cognitive_context",
+          "examples/tool_structured_args",
+          "examples/tool_use_basic",
+          "examples/weave_braid"
+        ]
+      },
+      {
+        "group": "Examples · Data",
+        "pages": [
+          "examples/axonstore_typed",
+          "examples/dataspace_basic",
+          "examples/governed_crm_delivery",
+          "examples/governed_data_pipeline",
+          "examples/governed_notification",
+          "examples/secret_custody_rotation",
+          "examples/secret_partition_multitenant"
+        ]
+      },
+      {
+        "group": "Examples · Effects",
+        "pages": [
+          "examples/lambda_epistemic_stamp"
+        ]
+      },
+      {
+        "group": "Examples · Endpoints",
+        "pages": [
+          "examples/axonendpoint_rest",
+          "examples/cors_named_origin_policy",
+          "examples/query_safe_search",
+          "examples/widget_ephemeral_credential"
+        ]
+      },
+      {
+        "group": "Examples · Memory",
+        "pages": [
+          "examples/memory_scopes"
+        ]
+      },
+      {
+        "group": "Examples · Session Types",
+        "pages": [
+          "examples/session_chat_duality",
+          "examples/socket_websocket_chat"
+        ]
+      },
+      {
+        "group": "Examples · Shields",
+        "pages": [
+          "examples/shield_input_output"
+        ]
+      },
+      {
+        "group": "Examples · Streaming",
+        "pages": [
+          "examples/streaming_chat"
+        ]
+      },
+      {
+        "group": "Examples · Validation",
+        "pages": [
+          "examples/anchor_validation",
+          "examples/mandate_policy"
+        ]
+      },
+      {
+        "group": "Doctrines",
+        "pages": [
+          "doctrines/a_derivative_is_derived_not_sampled",
+          "doctrines/a_safe_method_is_proven_safe",
+          "doctrines/analysis_is_algebra_not_conversation",
+          "doctrines/attention_is_a_governed_resource",
+          "doctrines/authority_only_attenuates",
+          "doctrines/connections_release_across_cognition",
+          "doctrines/delivery_is_a_kept_promise",
+          "doctrines/delivery_is_assertion_egress",
+          "doctrines/dispatch_vs_cognition",
+          "doctrines/effect_execution_is_mode_invariant",
+          "doctrines/effects_are_linear",
+          "doctrines/every_boundary_is_guarded",
+          "doctrines/every_granted_authority_projects",
+          "doctrines/every_requirement_is_grantable",
+          "doctrines/flow_composition",
+          "doctrines/no_unwitnessed_advantage",
+          "doctrines/open_data_is_total",
+          "doctrines/rotation_without_revelation",
+          "doctrines/selection_without_revelation",
+          "doctrines/session_duality",
+          "doctrines/time_is_an_explicit_input",
+          "doctrines/total_expressions"
+        ]
+      },
+      {
+        "group": "Grammar",
+        "pages": [
+          "grammar/composition",
+          "grammar/ebnf",
+          "grammar/top_level"
+        ]
+      },
+      {
         "group": "Reference · Cognition",
         "pages": [
           "reference/primitives/agent",

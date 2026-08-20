@@ -1,0 +1,128 @@
+---
+title: "Time is an explicit, recorded input — never an ambient read (v2.27.0 scheduling ·…"
+description: "The law that any decision AXON makes about WHEN something runs — a `window` temporal guard, a deferred tick, a scheduled daemon claim — is a PURE, TOTAL function of explicit inputs: the instant `now` (UTC), the declared window (timezone +…"
+---
+
+A scheduler that reads the wall clock *inside* its decision is
+unauditable: you cannot replay "why didn't the 8am job run on the
+24th?" because the inputs to that decision — the current time, the
+operative timezone, the holiday set, the timezone database in
+effect — were ambient, not recorded. v2.27.0 makes the opposite
+true by construction for AXON's temporal guard, the `window`.
+
+> **The law.** Every decision about WHEN something runs is a
+> **pure, total function** of **explicit, recorded inputs**: the
+> instant `now` (UTC), the declared `window` (timezone + allowed
+> day/hour spans + literal holiday dates), and the IANA
+> tz-database version. The decision reads nothing ambiently; it is
+> replayable from those inputs alone.
+
+## The four inputs — all explicit
+
+1. **`now` is passed in, not read.** The pure decision
+   `is_in_window(now, window)` takes the instant as an argument.
+   The supervisor reads the clock once, at the top of a tick, and
+   threads that value through — so the logic is unit-testable with
+   a fixed clock and identical across replicas evaluating the same
+   minute.
+2. **The timezone is a literal.** `timezone: "America/Bogota"` is
+   part of the program, format-checked at compile time and
+   resolved against the IANA database at runtime. A DST transition
+   is not a special case the adopter handles — the tz database
+   carries the offset history, so `9..18` local means wall-clock
+   9am–6pm on both sides of the shift.
+3. **The spans and holidays are literals.** `allow:` day/hour
+   ranges and `exclude:` dates (`"2026-12-25"`) are verified
+   program text — type-checked for real calendar validity
+   (`axon-T826`: no Feb 30). They are not fetched, not inferred,
+   not political. A named holiday *calendar* ("US federal
+   holidays") is deliberately **out of scope** precisely because it
+   would be a non-deterministic, ambient input — the antithesis of
+   this law.
+4. **The tz-db version is recorded.** A window verdict depends on
+   the IANA timezone database (offsets and DST rules change between
+   releases). The run's audit records the `tz_db_version` the
+   decision used, so the verdict is replayable **even across a
+   tz-database upgrade** — you can reconstruct exactly which rules
+   were in force.
+
+## Why it is pure and total
+
+The decision is a finite fold: convert `now` to the window's
+timezone, test the local date against the holiday set, test the
+local weekday/hour against the spans. No loop is unbounded, no
+branch calls a model, nothing is persisted or mutated. An
+unresolvable timezone **fails closed** (the tick does not fire)
+rather than guessing. Given the same `(now, window, tz-db
+version)`, the verdict is identical bit-for-bit — the precondition
+for replay, audit, and cross-replica agreement.
+
+## What this forbids
+
+- **No ambient clock read inside the decision.** The logic never
+  calls "what time is it?" itself; the instant is an argument. A
+  decision you cannot re-run with a supplied `now` is not a
+  decision under this law.
+- **No hidden timezone.** "Local time" with no declared zone is
+  ambient and machine-dependent. The zone is always explicit.
+- **No unrecorded dynamic input.** Should a future extension source
+  the holiday set dynamically (e.g. from a store), it MUST record
+  the **resolved set** into the decision's audit — otherwise the
+  verdict stops being replayable and leaves this law. The explicit
+  input may be computed; it may never be a silent side-read.
+- **No political calendar baked in.** Built-in national holiday
+  tables are non-deterministic across jurisdictions and years; they
+  are not an explicit input and are excluded by design.
+
+## v2.46.0 — the cognitive completion
+
+v2.27.0 made the *scheduler* time-honest and left the *model* blind: a
+`window`-gated daemon fires at exactly 9am Bogotá and then prompts a
+model that does not know it is Monday. Every production agent that
+schedules, greets, reasons about "this week" or "before 6pm" needs
+the current date-time — and the folk fix (string-interpolating a
+server timestamp into the `ask:`) is precisely the ambient,
+unrecorded, timezone-naïve clock read this law forbids.
+
+v2.46.0 applies the same four-input discipline to cognition:
+
+1. **Declared, never ambient.** A step that carries time says so in
+   source: `now: "America/Bogota"` on the step, or on the bound
+   `context` frame (every step within inherits it; a step's own
+   `now:` overrides). The zone is format-checked (`axon-T892`) —
+   you state WHOSE time the cognition runs in.
+2. **One instant per run.** The runtime captures the clock ONCE per
+   run and renders THAT instant in each declared zone — two steps in
+   one run can never disagree about "now". A daemon tick is a new
+   run with a fresh capture, which is exactly right.
+3. **Deterministic rendering.** The injected line —
+   `Current datetime: 2026-07-07T14:33:05-05:00 (America/Bogota;
+   tzdb 2025b; captured at run start).` — is a pure function of
+   `(capture, zone, tz-db version)`. DST-correct via the same
+   chrono-tz machinery as `window`.
+4. **Recorded for replay.** The flow envelope carries
+   `temporal_context: {captured_utc, tzdb_version, zones}` (both
+   transports, v2.7.0 parity), so the exact prompt the model saw is
+   reconstructible byte-for-byte.
+
+Fail-closed at every layer: a malformed zone is a compile error
+(`axon-T892`); a shape-valid zone unknown to the tz database is
+refuted by the `TemporalContextSoundness` proof at verify/deploy and
+fails the step loudly at runtime — never a silent omission of the
+time a step declared it needs.
+
+## Relation to the other laws
+
+- The time-domain instance of
+  [`total_expressions`](axon://logic/total_expressions): a temporal
+  predicate is a total, pure, statically-checked computation, not a
+  delegated guess.
+- Shares the spirit of
+  [`no_unwitnessed_advantage`](axon://logic/no_unwitnessed_advantage):
+  a claim (there, an advantage; here, a schedule decision) is only
+  trustworthy when it is backed by recorded, checkable inputs.
+
+The honest test: if you cannot replay a scheduling decision from
+values you wrote down, your scheduler is guessing. AXON writes them
+down — `now`, the zone, the spans, the holidays, the tz-db version
+— and computes.
