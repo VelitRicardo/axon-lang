@@ -147,40 +147,85 @@ fn docs_json_exists_and_carries_what_mintlify_requires() {
 // ── 1b. the assets the manifest declares exist ──────────────────────────────
 
 /// A declared asset that is not on disk is the same defect class as a dangling
-/// navigation entry, and it was found the same way: this commit's `docs.json`
-/// declared `"favicon": "/favicon.svg"` and no such file existed. Mintlify does
-/// not fail the build for it — it serves the site with a broken icon, which is
-/// the kind of defect nobody files and everybody notices.
+/// navigation entry, and both were found the same way — by writing the gate and
+/// running it. The first version of this rule read only a scalar
+/// (`"favicon": "/favicon.svg"`) and skipped a themed object
+/// (`"favicon": { "light": …, "dark": … }`) entirely. The web editor then wrote
+/// exactly that shape, so the rule passed while checking nothing: a gate that is
+/// correct on the syntax nobody uses any more.
+///
+/// It now collects EVERY path-looking string under each asset key, at any depth.
+///
+/// Paths are resolved against `docs/`, the documentation root — that is what
+/// Mintlify's "docs.json is in a subdirectory" setting makes it. So a leading
+/// `/` means "the docs root", not "the repository root": `/favicon.svg` is
+/// `docs/favicon.svg`, and `/docs/images/x.png` would be `docs/docs/images/x.png`.
+fn asset_paths(src: &str, key: &str) -> Vec<String> {
+    let needle = format!("\"{key}\"");
+    let Some(idx) = src.find(&needle) else { return Vec::new() };
+    let rest = &src[idx + needle.len()..];
+    // Scalar form: `"favicon": "…"`. Object form: `"favicon": { … }`.
+    let colon = match rest.find(':') {
+        Some(c) => c,
+        None => return Vec::new(),
+    };
+    let after = rest[colon + 1..].trim_start();
+    let body: &str = if after.starts_with('{') {
+        let close = match after.find('}') {
+            Some(c) => c,
+            None => return Vec::new(),
+        };
+        &after[..close]
+    } else {
+        // one quoted scalar
+        let Some(open) = after.find('"') else { return Vec::new() };
+        let tail = &after[open + 1..];
+        let Some(close) = tail.find('"') else { return Vec::new() };
+        &tail[..close]
+    };
+
+    // Every quoted string in `body` that looks like a path, i.e. carries a file
+    // extension. That skips the theme keys (`light`, `dark`) without having to
+    // enumerate them, which is what let the previous version go blind.
+    body.split('"')
+        .filter(|t| {
+            t.contains('.')
+                && !t.starts_with("http")
+                && t.rsplit('.').next().is_some_and(|e| {
+                    matches!(e, "svg" | "png" | "jpg" | "jpeg" | "webp" | "ico" | "gif")
+                })
+        })
+        .map(|t| t.to_string())
+        .collect()
+}
+
 #[test]
 fn every_asset_the_manifest_declares_exists() {
     let manifest = docs_dir().join("docs.json");
     let src = std::fs::read_to_string(&manifest).expect("docs.json is readable");
 
+    let mut checked = 0usize;
     let mut missing = Vec::new();
     for key in ["favicon", "logo"] {
-        let needle = format!("\"{key}\"");
-        let Some(idx) = src.find(&needle) else { continue };
-        let rest = &src[idx + needle.len()..];
-        // `"favicon": "/favicon.svg"` — take the next quoted value. A nested
-        // object (`"logo": { "light": …, "dark": … }`) yields its first path,
-        // which is enough to catch the common single-asset case; extend this
-        // when a themed logo actually lands.
-        let Some(open) = rest.find('"') else { continue };
-        let after = &rest[open + 1..];
-        let Some(close) = after.find('"') else { continue };
-        let value = &after[..close];
-        if value.is_empty() || value.starts_with("http") || value == "light" || value == "dark" {
-            continue;
-        }
-        let rel = value.trim_start_matches('/');
-        if !docs_dir().join(rel).is_file() {
-            missing.push(format!("  {key}: \"{value}\" — expected docs/{rel}"));
+        for value in asset_paths(&src, key) {
+            checked += 1;
+            let rel = value.trim_start_matches('/');
+            if !docs_dir().join(rel).is_file() {
+                missing.push(format!("  {key}: \"{value}\" — expected docs/{rel}"));
+            }
         }
     }
 
     assert!(
+        checked > 0,
+        "docs.json declares no favicon or logo path — either the asset keys were removed, or \
+         the parse missed their shape and this gate is checking nothing."
+    );
+    assert!(
         missing.is_empty(),
-        "docs.json declares {} asset(s) that do not exist:\n{}",
+        "docs.json declares {} asset path(s) that are not on disk:\n{}\n\nPaths resolve \
+         against `docs/` (the documentation root under Mintlify's subdirectory setting), so a \
+         leading `/` is the docs root — not the repository root.",
         missing.len(),
         missing.join("\n")
     );

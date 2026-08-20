@@ -9,7 +9,7 @@
     "dark": "#6b6b6b"
   },
   "favicon": {
-    "light": "/docs/images/logoaxonlang.svg",
+    "light": "/images/logoaxonlang.svg",
     "dark": "/favicon.svg"
   },
   "navigation": {
@@ -50,8 +50,8 @@
     }
   },
   "logo": {
-    "light": "/docs/images/ChatGPTImage20ago2026,15_18_38.png",
-    "dark": "/docs/images/logoaxonlang.png"
+    "light": "/images/ChatGPTImage20ago2026,15_18_38.png",
+    "dark": "/images/logoaxonlang.png"
   },
   "background": {
     "decoration": "grid",
