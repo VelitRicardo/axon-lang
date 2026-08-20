@@ -1,0 +1,122 @@
+---
+title: "refine"
+description: "Iteratively improves a candidate output via a declared refinement strategy."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v0.1.0 · **Used inside a declaration**
+
+## Grammar
+
+```text
+# Flow-level form (sibling of step):
+refine <Target>
+refine <Target> { strategy: <strategy_name> }   # optional body skipped structurally
+```
+
+`refine` iteratively improves a candidate output. Where
+`validate` halts on failure, `refine` **loops**: it asks the
+backend to critique its own output, applies the critique, and
+re-emits — until either the predicate clears or the iteration
+budget is hit.
+
+`refine` is the canonical "propose → self-critique → revise"
+pattern surfaced as a typed primitive. The strategy can be
+backend-driven (LLM self-reflection), rule-driven (apply
+declared rewrites until fixed-point), or composite.
+
+## Surface
+
+`refine` is **nested** — it appears as a flow-step sibling of
+`step`, not as a top-level declaration.
+
+```text
+flow DraftEmail(brief: EmailBrief) -> Email {
+    step Compose {
+        given: brief
+        ask: "Draft the email."
+        output: Email
+    }
+    # Iteratively improve the draft until the tone validator clears.
+    refine Compose.output
+    step Send {
+        given: Compose.output
+        ask: "Render the final email."
+        output: Email
+    }
+}
+```
+
+## Header
+
+### `refine <Target>`
+
+A **single identifier** naming the value to refine. Typically a
+previous step's output (`<Step>.output`) — refine operates
+**in-place** on the flow scope: after refinement,
+`<Step>.output` carries the refined value.
+
+### `refine <Target> { strategy: <name> }` (optional body)
+
+A braced block may follow the target. The body is **reserved**
+for explicit strategy binding from the closed catalogue
+(`self_reflection`, `propose_critique_refine`, `rewrite_until_fixed`,
+`grow_until_threshold`). Today the parser skips the body;
+the runtime uses the default strategy registered for the
+target's declared type.
+
+## Iteration budget
+
+`refine` carries a **max_iterations budget** controlled by the
+surrounding `run` or `agent`:
+
+- Inside a `run`-level flow: `run … effort: high` raises the
+  cap; `effort: low` lowers it. Defaults: 1 (low), 3 (medium),
+  6 (high), 10 (max).
+- Inside an `agent`: bounded by the agent's `max_iterations:`
+  field.
+
+Budget exhaustion does NOT halt the flow; the refine loop
+exits with the best candidate so far, audit row
+`refine:budget_exhausted` is emitted, and execution continues.
+This is the **soft-fail** discipline — refinement is a quality
+boost, not a hard predicate.
+
+## Runtime behaviour
+
+`refine` at flow level produces a typed `RefineStep` IR node.
+On execution:
+
+1. Fetch the target value from the flow scope.
+2. Loop:
+   a. Run the strategy's critique step.
+   b. If critique reports "good enough" → exit, write back.
+   c. Else apply the critique → new candidate → goto (a).
+3. Audit row records `(target, iterations, final_score,
+   exit_reason)`.
+
+## What this primitive is NOT
+
+- **Not a halt.** Refine is soft-fail by design. Use
+  `validate` for hard predicates.
+- **Not a free retry.** Refine has an iteration budget; it
+  consumes tokens + cost. Declare deliberately.
+- **Not mutation of the source step.** Refine operates on the
+  flow-scope binding of `<Target>`, not on the step's
+  declared body.
+- **Not a substitute for human review.** When the iteration
+  budget is exhausted without convergence, the right next
+  step is often `escalate` (human-in-the-loop), not "trust
+  the best-so-far candidate".
+
+## See also
+
+- `axon://primitives/validate` — hard-fail counterpart.
+- `axon://primitives/probe` — observe-only counterpart.
+- `axon://primitives/anchor` — run-level continuous
+  predicate.
+- `axon://primitives/reason` — declares HOW the model
+  thinks; refine declares HOW the model REVISES.

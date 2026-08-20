@@ -1,0 +1,193 @@
+---
+title: "type"
+description: "Declares a structured data type with optional refinements, ranges, where clauses, and compliance tags."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v0.1.0 · **Top-level declaration**
+
+## Grammar
+
+```text
+type <Name>                                   # required
+     [(<min>..<max>)]                         # optional — numeric range refinement
+     [where <expression>]                     # optional — predicate refinement
+     [compliance [<Tag1>, <Tag2>, ...]] # optional — section 6.1 ESK compliance
+     [{ <field>: <TypeExpr>, ... }]           # optional — record body
+
+# Examples:
+type RiskScore(0.0..1.0)
+type Email where matches(s, "^[^@]+@[^@]+$")
+type PatientRecord compliance [HIPAA, GDPR] {
+    patient_id: String,
+    diagnosis_code: String
+}
+```
+
+`type` declares **a structured data type** with optional
+refinements, ranges, where clauses, and compliance tags. Types
+are the building blocks of every typed surface in AXON — they
+flow as `given:` inputs, `output:` outputs, `body:` endpoint
+schemas, store columns, and session payloads.
+
+A `type` declaration is **closed** at compile time: every
+consumer is type-checked against the declared shape. Adding a
+field is a backwards-incompatible change to every flow that
+consumes the type (the compiler will reject the consumer at
+parse time, not run time).
+
+## Surface
+
+`type` is a **top-level declaration**. It is *not* nested
+inside another declaration.
+
+```axon
+type RiskScore(0.0..1.0)
+
+type Email where matches(s, "^[^@]+@[^@]+$")
+
+type PatientRecord compliance [HIPAA, GDPR] {
+    patient_id:     String,
+    ssn:            String,
+    diagnosis_code: String,
+    dob:            String
+}
+```
+
+## Anatomy
+
+### `type <Name>` — the head
+
+A **PascalCase identifier**, unique within the module. The
+compiler builds a per-module type symbol table at parse time;
+duplicates are rejected. Type names appear in every typed
+surface (`given:`, `output:`, parameter signatures, field
+types, generic instantiations).
+
+### `(<min>..<max>)` — numeric range refinement (optional)
+
+A **range constraint** for numeric base types. The range is
+inclusive on both ends. Used for confidence scores,
+probabilities, percentages, ratings:
+
+```text
+type Confidence(0.0..1.0)        # probability
+type Rating(1..5)                # star rating
+type Latitude(-90.0..90.0)       # geographic
+```
+
+The range is enforced **at runtime** when values are
+constructed; the type checker uses it for cross-flow
+compatibility checks.
+
+### `where <expression>` — predicate refinement (optional)
+
+A **free-form expression** that must hold for every value of
+this type. The expression is forwarded to the runtime
+verifier; the type checker validates the expression's shape
+but not its semantics.
+
+```axon
+type Email where matches(s, "^[^@]+@[^@]+$")
+type AdultAge(0..150) where s >= 18
+```
+
+The `s` identifier inside the `where` clause refers to the
+value being checked.
+
+### `compliance [<Tag1>, <Tag2>, ...]` — ESK compliance (optional, v1.2.0)
+
+A **bracketed list of identifiers** from the closed compliance
+catalogue (`HIPAA`, `GDPR`, `GxP`, `PCI_DSS`, `SOX`, `SOC2`,
+`FISMA`, `NIST_800_53`, `FedRAMP_Moderate`, `FedRAMP_High`,
+…). When a type carries a compliance tag, every downstream
+consumer of the type (axonendpoint, shield, axonstore) MUST
+declare at least one of the tagged frameworks — the v2.0.0
+cross-tag check is statically enforced.
+
+**Important syntax note:** for `type`, the compliance tag uses
+**no colon** — `compliance [HIPAA]` (prefix modifier, before
+the body brace). Every other primitive uses `compliance: [...]`
+(colon-prefixed body field). See the parser comments around
+`parse_type_def` for the historical reason.
+
+### `{ <field>: <TypeExpr>, ... }` — record body (optional)
+
+A **brace-delimited list of `name: TypeExpr` pairs**, comma-
+separated. Each field's type expression supports the full
+generics surface (`List<T>`, `Stream<T>`, `Optional<T>?`,
+nested generics).
+
+A type without a body is a **refinement-only declaration**
+(typically with a range and/or where clause). A type with a
+body is a **record**.
+
+## Built-in base types
+
+The runtime ships built-in types that do not need declaration:
+
+| Type | Domain |
+|---|---|
+| `String` | UTF-8 text |
+| `Number` | Floating-point or integer (context-dependent) |
+| `Bool` | `true` / `false` |
+| `Int` | 64-bit signed integer |
+| `Float` | 64-bit IEEE 754 |
+| `Bytes` | Raw byte sequence |
+| `Timestamp` | UTC ISO 8601 |
+| `List<T>` | Generic homogeneous list |
+| `Stream<T>` | Lazy sequence (v1.24.0 streaming surface) |
+| `Optional<T>?` | Nullable / absent |
+
+## Runtime behaviour
+
+At deploy time, each `type` declaration lowers to a
+`TypeDefinition` IR node. The runtime materialises a typed
+validator chain per declared type:
+
+1. **Shape check** — the value is a record with the declared
+   fields, no extras.
+2. **Field-type recursion** — every field is checked against
+   its declared type.
+3. **Range check** — if `(min..max)` is declared, the value
+   lies in the range.
+4. **Predicate check** — if `where ...` is declared, the
+   expression evaluates to `true`.
+5. **Compliance propagation** — the audit row carries the
+   declared compliance tags.
+
+Validation failure produces a structured
+`axon-E004 type validation failed: …` diagnostic — visible to
+the agent via `axon.check` and to the runtime as an HTTP 400
+for endpoint-bound types.
+
+## What this primitive is NOT
+
+- **Not a class.** A type is structural, not behavioural. It
+  declares shape + invariants; it does not carry methods.
+- **Not opaque.** Every type's fields are visible at compile
+  time. There is no encapsulation discipline — that lives in
+  the persona/shield/anchor layer.
+- **Not nominally subtyped.** Two types with the same shape
+  are NOT interchangeable. `type Email { value: String }` is
+  not assignable to `type Username { value: String }`. The
+  compiler treats type names as nominal.
+- **Not parameterised** (yet). Generic *application*
+  (`List<Email>`) works; declaring `type Pair<A, B> { ... }`
+  is on the v1.31.0+ roadmap.
+
+## See also
+
+- `axon://primitives/flow` — consumes types as parameter +
+  return shapes.
+- `axon://primitives/step` — `given:` + `output:` are
+  type-checked against declared types.
+- `axon://primitives/axonstore` — declares which types its
+  columns hold.
+- `axon://compliance/hipaa` — example of how
+  `compliance [HIPAA]` propagates through the stack.
+- `axon://grammar/composition` — how types compose with
+  other primitives.

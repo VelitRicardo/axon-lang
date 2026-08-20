@@ -1,0 +1,162 @@
+---
+title: "resource"
+description: "The single source of truth for a connection the runtime opens, holds and pools — its address, its size, and how many holders may share it."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v1.2.0 (governs anything only since v2.67.0) · **Top-level declaration**
+
+## Grammar
+
+```text
+resource <Name> {
+    kind:            <http|https|mysql|postgres|redis>   # required — CLOSED catalog
+    endpoint:        <config.key>                        # required — a config KEY, never a URL
+    capacity:        <integer>                           # optional — the POOL SIZE
+    lifetime:        <linear|affine|persistent>          # optional — how many holders may name it
+    within:          <FabricRef>                         # optional — the fabric it lives in
+    certainty_floor: <0.0..1.0>                          # optional — observation gate
+    shield:          <ShieldRef>                         # optional — defence layer
+}
+```
+
+`resource` declares **a connection the runtime opens, holds and pools** — a
+database, a cache, an HTTP service. It is the single source of truth for three
+facts about that connection: **where it is** (`endpoint`), **how big it is**
+(`capacity`), and **how many holders may share it** (`lifetime`).
+
+A primitive that *holds* a connection names the resource it runs on:
+
+```axon
+fabric   Prod  { provider: aws  region: "us-east-1"  zones: 3 }
+
+resource Db    { kind: postgres  within: Prod
+                 endpoint: db.main  lifetime: affine  capacity: 20 }
+
+axonstore Users { backend: postgresql  resource: Db }
+```
+
+The store **derives** its DSN, its pool size and its sharing discipline from the
+resource. The derivation is the point — a bare reference would be a label.
+
+## ⚠️ What this page used to say — and why that matters
+
+Until v2.67.0 this page described a runtime that **did not exist**. Recording
+it beats quietly rewriting it, because it is the clearest specimen in the corpus
+of how this failure hides:
+
+> *"the runtime resolves the `kind:` slug against its **mount registry** and
+> acquires a connection pool **sized to `capacity:`**. Every handle carries the
+> declared `lifetime:` discipline — the **linearity analyser** rejects flows that
+> violate the handle's usage contract."*
+
+There was no mount registry. **`capacity` was read by zero lines of code in the
+entire product** — every pool was hardcoded at 10 connections. There was no
+linearity analyser: `lifetime` was parsed, lowered into the IR, and never looked
+at again. And this line —
+
+> *"The two layer: an `axonstore` can sit on top of a `resource`."*
+
+— **is v2.67.0, written in the present tense, years before anyone built it.**
+
+The declaration was always real. The prose about it was aspiration in the
+indicative mood. v2.67.0 made the prose true; this page now describes what runs.
+
+## Fields
+
+### `kind:` (required)
+
+A **closed catalog**: `http` · `https` · `mysql` · `postgres` · `redis`.
+
+Until v2.67.0 this was a *free string that nothing validated* — `kind: postgress`
+compiled clean and produced a resource the runtime could never reach. The catalog
+is exactly what the runtime knows how to *reach*; **adding a kind to it costs an
+implementation**, because a catalog is a promise. (`axon-T942`)
+
+### `endpoint:` (required)
+
+A **per-tenant config key** — lowercase, dot-separated: `db.main`,
+`crm.salesforce.base`. **Never a URL and never a DSN.**
+
+This is the same law `axon-T850` already enforces on `upstream.resolve` and
+`axon-T902` on `tool.secret`: *URLs and credentials never appear in source*.
+`resource.endpoint` was a grandfathered violation of it — a production database
+URI, written into the program, in the one declaration that claims to be the
+single source of truth for infrastructure. (`axon-T944`)
+
+### `capacity:` (optional)
+
+**The pool size.** `capacity: 20` ⇒ twenty connections.
+
+Before v2.67.0 there was no way to say this at all: every `postgresql` store in
+existence got a hardcoded 10, with no environment variable and no source-level
+knob. This field is that knob — and wiring it is what makes `resource` a **wire**
+rather than a **label**.
+
+### `lifetime:` (optional — default `affine`)
+
+**How many holders may name this resource.** *Not* how long the connection lives
+— that is an idle timeout, an operational knob. The Linear-Logic reading is about
+**sharing**:
+
+| Value | Semantic |
+|---|---|
+| `linear` | **Exactly one** holder — and **naming it zero times is also a breach**. A linear resource must be consumed. |
+| `affine` | **At most one** holder. It may go unused; it may not be shared. **Default.** |
+| `persistent` | The `!` exponential. Freely shared — but you have to *say so*. |
+
+Not decoration. Before v2.67.0, two stores silently shared one connection pool
+whenever their DSNs happened to resolve equal — the registry caches pools keyed
+on the resolved DSN. **Nobody declared that sharing, nobody checked it, and
+nothing told you it happened.** A shared pool that nobody declared shared is how
+connection exhaustion arrives without a suspect. Now sharing is *declared*, and
+the undeclared case is refused. (`axon-T945`)
+
+### `within:` (optional)
+
+The `fabric` this resource lives in.
+
+**One field — so Separation-Logic disjointness is *unrepresentable* rather than
+verified.** A resource cannot be in two fabrics because there is no syntax for
+it. A checked invariant is what you settle for when you could not make the bad
+state unwritable; here we could. (`axon-T943` checks only that the fabric
+exists — a resource placed in a phantom fabric is placed nowhere.)
+
+A `manifest` may not contradict it: naming `fabric: Stage` while listing a
+resource that is `within: Prod` is refused. (`axon-T947`)
+
+### `certainty_floor:` (optional)
+
+A numeric literal in `[0.0, 1.0]` — the minimum observational certainty
+`observe` requires before treating this resource as healthy. Below the floor the
+observation is **refused**, not downgraded (v2.67.0).
+
+### `shield:` (optional)
+
+A declared `shield`. The most common production discipline: a HIPAA-tagged
+resource always carries a PHI-redaction shield.
+
+## What this primitive is NOT
+
+- **Not a connection string.** It is a typed, sized, shared-or-not handle to
+  external state. The address is one of its fields.
+- **Not an `axonstore`.** `axonstore` is the typed, audit-chained data plane
+  (columns, isolation, breach policy). `resource` is the connection underneath
+  it. **The two layer** — `axonstore { resource: Db }` — and since v2.67.0 that
+  sentence is true rather than merely printed.
+- **Not for things that hold nothing.** `deliver`, `document` and `notify` do
+  **not** name a resource: they fire and return, and the host lives in the
+  engine. `capacity`, `lifetime` and `lease` would be decorative over them — and
+  a decorative link is worse than none, because it *looks* governed.
+
+## See also
+
+- `axon://primitives/axonstore` — the typed data plane that runs on a resource.
+- `axon://primitives/manifest` — bundles resources into a deployable unit.
+- `axon://primitives/fabric` — the substrate a resource lives `within:`.
+- `axon://primitives/lease` — typed acquisition + expiry.
+- `axon://primitives/observe` — health monitoring per resource.
+- `axon://primitives/shield` — the defence wrapper.

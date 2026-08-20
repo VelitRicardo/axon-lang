@@ -1,0 +1,147 @@
+---
+title: "ots"
+description: "One-shot transform — a closed-catalogue media transformation (audio, image, format) with native/ffmpeg backend dispatch."
+---
+
+<Warning>
+  **Partial.** The runtime delivers this, with a documented gap against what the reference describes. The gap is named in the compiler's own ledger rather than left to be discovered.
+</Warning>
+
+**Since** v1.4.0 · **Top-level declaration**
+
+## Grammar
+
+```text
+ots <Name> [<<InType>, <OutType>>] {
+    teleology: "<string>"                            # optional — declared purpose
+    homotopy_search: <deep|shallow|speculative>      # optional — search depth
+    loss_function: "<string>"                        # optional — quality metric
+}
+```
+
+`ots` (One-shot Transform / Ontological Tool Synthesis)
+declares **a closed-catalogue media transformation** — an
+audio codec conversion, an image resize, a format coercion,
+any deterministic transformation with declared inputs +
+outputs + quality semantics.
+
+The v1.4.0 λ-L-E ots layer added typed transformation
+sessions to AXON: the cognitive layer can request
+`transform: <src>:<dst>` (e.g.
+`transform:mulaw8:pcm16`) and the runtime dispatches to a
+native or ffmpeg-backed implementation. The closed catalogue
+of `transform:` slugs lives in
+`axon-frontend::ots_catalog`.
+
+## Surface
+
+`ots` is a **top-level declaration**. The optional type
+parameters `<InType, OutType>` between the name and the brace
+let the declaration carry typed input/output shapes:
+
+```axon
+type AudioMulaw { samples: Bytea, rate: Int }
+type AudioPcm16 { samples: Bytea, rate: Int }
+
+ots AudioMulawToPcm16<AudioMulaw, AudioPcm16> {
+    teleology:       "Convert μ-law 8kHz audio to PCM16 for downstream processing"
+    homotopy_search: deep
+    loss_function:   "RMSE on reconstructed signal"
+}
+```
+
+## Anatomy
+
+### Type parameters — `<InType, OutType>` (optional)
+
+A standard generic-application syntax declaring the input and
+output types of the transformation. The parser accepts any
+content between `<` and `>` (skipped structurally for now);
+future cycle increments will tighten this to typed parameter
+binding.
+
+### `teleology:` (optional)
+
+A **string literal** declaring the **purpose** of the
+transformation in human-readable form. This is the field
+that distinguishes one ots from another at the audit layer
+— two ots declarations with the same input/output types but
+different teleologies are treated as different operations.
+
+### `homotopy_search:` (optional)
+
+A **single identifier** from the closed catalogue
+(`axon-frontend::type_checker::VALID_OTS_HOMOTOPY`):
+
+| Value | Search depth |
+|---|---|
+| `shallow` | Single-shot transformation. Fastest. |
+| `deep` | Exhaustive search over the transformation manifold. |
+| `speculative` | Multi-candidate search with downstream verification. |
+
+The runtime maps this to the depth of its internal search for
+the best transformation path (when multiple paths exist in
+the catalogue).
+
+### `loss_function:` (optional)
+
+A **string literal** declaring the quality metric the runtime
+uses to score candidate transformations. Free-form at the
+parser layer; the runtime resolves common slugs (`RMSE`,
+`SSIM`, `PSNR`, `BLEU`) against its registered metric library.
+
+## Runtime behaviour
+
+`ots` lowers to an `OtsDefinition` IR node. At deploy time,
+the runtime resolves the transformation slug against the
+closed catalogue and pins the dispatched backend (native or
+ffmpeg). At execution time, the bound transformation runs;
+the audit row carries `(input_hash, output_hash, loss,
+duration, backend)` — making the transformation
+cryptographically traceable.
+
+### The `ots apply` flow-step form
+
+Inside a flow body, an ots declaration is invoked via the
+apply pattern:
+
+```text
+step ConvertAudio {
+    given: incoming_audio
+    apply: AudioMulawToPcm16
+    output: AudioPcm16
+}
+```
+
+The runtime treats the apply as an atomic invocation; failed
+transformations route through the bound shield (if any) and
+emit `ots:<name>:failed` with diagnostic detail.
+
+## What this primitive is NOT
+
+- **Not a `tool`.** A tool is an arbitrary external capability
+  (web search, code interpreter). An ots is a typed,
+  deterministic, in-runtime transformation with declared
+  input/output types.
+- **Not a `compute`.** Compute pins the cognitive backend;
+  ots pins a deterministic transformation backend (native
+  C / Rust / ffmpeg dispatch).
+- **Not arbitrary transformations.** The catalogue is
+  closed: only registered `transform:<src>:<dst>` slugs are
+  dispatchable. The catalogue grows by cycle increment, not
+  by adopter declaration.
+- **Not lossless by default.** `loss_function:` is the metric
+  the runtime uses to score candidate paths; the runtime
+  picks the lowest-loss candidate but does not guarantee
+  zero loss. For zero-loss requirements, declare
+  `homotopy_search: deep` and validate downstream.
+
+## See also
+
+- `axon://primitives/tool` — generic external-capability
+  counterpart.
+- `axon://primitives/compute` — cognitive-backend counterpart.
+- `axon://primitives/flow` — `apply: <OtsName>` is the
+  flow-step invocation pattern.
+- `axon-frontend::ots_catalog` — the closed catalogue of
+  registered transformation slugs.

@@ -1,0 +1,36 @@
+---
+title: "doubt"
+description: "Epistemic scope — stamps its block's derivations with the `doubt` level of the uncertainty lattice."
+---
+
+<Note>
+  **Unaudited.** Advertised on trust: no gate has verified that the runtime does what this page says. Treat it as documentation, not as a guarantee.
+</Note>
+
+**Since** v0.1.0 (epistemic lattice) · **Top-level declaration**
+
+## Grammar
+
+```text
+doubt {
+    # declarations / flow steps whose derivations carry the `doubt` level
+}
+```
+
+`doubt` is one of the four **epistemic scopes** (`know` > `believe` >
+`speculate` > `doubt`): a block form that stamps every derivation
+inside it with its level of the uncertainty lattice.
+
+## Semantics
+
+the WEAKEST level — content under active challenge.
+
+The lattice is load-bearing at the EGRESS boundaries: `document` (v2.53.0)
+and `deliver` (v2.60.0) read the level to decide whether content may leave
+as an assertion, must carry `attribute:`, or is refused — the
+assertion-laundering barrier.
+
+## See also
+
+- `axon://primitives/document` — where the lattice gates egress.
+- The other scopes: `know` · `believe` · `speculate` · `doubt`.

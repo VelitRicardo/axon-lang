@@ -28,6 +28,127 @@
           "concepts/compile-time-compliance",
           "concepts/epistemic-types"
         ]
+      },
+      {
+        "group": "Reference · Cognition",
+        "pages": [
+          "reference/primitives/agent",
+          "reference/primitives/anchor",
+          "reference/primitives/believe",
+          "reference/primitives/consensus",
+          "reference/primitives/context",
+          "reference/primitives/deliberate",
+          "reference/primitives/doubt",
+          "reference/primitives/flow",
+          "reference/primitives/hibernate",
+          "reference/primitives/intent",
+          "reference/primitives/know",
+          "reference/primitives/memory",
+          "reference/primitives/par",
+          "reference/primitives/persona",
+          "reference/primitives/probe",
+          "reference/primitives/reason",
+          "reference/primitives/refine",
+          "reference/primitives/run",
+          "reference/primitives/speculate",
+          "reference/primitives/step",
+          "reference/primitives/tool",
+          "reference/primitives/validate",
+          "reference/primitives/weave"
+        ]
+      },
+      {
+        "group": "Reference · Operators",
+        "pages": [
+          "reference/primitives/budget",
+          "reference/primitives/cache",
+          "reference/primitives/compute",
+          "reference/primitives/cors",
+          "reference/primitives/credential",
+          "reference/primitives/deliver",
+          "reference/primitives/document",
+          "reference/primitives/extension",
+          "reference/primitives/forge",
+          "reference/primitives/grad",
+          "reference/primitives/lambda",
+          "reference/primitives/mandate",
+          "reference/primitives/notify",
+          "reference/primitives/observable",
+          "reference/primitives/ots",
+          "reference/primitives/psyche",
+          "reference/primitives/quant",
+          "reference/primitives/savant",
+          "reference/primitives/scope",
+          "reference/primitives/shield",
+          "reference/primitives/stream",
+          "reference/primitives/synth",
+          "reference/primitives/warden",
+          "reference/primitives/window",
+          "reference/primitives/witness"
+        ]
+      },
+      {
+        "group": "Reference · Data plane",
+        "pages": [
+          "reference/primitives/aggregate",
+          "reference/primitives/associate",
+          "reference/primitives/axonstore",
+          "reference/primitives/corpus",
+          "reference/primitives/dataspace",
+          "reference/primitives/drill",
+          "reference/primitives/explore",
+          "reference/primitives/focus",
+          "reference/primitives/ingest",
+          "reference/primitives/json",
+          "reference/primitives/ledger",
+          "reference/primitives/navigate",
+          "reference/primitives/pix",
+          "reference/primitives/trail",
+          "reference/primitives/type"
+        ]
+      },
+      {
+        "group": "Reference · Wire",
+        "pages": [
+          "reference/primitives/axonendpoint",
+          "reference/primitives/axpoint",
+          "reference/primitives/channel",
+          "reference/primitives/component",
+          "reference/primitives/daemon",
+          "reference/primitives/discover",
+          "reference/primitives/emit",
+          "reference/primitives/listen",
+          "reference/primitives/mcp",
+          "reference/primitives/mint",
+          "reference/primitives/publish",
+          "reference/primitives/rotate",
+          "reference/primitives/view"
+        ]
+      },
+      {
+        "group": "Reference · Cognitive I/O",
+        "pages": [
+          "reference/primitives/ensemble",
+          "reference/primitives/fabric",
+          "reference/primitives/heal",
+          "reference/primitives/immune",
+          "reference/primitives/lease",
+          "reference/primitives/manifest",
+          "reference/primitives/observe",
+          "reference/primitives/reconcile",
+          "reference/primitives/reflex",
+          "reference/primitives/resource"
+        ]
+      },
+      {
+        "group": "Reference · Session types",
+        "pages": [
+          "reference/primitives/session",
+          "reference/primitives/socket",
+          "reference/primitives/topology",
+          "reference/primitives/upstream",
+          "reference/primitives/voice"
+        ]
       }
     ]
   },

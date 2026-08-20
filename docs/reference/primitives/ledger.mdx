@@ -1,0 +1,121 @@
+---
+title: "ledger"
+description: "Audit chain — an append-only, hash-linked record of every state transition over a bound surface, tamper-evident by construction."
+---
+
+<Note>
+  **Unaudited.** Advertised on trust: no gate has verified that the runtime does what this page says. Treat it as documentation, not as a guarantee.
+</Note>
+
+**Since** v2.12.0 · **Top-level declaration**
+
+## Grammar
+
+```text
+ledger <Name> {
+    source: "<uri>"               # required — the audited surface
+    depth: <integer>             # optional — chain retention window (>= 1)
+    branching: <integer>         # optional — Merkle factor (0 = flat, >= 2 = tree)
+    model: <ident>               # optional — hash model slug (sha256 | blake3 | sha3)
+}
+```
+
+`ledger` declares an **append-only, hash-linked chain** that records
+every state transition a bound surface produces. Every mutation to an
+audited primitive — an `axonstore` write, a `flow` emission, an `agent`
+action — links into a `ledger` chain whose head hash is **tamper-evident
+by construction**: any post-hoc modification to a historical row breaks
+the chain head, surfaced by `axon-emcp.audit verify`.
+
+This is the foundation of AXON's audit-chain integrity story
+(v1.14.0 Production Hardening, v1.19.1 FIPS-friendly hashing). Without a
+`ledger`, the audit trail is append-only-by-convention; with one, it is
+append-only-by-cryptographic-construction.
+
+> **Note — naming (v2.12.0).** This primitive was formerly documented
+> under `pix`. `pix` is the embeddings-free retrieval
+> [navigator](axon://primitives/pix); the audit chain is `ledger`. Same
+> field shape (`source`/`depth`/`branching`/`model`), audit semantics.
+
+## Surface
+
+`ledger` is a **top-level declaration**. It is *not* nested inside an
+axonstore or flow.
+
+```text
+ledger LedgerAudit {
+    source:    "axonstore://GeneralLedger"
+    depth:     0          # 0 = unbounded retention (regulated default)
+    branching: 2          # binary Merkle tree
+    model:     sha256
+}
+```
+
+## Fields
+
+### `source:` (required)
+
+A **string literal** containing the URI of the audited surface:
+
+| Scheme | Target |
+|---|---|
+| `axonstore://<Name>` | Every mutation to the named store. |
+| `flow://<Name>` | Every emission of the named flow. |
+| `agent://<Name>` | Every action of the named agent. |
+| `manifest://<Name>` | Every configuration change to the manifest. |
+| `dataspace://<Name>` | Every cross-store operation in the dataspace. |
+
+### `depth:` (optional)
+
+A **non-negative integer** — the chain retention window (`>= 1`). Older
+rows beyond it are archived to cold storage that preserves chain
+integrity, not pruned. `0` is reserved for *unbounded* retention (the
+default for regulated systems).
+
+### `branching:` (optional)
+
+A **non-negative integer** Merkle factor: `0` = flat linear chain
+(default), `>= 2` = balanced Merkle tree (`2` is binary). `1` is
+degenerate and rejected.
+
+### `model:` (optional)
+
+A **single identifier** naming the hash model — `sha256` (default),
+`blake3`, `sha3`. The runtime selects a FIPS 140-3 validated
+implementation when available (v1.19.1).
+
+## Runtime behaviour
+
+`ledger` lowers to an `IRLedger` node. At deploy time the runtime
+resolves `source:` and attaches the chain recorder to the named surface.
+Every state transition emits a new row:
+
+```
+{ seq, prev_hash, payload_hash, timestamp, actor, operation }
+```
+
+The **chain head** is the hash of the most recent row; verifying
+integrity means recomputing the head by walking the chain
+(`axon-emcp.audit verify`). For enterprise deployments the head is also
+signed with a deployment-managed key — **non-repudiation** on top of
+tamper-evidence.
+
+## What this primitive is NOT
+
+- **Not a store.** A `ledger` records *the history of transitions* to
+  another surface; the content lives in the bound `axonstore`/`flow`/`agent`.
+- **Not a retrieval index.** Structural retrieval is
+  [`pix`](axon://primitives/pix).
+- **Not optional for regulated deployments.** HIPAA / GDPR / SOX / PCI
+  deployments declare at least one `ledger` over the regulated store;
+  the runtime emits `axon-W013` for a compliance-tagged store with no
+  bound `ledger`.
+- **Not a backup, not generic logging.** A `ledger` is the
+  cryptographically-linked persistence chain — different surface,
+  different guarantees than `tracing`.
+
+## See also
+
+- `axon://primitives/axonstore` — the most common `ledger` source.
+- `axon://primitives/pix` — the retrieval navigator (took the `pix` name).
+- `axon://compliance/sox` — SOX section 404 attestation via the chain head.

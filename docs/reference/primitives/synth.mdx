@@ -1,0 +1,108 @@
+---
+title: "synth"
+description: "A dynamic tool-synthesis policy — the safety envelope (risk ceiling, source language, mandatory WASM zero-trust sandbox, Coder/Reviewer consensus) under which a savant may synthesise and run a tool at runtime."
+---
+
+<Danger>
+  **Unwired — nothing calls it.** The engine exists and is tested, and **no production path reaches it**. The declaration compiles; do not build on the behaviour yet.
+</Danger>
+
+**Since** v2.42.0 · **Top-level declaration**
+
+## Grammar
+
+```text
+synth <Name> {
+    target: "<string>"                    # REQUIRED — the capability scope
+    risk: low | medium | high | critical  # REQUIRED — the risk ceiling
+    language: rust | c | python           # optional — synthesis source language
+    sandbox: wasm                         # REQUIRED — must be wasm (deny-by-default)
+    review: required | none               # optional — Coder/Reviewer consensus
+    max_lines: <int>                      # optional — source-length cap
+}
+```
+
+`synth` declares **a dynamic tool-synthesis policy**: the safety
+envelope under which a `savant` may, at runtime, write a tool it
+needs, review it, and run it — feeding the tool's output back as
+empirical evidence.
+
+When a savant hits an epistemic gap it has no tool for, it can deduce
+the code required, have a Coder sub-agent write it and a Reviewer
+sub-agent ratify it (a consensus expressed as a `par`), compile it to
+`wasm32-wasi`, and execute it inside an Extism zero-trust sandbox.
+This is the paper's "Ontological Tool Synthesis" — given the keyword
+`synth` because `ots` already means one-shot media transform.
+
+The policy declares the safety envelope; the runtime enforces it. OSS
+disciplines the policy statically and ships a **deny-by-default**
+backend that never executes synthesised code — running untrusted
+generated code needs the enterprise Extism/gVisor isolation.
+
+## Surface
+
+`synth` is a **top-level declaration**.
+
+```axon
+synth Toolsmith {
+    target: "parse geospatial datasets the corpus references"
+    risk: medium
+    language: rust
+    sandbox: wasm
+    review: required
+    max_lines: 400
+}
+```
+
+## Fields
+
+### `target:` (required)
+
+What the synthesised tools are for — the capability scope. Empty ⇒
+`axon-T879`.
+
+### `risk:` (required)
+
+The ceiling risk class the policy admits — `low`, `medium`, `high`
+or `critical` (`axon-T880`). It governs how strict review and
+isolation must be.
+
+### `language:` (optional)
+
+The synthesis source language — `rust`, `c` or `python`, all
+compiled to `wasm32-wasi` before execution (`axon-T881`).
+
+### `sandbox:` (required — must be `wasm`)
+
+The isolation tier. It **must** be `wasm` (`axon-T882`,
+deny-by-default): synthesised code may only run in a zero-trust WASM
+sandbox — there is no unsandboxed mode. An empty or non-`wasm`
+sandbox can never compile.
+
+### `review:` (optional)
+
+The Coder/Reviewer consensus requirement — `required` (the
+fail-closed default) or `none`. `review: none` is **forbidden** for
+`high`/`critical` risk (`axon-T883`): dangerous synthesis must always
+be reviewed.
+
+### `max_lines:` (optional)
+
+A hard cap on synthesised source length — a smaller attack and review
+surface.
+
+## What this primitive is NOT
+
+- **Not `ots`.** `ots` is a closed-catalogue one-shot media transform
+  (audio/image/format). `synth` writes and runs NEW code at runtime.
+- **Not `tool`.** A `tool` is a statically-declared capability;
+  `synth` is the policy under which a savant creates one dynamically.
+- **Not executable in OSS.** The OSS backend refuses execution
+  (fail-closed); the Extism/gVisor executor is the enterprise flavour.
+
+## See also
+
+- `axon://primitives/savant` — the primitive that consumes a `synth`
+  policy when it needs a tool it does not have.
+- `axon://primitives/ots` — the one-shot media transform, a different
+  primitive with a confusingly-adjacent history.

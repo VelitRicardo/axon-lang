@@ -1,0 +1,119 @@
+---
+title: "manifest"
+description: "Bundles resources + fabric + compliance tags into a deployable, audit-tracked unit."
+---
+
+<Warning>
+  **Partial.** The runtime delivers this, with a documented gap against what the reference describes. The gap is named in the compiler's own ledger rather than left to be discovered.
+</Warning>
+
+**Since** v1.2.0 · **Top-level declaration**
+
+## Grammar
+
+```text
+manifest <Name> {
+    resources: [<Res1>, <Res2>, ...]      # required — declared resources to mount
+    fabric: <FabricRef>                    # required — host substrate
+    region: "<region>"                     # optional — manifest-level region override
+    zones: <integer>                       # optional — manifest-level zone override
+    compliance: [<Tag1>, <Tag2>, ...]      # optional — manifest-level compliance tags
+}
+```
+
+`manifest` bundles **a deployable unit** — the resources to
+mount, the fabric to mount them on, the compliance frameworks
+the whole bundle attests against. A manifest is what `observe`
+watches, what `reconcile` corrects drift on, and what the runtime
+treats as the unit of deployment.
+
+This is the smallest unit a v1.2.0+ AXON program can ship: one
+manifest is one deployable. Multi-manifest programs are common
+(staging + production; per-tenant; per-region) and the runtime
+treats them independently.
+
+## Surface
+
+`manifest` is a **top-level declaration**. It is *not* nested
+inside another primitive.
+
+```text
+manifest ProductionHealthcare {
+    resources:   [EHRDatabase, TrialArchive, InferenceEngine]
+    fabric:      ClinicalCloud
+    region:      "us-east-1"
+    zones:       3
+    compliance:  [HIPAA, GDPR, GxP, SOC2]
+}
+```
+
+## Fields
+
+### `resources:` (required)
+
+A **bracketed list of identifiers** — every resource the
+manifest mounts. Each name must resolve to a declared
+`resource` at parse time. Order is not significant for
+mounting (the runtime topologically sorts by dependency); it
+IS significant for audit-row ordering (first-listed appears
+first).
+
+### `fabric:` (required)
+
+A **single identifier** referencing the fabric the manifest
+deploys onto. Exactly one fabric per manifest — multi-fabric
+deployments require multiple manifests.
+
+### `region:` / `zones:` (optional)
+
+**Manifest-level overrides** of the fabric's region/zones.
+Common when one fabric backs deployments in multiple regions —
+declare the fabric once, set per-manifest region overrides.
+
+### `compliance:` (optional)
+
+A **bracketed list of identifiers** from the closed compliance
+catalogue. Manifests typically carry the **union** of every
+resource's compliance tags plus any additional bundle-level
+attestations. A HIPAA-only resource under a `compliance:
+[HIPAA, GDPR]` manifest gains GDPR coverage by construction (the
+audit chain records both tags on every emission).
+
+## Runtime behaviour
+
+`manifest` lowers to a `ManifestDefinition` IR node. At deploy
+time, the runtime:
+
+1. Resolves the `fabric:` reference and acquires the substrate.
+2. Mounts each listed resource against the substrate.
+3. Cross-validates compliance tags — a resource tagged HIPAA
+   under a manifest tagged only SOC2 emits an
+   `axon-E042 compliance downgrade` error.
+4. Sets up the audit channel with `(manifest.name,
+   fabric.provider, region)` baked into every row's preamble.
+
+`observe` declarations are *from* a manifest (e.g.
+`observe ClinicalHealth from ProductionHealthcare {…}`), so the
+manifest is the natural unit of monitoring.
+
+## What this primitive is NOT
+
+- **Not deployment automation.** A manifest declares *what*
+  should be deployed; the actual provisioning happens
+  upstream. AXON validates the manifest matches what the
+  runtime finds; it does not create infrastructure.
+- **Not a fabric.** A fabric is the substrate; a manifest is
+  what's deployed onto a substrate.
+- **Not a `compose`.** Manifests do not "instantiate" via
+  service-mesh-style composition — they describe a typed
+  topology that the runtime mounts.
+
+## See also
+
+- `axon://primitives/resource` — what `resources:` lists.
+- `axon://primitives/fabric` — what `fabric:` references.
+- `axon://primitives/observe` — what watches a manifest.
+- `axon://primitives/reconcile` — what corrects drift against
+  a manifest.
+- `axon://compliance/hipaa` — example of compliance propagation
+  through the manifest layer.

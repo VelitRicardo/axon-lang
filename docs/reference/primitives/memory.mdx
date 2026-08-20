@@ -1,0 +1,134 @@
+---
+title: "memory"
+description: "Declares a named addressable memory store with lifecycle scope, backend, retrieval strategy, and decay."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v0.1.0 · **Top-level declaration**
+
+## Grammar
+
+```text
+memory <Name> {
+    store: <ephemeral|none|persistent|session>   # required — lifecycle scope
+    backend: <ident>                              # optional — concrete backend slug
+    retrieval: <exact|hybrid|semantic>            # optional — retrieval strategy
+    decay: <duration|never>                       # optional — TTL or `never`
+}
+```
+
+`memory` declares **a named, addressable memory store** the
+cognitive layer can read from and write to. Where
+`context.memory:` is the *conversational* memory scope a single
+run inherits inline, `memory` (the primitive) declares a
+**reusable persistence binding** with an explicit lifecycle
+scope, a concrete backend, a retrieval strategy, and an
+optional decay TTL.
+
+This is the persistence boundary of cognitive state. Anything
+written here outlives the current step (subject to the
+declared `decay:`).
+
+## Surface
+
+`memory` is a **top-level declaration**. It is *not* nested
+inside a flow or context.
+
+```axon
+memory ClientNotes {
+    store: persistent
+    backend: pgvector
+    retrieval: semantic
+    decay: never
+}
+```
+
+## Fields
+
+### `store:` (required)
+
+A **single identifier** from the **closed lifecycle catalogue**
+(`axon-frontend::type_checker::VALID_MEMORY_SCOPES`):
+
+| Value | Lifecycle |
+|---|---|
+| `ephemeral` | Single-turn; cleared as soon as the step that writes it returns. |
+| `none` | Alias for `ephemeral`. Explicit "intentionally amnesiac". |
+| `session` | Lives for the duration of the conversation; cleared on disconnect. |
+| `persistent` | Survives across reconnects, scoped by tenant + user identity. |
+
+The type checker rejects unknown values — adding a new
+lifecycle is a parser-level change, not a runtime concern.
+
+The *kind* of store (vector, kv, relational, document) is
+chosen by the **`backend:`** field; the lifecycle is
+orthogonal to the kind.
+
+### `backend:` (optional)
+
+A **single identifier** naming the concrete backend slug —
+e.g. `pgvector`, `chroma`, `redis`, `postgresql`, `dynamodb`,
+`in_memory`. The slug picks the **kind** of store (vector,
+key-value, relational, document) by deployment convention.
+Absent means "runtime default for this `store:` lifecycle".
+
+### `retrieval:` (optional)
+
+A **single identifier** from the closed catalogue
+(`axon-frontend::type_checker::VALID_RETRIEVAL_STRATEGIES`):
+
+| Value | Behaviour |
+|---|---|
+| `exact` | Key lookup only. The default for `kv` stores. |
+| `semantic` | Embedding similarity. Requires a `vector` store. |
+| `hybrid` | Lexical + semantic blend (BM25 + embeddings). |
+
+### `decay:` (optional)
+
+A **duration literal** (`5s`, `2h`, `30d`) OR the identifier
+`never`. Drives TTL semantics:
+
+- `decay: 24h` — entries auto-expire after 24 hours.
+- `decay: never` — entries persist until explicitly evicted.
+
+Omitting `decay:` is equivalent to `decay: never`; the explicit
+form is recommended for audit clarity.
+
+## Runtime behaviour
+
+Memory stores are consumed by the flow-body verbs `remember`,
+`recall`, `hibernate`, `associate`, and `aggregate`. The runtime
+mounts each declared `memory` at startup against the configured
+backend; reads + writes carry audit rows tagged
+`memory:<name>:<verb>`.
+
+For multi-tenant deployments, every memory access is
+tenant-scoped automatically — the runtime enforces tenant
+isolation by construction. A flow running under tenant T cannot
+read tenant T'-stored entries even with the same key.
+
+## What this primitive is NOT
+
+- **Not the conversational memory scope.** That is
+  `context.memory:` — how much state sticks across turns.
+  `memory` (this primitive) is durable, addressable storage
+  independent of any particular conversation.
+- **Not an `axonstore`.** `axonstore` is the typed,
+  audit-chained data plane for structured records;
+  `memory` is the cognitive layer's working state (often
+  unstructured / vectorised).
+- **Not a `corpus`.** A corpus is a retrieval-ready document
+  collection backed by external content; memory is
+  agent-written state that grows during execution.
+
+## See also
+
+- `axon://primitives/axonstore` — typed structured persistence.
+- `axon://primitives/corpus` — document collections for RAG.
+- `axon://primitives/context` — conversational memory scope
+  (`memory: session` etc.) — a different layer.
+- `axon://primitives/flow` — uses `remember` / `recall` to bind
+  memory to step bodies.

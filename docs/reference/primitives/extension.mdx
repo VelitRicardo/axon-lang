@@ -1,0 +1,36 @@
+---
+title: "extension"
+description: "The closed-catalog extension mechanism (#15→v2.5.0) — an internal composition mechanism, deliberately not advertised as a primitive."
+---
+
+**Since** Brief #15 → v2.5.0 · **Top-level declaration**
+
+## Grammar
+
+```text
+extension <Name> {
+    category: <scan|...>
+    # closed-catalog extension members
+}
+```
+
+`extension` is the **closed-catalog extension mechanism** (#15 → v2.5.0):
+it lets a deployment introduce members into designated closed catalogs
+(e.g. shield scan categories) without forking the language.
+
+## Deliberately NOT advertised
+
+`is_advertised: false` in the registry: this is an internal composition
+MECHANISM, not a promised cognitive primitive. Its safety law is v2.5.0
+**no phantom guardrails**: an extension-introduced scan category used by
+a shield with no registered scanner refuses to BOOT (fail loud) —
+serving it as a silent no-op would be a false sense of security.
+
+## Proof
+
+`a_2/b/c_extension_*.rs` (grammar/IR/typecheck) +
+`shield_registry::check_extension_scan_coverage` (the v2.5.0 boot gate).
+
+## See also
+
+- `axon://primitives/shield` — the main catalog extensions target.

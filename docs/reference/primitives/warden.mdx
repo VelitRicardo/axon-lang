@@ -1,0 +1,88 @@
+---
+title: "warden"
+description: "An adversarial security-analysis flow-body block — audits a target under a paraconsistent adversarial framing (abduction over authorized evidence), emitting attested Vulnerability findings (a witness, not LLM prose). Authorization-native: the `within <Scope>` clause is mandatory (fail-closed). The active auditor of a TARGET, distinct from `shield` (the passive I/O firewall of the AGENT)."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v2.43.0 · **Used inside a declaration**
+
+## Grammar
+
+```text
+warden(<target>) within <Scope> {
+    // find_exploits() -> list[Vulnerability]  (attested findings only)
+    // fortify(findings)                         (proposes hardening)
+    <body statements>
+}
+```
+
+`warden` is the **authorization-native adversarial security-analysis**
+primitive: it audits a target system to find (and propose how to close)
+vulnerabilities. Distinct from `shield` — `shield` is a *passive I/O
+firewall of the agent itself* (prompt-injection/PII); `warden` is an
+*active auditor of a target*, behind an authorization gate.
+
+`warden` reframes the model as an adversary (Popperian falsification):
+it assumes the system is compromised and searches abductively for the
+evidence that would prove it — but only over **authorized evidence**,
+and it emits only **attested `Vulnerability` findings** (a re-checkable
+witness: the input + trace + violated contract), never fuzzy prose.
+
+## Surface
+
+`warden` is a **flow-body block** (like `quant`). The `within <Scope>`
+clause is **mandatory** — a scopeless warden cannot be written.
+
+```axon
+scope InternalAudit {
+    targets: [ "svc://payments-core" ]
+    depth: static_artifact
+    approver: requires "security.lead"
+}
+
+flow Audit() -> Unit {
+    warden(payments_core) within InternalAudit {
+        step Analyse { ask: "enumerate contract violations" }
+    }
+}
+```
+
+## The five governance guarantees
+
+1. **Signed `scope` mandatory** — `warden(t) within <Scope>`; with no
+   resolvable scope the program does not compile (`axon-T887`,
+   fail-closed by grammar).
+2. **Authorized evidence only** — the analysis ingests operator-provided
+   artifacts within the scope's allowlist; live memory/network capture
+   is the most-restricted, enterprise-only depth, never a default.
+3. **Attested findings** — every `Vulnerability` carries a witness; an
+   un-witnessed finding is rejected and retried via `immune`. Precision
+   over recall.
+4. **Audited + fail-closed** — every analysis is hash-chain audited
+   (scope + evidence digests, never raw bytes); an out-of-allowlist or
+   unapproved analysis is refused.
+5. **`fortify` proposes, a human applies** — hardening is a typed,
+   reviewable diff per finding; applying it passes through an approval
+   gate. warden finds; an authorized operator decides.
+
+## What this primitive is NOT
+
+- **Not `shield`.** `shield` defends the agent's I/O; `warden` audits a
+  target. Orthogonal axes.
+- **Not an autonomous exploitation tool.** It is a defensive /
+  authorized-testing instrument by construction — no unscoped,
+  un-audited mode exists. It finds and proposes; it does not weaponize.
+- **Not a claim to out-hack humans.** Its superiority is *governance +
+  verifiability* (authorization-native, witnessed findings), not raw
+  offensive capability (the `no_unwitnessed_advantage` discipline).
+
+## See also
+
+- `axon://primitives/scope` — the mandatory authorization envelope.
+- `axon://primitives/shield` — the passive runtime I/O firewall of the
+  agent (a different security layer).
+- `axon://primitives/mandate` — the approval gate `fortify` applies
+  through.

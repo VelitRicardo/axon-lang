@@ -1,0 +1,172 @@
+---
+title: "psyche"
+description: "Declares the psychological model a persona enacts — beliefs, desires, traits, behavioural disposition."
+---
+
+<Note>
+  **Unaudited.** Advertised on trust: no gate has verified that the runtime does what this page says. Treat it as documentation, not as a guarantee.
+</Note>
+
+**Since** v1.5.2 · **Top-level declaration**
+
+## Grammar
+
+```text
+psyche <Name> {
+    dimensions: [<dim1>, <dim2>, ...]          # optional — belief/desire/trait dimensions
+    manifold_noise: <number>                    # optional — exploration noise
+    manifold_momentum: <number>                 # optional — trajectory momentum
+    safety_constraints: [<c1>, <c2>, ...]      # optional — hard safety boundaries
+    quantum_enabled: <true|false>               # optional — quantum-walk sampling
+    inference_mode: <ident>                     # optional — closed inference strategy
+}
+```
+
+`psyche` declares **the psychological model a persona
+enacts** — the typed beliefs, desires, traits, and
+behavioural disposition that shape *how* the persona
+reasons, not just *what* it knows. Where `persona` declares
+identity (domain, tone, refusal posture), `psyche` declares
+the **cognitive disposition** that drives the persona's
+trajectory through a problem space.
+
+This is AXON's deepest cognitive surface. The v1.5.2 λ-L-E
+psyche layer introduced manifold-based reasoning trajectories:
+the persona's choice at every step is shaped by a typed
+manifold over its dimensions, with declared noise + momentum
++ optional quantum-walk sampling.
+
+## Surface
+
+`psyche` is a **top-level declaration**. It is *not* nested
+inside a persona; a persona REFERENCES a psyche by name (in
+deployment-level binding) just as it references a context.
+
+```text
+psyche AnalyticalDisposition {
+    dimensions:         [analytical, cautious, evidence_seeking, contrarian]
+    manifold_noise:     0.1
+    manifold_momentum:  0.7
+    safety_constraints: [no_self_harm, no_deception]
+    quantum_enabled:    false
+    inference_mode:     deliberative
+}
+```
+
+## Fields
+
+### `dimensions:` (optional)
+
+A **bracketed list of identifiers** — the psyche's
+**dimensions**. Each dimension is a named axis along which
+the persona varies in disposition. The runtime treats the
+dimension set as the basis of the cognitive manifold; common
+dimensions: `analytical`, `intuitive`, `cautious`, `bold`,
+`evidence_seeking`, `synthesising`, `contrarian`,
+`agreeable`.
+
+### `manifold_noise:` (optional)
+
+A **numeric literal** — the **exploration noise** the runtime
+injects at every reasoning step. Lower values produce more
+deterministic trajectories; higher values explore the
+manifold more aggressively. Typical range: `0.0`–`0.3`.
+
+### `manifold_momentum:` (optional)
+
+A **numeric literal** — the **trajectory momentum** applied
+between consecutive reasoning steps. `0.0` means each step
+starts fresh; `1.0` preserves the previous step's direction
+entirely. Typical range: `0.5`–`0.9` for sustained
+reasoning trajectories.
+
+### `safety_constraints:` (optional)
+
+A **bracketed list of identifiers** — **hard safety
+boundaries** the psyche must not violate regardless of
+manifold position.
+
+**`non_diagnostic` is required** — the v1.5.2 Dependent
+Type Safety section 4 rule enforces that every declared psyche
+includes `non_diagnostic` in this list (the runtime relies
+on it to detect adversarial diagnostic-mode invocations).
+Omitting it surfaces an `axon-E118 Psyche '<X>' must
+include 'non_diagnostic' in safety_constraints (dependent
+type safety section 4)` diagnostic.
+
+Other common slugs (open catalogue at the parser layer; the
+runtime validates against its registered safety registry):
+`no_self_harm`, `no_deception`, `no_unauthorised_capability_use`.
+
+### `quantum_enabled:` (optional)
+
+A **boolean literal**. When `true`, the runtime uses
+quantum-walk sampling over the cognitive manifold instead of
+classical random sampling. This enables exploration of
+correlated belief regions but requires the runtime's
+quantum-sampling extension to be present.
+
+### `inference_mode:` (optional)
+
+A **single identifier** from the **closed inference-mode
+catalogue** (parse-time enforced by the type checker):
+
+| Slug | Strategy |
+|---|---|
+| `active` | The persona actively samples the manifold per step. |
+| `passive` | The persona consumes pre-sampled trajectories from the manifold. |
+
+The runtime maps these to its sampling strategy; richer
+inference-mode discrimination (deliberative / intuitive /
+bayesian / etc.) lives at the runtime / psyche-extension
+layer, not at the parser layer.
+
+## Runtime behaviour
+
+`psyche` lowers to a `PsycheDefinition` IR node. The v1.5.2
+runtime threads the psyche's manifold parameters into every
+reasoning step bound to the parent persona:
+
+1. Per-step the runtime samples a trajectory point on the
+   manifold using `(noise, momentum, quantum_enabled,
+   inference_mode)`.
+2. The sampled point shapes the prompt's framing + the
+   sampling parameters forwarded to the backend.
+3. Audit row `psyche:<name>:step:<id>` records the sampled
+   point.
+4. Safety constraints fire IF the trajectory would breach
+   a declared bound — emission halts with
+   `psyche_safety_violation`.
+
+Replay determinism: with a fixed seed (carried through the
+`compute` binding), the trajectory is reproducible step-for-
+step. Without a seed, trajectories diverge per `manifold_noise`.
+
+## What this primitive is NOT
+
+- **Not a `persona`.** Persona is identity (who); psyche is
+  disposition (how that identity reasons). A persona without
+  a bound psyche uses the runtime's default disposition.
+- **Not a `psychology test`.** The dimensions are reasoning
+  axes, not personality-test dimensions (Big-5,
+  Myers-Briggs). The runtime gives operational meaning to
+  the dimensions via its manifold sampler.
+- **Not always required.** Many production deployments use
+  the default disposition (no `psyche` declared). The
+  primitive matters most for high-stakes adversarial
+  reasoning (legal review, security analysis) where
+  declaring the disposition is part of the audit trail.
+- **Not free.** Quantum-walk sampling + deep deliberative
+  inference are measurably more expensive than classical
+  intuitive inference. Declare deliberately.
+
+## See also
+
+- `axon://primitives/persona` — the identity surface psyche
+  shapes.
+- `axon://primitives/anchor` — `confidence_floor:` pairs with
+  psyche's `manifold_noise:` to bound emission uncertainty.
+- `axon://primitives/agent` — agents can bind a psyche for
+  trajectory-controlled iteration.
+- `axon://primitives/compute` — deterministic-seed binding
+  for reproducible psyche trajectories.

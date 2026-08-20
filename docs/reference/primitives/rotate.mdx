@@ -1,0 +1,67 @@
+---
+title: "rotate"
+description: "The mediated secret-renewal flow verb — renews every matching entry of a `backend: secrets` store's class through one runtime-mediated tool exchange per key, without the value ever entering the program."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v2.48.0 · **Used inside a declaration**
+
+## Grammar
+
+```text
+rotate <SecretsStore> [where "<filter>"] with <Tool> as <binding>
+# <SecretsStore> must resolve to a declared `backend: secrets` axonstore
+# (axon-T898); <Tool> must be a declared tool (axon-T899); the optional
+# `where` filter is the v2.21.0 metadata grammar (expires_at / key / version /
+# created_at), proven against the synthesized schema. Omitting the filter
+# rotates the WHOLE class — the deliberate post-breach bulk shape.
+# <binding> receives the metadata-only summary {attempted, rotated, failed}.
+```
+
+`rotate` is the **flow-step verb** that renews custodied secrets — the
+runtime half of the doctrine
+`axon://logic/rotation_without_revelation`:
+
+```text
+rotate CrmTokens where "expires_at < now() + interval '10 minutes'" with RefreshCrmToken as result
+```
+
+Set-oriented like `mutate`: every custody entry of the store's class
+matching the filter is renewed through ONE mediated exchange per key:
+
+1. **Reveal** — the runtime reveals the current value ONLY into the
+   tool request, under the reserved `axon_rotation` field
+   (`{key, value, version, expires_at}`).
+2. **Exchange** — the adopter's tool performs the real renewal (e.g.
+   the vendor's OAuth `refresh_token` grant) and answers
+   `axon_rotated: {value, expires_at}` (or `expires_at_ms`).
+3. **Commit** — the runtime commits CAS at `version + 1` with the new
+   declared expiry. Two concurrent rotators (HA daemon replicas)
+   cannot both commit: the loser degrades with a witness and never
+   retries with the stale revealed value.
+
+The binding receives `{"attempted": N, "rotated": [keys], "failed":
+[{key, reason}]}` — metadata, never a value. Per-key failures degrade
+with a witness (the old value stays intact — a failed exchange is
+never destructive); the sweep continues.
+
+## Fail-closed, everywhere
+
+- **No custody port configured** ⇒ a reached `rotate` is a loud
+  `missing dependency: secret_custody` error. There is no default
+  production custody in OSS — the enterprise executor injects its
+  envelope-encrypted Postgres custody; tests wire the in-memory
+  reference. Never a silent stub, never an LLM fallthrough (a
+  hallucinated rotation summary over untouched custody is the exact
+  lie the law forbids).
+- **A broken exchange contract** (no `axon_rotated` field, empty
+  value, non-JSON reply) fails THAT key with a witness naming the
+  contract.
+
+See also: the `backend: secrets` metadata store (the enumerate
+surface), `tool` `secret:` (the use surface — dispatch injection
+under the reserved `axon_secret` field), `mint` (the outbound
+authority dual, `axon://logic/authority_only_attenuates`).

@@ -1,0 +1,125 @@
+---
+title: "observable"
+description: "Declares a Hermitian observable — a Pauli-sum M = Σ cₖ Pₖ — measured by a quant block to collapse a Hilbert-space state back to a classical expectation."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v2.19.0 · **Top-level declaration**
+
+## Grammar
+
+```text
+# Top-level declaration — a BLOCK of `key: value` fields:
+observable <Name> {
+    qubits: <n>                 # optional — the declared register width
+    term: <coeff> * "<Pauli>"   # repeatable — one cₖ · Pₖ per line
+    term: <coeff> * "<Pauli>"
+}
+
+# <coeff> is a real scalar (optional leading +/-), then `*`, then the
+# Pauli string as a STRING LITERAL: one letter per qubit, MSB-first,
+# from { I (identity), X, Y, Z }.  e.g. "Z", "ZZ", "XI".
+```
+
+`observable` declares a **Hermitian operator** as a weighted sum of
+Pauli strings — `M = Σₖ cₖ Pₖ` — the quantity a [`quant`](axon://primitives/quant)
+block measures to collapse a Hilbert-space state back to a single
+classical expectation `⟨ψ| M |ψ⟩`.
+
+Because every term is a real coefficient times a tensor product of
+Pauli matrices (each Hermitian and involutory), the sum is **Hermitian
+by construction** — so its expectation is always real, and it is a
+valid quantum-mechanical measurement. The compiler proves this
+(`axon-E0785`); a malformed observable never reaches the runtime.
+
+## Surface
+
+`observable` is a **top-level declaration**, like `type` or `anchor` — a
+brace block of `key: value` fields. It is referenced by name from a
+`quant` block's `observable:` attribute. The two recognised fields are
+`qubits:` (the register width) and `term:` (repeatable — one weighted
+Pauli term per line).
+
+```text
+# A single-qubit energy observable: ⟨Z⟩.
+observable Energy {
+    qubits: 1
+    term: 1.0 * "Z"
+}
+
+# A two-qubit correlation observable: ½⟨ZZ⟩ − 1.2⟨XI⟩.
+observable Correlation {
+    qubits: 2
+    term:  0.5 * "ZZ"
+    term: -1.2 * "XI"
+}
+```
+
+> **Nota de gramática:** los coeficientes y los Pauli van como campos
+> `term: <coeff> * "<Pauli>"` dentro del bloque — NO como una expresión
+> `observable Name = coeff * Pauli`. La cadena de Pauli es un **string
+> literal** (entre comillas). Esta es la forma exacta que pasa `axon check`.
+
+## Anatomy
+
+### `term:` — one weighted Pauli per line (repeatable)
+
+`term: <coeff> * "<PauliString>"`. The coefficient is a real scalar
+(optional leading `+`/`-`), then `*`, then the Pauli string **as a
+quoted string literal**. Repeat the `term:` key once per `cₖ · Pₖ`.
+
+### Pauli strings
+
+Each Pauli string names one factor **per qubit**, most-significant qubit
+first:
+
+| Letter | Matrix | Meaning |
+|--------|--------|---------|
+| `I` | identity | qubit untouched |
+| `X` | `[[0,1],[1,0]]` | bit-flip basis |
+| `Y` | `[[0,−i],[i,0]]` | |
+| `Z` | `[[1,0],[0,−1]]` | computational basis |
+
+All `term:` strings must share one length = the qubit count `n`; a
+`quant` block measuring the observable encodes a state of that width.
+
+### `qubits:` + coefficients
+
+`qubits:` declares the register width (optional; defaults from the term
+widths). The coefficients set each term's Hermitian weight; the operator
+norm of the sum bounds the achievable expectation (a single Pauli string
+has `‖P‖ = 1`, so `⟨P⟩ ∈ [−1, 1]`).
+
+## Runtime behaviour
+
+A declared `observable` lowers to a `PauliSum` value (the closed list of
+`(coeff, pauli_string)` terms). At measurement the runtime computes
+`⟨ψ| M |ψ⟩ = Σₖ cₖ ⟨ψ| Pₖ |ψ⟩` — Pauli action is exact on the Q32.32
+substrate (entries `{0, ±1, ±i}` never round), so a Pauli-sum
+expectation is **bit-reproducible** in the enterprise backend.
+
+## Static guarantees
+
+- **`axon-E0785`** — the Pauli-sum must be well-formed: every term a
+  real coefficient times a valid Pauli string of consistent width.
+- **`axon-E0784`** — a `quant` block's `observable:` must resolve to a
+  declared `observable` (closed-catalogue resolution).
+- **`axon-E0786`** — a declared density matrix companion must have
+  dimension `D = 2ⁿ`.
+
+## What this primitive is NOT
+
+- **Not a `type`.** A `type` declares a data shape; an `observable`
+  declares a measurement operator over a Hilbert space.
+- **Not an `anchor`.** An anchor is a grounding constraint on a flow's
+  outputs; an observable is the physical quantity a `quant` block reads.
+- **Not executable on its own.** It is inert until a `quant` block
+  names it — like a `type` is inert until a value inhabits it.
+
+## See also
+
+- `axon://primitives/quant` — the block that measures an observable.
+- `axon://primitives/flow` — the parent of every `quant` block.

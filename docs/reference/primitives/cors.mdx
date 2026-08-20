@@ -1,0 +1,100 @@
+---
+title: "cors"
+description: "A named, referenced browser-origin policy — a property of the endpoint, not a single process-wide knob."
+---
+
+<Note>
+  **Unaudited.** Advertised on trust: no gate has verified that the runtime does what this page says. Treat it as documentation, not as a guarantee.
+</Note>
+
+**Since** v2.38.0 · **Top-level declaration**
+
+## Grammar
+
+```text
+cors <Name> {
+    allow_origins: [<origin-or-glob>, ...]     # optional — "*" or "https://exact.com" or "https://*.host.com"
+    allow_methods: [<Method>, ...]             # optional — closed catalog: GET|POST|PUT|PATCH|DELETE
+    allow_headers: [<"Header-Name">, ...]      # optional — request headers the preflight may allow
+    allow_credentials: <true|false>            # optional — forbidden together with any-origin (axon-T853)
+    max_age: <duration>                        # optional — "3600s"; Access-Control-Max-Age
+    expose_headers: [<"Header-Name">, ...]     # optional — response headers browser JS may read
+}
+axonendpoint <Name> {
+    ...
+    cors: <CorsName>                           # optional — "" / absent = no CORS headers, ever
+}
+# An unknown field in a `cors { }` block is a HARD PARSE ERROR (unlike
+# `shield`'s lenient axon-W010 record-and-skip) — CORS is security-
+# relevant, so a typo'd field must not silently produce a permissive
+# policy.
+```
+
+`cors` declares **a browser-origin policy** — the
+`Access-Control-Allow-*` response headers a cross-origin
+browser request needs — as a named, top-level declaration
+referenced from any number of `axonendpoint`s via `cors:
+<Name>`, mirroring `shield:` exactly.
+
+Everywhere else, CORS is one setting for the whole server,
+configured once. That is wrong for a multi-tenant platform:
+different tenants deploy different bundles, and a single
+static, router-wide CORS policy cannot express "tenant A's
+`/api/chat` allows `app.tenant-a.com`; tenant B's `/api/chat`
+allows something else." `cors` resolves per the tenant's live
+deployed bundle, at request time — the shape a single
+process-wide knob cannot express.
+
+## The four laws
+
+1. **Absent means no CORS headers, ever — secure by default.**
+   An `axonendpoint` that never declares `cors:` stays
+   same-origin-only without any action required.
+2. **Wildcard + credentials is a compile-time error
+   (`axon-T853`).** `allow_origins: ["*"]` combined with
+   `allow_credentials: true` is the CORS specification's own
+   forbidden pairing — browsers already reject it silently at
+   runtime; `cors` catches it before deploy, naming the spec
+   rule.
+3. **The origin glob is closed and decidable
+   (`axon-T854`).** An origin is either an exact literal or a
+   SINGLE leading-wildcard host label (`"https://*.kivi.io"`)
+   — no full regex.
+4. **Same path, same policy (`axon-T857`).** Every
+   `axonendpoint` sharing a `path:` (differing only by
+   `method:`) must reference the SAME `cors:` declaration, or
+   all leave it unset — a browser's preflight is per-path, not
+   per-method, so divergent policies on one path are
+   inherently ambiguous.
+
+`allow_methods` reuses the closed `axonendpoint` method
+catalog (`axon-T855` on an unknown value); an undeclared
+`cors:` reference is `axon-T856`. The whole-program obligation
+— every reference resolves, no wildcard+credentials survivor,
+no cross-method conflict — is proof-carried as
+`CorsPolicyConsistency`, re-derived independently by the
+checker, never trusted from the producer.
+
+## Example
+
+```text
+cors PublicWebCors {
+    allow_origins: ["https://app.example.com", "https://*.kivi.io"]
+    allow_methods: [GET, POST]
+    allow_headers: ["Content-Type", "Authorization"]
+    allow_credentials: true
+    max_age: 3600s
+}
+
+axonendpoint ChatAPI {
+    method: post
+    path: "/v1/chat"
+    execute: Chat
+    output: FlowEnvelope<ChatOutput>
+    cors: PublicWebCors
+}
+```
+
+See also: `shield` (the compliance/safety counterpart — `cors`
+governs WHO may read a response cross-origin in a browser;
+`shield` governs WHAT may leave the boundary at all).

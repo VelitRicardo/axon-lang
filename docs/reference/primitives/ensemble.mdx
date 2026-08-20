@@ -1,0 +1,129 @@
+---
+title: "ensemble"
+description: "Coordinates multiple cognitive entities under a consensus or quorum protocol with structured tie-breaking."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v1.2.0 · **Top-level declaration**
+
+## Grammar
+
+```text
+ensemble <Name> {
+    observations: [<Obs1>, <Obs2>, ...]              # required — bound observations
+    quorum: <integer>                                  # optional — minimum agreement
+    aggregation: <majority|weighted|byzantine>         # optional — consensus protocol
+    certainty_mode: <min|weighted|harmonic>            # optional — certainty aggregation
+}
+```
+
+`ensemble` declares **a consensus protocol** over multiple
+observations. Where a single `observe` aggregates across
+sources, an `ensemble` aggregates across observations —
+typically across multiple regions, multiple agents, or
+multiple independent telemetry stacks.
+
+This is how AXON expresses "I trust three independent witnesses
+more than one heroic one" at the language level. The aggregation
+algorithm and the certainty-mode are closed-catalogue choices —
+the runtime cannot improvise.
+
+## Surface
+
+`ensemble` is a **top-level declaration**. It is *not* nested
+inside an observe.
+
+```text
+ensemble GlobalHealth {
+    observations:   [ClinicalHealthUS, ClinicalHealthEU, ClinicalHealthAPAC]
+    quorum:         2
+    aggregation:    byzantine
+    certainty_mode: harmonic
+}
+```
+
+## Fields
+
+### `observations:` (required)
+
+A **bracketed list of identifiers** — every observation that
+participates in the ensemble. Each name must resolve to a
+declared `observe` at parse time. Two-or-more sources are
+required for the ensemble to make sense; the parser permits
+one but the runtime emits `axon-W011` ("ensemble of one is a
+no-op").
+
+### `quorum:` (optional)
+
+A **non-negative integer literal**. The minimum number of
+observations that must agree before the ensemble's verdict is
+considered authoritative. Defaults to a strict majority of
+`observations`.
+
+### `aggregation:` (optional)
+
+A **single identifier** from the closed consensus catalogue:
+
+| Value | Algorithm |
+|---|---|
+| `majority` | Simple majority of agreeing observations. **Default.** |
+| `weighted` | Each observation contributes by its certainty floor; weighted vote. |
+| `byzantine` | Byzantine fault-tolerant — tolerates up to ⌊(n-1)/3⌋ adversarial sources. |
+
+The parser rejects unknown values.
+
+### `certainty_mode:` (optional)
+
+A **single identifier** from the closed certainty-aggregation
+catalogue:
+
+| Value | Algorithm |
+|---|---|
+| `min` | Ensemble certainty = minimum of contributing certainties. **Default.** |
+| `weighted` | Quorum-weighted average. |
+| `harmonic` | Harmonic mean (sensitive to low-confidence outliers). |
+
+The parser rejects unknown values.
+
+## Runtime behaviour
+
+`ensemble` lowers to an `EnsembleDefinition` IR node. At deploy
+time, the runtime binds the ensemble to its observation set
+and starts the aggregation loop. Each cycle:
+
+1. Sample the latest verdict from each bound observation.
+2. Apply `aggregation:` to decide the consensus verdict.
+3. Apply `certainty_mode:` to compute the ensemble's certainty.
+4. Emit `ensemble:<name>:verdict` audit row carrying
+   `(per_observation_verdicts, consensus, certainty,
+   quorum_reached)`.
+
+Downstream `reconcile`s can bind an ensemble (via their
+`observe:` field) instead of a single observe — the
+reconciliation then acts on the consensus rather than any one
+source.
+
+## What this primitive is NOT
+
+- **Not a multi-agent coordinator.** An `ensemble` aggregates
+  **observations**, not agents. For multi-agent coordination
+  with planner+worker patterns, declare multiple `agent`s and
+  compose via flow-level `apply`.
+- **Not a `weave`.** `weave` is a flow-step that combines
+  step outputs inside one flow. `ensemble` operates across
+  declared observations at the deployment level.
+- **Not a consensus algorithm implementation.** AXON specifies
+  WHICH aggregation algorithm runs; the implementation lives
+  in the runtime (Tier 2 for `majority`/`weighted`,
+  optional native impl for `byzantine`).
+
+## See also
+
+- `axon://primitives/observe` — what the ensemble aggregates.
+- `axon://primitives/reconcile` — can bind an ensemble instead
+  of a single observe.
+- `axon://primitives/agent` — multi-agent coordination layer.
+- `axon://primitives/weave` — single-flow analogue.

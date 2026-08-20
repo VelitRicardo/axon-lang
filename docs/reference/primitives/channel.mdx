@@ -1,0 +1,117 @@
+---
+title: "channel"
+description: "A typed π-calculus channel — message type, qos, lifetime, persistence, and shield gate for in-process delivery and signed external egress."
+---
+
+<Warning>
+  **Partial.** The runtime delivers this, with a documented gap against what the reference describes. The gap is named in the compiler's own ledger rather than left to be discovered.
+</Warning>
+
+**Since** v1.6.0 · **Top-level declaration**
+
+## Grammar
+
+```text
+channel <Name> {
+    message: <TypeRef>                          # required — the typed payload
+    qos: <at_least_once|at_most_once|exactly_once|broadcast|queue>   # optional (default at_least_once)
+    lifetime: <affine|persistent>               # optional (default affine)
+    persistence: <ephemeral|persistent_axonstore>  # optional (default ephemeral)
+    shield: <ShieldRef>                         # optional — gate for publish/discover
+}
+```
+
+`channel` declares **a typed communication channel** in the
+π-calculus sense: a first-class, mobile, affine-by-default
+conduit `Channel<τ, q, ℓ, π>` carrying values of the declared
+`message:` type. Producers write with `emit`; daemon `listen`ers
+consume; `publish`/`discover` extrude and import the channel as
+a shield-gated **capability**.
+
+## Surface
+
+`channel` is a **top-level declaration**.
+
+```axon
+type SkillResult { task_id: String  status: String }
+
+shield WebhookEgress { sign: hmac_sha256  on_breach: halt }
+
+channel SkillCompleted {
+    message: SkillResult
+    qos: at_least_once
+    lifetime: affine
+    persistence: persistent_axonstore
+    shield: WebhookEgress
+}
+```
+
+## Fields
+
+### `message:` (required)
+
+The declared payload type. Every `emit` onto the channel is
+checked against it.
+
+### `qos:` (optional, default `at_least_once`)
+
+Delivery discipline, **enforced by the typed event bus** at
+runtime:
+
+| Value | Behaviour |
+|---|---|
+| `at_least_once` | Redelivered until acknowledged (default). |
+| `at_most_once` | Delivered once; dropped silently on failure. |
+| `exactly_once` | Deduplicated by event id. |
+| `broadcast` | Fan-out to every subscriber queue. |
+| `queue` | FIFO work-queue semantics. |
+
+### `lifetime:` (optional, default `affine`)
+
+`affine` — a handle may be dropped but never used after
+consumption (use-after-consume is a typed runtime error).
+`persistent` — no upper bound on uses.
+
+### `persistence:` (optional, default `ephemeral`)
+
+`ephemeral` — in-process delivery only; events die with the
+process. `persistent_axonstore` — every `emit` is appended to
+the **durable event outbox** (v2.31.0): claimed with SKIP-LOCKED,
+redelivered until acked (at-least-once), it survives restarts
+and is replayable. **Signed egress requires it** (`axon-T848`).
+
+### `shield:` (optional)
+
+The shield gating `publish`/`discover` capability extrusion.
+When the shield declares `sign:`, a `publish` of this channel
+marks it for **signed external egress** (v2.34.0): the enterprise
+runtime delivers each durable event as an HTTP POST to every
+registered subscription, signed `X-Axon-Signature:
+sha256=<hex(HMAC-SHA256(secret, body))>`.
+
+## Delivery model (what the runtime actually does)
+
+1. `emit Channel(value)` — routes by persistence: durable →
+   outbox append; ephemeral → in-process typed bus.
+2. `daemon … { listen Channel as ev { … } }` — the v2.31.0 receive
+   driver claims outbox events and runs the listener body,
+   acking on success.
+3. `publish Channel within Shield` — capability extrusion; with
+   a signing shield it additionally declares the egress surface
+   (see `axon://primitives/publish`).
+
+## What this primitive is NOT
+
+- **Not a message broker config.** No URLs, no destinations —
+  binding to external subscribers is enterprise configuration
+  (the webhook registry), never source code.
+- **Not a stream.** For token/SSE streaming use `stream:` tool
+  effects; a channel carries discrete typed events.
+
+## See also
+
+- `axon://primitives/emit` — the output prefix.
+- `axon://primitives/publish` — capability extrusion + egress.
+- `axon://primitives/discover` — the dual import.
+- `axon://primitives/listen` — the consumer side.
+- `axon://primitives/shield` — the gate (+ `sign:` egress).

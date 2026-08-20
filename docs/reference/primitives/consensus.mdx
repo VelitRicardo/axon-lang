@@ -1,0 +1,28 @@
+---
+title: "consensus"
+description: "Multi-candidate consensus — FAILS CLOSED (axon-T940, v2.67.0): refused at check time; no votes, no aggregation, no candidates in the old placeholder."
+---
+
+<Warning>
+  **Fails closed.** This refuses — at compile time or at dispatch — rather than doing something approximate. The refusal is the behaviour.
+</Warning>
+
+**Since** pre-v2.67.0 (introduction unrecorded) · **Used inside a declaration**
+
+## Grammar
+
+```text
+consensus { <body> }   # REFUSED at check time (axon-T940)
+```
+
+`consensus` was sold as multi-candidate voting. **It fails closed**
+(v2.67.0): the checker refuses it with `axon-T940` — no votes, no
+aggregation, no candidates ever existed behind the old placeholder.
+
+Same posture as `deliberate`: refusal over silent no-op. Use
+`ensemble` for the consensus machinery that IS real (quorum over
+observations, v2.67.0).
+
+## See also
+
+- `axon://primitives/ensemble` — real quorum, real tie-breaking.

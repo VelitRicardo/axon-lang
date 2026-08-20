@@ -1,0 +1,93 @@
+---
+title: "axpoint"
+description: "Lightweight axonendpoint — for simple request/response flows without the full request-binding schema scaffolding."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v1.23.0 · **Top-level declaration**
+
+## Grammar
+
+```text
+# `axpoint` is a LEXER ALIAS for `axonendpoint`. The two share the
+# same parser production and the same field set. See
+# `axon://primitives/axonendpoint` for the full grammar.
+axpoint <Name> {
+    method: <GET|POST|PUT|DELETE|PATCH>
+    path: "<path>"
+    execute: <FlowRef>
+    output: <TypeRef>
+    ...
+}
+```
+
+`axpoint` is **the lexer-level alias** for [`axonendpoint`](axonendpoint.md).
+The tokens `axonendpoint` and `axpoint` are recognised as the
+same `TokenType::AxonEndpoint` by the lexer (see
+`axon-frontend/src/tokens.rs:437`), so the parser produces an
+identical AST node for both surfaces.
+
+The alias exists for two reasons:
+
+1. **Stylistic preference.** Some codebases prefer the
+   shorter, less prefixed name; the alias lets adopters write
+   `axpoint Foo { ... }` without the `axonendpoint` typing
+   overhead.
+2. **Convention by codebase.** Teams that ship many simple
+   request/response flows often standardise on `axpoint` for
+   thin handlers and reserve `axonendpoint` for endpoints with
+   rich `transport:`, `shield:`, `requires:`, and
+   `compliance:` declarations. The runtime treats both
+   identically; the convention is purely social.
+
+## Surface
+
+`axpoint` is a **top-level declaration**. Every field, every
+constraint, and every wire behaviour described for
+`axonendpoint` applies verbatim here.
+
+```text
+type EchoRequest { message: Text }
+type EchoResponse { echoed: Text }
+
+flow Echo(message: Text) -> FlowEnvelope<EchoResponse> {
+    step Reply {
+        given: message
+        ask: "Echo the message back."
+        output: FlowEnvelope<EchoResponse>
+    }
+}
+
+axpoint EchoAPI {
+    method:   POST
+    path:     "/v1/echo"
+    body:     EchoRequest
+    execute:  Echo
+    output:   FlowEnvelope<EchoResponse>
+    backend:  auto
+}
+```
+
+## What this primitive is NOT
+
+- **Not a different primitive.** The lexer + parser treat
+  `axpoint` and `axonendpoint` as the same token. There is no
+  semantic distinction at compile time or runtime.
+- **Not a "lite mode" with reduced features.** Every field
+  available to `axonendpoint` is available to `axpoint`.
+  Adopters who avoid `shield:`, `requires:`, or `compliance:`
+  on an `axpoint` are doing so by convention, not because
+  the surface lacks them.
+- **Not deprecated.** The alias is a first-class part of the
+  language; it survives across cycle increments.
+
+## See also
+
+- `axon://primitives/axonendpoint` — the canonical surface
+  with the full field reference. Every detail there applies
+  to `axpoint`.
+- `axon://logic/composition` — when to pick `axpoint` vs.
+  `axonendpoint` by team convention.

@@ -1,0 +1,218 @@
+---
+title: "axonendpoint"
+description: "HTTP REST primitive — exposes a flow on a typed route with body/output schemas, transport classification, and compliance."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v1.23.0 · **Top-level declaration**
+
+## Grammar
+
+```text
+axonendpoint <Name> {
+    method: <GET|POST|PUT|DELETE|PATCH>     # required — closed catalog
+    path: "<path-with-{params}>"             # required — `{name}` placeholders extracted
+    body: <TypeRef>                          # optional — request-body type
+    query: { <name>: <Text|Int|Float|Bool|Uuid> [?], ... }  # optional — inline query block
+    execute: <FlowRef>                       # required — flow this endpoint invokes
+    output: <TypeRef>                        # required — response type (FlowEnvelope<T> for json transport)
+    shield: <ShieldRef>                      # optional — defence layer
+    backend: <auto|openai|anthropic|...>     # required for production — execution backend
+    transport: <json|sse(axon|openai|anthropic)>   # optional — wire format (default json)
+    keepalive: <duration>                    # optional — SSE keepalive interval
+    requires: ["<slug.dotted>", ...]         # optional — capability scopes
+    replay: <true|false> # optional — v1.23.0 replay-token binding
+    retries: <integer>                       # optional — automatic retry count
+    timeout: <duration>                      # optional — request budget
+    compliance: [<Tag1>, ...]                # optional — compliance tags
+}
+```
+
+`axonendpoint` declares **an HTTP REST primitive** — a typed
+route that exposes a flow on the wire. It binds an HTTP method,
+a path (with optional `{param}` placeholders), a body schema, a
+query block, an executing flow, a response type, and (in
+production deployments) a compute backend, a defence shield, a
+capability gate, and compliance tags.
+
+This is the canonical surface a v1.23.0+ AXON program ships:
+the entire HTTP boundary collapses into one typed declaration
+that the runtime mounts at deploy time. Adopters do not write
+route handlers in a separate language — the endpoint declaration
+IS the handler, and the type system enforces the wire contract.
+
+## Surface
+
+`axonendpoint` is a **top-level declaration**. It is *not*
+nested inside another primitive.
+
+```text
+axonendpoint AnalyzeContractAPI {
+    method:      POST
+    path:        "/v1/contracts/analyze"
+    body:        AnalyzeRequest
+    execute:     AnalyzeContract
+    output:      FlowEnvelope<RiskReport>
+    shield:      PrivilegeShield
+    backend:     auto
+    compliance:  [SOC2]
+    retries:     1
+    timeout:     20s
+}
+
+axonendpoint PatientsByID {
+    method:      GET
+    path:        "/v1/patients/{patient_id}"
+    query:       { include_history: Bool?, since: Text? }
+    execute:     LookupPatient
+    output:      FlowEnvelope<PatientRecord>
+    shield:      PHIShield
+    backend:     auto
+    compliance:  [HIPAA, GDPR]
+}
+```
+
+## Fields
+
+### `method:` (required)
+
+A **single identifier** from the **closed method catalogue**
+(parse-time enforced): `GET | POST | PUT | DELETE | PATCH`.
+HEAD / OPTIONS / TRACE are runtime-managed (CORS, healthchecks)
+and not adopter-declarable.
+
+### `path:` (required)
+
+A **string literal** containing the URL path. Path placeholders
+`{name}` are extracted at parse time and become **path
+parameters** the Request Binding Contract uses to bind flow
+parameters. Duplicate `{name}` in the same path is rejected at
+parse time (v1.32.0 D1).
+
+### `body:` (optional)
+
+A **single identifier** referencing a declared `type`. The
+request body is deserialised into this type before the flow
+runs. Critically, the body type's **field names must match the
+flow's parameter names** (Request Binding Contract, v1.32.0 +
+37.y D3).
+
+### `query:` (optional, v1.32.0 D2)
+
+An **inline `{ name: Type, ... }` block** declaring query
+parameters. The type for each must come from the **closed
+query-param catalogue**: `Text | Int | Float | Bool | Uuid`. The
+`?` suffix marks an optional param. Container types
+(`Optional<T>`, `List<T>`) are rejected by the parser with a
+canonical-syntax hint.
+
+### `execute:` (required)
+
+A **single identifier** referencing a declared `flow`. The flow
+runs once per HTTP request; its output becomes the response
+body (subject to `transport:` shaping).
+
+### `output:` (required)
+
+The **declared response type**. For `transport: json` (default),
+the type **MUST wrap in `FlowEnvelope<T>`** (v2.0.0 D2) — the
+v2.0.0 wire envelope contract. For `transport: sse(...)`, bare
+`Stream<T>` is valid; the runtime emits per-chunk SSE frames.
+
+### `backend:` (production-required, v1.31.0 D2)
+
+A **single identifier** declaring the execution backend.
+Common slugs: `auto`, `openai`, `anthropic`, `gemini`,
+`ollama`, `openrouter`. Omitting `backend:` emits an
+`axon-W003` warning — the endpoint falls through the v1.31.0 D1
+provider-resolution ladder at request time; if no provider
+resolves, the runtime returns a structured HTTP 503.
+
+### `transport:` (optional, v1.21.0 D1)
+
+A **single identifier** declaring the wire format:
+
+| Value | Format |
+|---|---|
+| `json` | Single JSON response wrapping a `FlowEnvelope<T>`. **Default.** |
+| `sse(axon)` | Server-Sent Events with W3C named-events dialect. |
+| `sse(openai)` | SSE with OpenAI's streaming-chunk shape. |
+| `sse(anthropic)` | SSE with Anthropic's streaming dialect. |
+
+The `sse(<dialect>)` form requires the bound flow's final step's
+output to be `Stream<T>` AND a reachable tool with a
+`stream:<policy>` effect (v1.21.0).
+
+### `keepalive:` (optional)
+
+A **duration literal** (`15s`, `30s`). SSE keepalive interval.
+Applies only to `transport: sse(...)` endpoints; ignored for
+JSON transports.
+
+### `requires:` (optional, v1.23.0 D8)
+
+A **bracketed list of string literals** containing
+dotted-slug capabilities (`"admin"`, `"tenant.read"`,
+`"hipaa.phi.read"`). Each must match
+`^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$`. Endpoints with
+`requires:` reject requests whose bearer-token capabilities
+don't cover the listed set.
+
+### `replay:` (optional, v1.23.0)
+
+A **boolean literal**. Enables idempotent-replay token binding
+for POST/PUT requests. Defaults: ON for POST/PUT, OFF for
+GET/DELETE (the v1.23.0 plan-vivo D9).
+
+### `retries:` / `timeout:` (optional)
+
+Per-request budgets. `retries:` is a non-negative integer;
+`timeout:` is a duration literal.
+
+### `compliance:` (optional)
+
+A **bracketed list of identifiers** from the closed compliance
+catalogue. The v2.0.0 cross-tag check propagates compliance from
+the body type + execute flow + shield; explicit tags here are
+the **canonical attestation** for the endpoint's audit
+boundary.
+
+## The Request Binding Contract (v1.32.0 + v1.32.0 D3)
+
+Every flow parameter the `execute:` flow declares must bind to
+one of three sources, **matched by name**:
+
+1. A **path placeholder** `{name}` in `path:`.
+2. A **query field** `name: <Type>` in `query: { ... }`.
+3. A **body field** `name: <Type>` inside the type referenced by
+   `body:`.
+
+Unbound parameters produce a parse-time
+`axonendpoint '<X>' executes flow '<F>' whose required
+parameter '<p>' has no matching binding source` diagnostic.
+
+## What this primitive is NOT
+
+- **Not a route handler.** No imperative body. The runtime
+  produces the handler from the declaration; adopters cannot
+  inject middleware between the wire and the flow.
+- **Not an `axpoint`.** `axpoint` is the lexer-level alias —
+  same parser, same grammar. The two surfaces are
+  interchangeable; the distinction is purely naming.
+- **Not free of compliance gating.** Production endpoints
+  declare `requires:` + a `shield:` + a `compliance:` list.
+  Anonymous endpoints exist for prototyping; the v2.0.0 lint
+  warns when they ship to a deployment with regulated data.
+
+## See also
+
+- `axon://primitives/flow` — what `execute:` invokes.
+- `axon://primitives/axpoint` — the alias surface.
+- `axon://primitives/shield` — `shield:` binding.
+- `axon://primitives/socket` — WebSocket counterpart for
+  dialogue protocols (use sessions, not REST).
+- `axon://logic/flow_composition` — when an endpoint should
+  wrap a sub-flow via `apply:` vs. a top-level flow directly.

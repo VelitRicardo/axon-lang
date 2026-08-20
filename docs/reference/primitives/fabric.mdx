@@ -1,0 +1,120 @@
+---
+title: "fabric"
+description: "The cloud-substrate declaration — provider, region, zones, ephemerality, bound shield."
+---
+
+<Warning>
+  **Partial.** The runtime delivers this, with a documented gap against what the reference describes. The gap is named in the compiler's own ledger rather than left to be discovered.
+</Warning>
+
+**Since** v1.2.0 · **Top-level declaration**
+
+## Grammar
+
+```text
+fabric <Name> {
+    provider: <ident>          # required — cloud slug (aws | gcp | azure | onprem | ...)
+    region: "<region>"          # optional — geographic region tag
+    zones: <integer>            # optional — availability-zone fan-out
+    ephemeral: <true|false>     # optional — single-run substrate
+    shield: <ShieldRef>         # optional — fabric-level defence layer
+}
+```
+
+`fabric` declares **the cloud substrate** a `manifest` deploys
+onto: which provider, which region, how many zones, whether the
+infrastructure is ephemeral (torn down at run-end) or persistent.
+A manifest references exactly one fabric; the fabric carries the
+substrate-level shield that gates all underlying resource
+acquisitions.
+
+This is where the language meets the cloud. Fabrics let an AXON
+program move between AWS, GCP, Azure, and on-prem without
+changing the cognitive layer — only the fabric declaration
+changes.
+
+## Surface
+
+`fabric` is a **top-level declaration**. It is *not* nested
+inside a manifest.
+
+```text
+fabric ClinicalCloud {
+    provider:  aws
+    region:    "us-east-1"
+    zones:     3
+    ephemeral: false
+    shield:    PHIShield
+}
+```
+
+## Fields
+
+### `provider:` (required)
+
+A **single identifier** naming the cloud provider. Open
+catalogue at the parser level — the runtime decides which
+providers are deployable. Common slugs: `aws`, `gcp`, `azure`,
+`onprem`, `local`, `kubernetes`.
+
+### `region:` (optional)
+
+A **string literal** containing the provider-specific region
+tag (`"us-east-1"`, `"eu-west-2"`, `"southamerica-east1"`,
+`"westeurope"`). Compliance shields cross-validate this against
+their declared geographic constraints — e.g. a GDPR-tagged
+manifest deployed to a non-EU region is rejected.
+
+### `zones:` (optional)
+
+A **non-negative integer literal**. Number of availability zones
+the substrate spans. `zones: 1` is single-AZ (lower cost, lower
+resilience); `zones: 3` is the production standard for
+fault-tolerant deployments.
+
+### `ephemeral:` (optional)
+
+A **boolean literal**. `true` ⇒ the substrate is torn down at
+run-end (test environments, CI lanes, one-shot scratch
+deployments). `false` ⇒ the substrate persists across runs
+(the production default; absence implies `false`).
+
+### `shield:` (optional)
+
+A **single identifier** referencing a declared `shield`. The
+fabric-level shield wraps every resource acquisition under this
+substrate — defence-in-depth alongside per-resource shields.
+
+## Runtime behaviour
+
+`fabric` lowers to a `FabricDefinition` IR node. At deploy time,
+the runtime resolves the provider slug against its substrate
+registry and validates the region + zones combination against
+the provider's available topology. Provider mismatches
+(`provider: aws  region: "eastus"`) are rejected with a
+structured `axon-E041 region/provider mismatch` diagnostic.
+
+Compliance propagation: every audit row emitted under a fabric
+carries `(fabric.provider, fabric.region)` so cross-jurisdiction
+data movement is auditable.
+
+## What this primitive is NOT
+
+- **Not a `resource`.** A resource is one external dependency;
+  a fabric is the substrate that *hosts* many resources.
+- **Not a `manifest`.** A manifest bundles resources + a
+  fabric + compliance tags. The fabric is one of its three
+  ingredients.
+- **Not infrastructure-as-code.** AXON fabric declarations do
+  NOT provision infrastructure — they *describe* what the
+  runtime expects to find. Provisioning happens upstream
+  (Terraform, Pulumi, manual ops). The fabric makes
+  expectations typed + auditable.
+
+## See also
+
+- `axon://primitives/manifest` — consumes the fabric.
+- `axon://primitives/resource` — sits atop the fabric.
+- `axon://primitives/shield` — defence wrapper.
+- `axon://compliance/gdpr` — example of region-locked
+  compliance flowing through the fabric layer.

@@ -1,0 +1,139 @@
+---
+title: "probe"
+description: "A diagnostic / probing operation inside a step — emits observations without changing the trajectory."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v0.1.0 · **Used inside a declaration**
+
+## Grammar
+
+```text
+# Flow-level form (sibling of step):
+probe <Target>
+probe <Target> { ... }      # block body skipped structurally
+
+# Step-level sub-construct (inside a step body):
+step <Name> {
+    ...
+    probe <Target>
+    ...
+}
+```
+
+`probe` is a **diagnostic operation** inside a flow. It emits
+observations about an in-flight computation — typing them into
+the audit chain — without changing the flow's trajectory. Where
+`reason` declares HOW the model thinks, `probe` declares WHAT
+it should observe about its own state.
+
+`probe` is the canonical "I want to know X about this step's
+context, but I don't want to branch on it" verb. It is
+intentionally side-effect-free at the cognitive layer; the only
+effect is the audit row that records the observation.
+
+## Surface
+
+`probe` is **nested** — it appears in two places:
+
+1. As a **sibling of `step`** inside a flow body (one-liner
+   form: `probe <Target>`).
+2. As a **sub-construct inside a `step` body** (the step
+   parser skips it structurally so the model sees the probe as
+   a prompt modifier).
+
+It is *not* a top-level declaration.
+
+```text
+flow DiagnoseSymptoms(symptoms: SymptomList) -> Diagnosis {
+    step Cluster {
+        given: symptoms
+        ask: "Cluster the symptoms by organ system."
+        output: ClusteredSymptoms
+    }
+    # Flow-level probe — observation lands in the audit chain.
+    probe Cluster.output
+    step Decide {
+        given: Cluster.output
+        ask: "Emit the most likely diagnosis."
+        output: Diagnosis
+        # Step-level probe — refines THIS step's observation surface.
+        probe ConfidenceCheck
+    }
+}
+```
+
+## Header
+
+### `probe <Target>`
+
+A **single identifier** naming the observation target. Typical
+values:
+
+- A previous step's output (`<Step>.output`).
+- A flow parameter name.
+- A named observable (`ConfidenceCheck`, `EvidenceTrace`,
+  `TokenUsage`).
+
+The target is recorded verbatim in the audit row; the runtime
+maps named observables to backend-specific telemetry channels.
+
+### `probe <Target> { ... }` (block form)
+
+A braced block may follow the target; the body is **reserved**
+for future structured-observation clauses (paper section 6 — epistemic
+levels, certainty tracking). Today the parser skips the body;
+the runtime exposes only the target.
+
+## Step-level sub-construct
+
+Inside a `step` body, `probe <Target>` is parsed as a
+sub-construct alongside `ask:`, `output:`, `use`, `reason`,
+`weave`, and `stream`. The step parser skips its argument
+structurally; the runtime injects the probe as an observation
+hook for *this step only*.
+
+Use the step-level form when the probe is **local** to the
+step. Use the flow-level form when the probe is a **distinct
+audit node** between two steps.
+
+## Runtime behaviour
+
+`probe` at flow level produces a typed `ProbeStep` IR node
+with a `target: String` field. The runtime maps the target to
+a backend-specific observation hook and emits a
+`session:probe` audit row carrying `(probe.target,
+observation, timestamp)`.
+
+Crucially, **probes do not affect the cognitive trajectory**.
+The flow's downstream steps see the same outputs whether or
+not a probe was inserted. This is what makes `probe`
+safe-by-construction for production audit instrumentation —
+adding a probe to a working flow cannot break it.
+
+## What this primitive is NOT
+
+- **Not an assertion.** A failing probe does NOT halt
+  execution. For that, use `validate` (which IS predicate-
+  enforcing).
+- **Not a branch.** A probe cannot influence control flow.
+  Use `if` for that.
+- **Not free.** Probes emit audit rows and may invoke
+  backend telemetry channels. In tight loops, probes can
+  add measurable overhead — declare them deliberately.
+- **Not the same as `reason`.** `reason` declares a thinking
+  strategy; `probe` declares an observation target. They
+  serve different layers of the cognitive loop.
+
+## See also
+
+- `axon://primitives/validate` — the predicate-enforcing
+  cousin (probe = observe; validate = enforce).
+- `axon://primitives/reason` — declarative thinking strategy.
+- `axon://primitives/step` — the most common context where
+  probes appear as sub-constructs.
+- `axon://primitives/flow` — flow-level probes are siblings
+  of `step`.

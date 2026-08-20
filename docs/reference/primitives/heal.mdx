@@ -1,0 +1,163 @@
+---
+title: "heal"
+description: "A recovery routine bound to an immune system's level — runs scoped repairs, often human-in-the-loop."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v1.14.0 · **Top-level declaration**
+
+## Grammar
+
+```text
+heal <Name> {
+    source: <ImmuneRef>                                  # required — bound immune
+    on_level: <know|believe|speculate|doubt>              # required — firing threshold
+    mode: <audit_only|human_in_loop|adversarial>          # required — recovery mode
+    scope: <tenant|flow|global>                           # required — isolation scope
+    review_sla: <duration>                                # optional — review-completion SLA
+    shield: <ShieldRef>                                   # optional — defence wrapper on patches
+    max_patches: <integer>                                # optional — patch budget (default 3)
+}
+```
+
+`heal` declares **a recovery routine** bound to an immune
+system's epistemic-level signal. Where `reflex` is the
+immediate automatic response (within milliseconds), `heal` is
+the **supervised recovery layer** — typically
+human-in-the-loop, with longer SLAs, bounded patch budgets,
+and a defence wrapper on every applied patch.
+
+The v1.14.0 λ-L-E cognitive immune system uses `immune →
+reflex → heal` as the three-tier response chain:
+
+| Tier | Timescale | Human involvement |
+|---|---|---|
+| `reflex` | ms–s | Fully automatic |
+| `heal` | minutes–hours | Human-in-the-loop or adversarial loop |
+| Manual escalation | hours–days | Operator-driven |
+
+## Surface
+
+`heal` is a **top-level declaration**. It is *not* nested
+inside another primitive.
+
+```text
+heal MitigateExposure {
+    source:       ClinicalVigil
+    on_level:     doubt
+    mode:         human_in_loop
+    scope:        tenant
+    review_sla:   1h
+    shield:       PHIShield
+    max_patches:  3
+}
+```
+
+## Fields
+
+### `source:` (required)
+
+A **single identifier** referencing a declared `immune`. The
+heal routine consumes the immune's signal stream.
+
+### `on_level:` (required)
+
+A **single identifier** from the closed epistemic-level
+catalogue (`know | believe | speculate | doubt`). Same
+semantics as `reflex.on_level:` — the heal fires at the
+declared level **and above**.
+
+The typical production split: low-confidence signals
+(`doubt`, `speculate`) go to **heal** for review; high-
+confidence signals (`believe`, `know`) go to **reflex** for
+immediate action.
+
+### `mode:` (required)
+
+A **single identifier** from the **closed recovery-mode
+catalogue**:
+
+| Value | Behaviour |
+|---|---|
+| `audit_only` | Record the signal + the proposed patch; apply nothing automatically. |
+| `human_in_loop` | Queue the patch for human review; apply on approval. **Default.** |
+| `adversarial` | Run an adversarial-defense loop (counter-prompt, robustness check). |
+
+The parser rejects unknown values.
+
+### `scope:` (required)
+
+A **single identifier** from the closed scope catalogue:
+`tenant | flow | global`. Patches at `scope: tenant` affect
+only the originating tenant; `global` is rare and audited
+specially.
+
+### `review_sla:` (optional)
+
+A **duration literal** declaring the **review-completion
+SLA**. For `mode: human_in_loop`, this is the maximum time
+a queued patch should wait before the reviewer responds.
+Breaches emit `heal:<name>:sla_breached` audit rows.
+
+### `shield:` (optional)
+
+A **single identifier** referencing a declared `shield`.
+Every patch the heal applies routes through the shield's
+scan list before commitment — defence against compromised
+heal routines deploying malicious patches.
+
+### `max_patches:` (optional, default `3`)
+
+A **non-negative integer literal**. The maximum number of
+patches the heal may apply per source signal. Bounded retry
+is mandatory (analogous to `reconcile.max_retries:`).
+Budget exhaustion escalates per the deployment's escalation
+channel.
+
+## Runtime behaviour
+
+`heal` lowers to a `HealDefinition` IR node. The v1.14.0
+supervisor binds the heal to its source immune:
+
+1. Subscribe to the immune's signal stream at the declared
+   level.
+2. Per matching signal:
+   - Compute a candidate patch (`mode`-specific logic).
+   - Pass the patch through `shield:` if declared.
+   - For `mode: audit_only` → record + emit; no action.
+   - For `mode: human_in_loop` → enqueue for review;
+     apply on approval within `review_sla:`.
+   - For `mode: adversarial` → run the adversarial defense
+     loop; apply on convergence.
+3. Increment the patch counter; halt at `max_patches:`.
+4. Audit row `heal:<name>:patched:<source_signal_id>` carries
+   the patch hash + reviewer + outcome.
+
+## What this primitive is NOT
+
+- **Not a `reflex`.** Reflex is **immediate** automatic
+  response (ms-scale); heal is **supervised** recovery
+  (minute-to-hour scale, often human-in-the-loop). The two
+  compose on the same immune: high-confidence signals →
+  reflex, low-confidence signals → heal.
+- **Not unsupervised.** Production heals carry `shield:` +
+  `max_patches:`. Unsupervised heal in regulated
+  environments is a v1.14.0 λ-L-E policy violation.
+- **Not a substitute for manual operator response.** When
+  `max_patches:` is exhausted, the heal escalates to manual.
+  Heals are bounded auto-recovery, not infinite retry loops.
+- **Not free.** Heal routines run review loops that consume
+  human attention and reviewer SLAs. Declare deliberately —
+  noisy heals damage operator trust.
+
+## See also
+
+- `axon://primitives/immune` — the source-signal counterpart.
+- `axon://primitives/reflex` — immediate-response counterpart.
+- `axon://primitives/shield` — required defence wrapper on
+  patches.
+- `axon://compliance/hipaa` — example heal-on-PHI exposure
+  with human-in-loop review.

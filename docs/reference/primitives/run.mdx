@@ -1,0 +1,165 @@
+---
+title: "run"
+description: "Binds a flow to a persona, context, and anchors — the statement that EXECUTES a declared flow."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v0.1.0 · **Top-level declaration**
+
+## Grammar
+
+```text
+run <FlowName>(<arg1>, <arg2>, ...)
+    [as <Persona>]                                # optional — persona binding
+    [within <Context>]                            # optional — context binding
+    [constrained_by [<Anchor1>, <Anchor2>, ...]]  # optional — runtime anchors
+    [on_failure: <policy>(<param>: <value>, ...)] # optional — failure handler
+    [output_to: "<file>"]                         # optional — destination
+    [effort: <low|medium|high|max>]               # optional — compute hint
+```
+
+`run` is **the binding statement** that executes a declared
+flow. Where `flow` declares the typed orchestration and
+`persona` / `context` / `anchor` declare the supporting
+constraints, `run` is the **single place** where all four
+combine into a concrete invocation.
+
+`run` is the only statement an AXON program emits that
+actually *does something* at top level. Every other top-level
+construct is a declaration — describing potential. `run` is
+the verb.
+
+## Surface
+
+`run` is a **top-level statement**. It is *not* nested inside
+a flow, an agent, or any other primitive. Most programs ship
+one `run` (the entrypoint); some ship several (parallel
+deployments).
+
+```text
+run AnalyzeContract(myContract)
+    as LegalExpert
+    within LegalReview
+    constrained_by [NoHallucination, NoPHI]
+    on_failure: retry(backoff: exponential)
+    output_to: "report.json"
+    effort: high
+```
+
+## Anatomy
+
+### `run <FlowName>(<args>)` — the head (required)
+
+- **`<FlowName>`** — a `PascalCase` identifier referencing a
+  declared `flow`. The compiler resolves this against the
+  module's flow symbol table at parse time.
+- **`(<args>)`** — comma-separated argument list matching the
+  flow's `(param: Type, ...)` declaration. The type checker
+  enforces arity + type compatibility.
+
+### `as <Persona>` — persona binding (optional)
+
+A **single identifier** referencing a declared `persona`. The
+flow runs under this identity by default. Steps that declare
+their own `use <Persona>` override this per-step.
+
+Without `as`, the runtime uses the deployment's default
+persona (if configured) or rejects the run.
+
+### `within <Context>` — context binding (optional)
+
+A **single identifier** referencing a declared `context`. The
+flow runs within this conversational frame (memory scope,
+language, depth, temperature, …). Without `within`, the
+runtime uses defaults.
+
+### `constrained_by [<Anchor1>, ...]` — anchor stack (optional)
+
+A **bracketed list of identifiers** — declared `anchor`s that
+gate every emission during the run. The stack fires in
+declaration order; the first violation short-circuits and
+runs the matching `on_violation:`.
+
+### `on_failure: <policy>(<params>)` — failure handler (optional)
+
+A **single identifier** naming the failure policy + optional
+keyword params:
+
+| Policy | Behaviour |
+|---|---|
+| `raise <Error>` | Surface a typed error to the caller. |
+| `retry(backoff: <ident>)` | Retry with backoff strategy (`linear`, `exponential`, `jittered`). |
+| `fallback <Flow>` | Switch to the named fallback flow. |
+| `log_and_continue` | Audit the failure; let the run complete with partial output. |
+| `escalate` | Hand off to a registered escalation queue. |
+
+### `output_to: "<file>"` — destination (optional)
+
+A **string literal** naming the destination. Common values:
+
+- `"-"` — stdout (the default in CLI mode).
+- `"<path>.json"` — write the flow's output to a JSON file.
+- `"<path>.axonenv"` — write the full audit envelope.
+- `"http+post://..."` — POST to an HTTP destination (the
+  runtime resolves credentials).
+
+### `effort: <level>` — compute hint (optional)
+
+A **single identifier** from the closed catalogue
+(`axon-frontend::type_checker::VALID_EFFORT_LEVELS`):
+`low | medium | high | max`. The runtime maps this to
+backend-specific reasoning effort + sampling parameters.
+`effort: strict` engages the strict-tool-mode discipline
+(only declared tools usable).
+
+## Runtime behaviour
+
+A `run` statement lowers to a `RunStatement` IR node. At
+deploy time, the runtime resolves all bound names against
+the module's symbol tables; unresolved references are
+parse-time errors. At execution time:
+
+1. **Authorisation** — the runtime checks the caller's
+   capabilities against any `requires:` on the bound flow.
+2. **Persona injection** — the bound persona's identity is
+   pushed into the prompt frame.
+3. **Context injection** — the bound context's parameters
+   are pushed into the backend.
+4. **Anchor stack** — the listed anchors are armed for the
+   duration of the run.
+5. **Execution** — the flow's body runs step-by-step.
+6. **Failure handling** — uncaught errors run the
+   `on_failure:` policy.
+7. **Output emission** — the flow's return value is written
+   to `output_to:` (or returned to the caller).
+8. **Audit row** — a `session:run_complete` row records the
+   full binding + outcome.
+
+## What this primitive is NOT
+
+- **Not a function call.** A `run` is a deployment-time
+  binding, not a call into a callable. Multiple `run`s of
+  the same flow with different bindings are different
+  deployments.
+- **Not a declaration.** `run` is a statement; its presence
+  in a program means *this gets executed*. Declarations
+  describe potential; `run` actualises it.
+- **Not nested.** A `run` inside a flow body is rejected by
+  the parser. Sub-flow composition uses `apply` (a
+  step-internal field).
+- **Not allowed to bind a `daemon` or `agent` directly.** Use
+  the daemon's own startup hook + the `agent` declaration's
+  built-in entrypoint instead.
+
+## See also
+
+- `axon://primitives/flow` — declares what `run` invokes.
+- `axon://primitives/persona` — the `as <X>` binding.
+- `axon://primitives/context` — the `within <X>` binding.
+- `axon://primitives/anchor` — the `constrained_by [...]`
+  binding.
+- `axon://logic/flow_composition` — when to ship multiple
+  `run`s vs. composing flows via `apply`.

@@ -1,0 +1,191 @@
+---
+title: "anchor"
+description: "A typed grounding constraint — declares the conditions a flow's outputs MUST satisfy, with a structured violation policy."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v0.1.0 (initial language) · **Top-level declaration**
+
+## Grammar
+
+```text
+anchor <Name> {
+    require: <ident>                # required — what must hold (closed catalog)
+    reject: [<ident>, <ident>, ...] # optional — anti-patterns to refuse
+    enforce: <ident>                # optional — when to enforce (e.g. on_output | on_input | always)
+    description: "<free text>"      # optional — operator notes
+    confidence_floor: <0.0..1.0>    # optional — minimum confidence to accept
+    unknown_response: "<text>"      # optional — what to say if require can't be satisfied
+    on_violation: raise <ErrorName> # optional — { raise Name | fallback Name | <ident> }
+}
+```
+
+An `anchor` declares a **typed grounding constraint** that a
+flow's execution must satisfy. Anchors are bound to a `run`
+statement via `constrained_by [Anchor1, Anchor2, ...]`; the
+runtime checks each emitted candidate against every bound
+anchor before it is accepted, and applies the declared
+violation policy on failure.
+
+Anchors are the canonical place to express *"hallucination is
+not allowed here"*, *"every claim must cite a source"*,
+*"refuse if confidence is below 0.85"*, and similar **truth
+discipline** requirements that the persona and step grammar
+alone cannot express precisely.
+
+## Surface
+
+`anchor` is a **top-level declaration**. It is *not* nested
+inside a flow, a step, or a shield.
+
+```axon
+anchor NoHallucination {
+    require: source_citation
+    confidence_floor: 0.75
+    unknown_response: "I don't have sufficient information."
+    on_violation: raise AnchorBreachError
+}
+
+anchor MedicalSafety {
+    require: evidence_backed
+    reject: [unverified_dosage, off_label_recommendation]
+    enforce: on_output
+    on_violation: fallback SafeRefusal
+}
+```
+
+## Fields
+
+### `require:` (required)
+
+A **single identifier** from the closed grounding-rule catalog.
+Canonical values:
+
+| Value | Meaning |
+|---|---|
+| `source_citation` | Every factual claim carries an `[evidence: ...]` citation. |
+| `evidence_backed` | Every claim is supported by a retrieved chunk in the bound `axonstore`. |
+| `cross_referenced` | Each claim appears in ≥ 2 independent sources. |
+| `deterministic` | The flow's output is byte-identical for the same input (no LLM sampling drift). |
+| `legal_basis_present` | Every data access carries a v2.0.0 legal-basis tag in the audit row. |
+| `confidence_floor` | Every output's self-reported confidence ≥ `confidence_floor:`. |
+
+The catalog grows with each compliance cycle; the type checker
+rejects unknown values at parse time.
+
+### `reject:` (optional)
+
+A **bracketed list of identifiers** from the closed
+anti-pattern catalog. The compiler treats `reject:` and
+`require:` as composable: an output is accepted only if it
+*satisfies* the `require` rule *and* matches none of the
+`reject` patterns.
+
+Vertical anti-pattern examples:
+
+| Anti-pattern | Domain |
+|---|---|
+| `unverified_dosage` | Medicine |
+| `off_label_recommendation` | Medicine / pharma |
+| `legal_advice` | Tier-2 chat |
+| `financial_advice` | Tier-2 chat |
+| `pii_exposed` | Privacy |
+| `phi_leaked` | HIPAA |
+| `judgmental_language` | Customer support |
+
+### `enforce:` (optional)
+
+A **single identifier** declaring **when** the anchor fires.
+Canonical values:
+
+| Value | Meaning |
+|---|---|
+| `on_output` | After each cognitive step emits its candidate output (default). |
+| `on_input` | Before each step receives its input. |
+| `always` | On both input and output. |
+| `on_return` | Only on the flow's final return value. |
+
+### `confidence_floor:` (optional)
+
+A **numeric literal in `[0.0, 1.0]`**. When present, the
+anchor's `require: confidence_floor` clause uses this threshold;
+otherwise it inherits the active persona's
+`confidence_threshold`.
+
+### `description:` (optional)
+
+A **string literal** with operator notes. Surfaces in the audit
+row and in `axon-emcp` documentation tooling.
+
+### `unknown_response:` (optional)
+
+A **string literal**. When the `require:` rule **cannot be
+satisfied** (e.g. no source citation is available; the
+retrieval surface returned no chunks), the runtime emits this
+text instead of running `on_violation`. Pairs naturally with
+`require: source_citation`.
+
+```text
+unknown_response: "I don't have sufficient information."
+```
+
+### `on_violation:` (optional)
+
+The **violation policy**. The grammar accepts three shapes:
+
+| Shape | Meaning |
+|---|---|
+| `raise <ErrorName>` | Stop execution; emit a typed error to the caller. |
+| `fallback <FlowName>` | Switch to the named flow (must accept the same input). |
+| `<ident>` | A registered handler (`retry`, `log_and_continue`, …). |
+
+The default is `raise AnchorBreachError`. The audit row always
+records the full violation chain regardless of policy.
+
+## Runtime behaviour
+
+At deploy time, every anchor is lowered to an
+`AnchorConstraint` IR node. At `run`-time, the runtime:
+
+1. Resolves each name in `constrained_by [...]` against the
+   module's anchor symbol table.
+2. Builds a **policy stack** per step — the anchors fire in the
+   order they appear in `constrained_by`.
+3. After each emission, the runtime evaluates each policy
+   against the candidate; the first failure short-circuits the
+   stack and runs the matching `on_violation:`.
+4. The audit hash-chain records (anchor name, verdict, evidence
+   pointer) for every emission, whether accepted or rejected.
+
+## What this primitive is NOT
+
+- **Not a shield.** A shield is a *transform* that mutates the
+  candidate (redacts PHI, lowers toxicity, strips PII). An
+  anchor is a *predicate* that decides whether the candidate is
+  accepted. Both can bind to the same `run`; they compose.
+- **Not a refusal trigger inside a persona.** A persona's
+  `refuse_if:` is the *static* refusal posture; an anchor is
+  a *runtime* policy that observes every emission. They serve
+  different stages of the pipeline.
+- **Not a unit test.** Anchors run in production on every flow
+  invocation. Test-time assertions belong in a `harness`
+  declaration.
+- **Not nested inside a flow.** A flow *references* an anchor by
+  name via `constrained_by [...]` on the binding `run`
+  statement; it does not declare one inline.
+
+## See also
+
+- `axon://primitives/run` — the binding site for anchors via
+  `constrained_by [...]`.
+- `axon://primitives/shield` — transform-side policy; composes
+  with anchors at the same binding.
+- `axon://primitives/persona` — declares static refusal posture;
+  anchors enforce dynamic predicates.
+- `axon://compliance/legal_basis_catalog` — the catalog
+  `require: legal_basis_present` validates against.
+- `axon://logic/anchor_composition` — when to stack multiple
+  anchors vs. broaden a single one.

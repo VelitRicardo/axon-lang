@@ -1,0 +1,30 @@
+---
+title: "trail"
+description: "Reads the breadcrumb a navigate seeded — a real provenance trail when navigation was deterministic; inherits v2.67.0 F11 on the LLM fallback path."
+---
+
+<Warning>
+  **Partial.** The runtime delivers this, with a documented gap against what the reference describes. The gap is named in the compiler's own ledger rather than left to be discovered.
+</Warning>
+
+**Since** v2.12.0–v2.15.0 (PIX·MDN program) · **Used inside a declaration**
+
+## Grammar
+
+```text
+trail <navigate-binding>
+```
+
+`trail` reads the breadcrumb a prior `navigate` seeded — the
+provenance record of the walk.
+
+## Honest scope (v2.67.0)
+
+The breadcrumb is REAL when navigation ran a deterministic engine.
+⚠️ It **inherits F11**: a trail harvested from the LLM fallback is a
+fabricated audit. A trail is only as trustworthy as the walk that
+seeded it.
+
+## See also
+
+- `axon://primitives/navigate` — the seeding verb + the F11 warning.

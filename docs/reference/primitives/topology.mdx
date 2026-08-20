@@ -1,0 +1,45 @@
+---
+title: "topology"
+description: "Declares a process-graph topology whose liveness is checked by a genuine DFS cycle detector (Honda liveness — a narrow sufficient condition, honestly scoped)."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v1.1.0 · **Top-level declaration**
+
+## Grammar
+
+```text
+topology <Name> {
+    nodes: [ <declared-name>, ... ]
+    edges: [ <source> -> <target> : <SessionRef>, ... ]
+}
+```
+
+`topology` declares the **process graph**: which declared entities talk
+to which, over which session protocols.
+
+## What the runtime actually does
+
+The checker (`type_checker::check_topology_liveness`) runs a **genuine
+DFS gray/black cycle detector** and emits a Honda-liveness violation
+for a cycle in which every edge is receive-first. This is a **narrow
+sufficient condition** — honestly scoped: it refutes a class of
+deadlocks, it does not prove liveness in general.
+
+Node names must resolve to declared entities of valid kinds; edges must
+name declared nodes; self-loops are refused; `session_ref`s must be
+declared sessions.
+
+## Proof
+
+`type_checker::check_topology` + `check_topology_liveness` (the v2.67.0
+audit verdict: Real — "a genuine DFS cycle detector, narrow sufficient
+condition, but real").
+
+## See also
+
+- `axon://primitives/session` — the per-edge protocol.
+- `axon://primitives/socket` — the transport a session rides.

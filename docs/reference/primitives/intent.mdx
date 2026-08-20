@@ -1,0 +1,115 @@
+---
+title: "intent"
+description: "A declarative target outcome — what the flow is trying to achieve, separately from how it gets there."
+---
+
+<Note>
+  **Unaudited.** Advertised on trust: no gate has verified that the runtime does what this page says. Treat it as documentation, not as a guarantee.
+</Note>
+
+**Since** v0.1.0 · **Top-level declaration**
+
+## Grammar
+
+```text
+intent <Name> {
+    given: <Identifier>         # optional — typed input bound to this intent
+    ask: "<prompt>"             # optional — natural-language target
+    output: <TypeExpr>          # optional — declared output shape
+    confidence_floor: <0.0..1.0># optional — minimum confidence to accept
+}
+```
+
+`intent` declares **what** an agent is meant to achieve,
+independent of **how** the achievement is decomposed into steps.
+Where `flow` is the procedural composition (the recipe), `intent`
+is the **declarative target** (the dish). Both can coexist —
+adopters write a free-form `intent` alongside a `flow` so the
+audit trail records the operator's stated objective beside the
+mechanical decomposition.
+
+`intent` is the cleanest place to express "I want X" without
+yet committing to the steps. The runtime stores the intent
+verbatim in the audit chain; reviewers can later audit whether
+the flow's actual output addressed the declared intent.
+
+## Surface
+
+`intent` is a **top-level declaration**. It is *not* nested
+inside a flow or step.
+
+```axon
+intent SummarizeContract {
+    given: doc
+    ask: "Produce a one-page executive summary of the contract."
+    output: ContractSummary
+    confidence_floor: 0.8
+}
+```
+
+## Fields
+
+### `given:` (optional)
+
+A **single identifier** naming the typed input the intent
+operates over. Typically a flow parameter name. If the flow
+that addresses this intent declares `(doc: Contract)`, the
+intent's `given: doc` records the binding.
+
+### `ask:` (optional)
+
+A **string literal** containing the natural-language objective.
+This is what the auditor reads to know "what was the operator
+trying to do?". Unlike a step's `ask:` (which the model
+consumes as a prompt), the intent's `ask:` is **declarative**
+— it states the target outcome, not the instruction to produce
+it.
+
+### `output:` (optional)
+
+The **declared output type** the intent targets. Accepts the
+full type-expression shape (bare types, generics, optionals,
+nested generics like `FlowEnvelope<List<Risk>>`).
+
+### `confidence_floor:` (optional)
+
+A **numeric literal in `[0.0, 1.0]`**. The minimum confidence
+threshold the intent demands. If the flow's actual output drops
+below this floor, the runtime emits an
+`intent_confidence_violation` audit row regardless of whether
+the binding flow's anchors triggered.
+
+## Runtime behaviour
+
+`intent` does **not** by itself execute anything. It is a
+declarative artifact recorded in the audit chain. The lowering
+creates an `IntentNode` IR entry; the runtime cross-references
+it with the flow's execution trace and emits a
+`session:intent_review` row at completion that pairs
+`(intent.ask, flow.output, intent.confidence_floor,
+flow.measured_confidence)`.
+
+This pairing is what lets a downstream auditor answer "did the
+agent address the stated intent?" without having to reverse-
+engineer it from the step bodies.
+
+## What this primitive is NOT
+
+- **Not a flow.** A flow is the procedural composition that
+  *addresses* an intent; the intent declares the target.
+- **Not a step.** A step is an operation; an intent is a stated
+  outcome. The two operate at different layers.
+- **Not an anchor.** Anchors are typed predicates evaluated at
+  emission time. An intent is a declarative artifact reviewed
+  after the fact.
+- **Not required.** A flow can run without a declared intent.
+  Adopters declare one when the audit trail's "what was the
+  goal?" answer matters.
+
+## See also
+
+- `axon://primitives/flow` — the procedural counterpart that
+  *addresses* an intent.
+- `axon://primitives/anchor` — runtime-enforced predicates;
+  complements the declarative intent.
+- `axon://primitives/step` — the unit of cognition inside a flow.

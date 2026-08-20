@@ -1,0 +1,125 @@
+---
+title: "lease"
+description: "Time-bounded resource acquisition with typed expiry, renewal, and revocation semantics."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v1.2.0 · **Top-level declaration**
+
+## Grammar
+
+```text
+lease <Name> {
+    resource: <ResourceRef>                          # required — leased resource
+    duration: <duration>                              # required — lease window
+    acquire: <on_start|on_demand>                     # optional — acquisition timing
+    on_expire: <anchor_breach|release|extend>         # optional — expiry policy
+}
+```
+
+`lease` declares **a time-bounded acquisition** of a resource.
+Where a `resource` is the typed handle, a `lease` is the
+**typed acquisition contract**: when the handle is acquired, how
+long it's held, and what happens when the lease window expires.
+
+Leases are how the linearity discipline of the λ-L-E layer
+meets wall-clock time. A linear resource handle can be
+acquired-released within one flow; a leased resource carries
+an explicit duration the runtime enforces against the system
+clock.
+
+## Surface
+
+`lease` is a **top-level declaration**. It is *not* nested
+inside a resource or flow.
+
+```text
+lease BillingLease {
+    resource:  BillingDatabase
+    duration:  1h
+    acquire:   on_start
+    on_expire: release
+}
+```
+
+## Fields
+
+### `resource:` (required)
+
+A **single identifier** referencing a declared `resource`. The
+lease targets exactly one resource; multi-resource acquisitions
+require multiple leases (typically a top-level `transact` block
+wraps them as an atomic group).
+
+### `duration:` (required)
+
+A **duration literal** (`30s`, `1h`, `24h`, `7d`) OR a string
+literal containing one. The wall-clock window the lease holds
+the resource handle.
+
+### `acquire:` (optional)
+
+A **single identifier** from the closed acquisition catalogue:
+
+| Value | Behaviour |
+|---|---|
+| `on_start` | Acquire when the lease declaration is mounted (deploy time). **Default.** |
+| `on_demand` | Acquire on first use; release on expiry or last release. |
+
+The parser rejects unknown values.
+
+### `on_expire:` (optional)
+
+A **single identifier** from the closed expiry catalogue:
+
+| Value | Behaviour |
+|---|---|
+| `anchor_breach` | Fire the bound anchor's `on_violation:` policy. **Default.** |
+| `release` | Release the handle cleanly + emit audit row. |
+| `extend` | Auto-renew for the same duration. |
+
+The parser rejects unknown values. **Use `extend` deliberately**
+— auto-renewal can mask leak bugs; the audit chain records
+every renewal so the pattern is reviewable.
+
+## Runtime behaviour
+
+`lease` lowers to a `LeaseDefinition` IR node. At deploy time
+(for `acquire: on_start`) or first reference (for `acquire:
+on_demand`), the runtime acquires the target resource's handle
+and starts a wall-clock timer. On expiry, the `on_expire:`
+policy runs.
+
+Audit rows: `lease:<name>:acquired` on acquisition,
+`lease:<name>:expired` on expiry, `lease:<name>:released` on
+explicit release, `lease:<name>:extended` on auto-renewal.
+
+Cross-tenancy: leases are tenant-scoped automatically. A lease
+declared at tenant T cannot be acquired by tenant T'.
+
+## What this primitive is NOT
+
+- **Not a `resource`.** A resource is the handle's
+  *declaration*; a lease is its *acquisition contract*.
+- **Not a session.** A `session` is the v2.3.0 dialogue protocol
+  with duality + linearity; a lease is wall-clock time-bounded
+  resource access with no protocol shape.
+- **Not a transaction.** For atomic multi-resource acquisitions
+  with rollback semantics, use `transact` (a flow-body block).
+- **Not infinite-extension-safe.** `on_expire: extend` is
+  bounded by the deployment's lease-extension policy; the
+  audit chain catches runaway renewals — but the language
+  doesn't cap extensions itself.
+
+## See also
+
+- `axon://primitives/resource` — what the lease targets.
+- `axon://primitives/anchor` — `on_expire: anchor_breach`
+  fires the bound anchor.
+- `axon://primitives/transact` — atomic multi-resource
+  acquisitions.
+- `axon://primitives/manifest` — the deployment unit leases
+  live within.

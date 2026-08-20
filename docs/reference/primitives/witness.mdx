@@ -1,0 +1,30 @@
+---
+title: "witness"
+description: "The advantage-witness declaration (v2.23.0) — INTERNAL: benchmark and advantage claims wait for the Sandbox (v2.54.0), so this is deliberately NOT part of the advertised surface."
+---
+
+**Since** v2.23.0 · **Top-level declaration**
+
+## Grammar
+
+```text
+witness <Name> {
+    # advantage-witness declaration (v2.23.0) — INTERNAL surface
+}
+```
+
+`witness` declares an **advantage witness** (v2.23.0) — a structured record
+of a measured advantage claim.
+
+## Deliberately NOT advertised
+
+This primitive is `is_advertised: false` in the registry, by doctrine:
+**benchmark and advantage claims wait for the Sandbox** (v2.54.0 the design decision).
+Until adopters can reproduce a claim in the Sandbox, the language does
+not advertise the primitive that would carry it. The grammar exists and
+is gated (`witness_grammar.rs` / `witness_metric_parity.rs`);
+the public promise is deferred on purpose.
+
+## See also
+
+- `axon://primitives/observable` — measurement of a different kind.

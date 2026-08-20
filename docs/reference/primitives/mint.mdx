@@ -1,0 +1,56 @@
+---
+title: "mint"
+description: "The credential-minting flow verb — turns a declared `credential` contract into a real TTL-bounded bearer at runtime, fail-closed and attenuated."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v2.46.0 · **Used inside a declaration**
+
+## Grammar
+
+```text
+mint <CredentialName> as <binding>    # flow-body verb (the emit/publish shape)
+# <CredentialName> must resolve to a declared `credential` (axon-T895);
+# <binding> receives the raw bearer string (shown once — it must never
+# flow into a `persist` payload, axon-T896).
+```
+
+`mint` is the **flow-step verb** that turns a declared
+[`credential`](axon://primitives/credential) contract into a real
+bearer at runtime:
+
+```text
+mint WidgetSession as tok
+```
+
+The runtime resolves the contract, enforces the attenuation law
+(`grants ⊆ capabilities(minter)` — the doctrine
+`axon://logic/authority_only_attenuates`, checked at the dispatch
+handler AND inside the minter port), mints through the
+`CredentialMinter` port, and binds the raw token under `tok` for the
+rest of the flow (`${tok}` interpolates like any binding).
+
+## Fail-closed, twice
+
+- **No minter port configured** ⇒ a reached `mint` is a loud
+  `missing dependency: credential_minter` error. There is no default
+  production minter in OSS — the enterprise executor injects its
+  PASETO minter; single-process adopters wire the in-memory
+  reference. Never a silent stub.
+- **Amplification refused** ⇒ if the request's bearer does not hold
+  every declared grant, the mint errors naming the missing grants
+  and the law.
+
+## The token never rides the wire audit
+
+`StepComplete` / the envelope's step audit carry a SUMMARY
+(`credential 'WidgetSession' minted (ttl 900s, grants
+["chat.invoke"])`) — never the bearer. The flow decides what to
+return; the type checker forbids persisting the binding
+(`axon-T896`).
+
+See also: `credential` (the contract), `emit`/`publish` (the other
+flow-body effect verbs this mirrors).

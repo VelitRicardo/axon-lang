@@ -1,0 +1,111 @@
+---
+title: "json"
+description: "The open, semi-structured value type — a totally-navigable JSON document, refinable by an optional `Json<T>` shape lens, total and honest always."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v2.26.0 · **Used inside a declaration**
+
+## Grammar
+
+```text
+Json                          # open: any JSON document, totally navigable
+Json<T>                       # refined: the compiler VIEWS it as the struct T
+
+# as a flow parameter / return / type field:
+flow Ingest(payload: Json) -> Unit { ... }
+flow Score(profile: Json<UserEvent>) -> Unit { ... }
+
+# as an axonstore column (physical type stays jsonb):
+axonstore Events {
+    schema {
+        payload: Json              # open
+        profile: Json<UserEvent>   # refined by a lens
+    }
+}
+
+# navigation (the SAME v2.26.0 operators), TOTAL:
+doc.address.city                  # Json (null if absent — never a panic)
+doc.items[0].price                # index access
+doc.age.as_int                    # honest coercion → null on a type mismatch
+doc.tags.contains("vip")          # builtins lift to Json (arrays + object keys)
+```
+
+# `Json` — open data, still total + honest
+
+`Json` is AXON's **semi-structured value type**: the recursive sum
+`null | bool | number | string | [Json] | {string → Json}`. It is the
+type for the messiest data AXON touches — a raw webhook, an evolving API
+payload, an LLM's structured output — the data whose shape you do *not*
+fully control.
+
+Every other stack meets this data by abandoning its guarantees: Postgres
+`jsonb` path access returns `NULL` silently for a wrong or absent path;
+MongoDB is schemaless; ORMs hand you an opaque blob you parse imperatively
+(untyped, partial, panic-prone); a rigid typed language cannot model an
+open document at all. `Json` takes the position nobody else occupies —
+**total navigation** + an **optional honest lens** + **replayable
+determinism** — and it does so with the *same* projection operators the
+rigid types already use (v2.26.0 `.field` / `[i]`). One projection
+algebra, two carriers.
+
+## Total navigation (the Logic pillar)
+
+Field and index access over a `Json` value is its **eliminator**, and it
+is **total**: an absent field, a wrong-typed base, a null base, an
+out-of-range or negative index **all resolve to a typed `null`** —
+null-as-a-value — never a panic, never divergence. A chained
+`doc.a.b.c` keeps walking through a missing hop (each stays null); a
+missing field is honestly **falsy** in a guard, so `if doc.tier ==
+"gold"` is decidably false rather than an error. This brings semi-
+structured data *under* the v2.26.0 total-expression law
+([`axon://logic/total_expressions`](axon://logic/total_expressions)),
+it does not poke a hole in it.
+
+## Honest accessors (the coercion boundary)
+
+`.as_int` / `.as_float` / `.as_string` / `.as_bool` are the typed read of
+a `Json` leaf. They are **honest**: only a value that genuinely is the
+asked-for JSON type succeeds (an integer widens to a float — the one
+non-mismatch); everything else — a number read `.as_string`, a string
+read `.as_int`, a null, a composite — **fail-closes to `null`**. The
+accessor is where the program *declares* the type it expects; the runtime
+keeps the claim honest rather than coercing a lie. `.is_null` reports a
+missing/null value; `.length` / `.count` / `.contains` / `.is_empty` lift
+to JSON arrays (elements) and objects (keys).
+
+## The shape lens `Json<T>` (the Philosophy pillar)
+
+A document is often *expected* to have a shape even when the type system
+cannot guarantee it. `Json<T>` records that expectation: `T` is a declared
+struct `type` whose fields are the shape you anticipate. The compiler then
+**checks navigations against `T`** — `profile.age` resolves to `Int` (so
+`profile.age >= 18` is a well-typed comparison), and `profile.notafield`
+is **`axon-T842`** (a likely typo). A `T` that is not a declared struct is
+**`axon-T840`**; a `<T>` shape on a non-`Json` column is **`axon-T841`**.
+
+Crucially, the lens is a **checkable EXPECTATION, never an enforced
+runtime certainty**. A declared-but-absent field still degrades to `null`
+at runtime — the compiler may help you, but it never lies on the runtime's
+behalf, and the runtime never crashes to honor a static claim. This is the
+doctrine [`axon://logic/open_data_is_total`](axon://logic/open_data_is_total).
+
+## In the store
+
+A `Json` (or `Json<T>`) `axonstore` column is physically `jsonb` on the
+Postgres backend: the write binds the document and casts it to the native
+binary type, the read decodes it to a live nested value, and a flow
+navigates it with `${alias.col.field}` — the industry-standard efficient
+store *with* the language's total, honest, replayable guarantees.
+
+## What `Json` is not
+
+`Json` ships **navigation**, not a query language. JSONPath / jq-style
+queries, full JSON-Schema validation, jsonb transform/aggregate operators,
+and cross-document joins are deliberately out of scope — navigation ≠
+query, and a half-built query language would be exactly the kind of
+unbacked promise [`axon://logic/no_unwitnessed_advantage`](axon://logic/no_unwitnessed_advantage)
+forbids. Navigate totally, expect honestly, and say so.

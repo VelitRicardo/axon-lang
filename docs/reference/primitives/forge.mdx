@@ -1,0 +1,137 @@
+---
+title: "forge"
+description: "Directed Creative Synthesis — a flow-body block that runs the Poincaré-Hadamard four-phase creative process under a measured, fail-closed novelty guarantee (NCD), so an LLM can genuinely CREATE, not just interpolate."
+---
+
+<Warning>
+  **Partial.** The runtime delivers this, with a documented gap against what the reference describes. The gap is named in the compiler's own ledger rather than left to be discovered.
+</Warning>
+
+**Since** v1.12.0 (stub); v2.41.0 (v2.41.0, real implementation) · **Used inside a declaration**
+
+## Grammar
+
+```text
+forge <Name>(seed: "<text>") -> <Type> {
+    mode:        combinatorial | exploratory | transformational   # optional (default exploratory)
+    novelty:     <0.0..1.0>                                        # optional (default 0.5)
+    depth:       <int ≥ 1>                                         # optional (default 1) — incubation iterations
+    branches:    <int ≥ 1>                                         # optional (default 1) — illumination best-of-N
+    constraints: <AnchorRef>                                       # optional — verification anchor + coherence floor
+}
+```
+
+`forge` is **Directed Creative Synthesis** — the primitive that lets an LLM
+*create*, not merely interpolate. It compiles to structured IR metadata that the
+runtime executes as an orchestrated **Poincaré-Hadamard four-phase pipeline**
+(the documented structure of mathematical invention — Poincaré 1908, Hadamard
+1945, Wallas 1926), under a **measured, fail-closed novelty guarantee**: a forge
+returns a value ONLY if it provably clears a novelty floor; a derivative result
+is never passed off as creative.
+
+> **This is not a prompt template.** Novelty is a *measured quantity*, not an
+> assertion, and the pipeline fails closed when it isn't met.
+
+## Surface
+
+`forge` is a **flow-body block** (sibling of `step`), not a top-level
+declaration.
+
+```axon
+anchor GoldenRatio {
+    require: aesthetic_harmony
+    confidence_floor: 0.70
+}
+
+flow CreateVisualConcept(brief: String) -> Visual {
+    forge Artwork(seed: "aurora borealis over ancient ruins") -> Visual {
+        mode:        transformational
+        novelty:     0.85
+        constraints: GoldenRatio
+        depth:       4
+        branches:    7
+    }
+}
+```
+
+## The four phases
+
+| Phase | What it does | Temperature |
+|---|---|---|
+| **1. Preparation** | Expand the seed into its *obvious/conventional* reading `B` — the baseline novelty is measured against. | low (0.3) |
+| **2. Incubation** | `depth` speculative iterations pushing far past the obvious. | τ_eff = τ_base·(0.5 + 0.5·novelty) |
+| **3. Illumination** | `branches` crystallizations (best-of-N); each branch's novelty is **measured** as ν = NCD(B, branch). | τ_base(mode) |
+| **4. Verification** | Select the argmax-utility branch and enforce the novelty floor **fail-closed**. | ~0 |
+
+## Fields
+
+### `mode:` — Boden's creativity taxonomy
+
+A closed catalog (`axon-T868`) from Margaret Boden's *The Creative Mind* (1990),
+each mapping to a sampling profile `(τ_base, freedom, rule_flexibility)`:
+
+| Mode | τ_base | freedom | rule_flex | Character |
+|---|---|---|---|---|
+| `combinatorial` | 0.9 | 0.8 | 0.3 | novel recombination of known ideas |
+| `exploratory` (default) | 0.7 | 0.6 | 0.5 | structured navigation of a possibility space |
+| `transformational` | 1.2 | 1.0 | 0.9 | rule-breaking synthesis, new paradigms |
+
+### `novelty:` — the measured floor
+
+A value in `[0.0, 1.0]` (`axon-T869`). It (a) blends the incubation temperature
+(`τ_eff = τ_base·(0.5 + 0.5·novelty)`) and (b) sets the fail-closed novelty floor
+the final output must clear.
+
+**How novelty is measured (honest mathematics).** Kolmogorov complexity `K(x)`
+is *uncomputable*, so novelty cannot be computed exactly. `forge` uses the
+**Normalized Compression Distance** — `NCD(x,y) = [C(xy) − min(C(x),C(y))] /
+max(C(x),C(y))` with a real compressor `C` — the standard *computable*
+approximation of the Normalized Information Distance, a universal metric
+grounded in Kolmogorov complexity (Li, Chen, Li, Ma, Vitányi, IEEE TIT 2004).
+Novelty ν(O) = NCD(baseline, O): "how much of the output is NOT already implied
+by the obvious reading of the seed." Genuine creation ⇔ the output does not
+compress away given the baseline ⇔ ν ≥ floor.
+
+### `depth:` / `branches:`
+
+Incubation iterations and illumination branches, each `≥ 1` (`axon-T870`).
+
+### `constraints:` — the verification anchor
+
+An optional reference to a declared `anchor` carrying a `confidence_floor`
+(`axon-T871`). The verification phase uses it as the coherence gate.
+
+## The fail-closed guarantee
+
+A `forge` returns its typed value **only if** the winning synthesis clears the
+measured novelty floor. Otherwise it fails with a structured error — never a
+silent, derivative, or empty result:
+
+- `forge.novelty_floor_breached` — the best branch was too derivative of the
+  obvious reading of the seed (ν < floor).
+- `forge.no_feasible_branch` — no branch satisfied the `constraints:` anchor.
+
+This is the load-bearing property: **creativity you can verify, or a loud
+failure.**
+
+## Honest limits
+
+- `forge` synthesizes a typed *concept/specification*, not a rendered
+  image/audio (v1). "Novelty" is novelty-relative-to-the-obvious-baseline — a
+  computable proxy, not a claim of absolute unprecedentedness.
+- The runtime hard gate in v1 is the measured **novelty** floor; per-branch live
+  anchor-confidence judging is a follow-up (the anchor is statically validated).
+
+## What this primitive is NOT
+
+- **Not a prompt with a high temperature.** The novelty floor is measured and
+  enforced; a temperature knob asserts nothing and fails open.
+- **Not a `step`.** A step is one cognitive operation; `forge` is a
+  multi-phase, verified creative pipeline.
+- **Not a top-level declaration.** It lives inside a flow body.
+
+## See also
+
+- `axon://primitives/anchor` — the `constraints:` verification predicate.
+- `axon://primitives/step` — single-operation counterpart.
+- `axon://primitives/flow` — the parent of every forge block.

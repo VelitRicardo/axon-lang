@@ -1,0 +1,168 @@
+---
+title: "immune"
+description: "Continuous-monitoring agent that learns a baseline + emits epistemic-level signals on anomalies."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v1.14.0 · **Top-level declaration**
+
+## Grammar
+
+```text
+immune <Name> {
+    watch: [<Observable1>, <Observable2>, ...]    # required — observation sources
+    sensitivity: <0.0..1.0>                        # optional — anomaly threshold
+    baseline: <learned|fixed|<ident>>              # optional — baseline strategy
+    window: <integer>                              # optional — sliding-window size (default 100)
+    scope: <tenant|flow|global>                    # required — isolation scope
+    tau: <duration>                                # optional — temporal-decay timescale
+    decay: <exponential|linear|none>               # optional — decay shape
+}
+```
+
+`immune` declares **a continuous-monitoring agent** that
+learns a baseline of normal behaviour and emits
+epistemic-level signals when observations deviate from it.
+Together with `reflex` (typed automatic responses) and `heal`
+(supervised recovery routines), it forms the v1.14.0 λ-L-E
+**cognitive immune system** — the production-hardening layer
+that detects + responds to abnormal patterns at runtime.
+
+Where `observe` declares one-shot observability surfaces and
+`reconcile` declares typed drift correction, `immune`
+declares **continuous anomaly detection** — a process that
+runs forever, builds a model of normalcy from past
+observations, and fires epistemic signals
+(`believe`/`speculate`/`doubt`/`know`) when current
+observations don't fit.
+
+## Surface
+
+`immune` is a **top-level declaration**. It is *not* nested
+inside another primitive. Common composition: `immune →
+reflex → heal` chain, with the immune emitting signals that
+the reflex / heal consume.
+
+```axon
+immune ClinicalVigil {
+    watch:       [ClinicalHealth]
+    sensitivity: 0.90
+    baseline:    learned
+    window:      800
+    scope:       tenant
+    tau:         300s
+    decay:       exponential
+}
+```
+
+## Fields
+
+### `watch:` (required)
+
+A **bracketed list of identifiers** — the observation sources
+the immune monitors. Each name typically resolves to a
+declared `observe` or `ensemble`. Multiple watches stack;
+the immune correlates across the full set.
+
+### `sensitivity:` (optional)
+
+A **numeric literal in `[0.0, 1.0]`** — the anomaly-detection
+threshold. Higher → more sensitive (more false positives,
+fewer false negatives). Production starting point: `0.85`–
+`0.92` for clinical / financial; `0.75`–`0.85` for general
+operational monitoring.
+
+### `baseline:` (optional)
+
+A **single identifier** declaring the baseline strategy:
+
+| Value | Strategy |
+|---|---|
+| `learned` | Build the baseline online from the observation history. **Default.** |
+| `fixed` | Use a pre-trained baseline from the runtime's model registry. |
+| `<ident>` | Reference a declared model slug (open catalogue). |
+
+### `window:` (optional, default `100`)
+
+A **non-negative integer literal** — the sliding-window size
+for the learned baseline. Larger windows give more stable
+baselines but slower adaptation; smaller windows adapt
+quickly but are noisier.
+
+### `scope:` (required)
+
+A **single identifier** from the **closed isolation
+catalogue**:
+
+| Value | Isolation |
+|---|---|
+| `tenant` | Per-tenant baseline + signals. Multi-tenant isolation. |
+| `flow` | Per-flow scope (rare; typically for adversarial-flow detection). |
+| `global` | Shared baseline across the deployment. Use sparingly. |
+
+The parser rejects unknown values. **For multi-tenant
+production**, `scope: tenant` is mandatory — global
+baselines leak signal across tenant boundaries.
+
+### `tau:` (optional)
+
+A **duration literal** (`60s`, `5m`, `1h`). The temporal-
+decay timescale — observations older than `tau` are
+exponentially down-weighted (or linearly, per `decay:`).
+
+### `decay:` (optional, default `exponential`)
+
+A **single identifier** from the closed decay catalogue:
+
+| Value | Decay shape |
+|---|---|
+| `exponential` | `e^(-t/tau)`. **Default.** |
+| `linear` | `1 - t/tau`. |
+| `none` | No decay — every observation counted equally. |
+
+## Runtime behaviour
+
+`immune` lowers to an `ImmuneDefinition` IR node. The v1.14.0
+supervisor mounts the immune as a long-running process:
+
+1. Subscribe to every `watch:` source.
+2. Per-arrival, update the sliding-window state.
+3. Score the current observation against the learned baseline.
+4. Emit an **epistemic-level signal** per the score:
+   - score > sensitivity + headroom → `know` (clear anomaly).
+   - score > sensitivity → `believe` (likely anomaly).
+   - score > sensitivity * 0.7 → `speculate` (possible anomaly).
+   - score > sensitivity * 0.4 → `doubt` (faint signal).
+5. Audit row `immune:<name>:<level>:<obs_id>` records the
+   signal + per-watch contributions.
+
+The signals are CONSUMED by bound `reflex` + `heal`
+declarations — see those primitives for the response side.
+
+## What this primitive is NOT
+
+- **Not an `observe`.** Observe is a one-shot observability
+  surface (sources + quorum + timeout); immune is the
+  continuous anomaly-detection process.
+- **Not a `shield`.** Shield runs per-emission scans with
+  on-breach policies; immune runs continuously over
+  observations and emits epistemic signals (no transform).
+- **Not a `reconcile`.** Reconcile applies bounded
+  corrections on drift; immune detects + signals but does
+  not act. The action lives in bound `reflex` / `heal`.
+- **Not free.** Sliding-window models + per-arrival scoring
+  add measurable overhead. The `window:` size + `tau:`
+  decay shape both affect cost.
+
+## See also
+
+- `axon://primitives/reflex` — automatic-response counterpart.
+- `axon://primitives/heal` — supervised-recovery counterpart.
+- `axon://primitives/observe` — what `watch:` references.
+- `axon://primitives/ensemble` — what `watch:` references for
+  multi-source consensus.
+- `axon://compliance/hipaa` — example of immune-on-PHI for
+  exfiltration detection.

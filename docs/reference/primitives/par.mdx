@@ -1,0 +1,38 @@
+---
+title: "par"
+description: "Concurrent fan-out — executes its branches in parallel (a real `join_all`, v2.15.0) and joins their results; branch tool calls ride the v2.69.0 channel semaphore."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** pre-v2.15.0; real fan-out v2.15.0 · **Used inside a declaration**
+
+## Grammar
+
+```text
+par {
+    <branch-steps>
+}
+```
+
+`par` is **concurrent fan-out**: its branches execute in parallel and
+their results join.
+
+## What the runtime actually does (v2.15.0)
+
+A real `futures::join_all` over the lowered branches
+(`parallel::run_par`) — not sequential execution wearing a concurrent
+keyword. Branch tool calls ride the v2.69.0 channel semaphore, so a
+`resource { capacity: N }` bound holds ACROSS a fan-out.
+
+## Honest limits
+
+Static branches only: `par over <collection>` (dynamic fan-out) does
+not exist in the grammar today, which is also why `par` needs no
+concurrency backstop of its own — the author writes each branch.
+
+## See also
+
+- `axon://primitives/tool` — calls inside branches stay governed.

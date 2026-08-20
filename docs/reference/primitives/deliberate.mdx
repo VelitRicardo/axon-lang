@@ -1,0 +1,32 @@
+---
+title: "deliberate"
+description: "Budget-bounded deliberation — FAILS CLOSED (axon-T939, v2.67.0): refused at check time rather than silently discarded; no budget was ever controlled by the old placeholder."
+---
+
+<Warning>
+  **Fails closed.** This refuses — at compile time or at dispatch — rather than doing something approximate. The refusal is the behaviour.
+</Warning>
+
+**Since** pre-v2.67.0 (introduction unrecorded) · **Used inside a declaration**
+
+## Grammar
+
+```text
+deliberate { <body> }   # REFUSED at check time (axon-T939)
+```
+
+`deliberate` was sold as budget-bounded deliberation. **It fails
+closed** (v2.67.0): the checker refuses it with `axon-T939`.
+
+## Why refusal is the honest state
+
+The old placeholder **discarded the body at parse time** — no budget
+was ever controlled, and "completing" the block was a lie the adopter
+could not detect. v2.67.0's posture: an adopter told loudly is safe; an
+adopter fooled silently is not. `FailsClosed` is an acceptable state to
+advertise from — the primitive returns when a real deliberation runtime
+exists.
+
+## See also
+
+- `axon://primitives/budget` — the REAL spend ceiling that exists today.

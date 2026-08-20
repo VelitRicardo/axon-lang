@@ -1,0 +1,160 @@
+---
+title: "agent"
+description: "An orchestrated cognitive entity — composes personas, tools, contexts under a coordination strategy."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v1.12.0 · **Top-level declaration**
+
+## Grammar
+
+```text
+agent <Name> {
+    goal: "<string>"                            # optional — declarative target
+    tools: [<Tool1>, <Tool2>, ...]              # optional — bound tool catalogue
+    memory: <MemoryRef>                          # optional — bound memory store
+    strategy: <react|plan_and_execute|reflexion|custom>  # optional — coordination strategy
+    on_stuck: <escalate|forge|hibernate|retry>           # optional — stall policy
+    shield: <ShieldRef>                          # optional — bound defence layer
+    max_iterations: <integer>                    # optional — execution loop cap
+    max_tokens: <integer>                        # optional — total token budget
+    max_time: <duration>                         # optional — wall-clock budget
+    max_cost: <number>                           # optional — monetary cap
+}
+```
+
+`agent` declares **an orchestrated cognitive entity** — the
+unit of agency a v1.12.0+ axon program emits. Where `persona`
+declares identity and `flow` declares a typed sequence, `agent`
+binds them under a **coordination strategy** (ReAct, plan-
+and-execute, reflexion, custom) and gives the runtime explicit
+budgets (iterations, tokens, time, cost) + stall policies.
+
+A flow runs once per `run`. An agent runs continuously,
+iterating under its strategy until the goal is met or a budget
+is hit. This is the boundary between "a typed cognitive
+operation" and "an autonomous loop".
+
+## Surface
+
+`agent` is a **top-level declaration**. It is *not* nested
+inside a flow.
+
+```text
+agent ResearchAssistant {
+    goal: "Answer the user's question, retrieving evidence from the corpus."
+    tools: [WebSearch, CorpusQuery]
+    memory: ClientNotes
+    strategy: react
+    on_stuck: retry
+    shield: HallucinationShield
+    max_iterations: 8
+    max_tokens: 32000
+    max_time: 5m
+    max_cost: 1.50
+}
+```
+
+## Fields
+
+### `goal:` (optional)
+
+A **string literal** declaring the agent's target outcome.
+Surfaces verbatim in the audit chain and is injected into the
+strategy's planner step. The goal is the agent's `intent`
+analogue — what it's trying to accomplish.
+
+### `tools:` (optional)
+
+A **bracketed list of identifiers** — the closed catalogue of
+tools this agent may invoke. Tools declared elsewhere in the
+module but not listed here are NOT accessible to the agent (a
+strict-tool-mode discipline by construction).
+
+### `memory:` (optional)
+
+A **single identifier** referencing a declared `memory` store.
+The agent reads + writes through this store across iterations.
+
+### `strategy:` (optional)
+
+A **single identifier** from the closed catalogue
+(`axon-frontend::type_checker::VALID_AGENT_STRATEGIES`):
+
+| Value | Coordination model |
+|---|---|
+| `react` | Thought → Action → Observation loop. The default. |
+| `plan_and_execute` | Up-front plan + sequential execution. |
+| `reflexion` | Plan + execute + self-critique + revise. |
+| `custom` | Adopter-provided strategy via a `psyche:` binding. |
+
+### `on_stuck:` (optional)
+
+A **single identifier** from the closed catalogue
+(`axon-frontend::type_checker::VALID_ON_STUCK_POLICIES`):
+
+| Value | Behaviour |
+|---|---|
+| `retry` | Reset the inner loop with the same context. |
+| `escalate` | Hand off to a human reviewer (queue depends on deployment). |
+| `forge` | Construct a new candidate from sub-step outputs. |
+| `hibernate` | Save state via `hibernate` + exit. Resumable later. |
+
+### `shield:` (optional)
+
+A **single identifier** referencing a declared `shield`. Every
+input + output the agent emits passes through the shield's
+scan list before commitment.
+
+### `max_iterations:` / `max_tokens:` / `max_time:` / `max_cost:` (optional)
+
+Hard budgets. Reaching any of them triggers `on_stuck`. The
+runtime tracks all four independently; the first to trip wins.
+
+- `max_iterations` — non-negative integer.
+- `max_tokens` — non-negative integer (sum across the loop).
+- `max_time` — duration literal (`30s`, `5m`, `1h`).
+- `max_cost` — number (USD by default; runtime-configurable
+  currency).
+
+## Runtime behaviour
+
+The v1.11.0 daemon supervisor mounts each declared agent as a
+supervised process. Each iteration emits audit rows tagged
+`agent:<name>:<phase>` where phase ∈ `{plan, act, observe,
+reflect}`. Budget breach emits `agent:<name>:budget_exhausted`
+with the specific budget identifier.
+
+For multi-agent deployments, the `ensemble` primitive composes
+multiple `agent`s under a consensus protocol; each agent inside
+an ensemble keeps its own budgets and audit lane.
+
+## What this primitive is NOT
+
+- **Not a flow.** A flow is a typed sequence executed once per
+  `run`. An agent is an iterative loop with strategy +
+  budgets. They compose: an agent's `react` strategy invokes
+  flows as actions.
+- **Not a persona.** A persona is identity; an agent is the
+  *deployed* cognitive entity that may *enact* a persona via
+  step-level `use <Persona>` bindings.
+- **Not autonomous-without-shield.** Production agents must
+  carry a `shield:` binding — uncontrolled tool use is a
+  shield violation by policy. The compiler emits an
+  `axon-W008` warning for shield-less agents.
+- **Not a daemon.** A daemon is a long-lived listener that
+  reacts to events; an agent is a goal-directed loop. The
+  two compose: daemons spawn agents on event arrival.
+
+## See also
+
+- `axon://primitives/persona` — identity the agent may bind.
+- `axon://primitives/flow` — typed sequences the agent
+  invokes as actions.
+- `axon://primitives/tool` — the agent's tool surface.
+- `axon://primitives/shield` — mandatory defence layer in
+  production.
+- `axon://primitives/ensemble` — multi-agent coordination.

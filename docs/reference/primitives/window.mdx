@@ -1,0 +1,162 @@
+---
+title: "window"
+description: "A timezone-aware temporal execution guard — gates a scheduled daemon's ticks to allowed day/hour spans (minus holiday dates) with a skip/warn/defer policy."
+---
+
+<Note>
+  **Unaudited.** Advertised on trust: no gate has verified that the runtime does what this page says. Treat it as documentation, not as a guarantee.
+</Note>
+
+**Since** v2.27.0 · **Top-level declaration**
+
+## Grammar
+
+```text
+window <Name> {
+    timezone:   "<IANA-tz>"                                 # required (e.g. "America/Bogota", "UTC")
+    allow:      [ { days: <Day>..<Day>, hours: <0..23>..<0..23> }, ... ]  # required, ≥1 span
+    exclude:    [ "<YYYY-MM-DD>", ... ]                      # optional — holiday dates
+    on_outside: <skip|warn|defer>                           # optional (default: defer)
+}
+```
+
+`window` declares **a timezone-aware temporal execution guard**.
+Where `shield` guards the *content* of an emission and `anchor`
+guards its *truth*, `window` guards its **timing**: whether a
+scheduled (cron) `daemon` tick is allowed to run *right now*, by
+timezone-aware day/hour spans and an explicit holiday set.
+
+It exists because POSIX cron is **UTC-only and has no notion of a
+business calendar**. "Run the outbound batch every 5 minutes, but
+only during Bogotá business hours, and never on Christmas" is not
+expressible as a cron string — the timezone, the open/closed
+window, and the holidays are three separate concerns cron folds
+into none. `window` makes all three **first-class, type-checked,
+and deterministic**.
+
+## Surface
+
+`window` is a **top-level declaration**. A `daemon` binds it with
+the `window:` field; the supervisor evaluates the window before
+claiming each scheduled tick.
+
+```axon
+flow SendBatch() -> Unit {
+    step S { ask: "send the outbound batch" output: Unit }
+}
+
+window BusinessHours {
+    timezone:   "America/Bogota"
+    allow:      [ { days: Mon..Fri, hours: 9..18 } ]
+    exclude:    [ "2026-12-25", "2026-01-01" ]
+    on_outside: defer
+}
+
+daemon OutboundScheduler {
+    window:   BusinessHours
+    requires: [flow.execute]
+    listen "cron:*/5 * * * *" as tick {
+        run SendBatch()
+    }
+}
+```
+
+## Fields
+
+### `timezone:` (required)
+
+The **IANA timezone** the spans are evaluated in (e.g.
+`"America/Bogota"`, `"Europe/Madrid"`, `"UTC"`). The compiler
+format-checks the name (`axon-T820`); the runtime resolves it
+against the IANA database (`chrono-tz`) — an unknown name fails
+CLOSED (the daemon never fires under a guard it cannot evaluate).
+Daylight-saving transitions are handled by the tz database: a span
+of `9..18` local means 9am–6pm *wall-clock* on each side of a DST
+shift.
+
+### `allow:` (required, ≥1 span)
+
+The **allowed day/hour spans**. A tick is INSIDE the window when
+`now` (in `timezone`) falls in ANY span. Each span is
+`{ days: <Day>..<Day>, hours: <h>..<h> }`:
+
+- `days:` — an **inclusive** weekday range over `Mon..Sun`. The
+  range may **wrap**: `Fri..Mon` covers Fri, Sat, Sun, Mon
+  (`axon-T822` for an unknown weekday).
+- `hours:` — an **inclusive** hour-of-day range, each bound in
+  `0..23` (`axon-T823` if out of range).
+
+An empty `allow:` is `axon-T821` (a window that never opens is a
+mistake, not a "closed forever" declaration).
+
+### `exclude:` (optional) — holidays
+
+A list of **ISO `YYYY-MM-DD` date literals**. A tick whose local
+date (in `timezone`) is in this set is OUTSIDE the window
+regardless of the hour spans — Christmas is closed even at 11am on
+a Tuesday. Each entry must be a **real calendar date**, validated
+at compile time (`axon-T826` for a malformed string, an impossible
+day like `2026-02-30`, or a non-leap `02-29`).
+
+The dates are **literal — part of the verified program**, so the
+decision stays a pure, replayable function of its inputs (the
+`axon://logic/time_is_an_explicit_input` doctrine). Named holiday
+calendars ("US federal holidays") are a deliberately **deferred**
+scope — they are political/non-deterministic; the adopter supplies
+the exact dates.
+
+### `on_outside:` (optional, default `defer`)
+
+The **closed-catalog policy** for a tick that fires outside the
+window (`axon-T824` for any other value):
+
+- **`skip`** — drop the tick (fire-forward, like a cron minute
+  with no work).
+- **`warn`** — fire anyway, but emit a `window:outside` audit
+  warning so the breach is observable.
+- **`defer`** — record the tick and fire it ONCE when the window
+  next opens. Multiple ticks deferred across a closed period
+  **coalesce** into a single run (no stampede at the opening). This
+  is the safe default: a daily 8am job behind a 9am–6pm window
+  runs at 9am rather than being lost.
+
+## Binding — `daemon { window: <Name> }`
+
+A `daemon` references a window with the `window:` field
+(`axon-T825` if the name is not a declared `window`). Before
+claiming a scheduled tick, the supervisor evaluates the bound
+window in its timezone and applies `on_outside`. A daemon with no
+`window:` fires unguarded — behaviour is identical to a daemon
+declared before windows existed.
+
+## Runtime behaviour
+
+`window` lowers to an `IRWindow` node. The decision —
+`is_in_window(now, window)` — is a **pure, total, DST-correct
+function** of `(now, the window, the IANA tz-db version)`. The
+single-process runtime honors `skip`/`warn` directly; `defer` is a
+coalesced, fire-once-across-replicas ledger in the enterprise
+supervisor. Every deferred or out-of-window run records the policy,
+the timezone, and the tz-db version in its audit, so the decision
+is **replayable** even across a tz-database upgrade.
+
+## What this primitive is NOT
+
+- **Not a cron schedule.** Cron says *when a tick is generated*;
+  `window` says *whether a generated tick is allowed to run*. They
+  compose: the `daemon`'s `listen "cron:…"` produces ticks, the
+  `window` gates them.
+- **Not a `shield`.** `shield` is a per-emission content transform;
+  `window` is a scheduling guard. A daemon can declare both.
+- **Not a rate limit.** A window is about *calendar time*, not
+  *throughput*. For "at most N per period" use a budget (v2.28.0).
+- **Not a holiday database.** It holds the exact dates you declare;
+  it does not know that the 4th Thursday of November is
+  Thanksgiving.
+
+## See also
+
+- `axon://primitives/daemon` — the scheduled process a window guards.
+- `axon://logic/time_is_an_explicit_input` — the doctrine: a time
+  decision is a pure function of recorded inputs.
+- `axon://primitives/shield` — the content-guard peer.

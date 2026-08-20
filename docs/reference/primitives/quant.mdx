@@ -1,0 +1,181 @@
+---
+title: "quant"
+description: "A flow-body block that lifts a continuous carrier tensor into a finite Hilbert space, evolves it, and yields the expectation of a declared observable (the cognitive↔quantum bridge; OSS simulator capped at n≤10)."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v2.19.0 · **Used inside a declaration**
+
+## Grammar
+
+```text
+# Flow-body block. The attribute header is OPTIONAL and goes in PARENS;
+# the braces hold real flow steps (let / for / yield), like `par`.
+quant(encoding: amplitude,        # `amplitude` (default) | `angle`
+      observable: <ObservableName>, # the Hermitian operator to measure
+      qubits: <n>, depth: <d>,    # all optional
+      bandwidth: <γ>, reupload: <L>, # `reupload: L≥2` interleaves the
+      backend: quant_sim) { #   data encoding L times (v2.23.0)
+    let surrogate = <continuous-carrier>   # bind the carrier (a Tensor)
+    yield surrogate                        # collapse → the ⟨observable⟩ expectation
+}
+
+# Bare form (every attribute defaulted: encoding=amplitude, backend=quant_sim):
+quant { let s = carrier  yield s }
+```
+
+`quant` is AXON's **bridge between sub-symbolic embeddings and the
+algebra of quantum-kernel methods**. Inside a flow, it lifts a
+continuous carrier tensor into a finite-dimensional Hilbert space,
+optionally evolves it under a variational circuit, and **collapses it
+back to classical silicon** by measuring a declared
+[`observable`](axon://primitives/observable) — yielding a single real
+expectation a downstream step can consume.
+
+It is a *cognitive* primitive: the quantum machinery is a means to a
+geometry (the projected-kernel route to a provable convex advantage),
+not an end. The honest claim is **convexity** — a valid quantum kernel
+Gram is PSD, so the downstream classical SVM dual has a global optimum —
+not "tunneling through barriers."
+
+## Charter split (free syntax / paid scale)
+
+The keyword, the static rules, and a **usable CPU reference simulator**
+ship in OSS `axon-lang`. That simulator is **hard-capped at `n ≤ 10`
+qubits** (`axon-E0783` past that). The *efficient* execution substrate —
+the Q32.32 bit-exact arithmetic, the QuIDD decision-diagram compression
+for `n ≫ 10`, per-tenant VRAM control, and locked hardware / QPU-native
+backends — is **Axon Enterprise** only. The standard is unified; the
+scale is the paid privilege.
+
+## Surface
+
+`quant` is a **flow-body block** (nested, like `transact` or `forge`).
+The optional attribute header is in **parentheses**; the braces hold real
+flow steps. This exact program passes `axon check` (0 errors):
+
+```axon
+observable Energy {
+    qubits: 1
+    term: 1.0 * "Z"
+}
+
+flow Classify(embedding: Tensor) -> String {
+    quant(encoding: amplitude, observable: Energy, qubits: 1) {
+        let surrogate = embedding   // bind the continuous carrier
+        yield surrogate             // collapse → ⟨ψ(embedding)| Energy |ψ⟩
+    }
+    return "done"
+}
+```
+
+> **Nota de gramática (la forma que compila):** los atributos van en
+> `quant( … )` (paréntesis), la clave es `encoding` (no `encode`), y las
+> llaves `{ }` contienen pasos de flow (`let` / `for` / `yield`). El
+> `yield` toma una **referencia** (un `let` o un parámetro) — NO usa los
+> brackets unicode `⟨⟩` (no lexean). El carrier debe ser un tipo continuo
+> (`Tensor`), si no salta `axon-E0782`.
+
+## Anatomy
+
+### `encoding:` — the lift (header attribute, in `( )`)
+
+- **`amplitude`** (default) — the carrier becomes the state's amplitude
+  vector (must be unit-norm; the runtime asserts `‖x‖₂ = 1`).
+  `n = ⌈log₂ d⌉` qubits for a length-`d` carrier.
+- **`angle`** — each carrier component drives a rotation angle (one
+  qubit per component). Resists the amplitude form's normalization
+  constraint.
+
+The other header attributes (all optional, order-free, in the parens):
+`observable:`, `qubits:`, `depth:`, `bandwidth:`, `reupload:`, `backend:`.
+
+### `reupload:` — data re-uploading layers (header attribute, v2.23.0)
+
+`reupload: L` interleaves the carrier encoding **L times** through the
+circuit instead of once. `L = 1` (the default when omitted) is plain
+single-shot encoding; `L ≥ 2` is the **only provable escape from the
+amplitude+Pauli quadratic kernel bound** — each re-upload lets the
+learned feature map reach frequencies a single encoding cannot. `L < 1`
+is `axon-E0784`. This is the lever an adopter pulls when the
+single-encoding feature map is too low-frequency to separate their data:
+
+```axon
+flow Reupload(embedding: Tensor) -> String {
+    quant(encoding: angle, reupload: 3, qubits: 2) {
+        let surrogate = embedding
+        yield surrogate
+    }
+    return "done"
+}
+```
+
+### `observable:` — the measurement (header attribute)
+
+Resolves (closed-catalogue, `axon-E0784`) to a declared `observable`
+Pauli-sum. Its width fixes the qubit count `n`.
+
+### `yield <reference>` — the collapse (a step in the body)
+
+`yield <reference>` is a step **inside the `quant` braces**, only legal
+there (`axon-E0787` otherwise). The reference is a `let`-bound name or a
+flow parameter (the carrier being measured) — it reuses the `let`-value
+grammar, so there are **no `⟨⟩` brackets**. It emits the measured
+expectation `⟨ψ|M|ψ⟩` back into the classical flow.
+
+**Una expectativa = un `Float` (feature map).** Cada bloque `quant`
+produce UNA expectativa escalar de UN observable. Para un *projected /
+seed kernel* se ensambla clásico: declarás k observables, hacés `yield`
+de cada uno → `φ(x) = [⟨M₁⟩, …, ⟨Mₖ⟩]`, y `k(x,y) = sim(φ(x), φ(y))`. La
+navegación estructural (p.ej. `signed-EPR`) no se toca; `quant` solo
+puntúa el seed.
+
+## Runtime behaviour
+
+`quant` lowers to a `QuantBlock` IR node. At execution:
+
+1. **Encode** the carrier into a state vector under the chosen scheme.
+2. **Evolve** (optional variational circuit; gate application).
+3. **Measure** the observable: `⟨ψ| M |ψ⟩`, real by Hermiticity.
+4. **Yield** the expectation as a classical value.
+
+In the enterprise backend the whole path is **bit-reproducible** on the
+Q32.32 substrate (Pauli measurement is exact), audited
+(`quant:started → measured → completed`, the raw carrier never written
+to the chain — only its SHA-256 digest), RBAC-gated (`quant:execute`),
+shielded, and VRAM-quota'd per tenant.
+
+## Static guarantees
+
+- **`axon-E0782`** — Continuous Type Invariant: the carrier must be a
+  continuous tensor (a discrete value is rejected).
+- **`axon-E0783`** — capacity: `n > 10` on the OSS simulator is a
+  compile error (enterprise lifts it).
+- **`axon-E0784`** — header validity: the `observable:` must resolve to a
+  declared observable, and `qubits`/`depth`/`bandwidth`/`reupload` must be
+  in range (`reupload >= 1`, v2.23.0).
+- **`axon-E0787`** — `yield` outside a `quant` block is rejected.
+- **`axon-W005`** — a circuit-depth advisory (soft barren-plateau note).
+
+## What this primitive is NOT
+
+- **Not a `tool`.** A tool binds an external capability; `quant` is an
+  in-language transform over a Hilbert space.
+- **Not a `compute`.** Compute selects an LLM backend + effort; `quant`
+  performs a quantum-kernel measurement.
+- **Not infinite-precision.** The substrate is deterministic
+  (bit-reproducible) but quantized at `Δ = 2⁻³²` — determinism is not
+  exactness.
+- **Not a tunneling optimizer.** The advantage is the convexity of the
+  kernel-SVM dual, validated by the geometric-difference witness — a
+  *potential*-advantage signal, necessary but not sufficient.
+
+## See also
+
+- `axon://primitives/observable` — the Hermitian operator a quant block
+  measures.
+- `axon://primitives/flow` — the parent of every quant block.
+- `axon://primitives/compute` — backend selection (a different axis).

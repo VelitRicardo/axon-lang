@@ -1,0 +1,134 @@
+---
+title: "observe"
+description: "Declares an observability surface — sources, quorum, timeout, certainty floor, partition policy."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v1.2.0 · **Top-level declaration**
+
+## Grammar
+
+```text
+observe <Name> from <ManifestRef> {
+    sources: [<src1>, <src2>, ...]            # required — telemetry sources
+    quorum: <integer>                          # optional — minimum agreeing sources
+    timeout: <duration>                        # optional — observation window
+    on_partition: <fail|shield_quarantine>     # optional — partition policy
+    certainty_floor: <0.0..1.0>                # optional — minimum certainty
+}
+```
+
+`observe` declares **an observability surface** for a deployed
+manifest. It names the telemetry sources, the quorum required
+for agreement, the timeout window, the partition policy, and
+the minimum certainty floor for treating an observation as
+authoritative.
+
+`observe` is the eyes of the cognitive-I/O layer. `reconcile`
+acts on its readings; `immune` learns baselines from its
+history; the audit chain records every observation as a typed
+row.
+
+## Surface
+
+`observe` is a **top-level declaration** with a mandatory
+**`from <ManifestRef>`** clause — every observe references
+exactly one manifest as its observation target.
+
+```text
+observe ClinicalHealth from ProductionHealthcare {
+    sources:         [prometheus, cloudwatch, healthcheck]
+    quorum:          2
+    timeout:         5s
+    on_partition:    fail
+    certainty_floor: 0.92
+}
+```
+
+## Fields
+
+### `from <ManifestRef>` (required, in the header)
+
+A **single identifier** in the declaration header, after the
+observe name. Resolves to a declared `manifest` at parse time.
+The manifest is the observation target; observe-without-manifest
+is rejected by the parser.
+
+### `sources:` (required)
+
+A **bracketed list of identifiers** — the telemetry sources
+the observation aggregates. Open catalogue at the parser
+level; common slugs: `prometheus`, `cloudwatch`, `datadog`,
+`healthcheck`, `tracing`, `metrics`, `logs`.
+
+### `quorum:` (optional)
+
+A **non-negative integer literal**. The minimum number of
+sources that must agree before the observation is treated as
+authoritative. Defaults to 1 (any single source suffices);
+`quorum: 2` over 3 sources is the typical "two-of-three"
+production pattern.
+
+### `timeout:` (optional)
+
+A **duration literal** (`100ms`, `5s`, `30s`). The window
+within which sources must report. Sources that don't report
+within the window are treated as silent for that observation
+cycle.
+
+### `on_partition:` (optional)
+
+A **single identifier** from the closed catalogue:
+
+| Value | Behaviour |
+|---|---|
+| `fail` | Partition (quorum unreachable) → halt the calling flow. **Default.** |
+| `shield_quarantine` | Partition → route through the bound shield's quarantine policy. |
+
+The parser rejects unknown values.
+
+### `certainty_floor:` (optional)
+
+A **numeric literal in `[0.0, 1.0]`**. The aggregated
+observation's certainty must clear this floor for the result to
+be treated as authoritative. Below the floor → the runtime
+applies `on_partition:` policy.
+
+## Runtime behaviour
+
+`observe` lowers to an `ObserveDefinition` IR node bound to its
+`from`-named manifest. At deploy time, the runtime sets up the
+telemetry collectors named in `sources:` and configures
+aggregation with the declared quorum + certainty floor.
+
+Each observation cycle emits one audit row tagged
+`observe:<name>:<verdict>` carrying `(quorum_reached,
+sources_reporting, certainty, sample_window)`. The audit chain
+preserves every observation forever — drift analysis is the
+default mode of operation, not an opt-in.
+
+## What this primitive is NOT
+
+- **Not generic monitoring.** Observe is **manifest-scoped**
+  by construction; you cannot observe arbitrary endpoints.
+  Monitoring outside the manifest layer is the deployment
+  team's prometheus, not AXON.
+- **Not a `reconcile`.** Observe *reads*; reconcile *acts*.
+  The two compose: a reconcile binds an observe via its
+  `observe:` field.
+- **Not free.** Each observation cycle emits audit rows + may
+  spawn telemetry queries. Tune `timeout:` + `sources:` to
+  the actual SLO; don't observe every-30ms when minute
+  granularity suffices.
+
+## See also
+
+- `axon://primitives/manifest` — the observation target.
+- `axon://primitives/reconcile` — acts on observations.
+- `axon://primitives/immune` — learns baselines from observe
+  history.
+- `axon://primitives/ensemble` — composes multiple observes
+  with consensus aggregation.

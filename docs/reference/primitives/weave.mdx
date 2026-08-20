@@ -1,0 +1,170 @@
+---
+title: "weave"
+description: "Multi-thread reasoning braid — composes multiple sub-derivations into a unified conclusion."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v0.1.0 · **Used inside a declaration**
+
+## Grammar
+
+```text
+# Flow-level form (sibling of step) with a structured body:
+weave {
+    sources: [<Step1>, <Step2>, ...]    # contributing sub-derivations
+    target: <Identifier>                # destination binding
+    format: <ident>                     # output format (markdown | structured | …)
+    priority: [<Source1>, <Source2>]    # ordered preference for conflict resolution
+    style: <ident>                      # composition style (synthesise | reconcile | rank)
+}
+```
+
+`weave` is **the multi-thread reasoning braid**. Where `reason`
+declares a single thinking strategy (chain-of-thought, debate),
+`weave` declares **how multiple independent sub-derivations
+are combined** into one unified conclusion. It is the
+canonical primitive for ensemble cognition at the flow level —
+no `ensemble` declaration required for the simple case.
+
+A `weave` reads N step outputs, applies a composition style
+(synthesise / reconcile / rank), and emits a single typed
+result. The audit chain records each contributing source +
+the composition rule applied — so a reviewer can later answer
+"how did this conclusion get assembled?".
+
+## Surface
+
+`weave` is **nested** — it appears as a flow-step sibling of
+`step`. It is *not* a top-level declaration. Unlike `probe`,
+`validate`, and `refine` (which share the
+`parse_flow_step_simple` shape), `weave` has its own block
+parser with structured fields.
+
+```text
+flow DiagnoseCase(symptoms: SymptomList, history: PatientHistory) -> Diagnosis {
+    step ProposeFromSymptoms {
+        given: symptoms
+        ask: "Propose 3 differential diagnoses from the symptoms alone."
+        output: DiagnosisList
+    }
+    step ProposeFromHistory {
+        given: history
+        ask: "Propose 3 differential diagnoses from the patient history."
+        output: DiagnosisList
+    }
+    step ProposeFromImaging {
+        given: history
+        ask: "Propose 3 differential diagnoses from any imaging in the history."
+        output: DiagnosisList
+    }
+    # Braid the three independent derivations into one.
+    weave {
+        sources:  [ProposeFromSymptoms, ProposeFromHistory, ProposeFromImaging]
+        target:   Unified
+        format:   structured
+        priority: [ProposeFromImaging, ProposeFromSymptoms]
+        style:    reconcile
+    }
+    step Decide {
+        given: Unified
+        ask: "Emit the single most-likely diagnosis."
+        output: Diagnosis
+    }
+}
+```
+
+## Fields
+
+### `sources:` (required)
+
+A **bracketed list of identifiers** — the step names whose
+outputs feed the braid. Each named step must lexically
+precede the `weave` (definite-assignment rule). Two or more
+sources are the minimum useful case; one-source braids are
+rejected by the type checker as no-ops.
+
+### `target:` (required)
+
+A **single identifier** naming the destination binding. After
+the `weave` runs, downstream steps reference the result as
+`<target>` (not `<target>.output` — `weave` writes a flat
+flow-scope binding).
+
+### `format:` (optional)
+
+A **single identifier** declaring the output format. Canonical
+values:
+
+| Value | Meaning |
+|---|---|
+| `markdown` | Free-form prose (default). |
+| `structured` | Typed record matching the target's declared type. |
+| `list` | Flat list of items. |
+| `ranked` | Sorted list with scores. |
+
+### `priority:` (optional)
+
+A **bracketed list of identifiers** — a subset of `sources:`
+in **preference order** for conflict resolution. When two
+sources disagree, the braid resolves toward the higher-
+priority one. Sources omitted from `priority:` are
+considered equal-rank.
+
+### `style:` (optional)
+
+A **single identifier** declaring the composition style:
+
+| Value | Behaviour |
+|---|---|
+| `synthesise` | Combine non-conflicting claims; surface conflicts as ambiguities. |
+| `reconcile` | Resolve conflicts using `priority:`; emit a single coherent view. |
+| `rank` | Score each source's contribution; emit ranked list. |
+| `consensus` | Emit only claims that ≥ N sources agree on. |
+
+## Runtime behaviour
+
+`weave` at flow level produces a typed `WeaveStep` IR node
+with `sources`, `target`, `format`, `priority`, and `style`.
+At execution:
+
+1. Each source's output is fetched from the flow scope.
+2. The composition style runs against the gathered outputs.
+3. The result is bound to `<target>` in the flow scope.
+4. Audit row `weave:<target>:composed` records each
+   contributing source + the rule applied + any conflicts
+   surfaced.
+
+For deterministic deployments (`run … effort: strict` or a
+bound deterministic backend), weave is reproducible byte-for-
+byte across runs. For sampling backends, weave records each
+source's seed so the composition can be reconstructed.
+
+## What this primitive is NOT
+
+- **Not an `ensemble`.** `ensemble` is a top-level declaration
+  that coordinates multiple **agents** (with their own
+  budgets + memories). `weave` operates on **step outputs**
+  inside one flow — much lighter weight.
+- **Not parallel execution.** The compiler is free to evaluate
+  the sources in parallel, but the surface semantics are a
+  sequential dependency: every source must complete before
+  `weave` runs. To express explicit parallelism, use the
+  `par { ... }` block.
+- **Not a voting machine.** `consensus` style requires
+  agreement; other styles do not — `weave` does whatever the
+  style declares, not "majority wins" by default.
+- **Not a substitute for `reason`.** Reason declares HOW one
+  thread thinks; weave declares HOW multiple threads
+  combine. They compose: each source can itself contain a
+  `reason` directive.
+
+## See also
+
+- `axon://primitives/reason` — single-thread reasoning strategy.
+- `axon://primitives/ensemble` — multi-agent composition (one
+  layer up).
+- `axon://primitives/step` — what `sources:` references.
+- `axon://primitives/flow` — the parent of every `weave`.

@@ -1,0 +1,221 @@
+---
+title: "shield"
+description: "A composable defence layer — scans inputs/outputs for declared threats with a structured on-breach policy."
+---
+
+<Warning>
+  **Partial.** The runtime delivers this, with a documented gap against what the reference describes. The gap is named in the compiler's own ledger rather than left to be discovered.
+</Warning>
+
+**Since** v1.13.1 · **Top-level declaration**
+
+## Grammar
+
+```text
+shield <Name> {
+    scan: [<category1>, <category2>, ...]    # optional* — closed-catalog threat list
+    strategy: <canary|classifier|dual_llm|ensemble|pattern|perplexity>  # optional
+    on_breach: <deflect|escalate|halt|quarantine|sanitize_and_retry>    # optional
+    severity: <low|medium|high|critical>                                # optional
+    sign: <hmac_sha256> # optional — v2.34.0 egress signing (axon-T846)
+    quarantine: <ident>                       # optional — quarantine sink
+    max_retries: <integer>                    # optional — retry budget on sanitize
+    confidence_threshold: <0.0..1.0>          # optional — classifier confidence floor
+    allow_tools: [<Tool1>, ...]               # optional — whitelist
+    deny_tools: [<Tool1>, ...]                # optional — blacklist
+    sandbox: <true|false>                     # optional — force sandboxed execution
+    redact: [<field1>, <field2>, ...]         # optional — fields to redact on emission
+    log: <ident>                              # optional — audit sink
+    deflect_message: "<text>"                 # optional — message on deflect
+    taint: <ident>                            # optional — taint tag for downstream
+    compliance: [<Tag1>, ...]                 # optional — compliance attestation
+}
+# *every field is individually optional, but a shield that declares
+# `on_breach:` with NO enforcement-bearing field (scan / sign / redact /
+# allow_tools / deny_tools / confidence_threshold) is vacuous — the
+# checker warns (axon-W011). An unknown field warns too (axon-W010).
+```
+
+`shield` declares **a composable defence layer** that scans
+inputs and outputs against a closed catalogue of threat
+categories, decides per the bound `on_breach:` policy, and
+emits structured audit rows. It is the **transform-side
+counterpart** to `anchor` (which is a predicate): shields
+*mutate* candidates (redact, sanitise, deflect); anchors
+*decide* whether candidates are accepted.
+
+A shield binds to one or more wire surfaces — `axonendpoint`,
+`socket`, `axonstore`, `resource`, `fabric`, `agent`, `daemon`
+— and runs on every emission across that surface. The compose
+order is **scan → decide → mutate (or halt) → log**.
+
+## Surface
+
+`shield` is a **top-level declaration**. It is *not* nested
+inside another primitive.
+
+```axon
+shield PHIShield {
+    scan:       [prompt_injection, pii_leak, data_exfil]
+    on_breach:  quarantine
+    severity:   critical
+    redact:     [ssn, dob]
+    compliance: [HIPAA, GDPR, SOC2]
+}
+```
+
+An **egress shield** signs instead of scanning — `publish
+<Channel> within <Shield>` binds it to a channel so every
+external delivery carries a receiver-verifiable HMAC (v2.34.0):
+
+```axon
+shield WebhookEgress {
+    sign:      hmac_sha256
+    on_breach: halt
+}
+```
+
+## Fields
+
+### `scan:` (optional — required for scanning shields)
+
+A **bracketed list of identifiers** from the **closed scan
+catalogue**
+(`axon-frontend::type_checker::VALID_SCAN_CATEGORIES`):
+
+| Category | Detects |
+|---|---|
+| `prompt_injection` | Injected instructions in user input |
+| `jailbreak` | Attempts to override the persona/anchor stack |
+| `pii_leak` | PII/PHI/financial data in outputs |
+| `data_exfil` | Data exfiltration patterns |
+| `model_theft` | Model-extraction probes |
+| `social_engineering` | Social-engineering content |
+| `hallucination` | Unsupported claims in outputs |
+| `toxicity` | Toxic / harmful content |
+| `bias` | Biased content detection |
+| `code_injection` | Code injection in user input |
+| `training_poisoning` | Training-data poisoning patterns |
+
+### `strategy:` (optional)
+
+A **single identifier** from the closed strategy catalogue
+(`axon-frontend::type_checker::VALID_SHIELD_STRATEGIES`):
+
+| Value | Detection mechanism |
+|---|---|
+| `pattern` | Regex / dictionary matching. Cheapest. |
+| `classifier` | A trained classifier model. |
+| `perplexity` | Outlier detection by language-model perplexity. |
+| `canary` | Honeytoken / canary string detection. |
+| `dual_llm` | Two-model adversarial check. |
+| `ensemble` | Combine multiple strategies under a quorum. |
+
+### `sign:` (optional — the egress-signing field, v2.34.0)
+
+A **single identifier** from the closed signing catalogue
+(`axon-frontend::type_checker::VALID_SIGN_ALGORITHMS`), today
+`hmac_sha256`. A shield with `sign:` is an **egress shield**:
+`publish <Channel> within <Shield>` marks the channel for
+signed external delivery — the runtime computes
+`HMAC-SHA256(secret, raw_body)` per registered subscription and
+sends it as `X-Axon-Signature: sha256=<hex>`. An algorithm
+outside the catalogue is a compile error (`axon-T846`). A
+sign-only shield needs no `scan:` — the signature IS its
+enforcement (a breach is a delivery it refuses to sign).
+
+### `on_breach:` (optional — required for a breach policy to exist)
+
+A **single identifier** from the closed on-breach catalogue
+(`axon-frontend::type_checker::VALID_ON_BREACH_POLICIES`):
+
+| Value | Behaviour |
+|---|---|
+| `halt` | Stop execution; surface a typed error. |
+| `quarantine` | Route the candidate to the quarantine sink, then refuse the emission (recoverable, never delivered). Requires a `quarantine:` sink name (`axon-W012` warns otherwise; an unmounted sink halts with a diagnostic). |
+| `deflect` | Emit the `deflect_message:` instead of the candidate (`axon-T952` requires the message). |
+| `sanitize_and_retry` | Mask the `redact:` fields, re-scan, up to `max_retries:`; only a now-passing candidate proceeds (`axon-T952` requires `redact:`; a non-JSON candidate halts). |
+| `escalate` | Hand off to the escalation queue, then refuse the emission (a human decides). |
+
+**Since v2.69.0 every policy above RUNS** — at both enforcement
+sites (the shield step and `emit`'s σ-gate), via the breach policy
+resolved onto the IR nodes at lowering. Before v2.69.0 the catalog
+was documented, parsed, type-checked — and the runtime always
+halted. The quarantine/escalation destinations are registry-backed
+(`shield_registry::{register_breach_sink, set_escalation_queue}`);
+OSS mounts none (enterprise mounts the DLQ under the audit hash
+chain), and an unmounted destination halts loudly — never a
+phantom guardrail. Gate: `on_breach_catalog` (9/9).
+
+### `severity:` (optional)
+
+A **single identifier** from the closed catalogue
+(`axon-frontend::type_checker::VALID_SEVERITY_LEVELS`):
+`low | medium | high | critical`. Drives the runtime's alert
+routing — `critical` invokes the page-the-on-call channel;
+`low` lands in periodic-review queues.
+
+### `quarantine:` / `max_retries:` / `confidence_threshold:` / `allow_tools:` / `deny_tools:` / `sandbox:` / `redact:` / `log:` / `deflect_message:` / `taint:` (optional)
+
+Operational dials — most are obvious from their names; the
+type checker validates types but not values (open catalogues
+at this layer; the runtime gives meaning to the slugs against
+its sink + redactor registries).
+
+### `compliance:` (optional)
+
+A **bracketed list of identifiers** from the closed compliance
+catalogue. A shield's compliance tags must **cover** the
+compliance tags of every surface it binds — a `compliance:
+[SOC2]` shield cannot guard a HIPAA-tagged endpoint without
+adding HIPAA. The section 40 cross-tag check enforces this at deploy
+time.
+
+## Composition with anchors
+
+A flow's `run` can carry both:
+
+```text
+run AnalyzeContract(doc)
+    constrained_by [NoHallucination, NoPHI]   # anchor stack — predicates
+    # …and the bound axonendpoint declares a shield (transforms)
+```
+
+The compose order at every emission:
+
+1. **Shield scans** the candidate.
+2. If clean → **anchors evaluate** the predicates.
+3. If anchors pass → emission proceeds.
+4. If shield triggers → `on_breach:` policy runs.
+5. If anchor triggers → `on_violation:` policy runs.
+
+The two are orthogonal and compose freely.
+
+## What this primitive is NOT
+
+- **Not an `anchor`.** Anchor is a predicate (`require:`);
+  shield is a transform (scan + mutate). Different layers.
+- **Not a single-strategy product.** A shield can stack
+  multiple `scan:` categories under one `strategy:`; for
+  multi-strategy detection, use `strategy: ensemble`.
+- **Not free.** Each scan runs on every emission. Heavy
+  strategies (`classifier`, `dual_llm`) measurably affect
+  latency; declare deliberately.
+- **Not a substitute for compliance attestation.** A
+  HIPAA-tagged shield enforces shield-level scans; the
+  `compliance: [HIPAA]` tag on the bound endpoint + the BAA
+  with downstream providers still attest the human / contract
+  layer.
+
+## See also
+
+- `axon://primitives/anchor` — the predicate counterpart.
+- `axon://primitives/publish` — binds an egress (`sign:`)
+  shield to a channel for signed external delivery (v2.34.0).
+- `axon://primitives/axonendpoint` — `shield:` binding site.
+- `axon://primitives/socket` — `shield:` binding site
+  (per-frame).
+- `axon://primitives/axonstore` — `shield:` binding for
+  read/write gates.
+- `axon://compliance/hipaa` — example of shield + endpoint
+  cross-tag attestation.

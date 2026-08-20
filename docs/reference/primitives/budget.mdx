@@ -1,0 +1,46 @@
+---
+title: "budget"
+description: "A declared spend ceiling over cognition and tool use — enforced on the canonical `use Tool(...)` path (v2.69.0); attachable to a daemon or declared top-level."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v2.28.0 (daemon-attached); top-level v2.69.0 · **Top-level declaration**
+
+## Grammar
+
+```text
+# Top-level (v2.69.0) — governs every flow that calls the named tools:
+budget <Name> {
+    rate: <n> per <second|minute|hour> on Tool(<ToolName>)
+}
+# Daemon-attached (v2.28.0) — governs that daemon's ticks:
+daemon <Name> { budget { rate: <n> per <minute> on Tool(<ToolName>) } }
+```
+
+`budget` is a **linear-effect rate ceiling**: it bounds how often the
+named tools may be invoked, per declared window.
+
+## What the runtime actually does (v2.69.0)
+
+The ceiling binds on the **canonical `use Tool(...)` dispatch path** —
+the same seam every entry point (sync, SSE, daemon) runs through. A
+call over quota is **refused**, not queued: spend ceilings fail closed.
+
+This was v2.69.0's live bug: before it, `budget` was *discussed* in the
+README seventeen times, badged zero, tracked in no table — and the
+runtime never read it on the canonical path. The v2.69.0 gate widening
+exists because of this primitive.
+
+## Proof
+
+`axon-rs/tests/budget_governs_the_canonical_path.rs` (9/9) —
+the ceiling really binds, on the path production takes.
+
+## See also
+
+- `axon://primitives/tool` — what the quota names.
+- `axon://primitives/daemon` — the attached form's host.
+- `axon://primitives/window` — the temporal (when), vs budget's how-much.

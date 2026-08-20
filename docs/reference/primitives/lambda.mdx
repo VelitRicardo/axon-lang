@@ -1,0 +1,166 @@
+---
+title: "lambda"
+description: "A typed lambda-data declaration — names provenance + certainty + temporal frame for a derived value, supporting `lambda apply` semantics."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v1.10.0 · **Top-level declaration**
+
+## Grammar
+
+```text
+lambda <Name> {
+    ontology: "<string>"                                # optional — ontological class
+    certainty: <0.0..1.0>                                # optional — confidence (default 1.0)
+    temporal_frame: "<start>" ["<end>"]                  # optional — validity window
+    provenance: "<string>"                               # optional — source provenance
+    derivation: <raw|inferred|derived|aggregated|transformed>  # optional — derivation kind
+}
+
+# Inside a flow body — application form:
+step <Name> {
+    ...
+    lambda <Name> on <target> -> <OutputType>
+    ...
+}
+```
+
+`lambda` declares **typed lambda-data** — a value with explicit
+provenance, certainty, temporal frame, and derivation status.
+Where `type` declares structural shape and `axonstore`
+declares persistent rows, `lambda` declares **epistemic
+metadata** for a derived value: what it claims, how confident,
+when valid, where it came from, how it was derived.
+
+The companion **flow-step form** `lambda <Name> on <target> ->
+<Out>` (the "lambda apply" pattern, v1.10.0) applies the
+declared metadata to a step's output — producing a typed,
+audit-traceable derived value.
+
+## Surface
+
+`lambda` is a **top-level declaration**. The flow-step
+application is a separate parser path (`parse_lambda_data_apply`)
+that lives inside a flow body.
+
+### Top-level declaration
+
+```axon
+lambda DiagnosisCandidate {
+    ontology:       "ClinicalInference"
+    certainty:      0.85
+    temporal_frame: "2025-01-01" "2026-12-31"
+    provenance:     "EHR cohort 2024 + clinical guideline ICD-11"
+    derivation:     inferred
+}
+```
+
+### Flow-step application
+
+```text
+flow DiagnoseSymptoms(symptoms: SymptomList) -> Diagnosis {
+    step Cluster {
+        given: symptoms
+        ask: "Cluster the symptoms."
+        output: ClusteredSymptoms
+    }
+    step Decide {
+        given: Cluster.output
+        lambda DiagnosisCandidate on Cluster.output -> Diagnosis
+        ask: "Emit the diagnosis."
+        output: Diagnosis
+    }
+}
+```
+
+## Fields
+
+### `ontology:` (optional)
+
+A **string literal** declaring the ontological class the
+value claims membership in. Examples: `"ClinicalInference"`,
+`"FinancialPrediction"`, `"LegalOpinion"`. The runtime carries
+this verbatim into the audit row; downstream consumers can
+filter / route by ontology.
+
+### `certainty:` (optional, defaults to `1.0`)
+
+A **numeric literal in `[0.0, 1.0]`**. The declared confidence
+of the value. Pairs with the persona's
+`confidence_threshold:` and the anchor's `confidence_floor:`:
+runtime checks the chain.
+
+### `temporal_frame:` (optional)
+
+**One or two string literals** declaring the validity window.
+
+| Form | Meaning |
+|---|---|
+| `"<start>"` | Open-ended frame starting at the named date/time. |
+| `"<start>" "<end>"` | Closed frame between start and end. |
+
+The runtime treats values used outside their declared frame
+as `Uncertainty` per the epistemic lattice (v1.4.0).
+
+### `provenance:` (optional)
+
+A **string literal** documenting the source provenance —
+where the data came from, who curated it, what version.
+Free-form; appears verbatim in audit rows for human review.
+
+### `derivation:` (optional)
+
+A **single identifier** from the closed derivation catalogue
+(`axon-frontend::type_checker::VALID_DERIVATIONS`):
+
+| Value | Meaning |
+|---|---|
+| `raw` | Direct measurement / unprocessed input. |
+| `inferred` | Output of a cognitive inference (LLM, classifier). |
+| `derived` | Computed from other values via deterministic rules. |
+| `aggregated` | Summed / averaged over multiple inputs. |
+| `transformed` | Re-shaped from another representation (encoding shift). |
+
+## The `lambda apply` flow-step form
+
+The v1.10.0 application pattern attaches a top-level `lambda`
+declaration to a specific step's output. The grammar is:
+
+```
+lambda <LambdaName> on <TargetStep>.output -> <OutputType>
+```
+
+The runtime stamps the lambda's metadata (ontology, certainty,
+temporal_frame, provenance, derivation) onto the target's
+output as it flows downstream. Audit row:
+`lambda:<name>:applied_to:<target>:<output_type>`.
+
+## What this primitive is NOT
+
+- **Not a function in the Church / λ-calculus sense.** The
+  name is borrowed for the "derived-value metadata" surface;
+  there is no first-class function abstraction at this layer.
+  For function-like composition, use `flow` + `apply`.
+- **Not a `type`.** `type` declares structural shape; `lambda`
+  declares epistemic metadata about an instance.
+- **Not a `compute`.** Compute pins the backend that produces
+  the value; lambda annotates the produced value with
+  provenance.
+- **Not optional for high-stakes derivations.** Production
+  flows in regulated domains (clinical, financial, legal)
+  declare `lambda` on every inferred output so the audit
+  trail records `(ontology, certainty, temporal_frame,
+  provenance, derivation)`.
+
+## See also
+
+- `axon://primitives/type` — structural-shape counterpart.
+- `axon://primitives/anchor` — `confidence_floor:` pairs with
+  lambda's `certainty:`.
+- `axon://primitives/compute` — pins WHICH model produced the
+  value the lambda annotates.
+- `axon://compliance/gxp` — examples of GxP section 21 CFR Part 11
+  audit-trail propagation through lambda metadata.

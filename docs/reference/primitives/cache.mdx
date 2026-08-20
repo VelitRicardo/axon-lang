@@ -1,0 +1,144 @@
+---
+title: "cache"
+description: "A named, referenced result-memoization policy — cacheability derives from the type system's `effects: pure` proof; a single `default: true` auto-covers every pure tool, non-pure caches must carry a finite `ttl:`."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v2.40.0 · **Top-level declaration**
+
+## Grammar
+
+```text
+cache <Name> {
+    backend: redis | in_process          # optional — tier (default in_process)
+    ttl: <duration>                       # optional — TTL; REQUIRED if non-pure
+    key: [<param>, ...]                   # optional — key subset (default: all params)
+    default: <true|false>                 # optional — auto-cover pure tools (max one)
+    apply_to_effects: [<Effect>, ...]     # optional — effects covered (default [pure])
+    invalidate_on: [<ChannelRef>, ...]    # optional — emit on any → flush this cache
+}
+```
+
+`cache` declares **a named, referenced result-memoization
+policy**. It is the runtime dual of a proof the compiler already
+has: a `tool` whose `effects:` row is exactly `pure` is, *by the
+language's own definition*, safe to reuse for any input that
+repeats — so caching it is not a heuristic, it is a consequence of
+the purity proof (`cacheability_is_a_type_not_a_convention`).
+
+A `cache` is referenced by a `tool` (`tool.cache: <Name>`) or a
+`retrieve` (`retrieve <Store> { cache: <Name> }`), exactly the way
+`axonendpoint.cors:` references a `cors` policy.
+
+## Surface
+
+`cache` is a **top-level declaration**.
+
+```text
+type WeatherEvent { city: String }
+channel WeatherUpdated { message: WeatherEvent }
+
+# A project-wide default: every `pure` tool is cached, no per-tool
+# annotation, because the type system already proved it safe.
+cache DefaultPure { default: true }
+
+# A widened, ttl-bounded, invalidation-wired cache for a NON-pure
+# result (accepting bounded staleness).
+cache WeatherCache {
+    backend: redis
+    ttl: 5m
+    apply_to_effects: [pure, network]
+    invalidate_on: [WeatherUpdated]
+}
+
+tool Fingerprint { provider: http  effects: <pure>  parameters: { input: String } }
+tool Weather {
+    provider: http
+    effects: <network>
+    parameters: { city: String }
+    cache: WeatherCache
+}
+```
+
+## Fields
+
+### `backend:` (optional)
+
+`in_process` (the default single-replica tier — a bounded LRU with
+per-entry TTL) or `redis` (the multi-replica tier). A closed
+catalog (`axon-T866` on anything else). Which backend / how much
+capacity is a **per-tenant, deployment-level** knob;
+*eligibility* to cache is the source-level property.
+
+### `ttl:` (optional — but REQUIRED for a non-pure cache)
+
+A duration literal (`10s`, `5m`, `1h`). A **`pure`-only** cache may
+omit it (caching a proven-deterministic result forever is sound). A
+cache that widens `apply_to_effects:` beyond `[pure]` — or is used
+by a non-pure tool or any `retrieve` — **must** carry a finite
+`ttl:` (`axon-T865`): a non-deterministic result may not be cached
+forever. The TTL is precisely the "how stale am I willing to be"
+bound.
+
+### `key:` (optional)
+
+The **subset** of the covered tool's `parameters:` whose bound
+values form the cache key. Omitted ⇒ **all** bound parameters (the
+zero-friction default). Use it when one bound arg (e.g. a
+`request_id`) must not affect the key. The full key is
+content-addressed: a hash of `(tenant ‖ cache ‖ tool ‖
+tool-declaration-fingerprint ‖ output_type ‖ selected params)`, so
+a redeploy that changes the tool can never serve a stale result,
+and a tenant can never read another tenant's entry.
+
+### `default:` (optional)
+
+`true` ⇒ this cache **auto-covers every eligible tool** in the
+module without a per-tool `cache:`. **At most one** per module
+(`axon-T863`). A tool is eligible when its effects are a subset of
+the default's `apply_to_effects` (with `[pure]` as the implicit
+default set). A tool opts out with `cache: none`.
+
+### `apply_to_effects:` (optional)
+
+The effect classes this cache is willing to memoise. Omitted ⇒
+`[pure]` (the only provably-safe default). Any member beyond `pure`
+is a **widening** (`axon-W013` names each non-pure tool a
+`default: true` cache ends up covering) and forces a finite `ttl:`.
+
+### `invalidate_on:` (optional)
+
+Channel names (`axon-T864` if undeclared). An `emit` on any listed
+`channel` flushes this cache's namespace — reusing the v1.6.0 pub/sub,
+not a second mechanism.
+
+## Budget interaction
+
+A cache **hit short-circuits before** the underlying tool/retrieve
+executes, so a `budget { rate:/max: }` quota (v2.28.0) is **never**
+decremented by a hit. Hits and misses are audited
+distinctly (`cache:hit` / `cache:miss`) from `budget:consumed`, so
+an adopter sees real cost savings.
+
+## What this primitive is NOT
+
+- **Not `memory { decay: }`.** `memory` is
+  semantic/conversational recall state (what the agent remembers
+  about a conversation); `cache` is result-memoization of a
+  deterministic or explicitly-accepted-stale tool/retrieve call. An
+  agent can use both, for different reasons.
+- **Not a way to cache a non-deterministic result forever.** The
+  compiler forbids it (`axon-T865`) — the same purity proof that
+  authorises caching-forever is exactly what it withholds from a
+  non-`pure` result.
+
+## See also
+
+- `axon://primitives/tool` — declares the `effects: pure` proof this
+  primitive derives cacheability from, and the `cache:` reference.
+- `axon://primitives/channel` — the `invalidate_on:` mechanism.
+- `axon://primitives/memory` — conversational recall state, a
+  different layer.

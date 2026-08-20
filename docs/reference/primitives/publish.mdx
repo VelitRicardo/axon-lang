@@ -1,0 +1,109 @@
+---
+title: "publish"
+description: "Capability extrusion — publishes a shield-gated channel for discovery; under a signing shield it declares the channel for signed webhook egress."
+---
+
+<Note>
+  **Unaudited.** Advertised on trust: no gate has verified that the runtime does what this page says. Treat it as documentation, not as a guarantee.
+</Note>
+
+**Since** v1.6.0 · **Used inside a declaration**
+
+## Grammar
+
+```text
+# Flow-body form (Publish-Ext, paper section 4.3):
+publish <ChannelRef> within <ShieldRef>
+```
+
+`publish` is **capability extrusion** (Publish-Ext, π-calculus
+paper section 4.3): it makes a shield-gated channel discoverable —
+`discover` imports it under a local alias. Since v2.34.0 it is also
+the **egress declaration**: publishing a channel `within` a
+shield that declares `sign:` marks the channel's durable events
+for **signed external delivery** (webhooks).
+
+## Surface
+
+`publish` is **nested** — a flow-body / daemon-body statement.
+
+```axon
+shield WebhookEgress { sign: hmac_sha256  on_breach: halt }
+
+channel SkillCompleted {
+    message: SkillResult
+    persistence: persistent_axonstore
+    shield: WebhookEgress
+}
+
+flow CompleteSkill(task_id: String) -> Unit {
+    step Build { ask: "Build the result."  output: SkillResult }
+    emit SkillCompleted(Build)
+    publish SkillCompleted within WebhookEgress
+}
+```
+
+## Semantics
+
+### Pure π-calc (non-signing shield)
+
+`publish C within S` binds the capability so a later
+`discover C as alias` resolves the shield reference. In-process
+only; nothing leaves the runtime. Byte-identical to pre-v2.34.0.
+
+### Egress declaration (signing shield, v2.34.0)
+
+When shield `S` declares `sign:`:
+
+1. **Compile time** — the channel must be durable
+   (`persistence: persistent_axonstore`, else `axon-T848`): a
+   webhook promise backed by an ephemeral buffer would die
+   unwitnessed with the process. The IR channel handle is
+   stamped `egress_sign` (the resolved algorithm).
+2. **Deploy time** — the PCC `ChannelEgressSoundness` proof
+   re-derives the egress surface from the artifact (a forged
+   handle, a non-catalog algorithm, or ephemeral egress refutes;
+   the deploy gate rejects fail-closed). The deploy response
+   reports the bundle's `egress_surface`.
+3. **Runtime (enterprise)** — every durable event on the channel
+   is delivered as an HTTP POST to each **registered, active
+   subscription** for the tenant (the webhook registry — config,
+   not code), signed:
+
+   ```
+   X-Axon-Signature: sha256=<hex(HMAC-SHA256(secret, raw_body))>
+   ```
+
+   with `event_id` + `timestamp` INSIDE the signed body
+   (receiver-side dedup + replay defence). Retries with
+   exponential backoff; exhausted deliveries dead-letter; every
+   delivery and dead-letter is an audit row (fail-closed).
+
+The three-party contract (`egress_is_a_kept_promise`): the
+**program** declares (`publish within` a signing shield), the
+**tenant** binds the destination (registry row), the **runtime**
+keeps the promise (outbox → signed POST → audit). Remove any leg
+and nothing egresses.
+
+## Typing
+
+- `axon-T847` — the shield must be declared (and be a shield).
+- `axon-T848` — signed egress requires a durable channel.
+- The shield's `sign:` must be in the closed catalog
+  (`hmac_sha256`, `axon-T846`).
+
+## What this primitive is NOT
+
+- **Not a send.** `publish` transmits no event — `emit` does.
+  Publish declares WHO may receive (capability) and, signed,
+  THAT the channel may leave the runtime.
+- **Not destination config.** URLs and secrets live in the
+  tenant's webhook registry, never in source.
+
+## See also
+
+- `axon://primitives/channel` — the conduit.
+- `axon://primitives/discover` — the dual import.
+- `axon://primitives/shield` — `sign:` makes a shield an egress
+  shield.
+- `axon://primitives/emit` — the event producer.

@@ -1,0 +1,78 @@
+---
+title: "scope"
+description: "A named authorization scope — the signed envelope (targets allowlist + depth ceiling + approver) a `warden` adversarial analysis MUST run `within`. The load-bearing safety construct that makes security analysis a governed, auditable, fail-closed capability."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v2.43.0 · **Top-level declaration**
+
+## Grammar
+
+```text
+scope <Name> {
+    targets: [ "<resource>", … ]          # REQUIRED — the analysis allowlist
+    depth: static_artifact | memory_dump | live_network   # invasiveness ceiling
+    approver: [requires] "<capability>"   # REQUIRED — who authorised it (SoD)
+}
+```
+
+`scope` declares **the authorization envelope a `warden` analysis runs
+within**. It is the load-bearing safety construct of v2.43.0: a
+security-analysis primitive that reads evidence and reasons about
+exploits is, without governance, indistinguishable from an offensive
+kit. `scope` makes the authorization **part of the type** — a `warden`
+with no resolvable in-scope authorization does not compile.
+
+## Surface
+
+`scope` is a **top-level declaration**, referenced by
+`warden(<target>) within <Scope>`.
+
+```axon
+scope InternalAudit {
+    targets: [ "svc://payments-core" ]
+    depth: static_artifact
+    approver: requires "security.lead"
+}
+```
+
+## Fields
+
+### `targets:` (required)
+
+The allowlist of resources the operator owns/controls and authorises
+for analysis. Must be non-empty (`axon-T884`) — an empty allowlist
+would authorise nothing safely and everything dangerously. A target
+outside this list is a runtime rejection.
+
+### `depth:` (optional)
+
+The MOST invasive analysis depth this scope permits (the ceiling),
+ordered least→most invasive: `static_artifact` (analyse an
+operator-provided binary/core/pcap — the safe default) ⊂ `memory_dump`
+⊂ `live_network` (live capture — the most-restricted, enterprise-only
+depth). A closed catalog (`axon-T885`); a typo can never silently
+escalate invasiveness.
+
+### `approver:` (required)
+
+The capability whose holder authorised this scope — segregation of
+duties (the `mandate` model). Required (`axon-T886`): an unapproved
+scope is not an authorization. `requires` is optional sugar.
+
+## What this primitive is NOT
+
+- **Not `mandate`.** `mandate` gates a flow's *execution* on approval;
+  `scope` bounds a warden's *analysis authorization* (which targets, how
+  invasively). Distinct semantics.
+- **Not advisory.** Without a resolvable scope, `warden` fails closed at
+  compile time — the scope is enforced, not documented.
+
+## See also
+
+- `axon://primitives/warden` — the analysis block that runs `within` a
+  scope.
+- `axon://primitives/mandate` — the flow-execution approval gate.

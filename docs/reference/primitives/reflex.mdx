@@ -1,0 +1,146 @@
+---
+title: "reflex"
+description: "An automatic-response trigger bound to an immune system's level — fires structured actions on threshold breach."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v1.14.0 · **Top-level declaration**
+
+## Grammar
+
+```text
+reflex <Name> {
+    trigger: <ImmuneRef>                                          # required — bound immune
+    on_level: <know|believe|speculate|doubt>                       # required — firing threshold
+    action: <drop|revoke|emit|redact|quarantine|terminate|alert>   # required — closed-catalog action
+    scope: <tenant|flow|global>                                    # required — isolation scope
+    sla: <duration>                                                # optional — response-time SLA
+}
+```
+
+`reflex` declares **an automatic-response trigger** bound to
+an immune system's epistemic-level signal. Where `immune`
+detects + emits epistemic signals
+(`know`/`believe`/`speculate`/`doubt`), `reflex` declares
+**what happens automatically** when a signal at the bound
+level fires.
+
+Reflexes are the **immediate** response layer — no human in
+the loop, no review queue. They execute the declared action
+within the declared SLA. For supervised recovery, see `heal`.
+
+## Surface
+
+`reflex` is a **top-level declaration**. It is *not* nested
+inside an immune or heal.
+
+```text
+reflex QuarantineExfil {
+    trigger:  ClinicalVigil
+    on_level: speculate
+    action:   quarantine
+    scope:    tenant
+    sla:      1ms
+}
+```
+
+## Fields
+
+### `trigger:` (required)
+
+A **single identifier** referencing a declared `immune`. The
+reflex subscribes to that immune's signal stream.
+
+### `on_level:` (required)
+
+A **single identifier** from the **closed epistemic-level
+catalogue** (`axon-frontend::type_checker::VALID_EPISTEMIC_LEVELS`):
+
+| Value | Fires on |
+|---|---|
+| `doubt` | Faintest signal — fires aggressively (many false positives). |
+| `speculate` | Possible anomaly — typical for fast-response reflexes. |
+| `believe` | Likely anomaly — moderate threshold. |
+| `know` | Clear anomaly — fires rarely, low false-positive rate. |
+
+The reflex fires when the immune's signal level **matches the
+declared value or exceeds it**. A reflex on `believe` also
+fires on `know`; a reflex on `doubt` fires on every level.
+
+### `action:` (required)
+
+A **single identifier** from the **closed action catalogue**:
+
+| Value | Behaviour |
+|---|---|
+| `drop` | Discard the offending input/output silently. |
+| `revoke` | Revoke the bound capability / token. |
+| `emit` | Emit a structured signal to the observability layer. |
+| `redact` | Apply the bound redactor before continuing. |
+| `quarantine` | Route the offending payload to the quarantine sink. |
+| `terminate` | Halt the current flow / agent / daemon. |
+| `alert` | Page the on-call channel. |
+
+The parser rejects unknown values.
+
+### `scope:` (required)
+
+A **single identifier** from the closed scope catalogue:
+`tenant | flow | global`. Determines the blast radius of the
+action — `tenant` actions affect only the originating tenant;
+`global` actions affect the deployment.
+
+### `sla:` (optional)
+
+A **duration literal** declaring the **response-time SLA**.
+Production reflexes typically declare sub-millisecond to
+single-second SLAs — anything slower is operationally a
+`heal`, not a reflex.
+
+The runtime measures actual response time and emits
+`axon-W016` if a reflex consistently breaches its SLA.
+
+## Runtime behaviour
+
+`reflex` lowers to a `ReflexDefinition` IR node. The v1.14.0
+supervisor binds the reflex to its trigger immune:
+
+1. Subscribe to the immune's signal stream.
+2. Filter signals at the `on_level:` threshold.
+3. Per matching signal, run `action:` within the declared
+   `scope:` and SLA.
+4. Audit row `reflex:<name>:fired:<level>:<action>` carries
+   `(trigger_event, latency, action_outcome)`.
+
+For `action: terminate`, the runtime terminates the
+specifically-scoped target (the flow / agent / daemon that
+produced the offending observation) — NOT the entire
+deployment.
+
+## What this primitive is NOT
+
+- **Not a `heal`.** Heal is the **supervised recovery**
+  counterpart (human-in-the-loop, longer SLA, structured
+  remediation). Reflex is the **immediate automatic**
+  response.
+- **Not an `anchor`.** Anchor is a per-emission predicate;
+  reflex is a continuous signal-listener bound to an
+  immune.
+- **Not a shield.** Shield runs in-band on emissions; reflex
+  fires on the immune's epistemic-signal stream
+  (asynchronous).
+- **Not a notification mechanism.** Reflex performs an
+  ACTION (drop / revoke / quarantine / terminate). For
+  notifications, use `action: alert` or pair the reflex with
+  an observability sink.
+
+## See also
+
+- `axon://primitives/immune` — the trigger source.
+- `axon://primitives/heal` — supervised-recovery counterpart.
+- `axon://primitives/shield` — in-band defence counterpart.
+- `axon://compliance/hipaa` — example reflex on PHI
+  exfiltration with `action: quarantine` + `scope: tenant`.

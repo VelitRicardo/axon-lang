@@ -1,0 +1,171 @@
+---
+title: "reason"
+description: "An explicit-reasoning operation — declares HOW the model should think (chain-of-thought, debate, …)."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v0.1.0 (initial language) · **Used inside a declaration**
+
+## Grammar
+
+```text
+# Flow-level form (sibling of `step`):
+reason <Strategy>              # one-liner: just the strategy identifier
+reason <Strategy> { ... }      # block body reserved for future epistemic clauses (skipped today)
+
+# Step-level sub-construct (inside a `step` body):
+step <Name> {
+    ...
+    reason <Strategy>
+    ...
+}
+```
+
+`reason` declares an **explicit reasoning operation** — a node in
+the flow that names the *strategy* by which the model is meant to
+think over a target. It is the primitive answer to the question
+*"how should this step think?"* in the same way `ask:` is the
+answer to *"what should this step do?"*.
+
+Like the rest of the cognitive vocabulary, `reason` is closed:
+the strategy must be drawn from the catalog (`chain_of_thought`,
+`debate`, `tree_of_thought`, …), not invented inline.
+
+## Surface
+
+`reason` is **nested** — it appears in two places:
+
+1. As a **sibling of `step`** inside a flow body
+   (`parse_flow_step` dispatches `reason` to a typed
+   `ReasonStep` AST node).
+2. As a **sub-construct inside a `step` body** (the step
+   parser skips it structurally so the model receives the
+   strategy as part of the step's surrounding prompt).
+
+It is *not* a top-level declaration.
+
+```text
+flow ResolveAmbiguity(claim: Claim) -> Verdict {
+    step Frame {
+        given: claim
+        ask: "Restate the claim in unambiguous form"
+        output: NormalisedClaim
+    }
+
+    # Flow-level reasoning node — sibling of step.
+    reason chain_of_thought
+
+    step Decide {
+        given: Frame.output
+        ask: "Apply the reasoning chain and emit the verdict"
+        output: Verdict
+        # Step-level sub-construct — refines THIS step's thinking.
+        reason debate
+    }
+}
+```
+
+## Header
+
+### `reason <Strategy>`
+
+- **`<Strategy>`** — a single identifier (or contextual keyword)
+  drawn from the closed reasoning-strategy catalog:
+
+| Strategy | Meaning |
+|---|---|
+| `chain_of_thought` | Step-by-step linear derivation. |
+| `tree_of_thought` | Branch + score multiple derivations. |
+| `debate` | Two-sided argument; emit the synthesis. |
+| `socratic` | Question-driven probing. |
+| `analogical` | Reason by structural analogy with a retrieved case. |
+| `case_based` | Apply a stored precedent (paired with a `corpus`). |
+| `counterfactual` | Reason about a contrastive what-if. |
+| `defeasible` | Default-with-exceptions reasoning. |
+| `propose_critique_refine` | Propose, self-critique, refine. |
+
+The catalog grows by cycle; the type checker rejects unknown
+identifiers at parse time only at strict-policy modules (in
+permissive modules it forwards the value as an opaque slug).
+
+### `reason <Strategy> { ... }` (block form)
+
+A braced block may follow the strategy; the body is reserved for
+future **epistemic clauses** (paper section 6 — confidence tracking,
+provenance chains). Today the parser skips the body
+structurally; the runtime exposes the strategy identifier only.
+
+## Step-level sub-construct
+
+Inside a `step` body, `reason <Strategy>` is parsed as a
+**sub-construct** alongside `ask:`, `output:`, `use`, `probe`,
+`weave`, and `stream`. The step parser skips its arguments and
+optional block structurally; the runtime injects the strategy as
+a prompt modifier for *this step only*.
+
+```text
+step DiagnoseSymptoms use Clinician {
+    given: symptoms
+    reason chain_of_thought
+    ask: "List the three most likely diagnoses with ICD-10 codes"
+    output: List<Diagnosis>
+}
+```
+
+Use the step-level form when the reasoning strategy is *local*
+to the step. Use the flow-level form when reasoning is a
+*distinct node* whose result feeds subsequent steps.
+
+## Runtime behaviour
+
+`reason` at flow level produces a typed `ReasonStep` IR node:
+
+```rust
+ReasonStep {
+    strategy: String,    // closed-catalog identifier (left empty by
+                         // parse_flow_step_simple, populated when a
+                         // braced epistemic block lands in a later cycle)
+    target: String,      // the strategy identifier captured by the parser
+    loc: Loc,
+}
+```
+
+The runtime maps the strategy identifier to a backend-specific
+prompt template
+(`<runtime>/reasoning_templates/<strategy>.md`) and records the
+strategy + template version in the audit hash-chain. The
+preceding step's output flows into the reasoning operation
+through the flow's lexical scope — there is no inline
+`<Step>.output` argument on `reason` itself (a frequent first-
+draft mistake the type checker catches).
+
+## What this primitive is NOT
+
+- **Not a free-form instruction.** A `reason` strategy is a
+  closed-catalog slug; arbitrary natural-language reasoning
+  directives belong in a step's `ask:` field.
+- **Not a wrapper around `step`.** `reason` does not introduce a
+  new scope or capture `<Reason>.output`; its result feeds the
+  flow's epistemic store, not a named output binding.
+- **Not the only place reasoning happens.** Every `step` already
+  reasons; `reason` makes the strategy *explicit* and *typed* so
+  the audit trail and the prompt-template registry can both
+  reference it by name.
+- **Not nested inside a `persona`.** A persona declares static
+  identity; `reason` declares a per-flow / per-step *operation*.
+
+## See also
+
+- `axon://primitives/step` — the most common context where
+  `reason` appears as a sub-construct.
+- `axon://primitives/flow` — flow-level `reason` siblings of
+  `step`.
+- `axon://primitives/probe` — diagnostic probing
+  (`reason` produces a derivation; `probe` produces an
+  observation).
+- `axon://primitives/weave` — multi-thread reasoning braid.
+- `axon://compliance/epistemic_levels` — the v1.4.0 level catalog
+  the audit row decorates `reason` invocations with.

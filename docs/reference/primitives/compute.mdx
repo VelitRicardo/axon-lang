@@ -1,0 +1,122 @@
+---
+title: "compute"
+description: "Binds a flow to a specific compute backend — model selection, effort hint, parallelism, deterministic seed."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v1.12.0 · **Top-level declaration**
+
+## Grammar
+
+```text
+compute <Name> [(<params>)] [-> <ReturnType>] {
+    shield: <ShieldRef>      # optional — defence layer
+    # Additional fields (model, effort, seed, parallelism, ...) are
+    # accepted by the parser's permissive skip-value path; the
+    # type checker validates them against the runtime's binding
+    # registry.
+}
+```
+
+`compute` declares **a typed binding to a compute backend** —
+the surface that pins a flow to a specific model, an effort
+level, an explicit random seed, a parallelism strategy. Where
+`tool` declares external capability the model can call,
+`compute` declares **how the cognitive layer itself runs**.
+
+The most common production use: pinning a deterministic backend
+for a regulated flow (banking decision, clinical diagnosis,
+legal analysis). The runtime carries the compute binding into
+every emission's audit row, so the deployed model is auditable.
+
+## Surface
+
+`compute` is a **top-level declaration**. It is *not* nested
+inside a flow. A flow references a compute binding through
+the `apply: <ComputeName>` flow-step pattern or through a
+deployment-level `compute:` field on the bound `run`.
+
+> **`axon-W006`** — a step's `apply: <Compute>` for model selection is
+> a no-op the compiler warns on; declare the capability need on the
+> step with `requires_context:` (v2.22.0) and let the resolver pick
+> the model. See `axon://primitives/step`.
+
+```axon
+shield FinancialShield {
+    scan:       [pii_leak, prompt_injection]
+    on_breach:  halt
+    severity:   critical
+    compliance: [PCI_DSS, SOC2]
+}
+
+compute LoanUnderwriterCompute {
+    shield: FinancialShield
+}
+```
+
+## Fields
+
+### `shield:` (optional)
+
+A **single identifier** referencing a declared `shield`. The
+compute binding's invocations route through the shield's scan
+list before commitment.
+
+The parser currently models `shield:` as the only structured
+field. Additional adopter-facing fields (e.g. `model:`,
+`effort:`, `seed:`, `parallelism:`) are **parsed permissively**
+(via the `skip_value` fallback) and validated at deploy time
+by the runtime's compute-binding registry rather than at parse
+time. A future cycle will tighten this surface to a typed AST
+node; until then, the runtime is the source of truth for
+which fields a given backend honours.
+
+## Anatomy quirks
+
+The parser accepts optional parameters / return type between
+the name and the brace (`compute LoanUnderwriterCompute(...) ->
+T { ... }`). This is **legacy syntax** preserved for AST
+parity with the Python frontend; new code should use the
+plain `compute <Name> { ... }` form.
+
+## Runtime behaviour
+
+`compute` lowers to a `ComputeDefinition` IR node. At deploy
+time, the runtime resolves the binding against its
+compute-backend registry and pins the configuration. Every
+flow that consumes this compute carries the binding's name
+into its audit rows — `compute:<name>:invoked` with
+`(model, effort, seed, latency, cost)`.
+
+For deterministic deployments, declare `seed:` explicitly. The
+runtime preserves the seed across retries so replay
+reproduces the exact tokens emitted (subject to model
+availability).
+
+## What this primitive is NOT
+
+- **Not a `tool`.** A tool declares an external capability the
+  model can call (web search, code interpreter). Compute
+  declares **the cognitive layer itself** — which model, on
+  which backend, with what effort.
+- **Not infrastructure.** A `compute` declaration does NOT
+  provision GPUs or model endpoints. The runtime resolves the
+  binding against ALREADY-running compute substrate — the
+  declaration is the typed handle, not the IaC.
+- **Not optional for regulated deployments.** Production
+  HIPAA / SOX / PCI flows ship explicit compute bindings so
+  the audit trail records the exact model used per emission.
+  Anonymous compute (no declaration) emits `axon-W015`.
+
+## See also
+
+- `axon://primitives/tool` — external-capability counterpart.
+- `axon://primitives/shield` — the most common companion
+  field.
+- `axon://primitives/run` — the deployment-level binding
+  site (`effort:` field).
+- `axon://primitives/agent` — agents declare their own
+  `compute` indirectly via `tools:` + budgets.

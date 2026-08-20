@@ -1,0 +1,183 @@
+---
+title: "daemon"
+description: "A long-lived, supervised cognitive process — reacts to events on declared listeners with structured restart semantics."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v1.11.0 · **Top-level declaration**
+
+## Grammar
+
+```text
+daemon <Name> [(<params>)] [-> <ReturnType>] {
+    goal: "<string>"                                    # optional
+    tools: [<Tool1>, ...]                               # optional
+    memory: <MemoryRef>                                  # optional
+    strategy: <react|plan_and_execute|reflexion|custom>  # optional
+    on_stuck: <escalate|forge|hibernate|retry>           # optional
+    shield: <ShieldRef>                                  # optional
+    max_tokens: <integer>                                # optional
+    max_time: <duration>                                 # optional
+    max_cost: <number>                                   # optional
+    requires: [<cap.slug>, ...] # optional (v2.4.0) — capability scope for scheduled work
+    listen <channel-ref|"<topic>"|"cron:<expr>"> [as <alias>] [{ <steps> }]  # optional, repeatable
+}
+```
+
+`daemon` declares **a long-lived, supervised cognitive process**.
+Where `flow` runs once per `run` and `agent` runs an iterative
+goal-directed loop on demand, `daemon` runs **continuously** —
+waiting for events on declared listeners and dispatching typed
+messages to its handler logic.
+
+This is AXON's actor surface. A daemon is the closest the
+language gets to a "service" in the operational sense: it has
+identity, lifecycle, supervised restarts, and an event surface.
+The v1.11.0 supervisor handles restart policies + crash
+containment; daemons are sandboxed by construction.
+
+## Surface
+
+`daemon` is a **top-level declaration**. It is *not* nested
+inside another primitive.
+
+```text
+daemon TicketRouter {
+    goal:       "Route inbound tickets to the right SLA queue."
+    tools:      [TicketDB, SlackNotifier]
+    memory:     RouterState
+    strategy:   react
+    on_stuck:   retry
+    shield:     CustomerDataShield
+    max_tokens: 16000
+    max_time:   30m
+
+    listen "tickets.inbound" as msg
+    listen TicketChannel as event
+}
+```
+
+## Fields
+
+### `goal:` (optional)
+
+A **string literal** declaring the daemon's persistent
+objective. Surfaces in the audit chain on every event dispatch.
+
+### `tools:` / `memory:` / `strategy:` / `on_stuck:` / `shield:` (optional)
+
+Mirror the `agent` primitive's fields exactly:
+
+- `tools:` — bracketed list of declared tools the daemon may
+  call.
+- `memory:` — bound memory store for cross-event state.
+- `strategy:` — closed catalogue: `react`,
+  `plan_and_execute`, `reflexion`, `custom`.
+- `on_stuck:` — closed catalogue: `escalate`, `forge`,
+  `hibernate`, `retry`.
+- `shield:` — defence layer wrapping every event handler.
+
+### `max_tokens:` / `max_time:` / `max_cost:` (optional)
+
+Per-event budgets. Reaching any budget triggers `on_stuck:`.
+The supervisor tracks across the daemon's lifetime — sustained
+budget breaches are an operational signal, not a one-shot
+failure.
+
+### `listen <channel-ref|"<topic>"> [as <alias>] [{...}]` (optional, repeatable)
+
+The daemon's **event surface**. Each `listen` line binds an
+incoming event source. Two forms:
+
+1. **Channel reference** (canonical since v1.6.0 — typed
+   channels): `listen TicketChannel as event`.
+2. **String topic** (legacy, pre-v1.6.0): `listen
+   "tickets.inbound" as msg`.
+3. **Cron schedule** (v2.4.0 — a first-class TIME trigger,
+   not a topic): `listen "cron:*/5 * * * *" as tick { … }`.
+
+Multiple `listen` lines stack — the daemon multiplexes across
+all bound sources. The optional `as <alias>` binds the event
+payload to a named variable visible inside the listener body.
+The **body `{ … }` is real flow steps** (v2.4.0) that the
+supervisor executes on each arrival — it is *not* skipped.
+
+### `listen "cron:<expr>"` — scheduled execution (v2.4.0)
+
+A listener whose channel is `"cron:<expr>"` fires on a wall-clock
+schedule. `<expr>` is a **5-field POSIX cron** string
+(`min hour dom mon dow`; supports `*`, ranges `a-b`, lists `a,b`,
+steps `*/n`):
+
+```axon
+flow HibernateSession() -> Unit {
+    step S { ask: "hibernate idle sessions" output: Unit }
+}
+
+daemon SessionCleaner {
+    goal:     "Hibernate idle sessions every five minutes."
+    requires: [flow.execute]
+    listen "cron:*/5 * * * *" as tick {
+        run HibernateSession()
+    }
+}
+```
+
+- A **malformed cron expression** is `axon-E0789` (bad field,
+  wrong field count, out-of-range value).
+- An **empty handler body** is `axon-E0792` (a scheduled trigger
+  with no work is a no-op). The `as <alias>` is optional; the
+  body is required for cron listeners.
+
+### `requires: [<cap.slug>, ...]` (optional, v2.4.0)
+
+The **capability scope** a scheduled (cron) listener runs under.
+Because a cron tick has no inbound principal, a daemon with a
+cron listener MUST declare the capabilities its scheduled work
+needs — otherwise it is **`axon-E0791`** (a cron-scheduled daemon
+with no `requires:` scope). Each slug follows the dotted-slug
+grammar (`^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$`).
+
+## Runtime behaviour
+
+`daemon` lowers to a `DaemonDefinition` IR node carrying its
+declared listeners. At deploy time, the v1.11.0 supervisor:
+
+1. Mounts the daemon as a supervised process under the
+   declared budgets.
+2. Subscribes to every `listen` source.
+3. Spins up an event-handler instance per arrival.
+4. On crash → restart per the supervisor's policy (exponential
+   backoff, max_restarts, escalation channel).
+
+Every event dispatch emits `daemon:<name>:<event_id>` audit
+rows carrying `(channel, payload_hash, handler_outcome,
+duration)`.
+
+## What this primitive is NOT
+
+- **Not an `agent`.** An agent is goal-directed for one
+  invocation; a daemon is persistent and event-driven. The
+  two compose: a daemon can spawn agents per event.
+- **Not a microservice.** A daemon lives within the AXON
+  runtime's supervised process tree, not as a separate
+  container. For multi-container deployments, declare
+  multiple manifests; each can host one daemon.
+- **Not unsupervised.** Production daemons declare `shield:`
+  AND budgets. The v1.11.0 supervisor refuses to mount a
+  shield-less daemon in regulated environments.
+- **Not the same as `listen` (the flow-step)**. The
+  flow-body `listen` is a one-shot subscription inside a
+  flow's execution. A daemon's `listen` lines are persistent
+  subscriptions across the daemon's lifetime.
+
+## See also
+
+- `axon://primitives/agent` — single-invocation iterative
+  cognitive entity.
+- `axon://primitives/listen` — the flow-body counterpart.
+- `axon://primitives/shield` — required defence wrapper.
+- `axon://primitives/memory` — bound state across events.

@@ -1,0 +1,147 @@
+---
+title: "reconcile"
+description: "A typed reconciliation loop — observes drift against a manifest and applies bounded corrections."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v1.2.0 · **Top-level declaration**
+
+## Grammar
+
+```text
+reconcile <Name> {
+    observe: <ObserveRef>                       # required — bound observation
+    threshold: <0.0..1.0>                        # optional — drift threshold
+    tolerance: <0.0..1.0>                        # optional — acceptable variance
+    on_drift: <provision|alert|refine>           # optional — drift response policy
+    shield: <ShieldRef>                          # optional — defence layer
+    mandate: <MandateRef>                        # optional — approval gate
+    max_retries: <integer>                       # optional — bounded retry (default 3)
+}
+```
+
+`reconcile` declares **a typed reconciliation loop** that
+watches a bound observation, compares actual state against the
+declared manifest, and applies bounded corrective actions when
+drift exceeds the threshold.
+
+This is **the control plane of the cognitive-I/O layer**. Where
+`observe` is the sensor, `reconcile` is the actuator —
+constrained by typed policies, gated by optional mandates,
+bounded by a max-retries budget so runaway corrections are
+mechanically impossible.
+
+## Surface
+
+`reconcile` is a **top-level declaration**. It is *not* nested
+inside an observe or manifest.
+
+```text
+reconcile EHRReconciler {
+    observe:      ClinicalHealth
+    threshold:    0.92
+    tolerance:    0.05
+    on_drift:     provision
+    shield:       PHIShield
+    max_retries:  3
+}
+```
+
+## Fields
+
+### `observe:` (required)
+
+A **single identifier** referencing a declared `observe`. The
+reconcile reads from this observation; the manifest the observe
+watches is the implicit reconciliation target.
+
+### `threshold:` (optional)
+
+A **numeric literal in `[0.0, 1.0]`**. The certainty threshold
+below which drift triggers the `on_drift:` policy. Typical
+production value: `0.90`–`0.95`.
+
+### `tolerance:` (optional)
+
+A **numeric literal in `[0.0, 1.0]`**. The acceptable variance
+around the threshold — observations within `[threshold -
+tolerance, threshold + tolerance]` are treated as steady-state
+even if individual samples cross the threshold. Damps
+oscillation.
+
+### `on_drift:` (optional)
+
+A **single identifier** from the closed drift-response
+catalogue:
+
+| Value | Behaviour |
+|---|---|
+| `provision` | Apply the declared corrective action (default). |
+| `alert` | Emit an audit row + escalation signal; no automatic action. |
+| `refine` | Run a `refine` sub-loop against the divergent state. |
+
+The parser rejects unknown values.
+
+### `shield:` (optional)
+
+A **single identifier** referencing a declared `shield`. Every
+corrective action runs through the shield's scan list before
+commitment — defence against compromised reconcilers driving
+malicious provisioning.
+
+### `mandate:` (optional)
+
+A **single identifier** referencing a declared `mandate`.
+Reconcilers under a mandate cannot apply corrections without
+the mandate's approval (typically human-in-the-loop for
+high-stakes systems like clinical, financial, or government).
+
+### `max_retries:` (optional)
+
+A **non-negative integer literal**. Maximum retries per drift
+event. Defaults to **3**. After the budget is exhausted, the
+reconciler emits `reconcile:budget_exhausted` and escalates per
+the deployment's escalation channel.
+
+## Runtime behaviour
+
+`reconcile` lowers to a `ReconcileDefinition` IR node. At deploy
+time, the runtime binds the reconciler to its observation
+target and starts the supervised loop. Each cycle:
+
+1. Read the latest observation.
+2. Compare against the declared manifest's expected state.
+3. If drift > threshold + tolerance → run `on_drift:`.
+4. If `provision` → apply correction (gated by `mandate:` and
+   `shield:` if declared); audit row `reconcile:<name>:provision`.
+5. Increment retry counter; halt at `max_retries:`.
+
+The reconciler is **idempotent by construction**: re-running the
+same correction produces the same result; the audit chain
+records every attempt with timestamps so post-hoc analysis can
+reason about correction effectiveness.
+
+## What this primitive is NOT
+
+- **Not unsupervised.** A reconciler in production carries
+  `shield:` AND typically `mandate:`. Unsupervised
+  reconcilers in regulated environments are a v1.2.0 λ-L-E
+  policy violation.
+- **Not unbounded.** The `max_retries:` budget is mandatory in
+  practice — the parser permits its absence (defaulting to 3),
+  but production deployments declare it explicitly for audit
+  clarity.
+- **Not the same as `refine`.** `refine` is a step-internal
+  iteration loop for cognitive outputs; `reconcile` is a
+  manifest-level corrective loop for infrastructure state.
+
+## See also
+
+- `axon://primitives/observe` — the sensor it reads from.
+- `axon://primitives/manifest` — the reconciliation target.
+- `axon://primitives/shield` — mandatory defence in production.
+- `axon://primitives/mandate` — approval gate.
+- `axon://primitives/refine` — cognitive-loop analogue.

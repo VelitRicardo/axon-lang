@@ -1,0 +1,149 @@
+---
+title: "mandate"
+description: "A typed approval requirement — gates a flow's execution on a capability check + optional segregation of duties."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v1.13.1 · **Top-level declaration**
+
+## Grammar
+
+```text
+mandate <Name> {
+    constraint: "<string>"           # required — human-readable constraint description
+    kp: <number>                      # optional — proportional gain (PID controller)
+    ki: <number>                      # optional — integral gain
+    kd: <number>                      # optional — derivative gain
+    tolerance: <number>               # optional — acceptable deviation
+    max_steps: <integer>              # optional — control-loop step budget
+    on_violation: <ident>             # optional — policy on violation
+}
+```
+
+`mandate` declares **a typed approval requirement** with an
+optional PID-controlled enforcement loop. Where `anchor` is a
+declarative predicate and `shield` is a defence transform,
+`mandate` is the **policy controller** — it carries a
+constraint statement (often a regulatory requirement), gain
+parameters for a control loop that drives outputs toward
+compliance, and a violation policy.
+
+In production deployments, mandates encode requirements that
+must be enforced **structurally**: SoX section 404 segregation of
+duties, HIPAA section 164.508 authorisation, PCI DSS section 6.4 change
+control. The mandate's constraint is auditable; the PID loop
+makes its enforcement quantitative.
+
+## Surface
+
+`mandate` is a **top-level declaration**. It is *not* nested
+inside another primitive.
+
+```axon
+mandate FinancialApproval {
+    constraint:   "Posting > $10k requires CFO + Controller dual approval"
+    kp:           1.0
+    ki:           0.1
+    kd:           0.0
+    tolerance:    0.05
+    max_steps:    10
+    on_violation: halt
+}
+```
+
+## Fields
+
+### `constraint:` (required)
+
+A **string literal** containing the **human-readable
+constraint description**. This is what auditors read; it
+appears verbatim in every audit row tagged
+`mandate:<name>:check`. The constraint should be precise
+enough to verify externally (regulators, internal audit, AI
+risk review).
+
+### `kp:` / `ki:` / `kd:` (optional)
+
+**Numeric literals** — gains of a PID (proportional-integral-
+derivative) control loop. When a mandate-gated operation
+drifts from the constraint:
+
+| Gain | Drives |
+|---|---|
+| `kp` | Proportional response — immediate correction strength. |
+| `ki` | Integral response — accumulated-error correction. |
+| `kd` | Derivative response — rate-of-change damping. |
+
+Both lowercase (`kp`, `ki`, `kd`) and uppercase (`Kp`, `Ki`,
+`Kd`) field names are accepted — the parser normalises to
+lowercase. The runtime treats absent gains as zero.
+
+### `tolerance:` (optional)
+
+A **numeric literal**. The acceptable deviation around the
+constraint. Operations within tolerance are auto-passed;
+operations outside it engage the PID loop.
+
+### `max_steps:` (optional)
+
+A **non-negative integer**. The maximum number of PID loop
+iterations before the runtime gives up and runs
+`on_violation:`. Bounded retry is mandatory by v2.0.0 — the
+runtime emits `axon-W014` for unbounded mandate loops.
+
+### `on_violation:` (optional)
+
+A **single identifier** declaring the violation policy.
+Common values: `halt`, `escalate`, `audit_and_continue`,
+`coerce`, `retry`. Open catalogue at the parser level; the
+runtime validates against its registered handlers.
+
+## Runtime behaviour
+
+`mandate` lowers to a `MandateDefinition` IR node. Mandates
+**do not run on their own** — they bind to other surfaces:
+
+- An `axonendpoint` with `mandate: <Name>` runs the mandate's
+  check on every request.
+- A `reconcile` with `mandate: <Name>` runs the mandate before
+  applying corrections.
+- A `flow … constrained_by_mandate: <Name>` (v1.13.1 extension)
+  attaches the mandate to a specific run.
+
+Per check:
+
+1. Evaluate the constraint against the candidate operation.
+2. If within tolerance → audit row `mandate:<name>:pass`.
+3. If outside tolerance → enter the PID loop; iterate up to
+   `max_steps:`.
+4. If the loop converges → audit row
+   `mandate:<name>:converged_after_N_steps`.
+5. If the loop exhausts → run `on_violation:`.
+
+## What this primitive is NOT
+
+- **Not an `anchor`.** Anchor evaluates a predicate per
+  emission; mandate drives an enforcement loop with PID
+  semantics + a constraint statement.
+- **Not a `shield`.** Shield transforms candidates by scan;
+  mandate gates operations by approval / constraint
+  satisfaction.
+- **Not a substitute for a human approver.** A mandate
+  encoding SoX SoD still requires the runtime to validate
+  the approver's identity against the requester's; the
+  mandate is the policy surface, not the auth layer.
+- **Not free.** PID loops can run up to `max_steps:`
+  iterations per check; for hot paths, declare `tolerance:`
+  wide enough that the loop rarely fires.
+
+## See also
+
+- `axon://primitives/anchor` — declarative predicate counterpart.
+- `axon://primitives/shield` — transform counterpart.
+- `axon://primitives/axonendpoint` — `mandate:` binding site.
+- `axon://primitives/reconcile` — `mandate:` binding site for
+  control-plane corrections.
+- `axon://compliance/sox` — section 404 SoD examples.

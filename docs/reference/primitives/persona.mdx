@@ -1,0 +1,176 @@
+---
+title: "persona"
+description: "Declares the identity, expertise, and refusal posture an agent adopts when executing a flow."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v0.1.0 (initial language) · **Top-level declaration**
+
+## Grammar
+
+```text
+persona <Name> {
+    domain: ["<topic>", "<topic>", ...]    # required — areas of expertise
+    tone: <ident>                           # required — e.g. precise | empathic | terse
+    confidence_threshold: <0.0..1.0>        # optional — minimum confidence to answer
+    cite_sources: <true|false>              # optional — force citations on every claim
+    refuse_if: [<ident>, <ident>, ...]      # optional — closed catalog of refusal triggers
+    language: "<bcp47>"                     # optional — preferred output language
+    description: "<free text>"              # optional — operator notes
+}
+```
+
+`persona` declares **who the agent is** when it runs a flow: its
+domain of competence, its rhetorical register, and the conditions
+under which it refuses to answer. Personas are bound to a `run`
+statement via `as <Persona>`; every `step` inside the flow may also
+opt into a different persona via `step Name use <Persona> { … }`.
+
+This is the **first primitive an agent ever touches** — every
+non-trivial axon program declares at least one persona before it
+declares anything that consumes one.
+
+## Surface
+
+`persona` is a **top-level declaration**. It is *not* nested inside
+a `flow`, a `context`, or a `daemon`.
+
+```axon
+persona LegalExpert {
+    domain: ["contract law", "IP", "corporate"]
+    tone: precise
+    confidence_threshold: 0.85
+    cite_sources: true
+    refuse_if: [out_of_domain, low_confidence]
+    language: "en"
+    description: "Senior corporate counsel, US/UK common law focus."
+}
+```
+
+## Fields
+
+### `domain:` (required)
+
+A **list of string literals** naming the topics the persona is
+qualified to reason about. The type checker does not interpret the
+contents (it is intentionally free-form so a domain expert can
+phrase it naturally), but at runtime the type-checker uses it to
+discharge the `out_of_domain` refusal trigger when present in
+`refuse_if`.
+
+```text
+domain: ["renal physiology", "nephrology", "dialysis"]
+```
+
+### `tone:` (required)
+
+A **single identifier** from the **closed** rhetorical-register
+catalog. Valid values (alphabetical):
+
+| Value | Register |
+|---|---|
+| `analytical` | Reasoned, dispassionate, evidence-led. |
+| `assertive` | Decisive, direct, low-hedge. |
+| `casual` | Relaxed, colloquial, peer-to-peer. |
+| `diplomatic` | Balanced, face-saving, indirect. |
+| `empathetic` | Emotionally attuned, validating. |
+| `formal` | Ceremonious, institutional. |
+| `friendly` | Warm, approachable, conversational. |
+| `precise` | Exact, minimal hedge, terminology-strict. |
+
+The type checker rejects unknown identifiers at parse time
+(`axon-frontend::type_checker::VALID_TONES`). To plead for a new
+register, open a PR adding it to the closed set — there is no
+opt-out at the source level.
+
+### `confidence_threshold:` (optional)
+
+A **numeric literal in `[0.0, 1.0]`**. When the persona is in
+force, any claim emitted by the model with a self-reported
+confidence below this floor is suppressed (the step replays with
+the `refuse_if: [low_confidence]` trigger if declared; otherwise
+the runtime emits an `axon-W002` warning and the value still
+passes).
+
+### `cite_sources:` (optional)
+
+A **boolean**. When `true`, every factual claim emitted while the
+persona is active MUST carry an `[evidence: ...]` citation — the
+shield layer rejects uncited claims as a shield violation. Pairs
+naturally with an `anchor` constraint that hardens the same rule.
+
+### `refuse_if:` (optional)
+
+A **bracketed list of identifiers** drawn from the closed refusal
+catalog:
+
+| Trigger | Fires when |
+|---|---|
+| `out_of_domain` | Input topic does not intersect `domain:` |
+| `low_confidence` | Best model answer is below `confidence_threshold` |
+| `no_evidence` | `cite_sources: true` but no citation could be produced |
+| `policy_breach` | A bound shield rejects the candidate answer |
+| `pii_exposed` | Input or output contains unredacted PII (when paired with a privacy shield) |
+
+A persona with `refuse_if: []` (the default) never refuses for
+policy reasons; only step-level `anchor` constraints can stop it.
+
+### `language:` (optional)
+
+A **string literal** containing a BCP-47 tag (`"en"`, `"es-CO"`,
+`"pt-BR"`, …). Sets the preferred output language; the model is
+prompted to honor it. Falls back to the request locale when absent.
+
+### `description:` (optional)
+
+A **free-form string** for operator notes. Does not influence
+behaviour; it surfaces in `axon-emcp` documentation tooling and in
+the audit row when the persona binds a step.
+
+## Runtime behaviour
+
+At deploy time, every `persona` declaration is lowered to a
+`PersonaDefinition` IR node (cross-stack: `axon::ir::PersonaDefinition`
+in Rust, `axon.ir.persona_definition` in Python). At `run`-time,
+the binding happens in two places:
+
+1. `run <Flow>(...) as <Persona>` — sets the **default persona**
+   for every step in the flow that does not declare its own.
+2. `step <Name> use <Persona> { … }` — overrides the default for
+   that step alone. The override is **lexical**, not dynamic; it
+   does not propagate to sub-flows invoked via `apply`.
+
+The persona's `tone`, `language`, and `description` are injected
+into the system prompt; `confidence_threshold` and `refuse_if`
+gate the runtime's emission path; `cite_sources` arms the
+evidence shield.
+
+## What this primitive is NOT
+
+- **Not a model selector.** The model/backend is chosen via the
+  `compute` primitive or the `axonendpoint`'s `model:` field;
+  persona is an identity, not a deployment target.
+- **Not a system prompt.** A persona is structured metadata
+  (typed fields the compiler can reason about). The system prompt
+  is one of its lowerings, not its definition.
+- **Not nested inside a `flow`.** A `flow` *references* a persona
+  by name (`as <Persona>` or `use <Persona>`); it does not declare
+  one inline.
+- **Not a chatbot character sheet.** Personas have refusal rules,
+  citation policies, and confidence floors precisely because they
+  are meant to bind on production agents, not on demo bots.
+
+## See also
+
+- `axon://primitives/flow` — what `as <Persona>` binds to at run.
+- `axon://primitives/step` — how `use <Persona>` overrides
+  per-step.
+- `axon://primitives/anchor` — the typed constraint that backs
+  `cite_sources: true` at compile time.
+- `axon://primitives/context` — declares the conversational frame
+  (memory scope, depth, temperature) the persona operates within.
+- `axon://logic/flow_composition` — when to declare multiple
+  personas vs. one with broad `domain:`.

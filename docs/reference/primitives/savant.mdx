@@ -1,0 +1,148 @@
+---
+title: "savant"
+description: "The long-horizon autonomous research primitive — a governed ORCHESTRATOR composing memory/corpus, a mandatory compute budget, and the active-inference/topology/holograph engines into a budget-bounded, interruptible, fail-closed, provenance-witnessed research loop."
+---
+
+<Danger>
+  **Unwired — nothing calls it.** The engine exists and is tested, and **no production path reaches it**. The declaration compiles; do not build on the behaviour yet.
+</Danger>
+
+**Since** v2.42.0 · **Top-level declaration**
+
+## Grammar
+
+```text
+savant <Name> {
+    domain: "<string>"                    # REQUIRED — the ontological scope
+    cognition {                           # optional — active-inference params
+        depth: standard | deep | hyper        # HRR dimensionality tier
+        entropic_threshold: <float>          # EFE convergence bound (> 0)
+        divergence: low | med | high         # explore/exploit balance
+    }
+    memory {                              # optional — retention layer
+        backend: <MemoryRef|CorpusRef>       # resolves to a memory/corpus
+        corpus_graph: <true|false>           # index as a simplicial complex
+        isolation_level: <level>             # per-tenant partitioning
+    }
+    budget {                              # REQUIRED — the compute ceiling
+        max_iterations: <int>                # FEP-loop ceiling (> 0)
+        max_tool_synth: <int>                # optional — synth events/mandate
+    }
+    mandate <Name> {                      # REQUIRED — one or more
+        objective: "<string>"               # the research goal
+        output: <Type>                      # the report's declared type
+    }
+}
+```
+
+`savant` is the **long-horizon autonomous research primitive**: it
+gives an agent the capacity for deep, multi-day autonomous research
+without the developer writing thousands of lines of
+context-management glue.
+
+The load-bearing idea is that a `savant` is **not a new monolithic
+engine — it is a governed ORCHESTRATOR** over primitives Axon
+already ships. Its `memory` block composes an existing
+`memory`/`corpus`; its `budget` binds a linear compute budget (the
+v2.28.0 discipline); its research loop runs the active-inference
+(`inference`), topology (`topology`) and holographic-memory
+(`holograph`) engines; and — when it hits a gap it has no tool for —
+it may synthesise one under a `synth` policy. The keyword, its type
+discipline, the `SavantSoundness` PCC proof and the reference
+engines live in OSS; the production engines and multi-tenant
+isolation are the enterprise flavour.
+
+## Surface
+
+`savant` is a **top-level declaration**.
+
+```axon
+type FormalReport { summary: String }
+memory ResearchStore { store: persistent }
+
+savant DeepTechAnalyst {
+    domain: "Quantum Computing Error Correction"
+    cognition {
+        depth: hyper
+        entropic_threshold: 0.001
+        divergence: high
+    }
+    memory {
+        backend: ResearchStore
+        corpus_graph: true
+        isolation_level: strict
+    }
+    budget {
+        max_iterations: 50000
+    }
+    mandate resolve_decoherence {
+        objective: "Synthesise 2024-2026 topological-code papers and propose 3 architectures."
+        output: FormalReport
+    }
+}
+```
+
+## Fields
+
+### `domain:` (required)
+
+The ontological scope of the generative boundary — the topic the
+free-energy loop minimises surprise over. Empty ⇒ `axon-T873`: an
+unbounded domain is an unbounded mandate.
+
+### `cognition { … }` (optional)
+
+The active-inference engine's epistemic parameters. `depth` and
+`divergence` are closed catalogs; `entropic_threshold` (the Expected
+Free Energy convergence bound) must be `> 0` (`axon-T876`) — a
+non-positive bound can never be reached, so the loop would never
+terminate.
+
+### `memory { … }` (optional)
+
+The retention layer. `backend` must resolve to a declared `memory`
+or `corpus` primitive (`axon-T875`) — a dangling reference would
+leave a weeks-long loop with no durable memory, the one thing it
+must not do. `corpus_graph: true` indexes the corpus as a
+simplicial-complex graph so the topological (Betti/β-void) reading
+can steer research toward genuine knowledge gaps.
+
+### `budget { … }` (required)
+
+The compute ceiling, bound to a linear budget. `max_iterations`
+(`> 0`) is **mandatory** (`axon-T877`): an autonomous loop that can
+run for weeks, write code and self-execute it with no enforced
+ceiling is fail-open and uninsurable. `max_tool_synth` bounds the
+`synth` events per mandate.
+
+### `mandate <Name> { … }` (required, one or more)
+
+An epistemic research goal the savant autonomously decomposes into
+tasks. Each needs a non-empty `objective:` and a declared `output:`
+type the final report must inhabit (`axon-T874`).
+
+## Governance (the `SavantSoundness` proof)
+
+A `savant` carries a Proof-Carrying-Code obligation re-checked at
+deploy time: **budget-bounded ∧ has a well-formed mandate ∧ valid
+cognition ∧ resolvable memory**. A stored proof that has gone stale
+(e.g. dropped its budget) is refused — an autonomous agent must stay
+governed for its whole life, not just at first compile.
+
+## What this primitive is NOT
+
+- **Not an unbounded `while true` around an LLM.** A savant without a
+  positive `budget.max_iterations` does not compile (`axon-T877`).
+- **Not a claim of quantum or super-classical advantage.** The
+  reference active-inference engine is exact classical probability
+  arithmetic; any advantage claim must carry a `witness`
+  (`axon://logic/no_unwitnessed_advantage`).
+
+## See also
+
+- `axon://primitives/synth` — the dynamic tool-synthesis policy a
+  savant uses when it needs a tool it does not have.
+- `axon://primitives/memory` — the retention layer `memory.backend`
+  resolves to.
+- `axon://primitives/corpus` — the alternative retrieval-ready
+  backend, indexable as a topological graph.

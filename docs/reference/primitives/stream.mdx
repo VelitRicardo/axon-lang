@@ -1,0 +1,38 @@
+---
+title: "stream"
+description: "Algebraic-effects stream block — the body is parsed, lowered and EXECUTED over the Free-Monad CPS handler runtime (v2.67.0; it used to be discarded at parse time)."
+---
+
+<Warning>
+  **Partial.** The runtime delivers this, with a documented gap against what the reference describes. The gap is named in the compiler's own ledger rather than left to be discovered.
+</Warning>
+
+**Since** pre-v2.67.0; body executed since v2.67.0 · **Used inside a declaration**
+
+## Grammar
+
+```text
+stream {
+    <handler-steps>
+}
+```
+
+`stream` is the **algebraic-effects block**: its body declares handlers
+over the Free-Monad CPS runtime.
+
+## What the runtime actually does (v2.67.0)
+
+The body is parsed, lowered into the IR, and **executed** — before
+v2.67.0 it went through `parse_block_step`, whose entire job was
+`skip_braced_block()`: the contents were thrown away at parse time and
+the block "completed" with an empty string while the README sold
+"Algebraic Effects and Free Monads".
+
+## Proof
+
+`axon-rs/tests/stream_runs.rs` — the body RUNS;
+`axon-frontend/tests/stream_body.rs` — the body lowers.
+
+## See also
+
+- `axon://primitives/step` — what the body is made of.

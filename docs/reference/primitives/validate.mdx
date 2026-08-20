@@ -1,0 +1,123 @@
+---
+title: "validate"
+description: "Enforces a typed invariant on a step's output before subsequent steps consume it."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v0.1.0 · **Used inside a declaration**
+
+## Grammar
+
+```text
+# Flow-level form (sibling of step):
+validate <Target>
+validate <Target> { rule: <rule_name> }   # optional rule body skipped structurally
+```
+
+`validate` enforces **a typed invariant** on a step's output
+before subsequent steps consume it. Where `probe` observes
+silently, `validate` is the **fail-fast predicate** — a
+violation halts the flow and runs the bound failure policy.
+
+`validate` is the canonical place to express "this step's
+output must satisfy X before any downstream step touches it".
+Predicates can be range checks, schema conformance, business
+rules, evidence-presence, or composite logic.
+
+## Surface
+
+`validate` is **nested** — it appears as a flow-step sibling
+of `step`, not as a top-level declaration.
+
+```text
+flow ScoreCredit(applicant: LoanApplication) -> CreditDecision {
+    step ComputeRisk {
+        given: applicant
+        ask: "Compute the credit-risk score."
+        output: RiskScore
+    }
+    # Halts the flow if RiskScore is not in [0, 1].
+    validate ComputeRisk.output
+    step Decide {
+        given: ComputeRisk.output
+        ask: "Emit the credit decision."
+        output: CreditDecision
+    }
+}
+```
+
+## Header
+
+### `validate <Target>`
+
+A **single identifier** naming the value to validate.
+Typically a previous step's output (`<Step>.output`) or a
+flow parameter.
+
+### `validate <Target> { rule: <rule_name> }` (optional body)
+
+A braced block may follow the target. The body is **reserved**
+for declarative rule binding — naming a predicate from the
+module's rule registry. Today the parser skips the body
+structurally; the runtime dispatches to the rule registry by
+target type (the value's declared type's `where` clause is the
+default predicate).
+
+## Predicate sources (resolution order)
+
+When the runtime sees `validate <Target>`, it resolves the
+predicate against the following sources in order:
+
+1. **Explicit `rule:` body** (if declared) — looked up in the
+   module's rule registry.
+2. **The target's declared type's `where` clause** — every
+   `type X where ...` declaration auto-registers as a
+   validator for `X`.
+3. **The target's declared type's range** — `type X(0.0..1.0)`
+   ranges are auto-checked.
+4. **No predicate** — silently succeeds. The runtime emits an
+   `axon-W009` warning ("validate target has no predicate").
+
+## Runtime behaviour
+
+`validate` at flow level produces a typed `ValidateStep` IR
+node. On execution:
+
+1. The target's value is fetched from the current flow scope.
+2. The resolved predicate runs.
+3. **On success** — execution continues, audit row
+   `validate:<target>:ok` is emitted.
+4. **On failure** — execution halts, audit row
+   `validate:<target>:fail` is emitted with the violated
+   predicate's description, and the `run`'s `on_failure:`
+   policy fires.
+
+Unlike `anchor` (which evaluates per-emission and can mutate
+via `sanitize_and_retry`), `validate` runs **once** at its
+position in the flow body and never mutates.
+
+## What this primitive is NOT
+
+- **Not a probe.** A probe observes silently; a validate halts
+  on failure. Same syntactic shape, opposite semantics.
+- **Not an anchor.** Anchors evaluate per-emission across the
+  whole run; validate is a single-point predicate at one
+  position in the flow body.
+- **Not a refinement-only type.** `type X(0.0..1.0)` carries
+  the range; `validate` is the *imperative gate* that
+  enforces it at a specific point. The two compose.
+- **Not test infrastructure.** Validates run in production on
+  every flow invocation. Test-time assertions belong in a
+  `harness` declaration.
+
+## See also
+
+- `axon://primitives/probe` — observe-only counterpart.
+- `axon://primitives/anchor` — run-level continuous predicate.
+- `axon://primitives/refine` — iterative-improvement
+  counterpart (validate halts, refine retries).
+- `axon://primitives/type` — `where` clauses + ranges are
+  auto-registered predicates.
