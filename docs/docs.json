@@ -341,13 +341,13 @@
   },
   "logo": {
     "light": "/images/ChatGPTImage20ago2026,15_18_38.png",
-    "dark": "/images/logoaxonlang.png"
+    "dark": "/docs/images/logoaxonlang.png"
   },
   "background": {
     "decoration": "grid",
     "color": {
       "light": "#ffffff",
-      "dark": "#303030"
+      "dark": "#131313"
     }
   },
   "icons": {
