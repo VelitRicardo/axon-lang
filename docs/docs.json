@@ -5,7 +5,7 @@
   "description": "The formal cognitive language — a deterministic, proof-carrying AI runtime.",
   "colors": {
     "primary": "#fbfbfb",
-    "light": "#ffffff",
+    "light": "#00ff46",
     "dark": "#050505"
   },
   "favicon": {
@@ -346,8 +346,8 @@
   "background": {
     "decoration": "grid",
     "color": {
-      "light": "#fbfbfb",
-      "dark": "#6b6b6b"
+      "light": "#131313",
+      "dark": "#ffffff"
     }
   },
   "icons": {
