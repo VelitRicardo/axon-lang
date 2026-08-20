@@ -6,7 +6,7 @@
   "colors": {
     "primary": "#fbfbfb",
     "light": "#00ff46",
-    "dark": "#050505"
+    "dark": "#f2f2f2"
   },
   "favicon": {
     "light": "/images/logoaxonlang.svg",
@@ -346,8 +346,8 @@
   "background": {
     "decoration": "grid",
     "color": {
-      "light": "#131313",
-      "dark": "#ffffff"
+      "light": "#ffffff",
+      "dark": "#303030"
     }
   },
   "icons": {
