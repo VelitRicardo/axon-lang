@@ -368,5 +368,12 @@
   },
   "metadata": {
     "timestamp": true
+  },
+  "contextual": {
+    "options": [
+      "vscode",
+      "mcp"
+    ],
+    "display": "header"
   }
 }
