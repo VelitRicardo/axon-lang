@@ -1,10 +1,10 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "palm",
+  "theme": "maple",
   "name": "AXON — the language that compiles to LLMs",
   "description": "The formal cognitive language — a deterministic, proof-carrying AI runtime.",
   "colors": {
-    "primary": "#fffefe",
+    "primary": "#fbfbfb",
     "light": "#00ff88",
     "dark": "#050505"
   },
