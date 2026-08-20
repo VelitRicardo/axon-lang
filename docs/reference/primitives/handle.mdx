@@ -1,0 +1,117 @@
+---
+title: "handle"
+description: "Delimited handler scope — interprets an effect's operations inside a bounded region, with one-shot continuations."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v2.87.0 · **Used inside a declaration**
+
+## Grammar
+
+```text
+handle <Effect> {
+    <Op>(<param>, ...) -> {
+        <FlowStep>                       # an ordinary flow body
+        ...
+        resume(<value>)                  # hand control back to the perform site
+    }
+    ...
+} in {
+    <FlowStep>                           # the delimited region
+    ...
+}
+```
+
+Interprets the operations of a declared [`effect`](effect) within a bounded
+region. The effect is interceptable inside the `in` block **and nowhere else** —
+that boundary is what "delimited" means.
+
+```text
+flow stream_findings(topic: Text) -> Text {
+    handle Delivery {
+        Emit(token) -> {
+            step Ship {
+                given: token
+                ask: "Format this fragment for the client transport."
+                output: Text
+            }
+            resume()
+        }
+        Done() -> {
+            step Close {
+                ask: "Close the delivery channel."
+                output: Text
+            }
+        }
+    } in {
+        run study(topic: topic)
+    }
+}
+```
+
+`study` is unchanged and unaware. This flow decides that `Emit` means *format
+and ship*, and could decide tomorrow that it means *append to a test buffer*.
+
+## Surface
+
+A clause body is an **ordinary flow body**, not a restricted expression. It may
+declare steps, call `run`, and use every primitive a flow can use — which is
+why a handler can do real work rather than just record a value.
+
+Clause parameters bind the arguments the `perform` site supplied: `Emit(token)`
+binds `token` to whatever was performed.
+
+## Fields
+
+A clause is discharged in one of four ways:
+
+| Form | Effect |
+|---|---|
+| `resume(v)` | control returns to the `perform` site with `v`. **One-shot** — a continuation may be resumed at most once |
+| `abort(v)` | the whole `handle … in` region completes with `v`; the continuation is dropped |
+| `forward <Effect>.<Op>(args)` | re-raise to the next handler outward, for layering |
+| running off the end | an implicit `abort` — the continuation is dropped |
+
+`Done()` in the example above has no `resume`, so nothing after
+`perform Done()` runs. That is the intended reading of an operation declared
+`-> Never`.
+
+## Runtime behaviour
+
+Handlers form a **stack**. `perform` yields to the nearest enclosing scope that
+handles that effect; `forward` passes outward to the next one. Nesting two
+handlers for the same effect is how you layer behaviour — an inner one that
+counts tokens forwarding to an outer one that ships them.
+
+Continuations are **one-shot and delimited**: captured up to the `handle`
+boundary, resumable once. This is deliberate. Multi-shot continuations would
+mean re-running a step — and re-running a step means re-invoking a model, at
+cost, with a different result.
+
+## What this primitive is NOT
+
+**Not `try`/`catch`.** A catch block receives control *instead of* the rest of
+the computation. A handler clause can hand control **back** with `resume(v)`,
+and the deliberation continues from the exact point it yielded.
+
+**Not middleware or a hook.** There is no registration and no dynamic lookup:
+the scope is lexical and bounded by `in { … }`, so which handler runs is
+decided at compile time and refused if none exists ([`perform`](perform),
+`axon-T966`).
+
+**Not optional.** Deleting the `handle` above and calling `run study(...)`
+directly does not degrade to a default — it is a compile error. The effect row
+still travels with `study` at the entry point, and there is no runtime
+fallback.
+
+## See also
+
+- [`effect`](effect) — declare the operations
+- [`perform`](perform) — raise them
+- `examples/algebraic_effects.axon` — the complete program, compiled by the
+  test suite
+- `papers/paper_algebraic_effects_streaming.md` — one-shot delimited
+  continuations, and why streaming is the motivating case

@@ -31,7 +31,7 @@
 //!    registry. The coverage gate test in `knowledge.rs` enforces
 //!    this — un-flipped entries fail the gate.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use axon_frontend::{find_primitive, PrimitiveInfo};
 
@@ -208,6 +208,8 @@ adjacent ones.
 mod tests {
     use super::*;
     use std::fs;
+    // only the tests build paths; the module itself borrows them.
+    use std::path::PathBuf;
 
     /// Throwaway temp dir, no `tempfile` dep — keeps the dependency
     /// surface minimal. Same pattern as the catalog test helpers.
@@ -269,19 +271,25 @@ mod tests {
     #[test]
     fn writes_a_skeleton_with_correct_frontmatter() {
         let dir = tempdir("write");
-        // Use `axonendpoint` — a Pending entry. Real registry data,
-        // so any drift in PrimitiveInfo serialisation surfaces here.
+        // Use `axonendpoint` — real registry data, so any drift in
+        // PrimitiveInfo serialisation surfaces here.
         let msg = run("axonendpoint", &dir).expect("scaffold should succeed");
         let target = dir.join("primitives").join("axonendpoint.md");
         assert!(target.exists(), "scaffold did not create the file");
         assert!(msg.contains("Scaffolded primitive `axonendpoint`"));
         let body = fs::read_to_string(&target).unwrap();
 
-        // Frontmatter carries the registry-truthful fields verbatim.
-        assert!(body.contains("name: axonendpoint"));
-        assert!(body.contains("category: wire"));
-        assert!(body.contains("top_level: true"));
-        assert!(body.contains("since: v1.23.0"));
+        // Frontmatter carries the registry-truthful fields verbatim —
+        // asserted AGAINST the registry, not against a copy of it. A `since:`
+        // is a fact the registry owns and may correct (this one moved from
+        // v1.23.0 to v1.13.1 between two frontend majors); a literal here
+        // turns that correction into a red test that says nothing about the
+        // scaffold, which is what this test is actually for.
+        let info = find_primitive("axonendpoint").expect("axonendpoint is in the registry");
+        assert!(body.contains(&format!("name: {}", info.name)));
+        assert!(body.contains(&format!("category: {}", info.category)));
+        assert!(body.contains(&format!("top_level: {}", info.top_level)));
+        assert!(body.contains(&format!("since: {}", info.since)));
         // The body's H1 header matches the slug.
         assert!(body.contains("# `axonendpoint`"));
         // Skeleton sections are present.

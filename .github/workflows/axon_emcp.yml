@@ -1,0 +1,83 @@
+# axon-emcp — the channel through which a coding agent learns AXON.
+#
+# This lane exists because its absence had a measurable cost. `src/axon-emcp`
+# is not a workspace member, so nothing in `ci.yml` reached it, and its
+# `axon-frontend` pin sat at `=1.59.0` while the compiler shipped 3.1.0 — two
+# majors. Its seventeen test binaries were green the whole time, validating
+# against a compiler nobody was running.
+#
+# What that hid, found the day the pin moved:
+#
+#   · three primitives (`effect`, `perform`, `handle`) had been in the registry
+#     for two majors with no corpus document — the coverage gate could not see
+#     entries its pinned frontend did not have;
+#   · four canonical programs declared a `lifetime: linear` resource that
+#     NOTHING consumed (`axon-T945`) — the corpus was teaching a linearity
+#     breach, from back when the analyser was decorative;
+#   · the `manifest` document and its canonical program deployed a `GDPR`
+#     bundle to `us-east-1` (`axon-E042`).
+#
+# Every one of those is a thing an agent would have written into an adopter's
+# program. A crate outside CI is not a crate.
+#
+# NOTE — no `cargo fmt --check` lane here, deliberately. This workspace is not
+# maintained rustfmt-clean (a bare `cargo fmt` reformats hundreds of files), so
+# a fmt gate would fail on code it did not touch. axon-csys has one because
+# that crate IS fmt-clean. Measured before deciding, not assumed.
+
+name: axon-emcp
+
+on:
+  push:
+    branches: [master]
+    tags: ["v*"]
+  pull_request:
+    branches: [master]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  # Windows hits LNK1318 linking the test binaries with full debug info.
+  CARGO_PROFILE_DEV_DEBUG: 0
+
+defaults:
+  run:
+    working-directory: src/axon-emcp
+
+jobs:
+  test:
+    name: test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src/axon-emcp
+
+      # The pin is a PATH dependency on the sibling `axon-frontend`, so this
+      # builds the corpus against the compiler in THIS commit. That is the
+      # whole point: the ℰMCP validates adopter programs with the same
+      # lexer/parser/type-checker the `axon` CLI ships, and a version skew
+      # between them means the server says "valid" where the CLI says no.
+      - name: Build
+        run: cargo check --all-targets
+
+      # Seventeen binaries. The ones that matter most are the drift gates:
+      # every canonical program and every idiomatic example is compiled by
+      # `compiler_pipeline::run`, and the coverage gate closes the registry
+      # against the corpus in both directions.
+      - name: Test
+        run: cargo test
+
+      - name: Release check
+        run: cargo check --release

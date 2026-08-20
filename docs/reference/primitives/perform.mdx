@@ -1,0 +1,101 @@
+---
+title: "perform"
+description: "Raise an algebraic effect — yields to the nearest enclosing handler, which may resume the computation where it left off."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v2.87.0 · **Used inside a declaration**
+
+## Grammar
+
+```text
+perform <Op>(<arg>, ...)              # bare — resolves against the closed catalog
+perform <Effect>.<Op>(<arg>, ...)     # qualified — required when two effects share an Op
+```
+
+Raises one operation from a declared [`effect`](effect). Control yields to the
+nearest enclosing [`handle`](handle) scope, the matching clause runs, and — if
+that clause calls `resume(v)` — control returns to this exact point with `v` as
+the result.
+
+```text
+flow study(topic: Text) -> Text {
+    step Analyze {
+        given: topic
+        ask: "Analyse the topic and produce one paragraph of findings."
+        perform Emit(Analyze.output)
+        perform Done()
+        output: Text
+    }
+}
+```
+
+`study` names no transport, no handler, and no effect row of its own. It
+performs `Emit` and `Done`, and something else decides what they mean.
+
+## Surface
+
+Legal in two positions:
+
+- **at flow level**, as a statement beside `step` and `run`
+- **inside a step body**, as shown above
+
+The bare form `perform Emit(x)` resolves against the closed catalog of declared
+effects. When two effects declare the same operation the bare form is refused
+naming both (`axon-T964`), and the qualified form `perform Delivery.Emit(x)`
+says which one you meant.
+
+## Fields
+
+The argument list must match the operation's declared parameters. The value the
+`perform` *evaluates to* is the operation's declared return type — supplied by
+the handler's `resume(v)`, not by this site.
+
+An operation declared `-> Never` never resumes: nothing after that `perform`
+runs, so it is the last statement its path executes.
+
+## Runtime behaviour
+
+**Inside a step body, a `perform` runs AFTER the step generates.** This is not
+an implementation detail — it is the reason `perform` is not filed with the
+step's other statements, which all run *before* generation. It is what makes
+
+```text
+perform Emit(Analyze.output)
+```
+
+mean *the paragraph the model actually produced*, rather than an unresolved
+identifier. A `perform` that ran first could only ever emit the name.
+
+**An undischarged `perform` is a compile error (`axon-T966`), not a runtime
+surprise.** If no handler for the effect is in scope at the entry point, the
+program does not build. The check is interprocedural by necessity: the flow
+that performs and the flow that handles are normally different flows, and
+deleting a `handle` two call levels up is exactly the mistake this catches.
+
+There is no runtime fallback. An effect with nowhere to yield to has no
+defined behaviour, so the language refuses to invent one.
+
+## What this primitive is NOT
+
+**Not a function call.** The operation has no body here. What happens is chosen
+by whichever handler is in scope, and the same `perform` can mean different
+things under different handlers without the performing flow changing.
+
+**Not `throw`.** An exception unwinds the stack and cannot come back. A
+`perform` yields, and `resume(v)` returns to this exact site with the
+computation intact.
+
+**Not `output:`.** `output:` produces the step's value for its own flow;
+`perform` hands a value out to a handler that may live in another flow
+entirely.
+
+## See also
+
+- [`effect`](effect) — declare the operations this raises
+- [`handle`](handle) — the delimited scope that interprets them
+- `examples/algebraic_effects.axon` — the complete program, compiled by the
+  test suite

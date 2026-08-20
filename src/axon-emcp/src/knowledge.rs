@@ -1263,7 +1263,13 @@ Body prose.
         // corpus docs (verified against the runtime audit — several honestly
         // document a refusal or a KNOWN_DEBT gap), restoring 100% coverage
         // at the new, honest denominator of 91.
-        assert_eq!(s.total, 91);
+        // v2.87.0: 91 -> 94 with the algebraic-effect trio `effect` / `perform`
+        // / `handle`. Recorded here on 2026-08-20, when the crate's frontend pin
+        // finally moved from 1.59.0 to 3.1.0 — the entries had been in the
+        // registry for two majors, and this crate could not see them. That is
+        // what a stale pin costs: the coverage gate was green the whole time,
+        // measuring a registry nobody was shipping.
+        assert_eq!(s.total, 94);
     }
 
     /// Phase 5 — every MCP prompt shipped under

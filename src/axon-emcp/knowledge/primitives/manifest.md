@@ -36,11 +36,24 @@ inside another primitive.
 manifest ProductionHealthcare {
     resources:   [EHRDatabase, TrialArchive, InferenceEngine]
     fabric:      ClinicalCloud
-    region:      "us-east-1"
+    region:      "eu-west-1"
     zones:       3
     compliance:  [HIPAA, GDPR, GxP, SOC2]
 }
 ```
+
+The region is EU because the bundle declares `GDPR`, and **a compliance tag
+can bind a jurisdiction**. Deploying this same bundle to `us-east-1` is
+refused at compile time:
+
+```text
+axon-E042 compliance/jurisdiction: manifest 'ProductionHealthcare' declares
+compliance 'gdpr', which binds data to the Eu jurisdiction, but provider 'aws'
+region 'us-east-1' is NonEu. The deployment would move regulated data out of
+the jurisdiction the tag promises to keep it in
+```
+
+`HIPAA`, `GxP` and `SOC2` bind no region, so they impose no constraint here.
 
 ## Fields
 

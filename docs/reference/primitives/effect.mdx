@@ -1,0 +1,97 @@
+---
+title: "effect"
+description: "Algebraic effect declaration (Plotkin/Pretnar) — a CLOSED catalog of operations a flow may perform without knowing what they mean."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v2.87.0 · **Top-level declaration**
+
+## Grammar
+
+```text
+effect <Name> {
+    <Op>(<param>: <Type>, ...) -> <ReturnType>
+    <Op>() -> Never                      # an operation that never resumes
+    ...
+}
+```
+
+Declares a named set of operations that a flow may raise with
+[`perform`](perform) and an enclosing [`handle`](handle) may interpret.
+
+The property this buys is one nothing else in the language expresses: a flow
+performs an operation it knows nothing about, and code somewhere else decides
+what that operation *means* — without the flow being changed, recompiled, or
+even aware a handler exists.
+
+```axon
+effect Delivery {
+    Emit(token: Text) -> Unit
+    Done() -> Never
+}
+```
+
+`Delivery` mentions no transport. A flow that performs `Emit` has no opinion
+about whether the token reaches a websocket, a log file, or a test harness.
+
+## Surface
+
+An `effect` declaration is top-level, beside `flow` and `type`. Each line
+inside declares one operation: a name, a typed parameter list, and a return
+type.
+
+The return type is what the `perform` site receives when a handler clause calls
+`resume(v)`. `Unit` means the site resumes with nothing useful;
+**`Never` means the operation cannot resume at all** — a clause for it may not
+call `resume`, and nothing after the `perform` runs. `Done() -> Never` is the
+idiomatic terminator.
+
+## Fields
+
+The catalog is **closed**, and that is what makes a bare `perform Emit(x)`
+resolvable: exactly one declared effect owns `Emit`.
+
+If two effects both declared `Emit`, the compiler does **not** pick one. It
+refuses the bare form and names both candidates (`axon-T964`), and you write
+the qualified form `perform Delivery.Emit(x)` instead. The reason is worth
+stating plainly: a token routed to the audit log instead of the wire is a bug
+that produces *plausible* output, and those are the ones nobody finds.
+
+## Runtime behaviour
+
+The declaration itself emits no code. It gives the type checker the operation
+signatures it needs to check three things:
+
+| Check | What it refuses |
+|---|---|
+| `axon-T964` | a bare `perform Op(…)` when more than one effect declares `Op` — names both |
+| `axon-T966` | a `perform` that reaches an entry point with no handler in scope. **Interprocedural**, because the performing flow and its handler are usually different flows — which is the whole point |
+
+There is no runtime fallback for an unhandled effect. An effect with nowhere to
+yield to is a compile error, so the program that would discover it in
+production does not build.
+
+## What this primitive is NOT
+
+**Not the `effects:` row on a `tool` declaration.** That is a different feature
+that shares a word: `effects: <io, network>` declares which side effects a tool
+performs, for the linearity and governance rules. This page is about
+Plotkin/Pretnar algebraic effects with handlers and continuations.
+
+**Not exceptions.** An exception unwinds; an effect *yields*, and the handler
+decides whether to hand control back. `resume(v)` returns to the exact `perform`
+site with `v` as its value and the deliberation continues.
+
+**Not an interface or a trait.** There is no implementing type. The handler is
+attached by lexical scope at the call site, not by the value being operated on.
+
+## See also
+
+- [`perform`](perform) — raise one of these operations
+- [`handle`](handle) — interpret them within a delimited scope
+- `examples/algebraic_effects.axon` — the complete program these three pages
+  describe, compiled by the test suite
+- `papers/paper_algebraic_effects_streaming.md` — the theory

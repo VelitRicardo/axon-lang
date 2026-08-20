@@ -44,7 +44,7 @@ resource EHRDatabase {
     kind:            postgres
     endpoint:        ehr.clinical.internal
     capacity:        300
-    lifetime:        linear
+    lifetime:        affine
     certainty_floor: 0.95
     shield:          PHIShield
 }
@@ -80,7 +80,7 @@ resource EHRDatabase {
     kind:      postgres
     endpoint:  ehr.clinical.internal
     capacity:  300
-    lifetime:  linear
+    lifetime:  affine
 }
 
 resource TrialArchive {
@@ -98,7 +98,7 @@ resource InferenceEngine {
 
 fabric ClinicalCloud {
     provider:  aws
-    region:    "us-east-1"
+    region:    "eu-west-1"
     zones:     3
     ephemeral: false
 }
@@ -106,7 +106,7 @@ fabric ClinicalCloud {
 manifest ProductionHealthcare {
     resources:   [EHRDatabase, TrialArchive, InferenceEngine]
     fabric:      ClinicalCloud
-    region:      "us-east-1"
+    region:      "eu-west-1"
     zones:       3
     compliance:  [HIPAA, GDPR, GxP, SOC2]
 }
@@ -120,7 +120,7 @@ fn observe_canonical_program_compiles() {
 resource EHRDatabase {
     kind:      postgres
     endpoint:  ehr.clinical.internal
-    lifetime:  linear
+    lifetime:  affine
 }
 
 fabric ClinicalCloud {
@@ -161,7 +161,7 @@ shield PHIShield {
 resource EHRDatabase {
     kind:      postgres
     endpoint:  ehr.clinical.internal
-    lifetime:  linear
+    lifetime:  affine
 }
 
 fabric ClinicalCloud {
