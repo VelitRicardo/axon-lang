@@ -1,14 +1,17 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "AXON",
+  "theme": "luma",
+  "name": "OS Cognitive",
   "description": "The formal cognitive language — a deterministic, proof-carrying AI runtime.",
   "colors": {
-    "primary": "#2563EB",
-    "light": "#60A5FA",
-    "dark": "#1E3A8A"
+    "primary": "#ebebeb",
+    "light": "#ebebeb",
+    "dark": "#6b6b6b"
   },
-  "favicon": "/favicon.svg",
+  "favicon": {
+    "light": "/docs/images/logoaxonlang.svg",
+    "dark": "/favicon.svg"
+  },
   "navigation": {
     "groups": [
       {
@@ -44,5 +47,9 @@
     "socials": {
       "github": "https://github.com/VelitRicardo/axon-lang"
     }
+  },
+  "logo": {
+    "light": "/docs/images/ChatGPTImage20ago2026,15_18_38.png",
+    "dark": "/docs/images/logoaxonlang.png"
   }
 }
