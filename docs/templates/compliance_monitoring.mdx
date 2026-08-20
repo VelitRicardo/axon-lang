@@ -1,0 +1,122 @@
+---
+title: "Compliance Monitoring scaffold"
+description: "AXON Compliance Monitoring scaffold — continuous compliance audit across multiple regulatory frameworks (HIPAA / GDPR / PCI_DSS / SOX / SOC2). Audit-chain-anchored, mandate-gated."
+---
+
+A complete program, not a fragment: it compiles as written. Copy it, rename the
+placeholder identifiers to your domain, and run `axon check` — the compiler will
+tell you what your renaming broke. An MCP client can also generate it through the
+`axon.compose` tool by naming the `compliance_monitoring` domain.
+
+```axon
+// AXON Compliance Monitoring scaffold — continuous compliance audit
+// across multiple regulatory frameworks (HIPAA / GDPR / PCI_DSS /
+// SOX / SOC2). Audit-chain-anchored, mandate-gated.
+//
+// Differs from `government.axon` (single-framework agency): this
+// scaffold aggregates compliance signals across many frameworks,
+// produces a periodic compliance posture report.
+
+// ── Types ─────────────────────────────────────────────────────────
+
+type ComplianceSignal {
+    framework:        Text
+    control_id:       Text
+    state:            Text
+    evidence_pointer: Text
+    captured_at:      Text
+}
+
+type CompliancePosture {
+    framework:        Text
+    overall_state:    Text
+    control_count:    Int
+    failing_controls: Text
+    last_audit_ts:    Text
+}
+
+type PostureRequest { signal: ComplianceSignal }
+
+// ── Ledger — tamper-evident, hash-linked audit chain ──────────────
+// (v2.12.0: this is the `ledger` audit chain; `pix` is now the
+//  embeddings-free retrieval navigator.)
+
+ledger ComplianceAuditChain {
+    source:    "compliance.internal"
+    branching: 2
+    model:     sha256
+}
+
+// ── Mandate — gates the final posture emission ────────────────────
+
+mandate AuditorReview {
+    constraint:   "Posture state changes from passing to failing require compliance-team review within 24h"
+    tolerance:    0.01
+    max_steps:    1
+    // mandate.on_violation closed catalog: {coerce, halt, retry}.
+    // `halt` is the right policy — failed-posture transitions must
+    // stop until the human reviewer acknowledges; cross-system
+    // escalation channels are configured outside the mandate.
+    on_violation: halt
+}
+
+// ── Identity + grounding ──────────────────────────────────────────
+
+persona ComplianceAuditor {
+    domain: ["regulatory-compliance", "internal-audit", "hipaa", "sox", "gdpr", "pci-dss"]
+    tone: precise
+    confidence_threshold: 0.9
+    cite_sources: true
+}
+
+context ComplianceMonitoringRun {
+    memory: persistent
+    language: "en"
+    depth: exhaustive
+    max_tokens: 4096
+    temperature: 0.1
+}
+
+anchor EvidencePointerRequired {
+    require: legal_basis_present
+    confidence_floor: 0.9
+    unknown_response: "Evidence pointer missing — cannot emit posture without an auditable trail."
+    on_violation: raise EvidenceGapError
+}
+
+// ── Shield ────────────────────────────────────────────────────────
+
+shield ComplianceShield {
+    scan:       [prompt_injection, pii_leak, data_exfil]
+    on_breach:  halt
+    severity:   critical
+    compliance: [SOC2]
+}
+
+// ── Flow ──────────────────────────────────────────────────────────
+
+flow IngestSignalAndUpdatePosture(signal: ComplianceSignal) -> FlowEnvelope<CompliancePosture> {
+    step ScoreSignal {
+        given: signal
+        ask: "Score the signal against the framework's control catalogue; cite the control's source rule."
+        output: FlowEnvelope<CompliancePosture>
+    }
+    return ScoreSignal.output
+}
+
+// ── HTTP boundary ─────────────────────────────────────────────────
+
+axonendpoint ComplianceAPI {
+    method:      post
+    path:        "/v1/compliance/posture/update"
+    body:        PostureRequest
+    execute:     IngestSignalAndUpdatePosture
+    output:      FlowEnvelope<CompliancePosture>
+    shield:      ComplianceShield
+    backend:     auto
+    compliance:  [SOC2]
+    retries:     1
+    timeout:     20s
+    requires:    ["compliance.posture.update"]
+}
+```

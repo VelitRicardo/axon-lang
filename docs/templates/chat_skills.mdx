@@ -1,0 +1,131 @@
+---
+title: "Chat-with-Skills scaffold"
+description: "AXON Chat-with-Skills scaffold — a router persona that dispatches each user message to a typed \"skill\" sub-flow (Support, Sales, Billing). Each skill carries its own typed input/output."
+---
+
+A complete program, not a fragment: it compiles as written. Copy it, rename the
+placeholder identifiers to your domain, and run `axon check` — the compiler will
+tell you what your renaming broke. An MCP client can also generate it through the
+`axon.compose` tool by naming the `chat_skills` domain.
+
+```axon
+// AXON Chat-with-Skills scaffold — a router persona that dispatches
+// each user message to a typed "skill" sub-flow (Support, Sales,
+// Billing). Each skill carries its own typed input/output.
+//
+// Differs from `chat_tools.axon` (model invokes tools): this scaffold
+// classifies-then-dispatches at the orchestration level. The router
+// step picks the skill; downstream steps call the right sub-flow via
+// `apply:`. The skills are first-class flows, audit-traceable per
+// dispatch.
+
+// ── Types ─────────────────────────────────────────────────────────
+
+type Utterance     { text: Text }
+type SkillSelection { skill: Text, rationale: Text }
+type SupportAnswer  { reply: Text, ticket_suggested: Text }
+type SalesAnswer    { reply: Text, next_step: Text }
+type BillingAnswer  { reply: Text, account_action: Text }
+
+type ChatRequest { req: Utterance }
+
+// The router emits a typed envelope so downstream auditors see WHICH
+// skill served the user.
+type RoutedAnswer {
+    skill_used: Text
+    reply:      Text
+}
+
+// ── Identity ──────────────────────────────────────────────────────
+
+persona Router {
+    domain: ["customer-support", "routing"]
+    tone: precise
+    confidence_threshold: 0.75
+    cite_sources: false
+}
+
+persona SupportSpecialist {
+    domain: ["technical-support", "troubleshooting"]
+    tone: empathetic
+    confidence_threshold: 0.8
+}
+
+persona SalesSpecialist {
+    domain: ["sales", "qualification"]
+    tone: friendly
+    confidence_threshold: 0.8
+}
+
+persona BillingSpecialist {
+    domain: ["billing", "invoicing", "subscriptions"]
+    tone: precise
+    confidence_threshold: 0.85
+}
+
+context ChatContext {
+    memory: session
+    language: "en"
+    depth: standard
+    max_tokens: 2048
+    temperature: 0.4
+}
+
+// ── Skills (each is a declared flow) ──────────────────────────────
+
+flow HandleSupport(req: Utterance) -> FlowEnvelope<SupportAnswer> {
+    step Reply {
+        given: req
+        ask: "Reply as a support specialist; if escalation is needed, suggest a ticket subject."
+        output: FlowEnvelope<SupportAnswer>
+    }
+    return Reply.output
+}
+
+flow HandleSales(req: Utterance) -> FlowEnvelope<SalesAnswer> {
+    step Reply {
+        given: req
+        ask: "Reply as a sales specialist; propose a concrete next step."
+        output: FlowEnvelope<SalesAnswer>
+    }
+    return Reply.output
+}
+
+flow HandleBilling(req: Utterance) -> FlowEnvelope<BillingAnswer> {
+    step Reply {
+        given: req
+        ask: "Reply as a billing specialist; identify the account action if any."
+        output: FlowEnvelope<BillingAnswer>
+    }
+    return Reply.output
+}
+
+// ── Router flow ───────────────────────────────────────────────────
+
+flow RouteAndAnswer(req: Utterance) -> FlowEnvelope<RoutedAnswer> {
+    step Classify {
+        given: req
+        ask: "Classify the user's message: support | sales | billing. Output the chosen skill + rationale."
+        output: FlowEnvelope<SkillSelection>
+    }
+    step Dispatch {
+        given: Classify.output
+        ask: "Dispatch to the named skill; carry the original utterance through; return the unified RoutedAnswer envelope."
+        output: FlowEnvelope<RoutedAnswer>
+    }
+    return Dispatch.output
+}
+
+// ── HTTP boundary ─────────────────────────────────────────────────
+
+axonendpoint ChatSkillsAPI {
+    method:    post
+    path:      "/v1/chat/skills"
+    body:      ChatRequest
+    execute:   RouteAndAnswer
+    output:    FlowEnvelope<RoutedAnswer>
+    backend:   auto
+    retries:   1
+    timeout:   30s public: true
+}
+```

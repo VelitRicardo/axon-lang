@@ -1,0 +1,117 @@
+---
+title: "Business Intelligence scaffold"
+description: "AXON Business Intelligence scaffold — typed query / analysis / render pipeline for BI dashboards + ad-hoc analytical Q&A."
+---
+
+A complete program, not a fragment: it compiles as written. Copy it, rename the
+placeholder identifiers to your domain, and run `axon check` — the compiler will
+tell you what your renaming broke. An MCP client can also generate it through the
+`axon.compose` tool by naming the `business_intelligence` domain.
+
+```axon
+// AXON Business Intelligence scaffold — typed query / analysis / render
+// pipeline for BI dashboards + ad-hoc analytical Q&A.
+//
+// Differs from `chat_research.axon`: BI is HEAVILY structured —
+// queries against typed stores, charts/tables as output types,
+// freshness anchored explicitly. Persona is analytical + cautious;
+// the anchor stack rejects any unverified statistical claim.
+
+// ── Types ─────────────────────────────────────────────────────────
+
+type AnalyticsQuery {
+    question:        Text
+    time_range:      Text
+    target_metric:   Text
+    grouping:        Text
+}
+
+type AnalyticsResult {
+    summary:         Text
+    chart_spec:      Text
+    table_data:      Text
+    freshness_ts:    Text
+    confidence_pct:  Number
+}
+
+type QueryRequest { aq: AnalyticsQuery }
+
+// ── Persistent metrics store ──────────────────────────────────────
+
+axonstore MetricsWarehouse {
+    backend:    postgresql
+    connection: "postgres://warehouse.internal/metrics"
+    isolation:  read_committed
+    on_breach:  raise
+    schema {
+        metric_id:   Text primary_key
+        recorded_at: Timestamp not_null
+        dimensions:  Jsonb
+        value:       Numeric not_null
+    }
+}
+
+// ── Identity + grounding ──────────────────────────────────────────
+
+persona BIAnalyst {
+    domain: ["business-intelligence", "analytics", "data-storytelling"]
+    tone: analytical
+    confidence_threshold: 0.9
+    cite_sources: true
+}
+
+context BIAnalysis {
+    memory: session
+    language: "en"
+    depth: deep
+    max_tokens: 4096
+    temperature: 0.15
+}
+
+anchor DataFreshnessGate {
+    require: evidence_backed
+    confidence_floor: 0.85
+    unknown_response: "Data freshness insufficient for an authoritative answer — refresh the warehouse first."
+    on_violation: raise StaleDataError
+}
+
+// ── Shield ────────────────────────────────────────────────────────
+
+shield BIShield {
+    scan:       [prompt_injection, pii_leak, data_exfil, hallucination]
+    on_breach:  quarantine
+    severity:   high
+    compliance: [SOC2]
+}
+
+// ── Flow ──────────────────────────────────────────────────────────
+
+flow RunAnalysis(aq: AnalyticsQuery) -> FlowEnvelope<AnalyticsResult> {
+    // `retrieve` is a flow-step SIBLING of `step` (not a step body
+    // field). It pulls the bound store's rows into flow scope
+    // before the cognitive step consumes them.
+    retrieve MetricsWarehouse
+    step QueryWarehouse {
+        given: aq
+        ask: "Resolve the analytical question against the warehouse; cite the table + freshness timestamp."
+        output: FlowEnvelope<AnalyticsResult>
+    }
+    return QueryWarehouse.output
+}
+
+// ── HTTP boundary ─────────────────────────────────────────────────
+
+axonendpoint AnalysisAPI {
+    method:      post
+    path:        "/v1/bi/analyze"
+    body:        QueryRequest
+    execute:     RunAnalysis
+    output:      FlowEnvelope<AnalyticsResult>
+    shield:      BIShield
+    backend:     auto
+    compliance:  [SOC2]
+    retries:     1
+    timeout:     45s
+    requires:    ["bi.analyze"]
+}
+```

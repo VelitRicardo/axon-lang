@@ -1,0 +1,153 @@
+---
+title: "Content Moderation scaffold"
+description: "AXON Content Moderation scaffold — multi-tier content review with reflex (immediate response) + heal (human-in-loop) chain."
+---
+
+A complete program, not a fragment: it compiles as written. Copy it, rename the
+placeholder identifiers to your domain, and run `axon check` — the compiler will
+tell you what your renaming broke. An MCP client can also generate it through the
+`axon.compose` tool by naming the `content_moderation` domain.
+
+```axon
+// AXON Content Moderation scaffold — multi-tier content review with
+// reflex (immediate response) + heal (human-in-loop) chain.
+//
+// The pattern: user-generated content arrives; the immune system
+// (continuous baseline) detects anomalies; reflex fires immediate
+// auto-actions (drop/quarantine); heal escalates ambiguous cases to
+// human reviewers under bounded patch budget.
+
+// ── Types ─────────────────────────────────────────────────────────
+
+type UGCSubmission {
+    submission_id:  Text
+    author_id:      Text
+    body:           Text
+    media_refs:     Text
+    submitted_at:   Text
+}
+
+type ModerationVerdict {
+    submission_id: Text
+    decision:      Text
+    rationale:     Text
+    reviewer_path: Text
+}
+
+type ModerateRequest { sub: UGCSubmission }
+
+// ── Resource binding for the immune to watch ──────────────────────
+
+resource ModerationSignals {
+    kind:      https
+    endpoint:  moderation.signals.base
+    lifetime:  persistent
+}
+
+fabric ModerationFabric {
+    provider:  aws
+    region:    "us-east-1"
+    zones:     2
+    ephemeral: false
+}
+
+manifest ModerationManifest {
+    resources:   [ModerationSignals]
+    fabric:      ModerationFabric
+    compliance:  [SOC2]
+}
+
+observe SignalStream from ModerationManifest {
+    sources: [signal_collector]
+    quorum:  1
+    timeout: 5s
+}
+
+// ── Immune + reflex + heal chain ──────────────────────────────────
+
+immune ContentVigil {
+    watch:       [SignalStream]
+    sensitivity: 0.88
+    baseline:    learned
+    window:      500
+    scope:       tenant
+    tau:         600s
+    decay:       exponential
+}
+
+reflex QuarantineToxic {
+    trigger:  ContentVigil
+    on_level: believe
+    action:   quarantine
+    scope:    tenant
+    sla:      500ms
+}
+
+shield ModerationShield {
+    scan:       [toxicity, prompt_injection, pii_leak]
+    on_breach:  quarantine
+    severity:   high
+    compliance: [SOC2]
+}
+
+heal ReviewBorderlineContent {
+    source:       ContentVigil
+    on_level:     speculate
+    mode:         human_in_loop
+    scope:        tenant
+    review_sla:   2h
+    shield:       ModerationShield
+    max_patches:  2
+}
+
+// ── Identity + grounding ──────────────────────────────────────────
+
+persona ContentModerator {
+    domain: ["content-policy", "trust-and-safety", "moderation"]
+    tone: precise
+    confidence_threshold: 0.85
+    cite_sources: true
+}
+
+context ModerationReview {
+    memory: session
+    language: "en"
+    depth: deep
+    max_tokens: 2048
+    temperature: 0.15
+}
+
+anchor PolicyCited {
+    require: source_citation
+    confidence_floor: 0.8
+    unknown_response: "Policy citation insufficient — routing to senior moderator."
+    on_violation: raise PolicyCitationError
+}
+
+// ── Flow ──────────────────────────────────────────────────────────
+
+flow ModerateSubmission(sub: UGCSubmission) -> FlowEnvelope<ModerationVerdict> {
+    step Scan {
+        given: sub
+        ask: "Scan the submission for policy violations; cite the policy section + severity."
+        output: FlowEnvelope<ModerationVerdict>
+    }
+    return Scan.output
+}
+
+// ── HTTP boundary ─────────────────────────────────────────────────
+
+axonendpoint ModerationAPI {
+    method:      post
+    path:        "/v1/content/moderate"
+    body:        ModerateRequest
+    execute:     ModerateSubmission
+    output:      FlowEnvelope<ModerationVerdict>
+    shield:      ModerationShield
+    backend:     auto
+    compliance:  [SOC2]
+    retries:     0
+    timeout:     5s
+    requires:    ["content.moderate"]
+}
+```

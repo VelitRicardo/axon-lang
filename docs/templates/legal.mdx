@@ -1,0 +1,94 @@
+---
+title: "Legal scaffold"
+description: "AXON Legal scaffold — SOC 2 + attorney-client privilege discipline."
+---
+
+A complete program, not a fragment: it compiles as written. Copy it, rename the
+placeholder identifiers to your domain, and run `axon check` — the compiler will
+tell you what your renaming broke. An MCP client can also generate it through the
+`axon.compose` tool by naming the `legal` domain.
+
+```axon
+// AXON Legal scaffold — SOC 2 + attorney-client privilege discipline.
+//
+// Produces a contract-analysis flow with a privilege-preservation
+// shield and a discovery-review boundary that keeps work-product
+// off the public surface.
+
+// ── Regulated data types ──────────────────────────────────────────
+
+type ContractDoc {
+    document_id: String
+    party_a:     String
+    party_b:     String
+    body:        String
+}
+
+type ClauseRisk {
+    clause_id:  String
+    risk_score: Number
+    rationale:  String
+}
+
+type AnalyzeRequest { doc: ContractDoc }
+type RiskReport { clauses: String, summary: String }
+
+// ── Identity + grounding ──────────────────────────────────────────
+
+persona LegalExpert {
+    domain: ["contract-law", "ip", "corporate"]
+    tone: precise
+    confidence_threshold: 0.85
+    cite_sources: true
+}
+
+context LegalReview {
+    memory: session
+    language: "en"
+    depth: exhaustive
+    max_tokens: 4096
+    temperature: 0.3
+}
+
+anchor NoLegalAdvice {
+    require: source_citation
+    confidence_floor: 0.85
+    unknown_response: "I cannot give legal advice on this matter — refer to counsel."
+    on_violation: raise UnauthorisedLegalAdviceError
+}
+
+// ── Shields — privilege gates ─────────────────────────────────────
+
+shield PrivilegeShield {
+    scan:       [prompt_injection, pii_leak, data_exfil]
+    on_breach:  quarantine
+    severity:   high
+    compliance: [SOC2]
+}
+
+// ── Flow ──────────────────────────────────────────────────────────
+
+flow AnalyzeContract(doc: ContractDoc) -> FlowEnvelope<RiskReport> {
+    step Extract {
+        given: doc
+        ask: "Extract every clause + its plain-language summary."
+        output: FlowEnvelope<RiskReport>
+    }
+    return Extract.output
+}
+
+// ── HTTP boundary ─────────────────────────────────────────────────
+
+axonendpoint ContractAnalysisAPI {
+    method:      post
+    path:        "/v1/contracts/analyze"
+    body:        AnalyzeRequest
+    execute:     AnalyzeContract
+    output:      FlowEnvelope<RiskReport>
+    shield:      PrivilegeShield
+    backend:     auto
+    compliance:  [SOC2]
+    retries:     1
+    timeout:     20s
+}
+```

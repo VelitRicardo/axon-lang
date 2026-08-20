@@ -1,0 +1,129 @@
+---
+title: "Healthcare scaffold"
+description: "AXON Healthcare scaffold — HIPAA + GDPR + GxP + SOC 2."
+---
+
+A complete program, not a fragment: it compiles as written. Copy it, rename the
+placeholder identifiers to your domain, and run `axon check` — the compiler will
+tell you what your renaming broke. An MCP client can also generate it through the
+`axon.compose` tool by naming the `healthcare` domain.
+
+```axon
+// AXON Healthcare scaffold — HIPAA + GDPR + GxP + SOC 2.
+//
+// Produces a regulated patient-record summarisation flow with PHI
+// redaction shield, audited HTTP boundary, and a clinical-trial
+// data-ingestion lane. Adapt names + prompts to the adopter's
+// specific use case; the compliance topology stays.
+
+// ── Regulated data types ──────────────────────────────────────────
+
+type PatientRecord compliance [HIPAA, GDPR] {
+    patient_id:     String
+    ssn:            String
+    diagnosis_code: String
+    dob:            String
+}
+
+type ClinicalTrial compliance [HIPAA, GxP] {
+    trial_id:       String
+    participant_id: String
+    observation:    String
+}
+
+type DiagnosticReport { summary: String }
+
+// Request types — the endpoint body's field names match the flow's
+// parameter names (v1.32.0 + 37.y D3 — Request Binding Contract).
+type PatientSummaryRequest { rec: PatientRecord }
+type TrialEntryRequest     { entry: ClinicalTrial }
+
+// ── Identity + grounding ──────────────────────────────────────────
+
+persona ClinicalReviewer {
+    domain: ["nephrology", "internal-medicine", "clinical-trials"]
+    tone: precise
+    confidence_threshold: 0.9
+    cite_sources: true
+}
+
+context ClinicalReview {
+    memory: session
+    language: "en"
+    depth: exhaustive
+    max_tokens: 4096
+    temperature: 0.2
+}
+
+anchor NoPHIHallucination {
+    require: evidence_backed
+    confidence_floor: 0.85
+    unknown_response: "I don't have enough information to answer that safely."
+    on_violation: raise PHIBreachError
+}
+
+// ── Shields — PHI / clinical gates ────────────────────────────────
+
+shield PHIShield {
+    scan:       [prompt_injection, pii_leak, data_exfil]
+    on_breach:  quarantine
+    severity:   critical
+    redact:     [ssn, dob]
+    compliance: [HIPAA, GDPR, SOC2]
+}
+
+shield TrialShield {
+    scan:       [prompt_injection, pii_leak]
+    on_breach:  halt
+    severity:   critical
+    compliance: [HIPAA, GxP, SOC2]
+}
+
+// ── Flows ─────────────────────────────────────────────────────────
+
+flow SummarizeRecord(rec: PatientRecord) -> FlowEnvelope<DiagnosticReport> {
+    step Review {
+        given: rec
+        ask: "Produce a clinical summary for the attending physician."
+        output: FlowEnvelope<DiagnosticReport>
+    }
+    return Review.output
+}
+
+flow AnalyzeTrial(entry: ClinicalTrial) -> FlowEnvelope<DiagnosticReport> {
+    step Analyze {
+        given: entry
+        ask: "Analyse this trial observation against protocol."
+        output: FlowEnvelope<DiagnosticReport>
+    }
+    return Analyze.output
+}
+
+// ── HTTP boundaries ───────────────────────────────────────────────
+
+axonendpoint PatientAPI {
+    method:      post
+    path:        "/v1/patients/summary"
+    body:        PatientSummaryRequest
+    execute:     SummarizeRecord
+    output:      FlowEnvelope<DiagnosticReport>
+    shield:      PHIShield
+    backend:     auto
+    compliance:  [HIPAA, GDPR]
+    retries:     1
+    timeout:     15s
+}
+
+axonendpoint ClinicalTrialAPI {
+    method:      post
+    path:        "/v1/trials/entry"
+    body:        TrialEntryRequest
+    execute:     AnalyzeTrial
+    output:      FlowEnvelope<DiagnosticReport>
+    shield:      TrialShield
+    backend:     auto
+    compliance:  [HIPAA, GxP]
+    retries:     2
+    timeout:     10s
+}
+```

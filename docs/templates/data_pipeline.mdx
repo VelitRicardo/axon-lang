@@ -1,0 +1,136 @@
+---
+title: "Data Pipeline scaffold"
+description: "AXON Data Pipeline scaffold — ETL with cognitive enrichment."
+---
+
+A complete program, not a fragment: it compiles as written. Copy it, rename the
+placeholder identifiers to your domain, and run `axon check` — the compiler will
+tell you what your renaming broke. An MCP client can also generate it through the
+`axon.compose` tool by naming the `data_pipeline` domain.
+
+```axon
+// AXON Data Pipeline scaffold — ETL with cognitive enrichment.
+//
+// Differs from `corporate_integration.axon` (multi-source sync): this
+// scaffold targets a SINGLE pipeline pass — ingest → validate →
+// enrich (cognitive) → load — with explicit data-quality anchors.
+//
+// v2.67.0 — this scaffold used to show a `transact { }` block over the
+// load step. It was empty, and `transact` never opened a transaction
+// anyway (axon-T938): it set an unread marker string and rolled nothing
+// back. Teaching a guarantee that does not exist is worse than teaching
+// nothing. Until real transactional semantics land, make the load
+// IDEMPOTENT — so a retry converges instead of corrupting.
+
+// ── Types ─────────────────────────────────────────────────────────
+
+type RawBatch {
+    batch_id:      Text
+    source:        Text
+    record_count:  Int
+    payload:       Text
+    received_at:   Text
+}
+
+type EnrichedRecord {
+    batch_id:        Text
+    record_index:    Int
+    enrichment_data: Text
+    quality_score:   Number
+}
+
+type LoadReceipt {
+    batch_id:         Text
+    loaded_count:     Int
+    quarantined_count: Int
+    completed_at:     Text
+}
+
+type IngestRequest { batch: RawBatch }
+
+// ── Persistent destination store ──────────────────────────────────
+
+axonstore PipelineDestination {
+    backend:    postgresql
+    connection: "postgres://warehouse.internal/curated"
+    isolation:  serializable
+    on_breach:  raise
+    schema {
+        record_id:    Uuid primary_key
+        batch_id:     Text not_null
+        payload:      Jsonb not_null
+        quality:      Numeric not_null
+        loaded_at:    Timestamp not_null
+    }
+}
+
+// ── Identity + grounding ──────────────────────────────────────────
+
+persona DataEngineer {
+    domain: ["data-engineering", "etl", "data-quality"]
+    tone: precise
+    confidence_threshold: 0.88
+    cite_sources: true
+}
+
+context PipelineRun {
+    memory: persistent
+    language: "en"
+    depth: deep
+    max_tokens: 2048
+    temperature: 0.1
+}
+
+anchor QualityFloorEnforced {
+    require: evidence_backed
+    confidence_floor: 0.85
+    unknown_response: "Records below the quality floor will be quarantined; manual review queue notified."
+    on_violation: log
+}
+
+// ── Shield ────────────────────────────────────────────────────────
+
+shield PipelineShield {
+    scan:       [prompt_injection, pii_leak, data_exfil]
+    on_breach:  quarantine
+    severity:   high
+    compliance: [SOC2]
+}
+
+// ── Flow ──────────────────────────────────────────────────────────
+
+flow ProcessBatch(batch: RawBatch) -> FlowEnvelope<LoadReceipt> {
+    step Validate {
+        given: batch
+        ask: "Validate the batch against the schema; emit per-record quality scores."
+        output: FlowEnvelope<EnrichedRecord>
+    }
+    step Enrich {
+        given: Validate.output
+        ask: "Enrich each record with cognitive features (entity tags, sentiment, classification); cite the source for each feature."
+        output: FlowEnvelope<EnrichedRecord>
+    }
+    step Acknowledge {
+        given: Enrich.output
+        ask: "Emit the load receipt summarising loaded vs. quarantined record counts."
+        output: FlowEnvelope<LoadReceipt>
+    }
+    return Acknowledge.output
+}
+
+// ── HTTP boundary ─────────────────────────────────────────────────
+
+axonendpoint PipelineAPI {
+    method:      post
+    path:        "/v1/pipeline/ingest"
+    body:        IngestRequest
+    execute:     ProcessBatch
+    output:      FlowEnvelope<LoadReceipt>
+    shield:      PipelineShield
+    backend:     auto
+    compliance:  [SOC2]
+    retries:     1
+    timeout:     60s
+    requires:    ["pipeline.ingest"]
+}
+```

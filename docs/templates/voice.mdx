@@ -1,0 +1,110 @@
+---
+title: "Voice Agent scaffold"
+description: "AXON Voice Agent scaffold — audio-in / audio-out conversational agent with declared `ots:` codec transformations (μ-law 8kHz ↔ PCM16)."
+---
+
+A complete program, not a fragment: it compiles as written. Copy it, rename the
+placeholder identifiers to your domain, and run `axon check` — the compiler will
+tell you what your renaming broke. An MCP client can also generate it through the
+`axon.compose` tool by naming the `voice` domain.
+
+```axon
+// AXON Voice Agent scaffold — audio-in / audio-out conversational agent
+// with declared `ots:` codec transformations (μ-law 8kHz ↔ PCM16).
+//
+// This scaffold targets PSTN-style integrations (Twilio, Vonage) where
+// inbound audio arrives μ-law-encoded and the LLM-streaming side
+// expects PCM16. The ots declarations are first-class transformation
+// surfaces; the runtime dispatches to native or ffmpeg backends.
+
+// ── Types ─────────────────────────────────────────────────────────
+
+type AudioFrame {
+    samples:   Bytes
+    sample_rate: Int
+    codec:     Text
+}
+
+type Transcript { text: Text }
+type Token      { piece: Text }
+
+type VoiceCallRequest { frame: AudioFrame }
+
+// ── Closed-catalogue OTS transformations ──────────────────────────
+
+ots InboundMulawToPcm16 {
+    teleology:       "Decode mu-law 8kHz inbound audio for LLM-streaming pipelines"
+    homotopy_search: shallow
+    loss_function:   "RMSE on reconstructed waveform"
+}
+
+ots OutboundPcm16ToMulaw {
+    teleology:       "Encode PCM16 LLM output back to mu-law for the carrier"
+    homotopy_search: shallow
+    loss_function:   "RMSE on reconstructed waveform"
+}
+
+// ── Identity + grounding ──────────────────────────────────────────
+
+persona VoiceConcierge {
+    domain: ["voice-assistant", "phone-concierge"]
+    tone: empathetic
+    confidence_threshold: 0.7
+    cite_sources: false
+}
+
+context VoiceCall {
+    memory: session
+    language: "en"
+    depth: standard
+    max_tokens: 1024
+    temperature: 0.5
+}
+
+anchor SpeakClearly {
+    require: source_citation
+    confidence_floor: 0.6
+    unknown_response: "Sorry, I didn't catch that. Could you repeat?"
+    on_violation: log
+}
+
+// ── Tool — streaming backend ──────────────────────────────────────
+
+tool VoiceBackend {
+    // LLM-routed: the tool IS the model. No `provider:` (v2.69.0). `openai` was not a real provider slug.
+    effects:  <network, stream:drop_oldest>
+    timeout:  30s
+}
+
+// ── Streaming flow ────────────────────────────────────────────────
+
+flow HandleVoiceFrame(frame: AudioFrame) -> Stream<Token> {
+    step Transcribe {
+        given: frame
+        apply: InboundMulawToPcm16
+        ask: "Transcribe the decoded audio frame."
+        output: FlowEnvelope<Transcript>
+    }
+    step Respond {
+        given: Transcribe.output
+        apply: VoiceBackend
+        ask: "Reply token-by-token in natural speech."
+        output: Stream<Token>
+    }
+    return Respond.output
+}
+
+// ── HTTP boundary (SSE-back for streaming audio) ──────────────────
+
+axonendpoint VoiceCallAPI {
+    method:    post
+    path:      "/v1/voice/call"
+    body:      VoiceCallRequest
+    execute:   HandleVoiceFrame
+    output:    Stream<Token>
+    backend:   auto
+    transport: sse(axon)
+    retries:   0
+    timeout:   60s public: true
+}
+```

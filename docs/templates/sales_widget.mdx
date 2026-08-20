@@ -1,0 +1,136 @@
+---
+title: "Sales Widget scaffold"
+description: "AXON Sales Widget scaffold — embedded chat widget for websites that streams replies, captures leads, and grounds claims against a product-knowledge corpus."
+---
+
+A complete program, not a fragment: it compiles as written. Copy it, rename the
+placeholder identifiers to your domain, and run `axon check` — the compiler will
+tell you what your renaming broke. An MCP client can also generate it through the
+`axon.compose` tool by naming the `sales_widget` domain.
+
+```axon
+// AXON Sales Widget scaffold — embedded chat widget for websites that
+// streams replies, captures leads, and grounds claims against a
+// product-knowledge corpus.
+//
+// Two endpoints: one streaming SSE chat for the live conversation, one
+// JSON endpoint for explicit lead-capture handoff (when the user
+// commits to "talk to sales"). The shield protects against PII leak +
+// prompt-injection.
+
+// ── Types ─────────────────────────────────────────────────────────
+
+type Visitor   { session_id: Text, page_url: Text, query: Text }
+type Token     { piece: Text }
+type LeadCapture { session_id: Text, name: Text, email: Text, company: Text }
+type LeadReceipt { lead_id: Text, status: Text, qualifier_assigned: Text }
+
+type ChatRequest    { visitor: Visitor }
+type CaptureRequest { lead: LeadCapture }
+
+// Product-catalogue items live in a declared corpus so claims ground.
+type ProductSheet { content: Text }
+type FAQEntry     { content: Text }
+
+corpus ProductCorpus {
+    documents: [ProductSheet, FAQEntry]
+}
+
+// ── Identity ──────────────────────────────────────────────────────
+
+persona WebsiteWidgetAgent {
+    domain: ["product-marketing", "lead-qualification"]
+    tone: friendly
+    confidence_threshold: 0.75
+    cite_sources: true
+}
+
+context WidgetSession {
+    memory: session
+    language: "en"
+    depth: standard
+    max_tokens: 1024
+    temperature: 0.4
+}
+
+anchor StayOnProduct {
+    require: source_citation
+    confidence_floor: 0.7
+    unknown_response: "I'm specialised in our product — let me hand you to a human."
+    on_violation: log
+}
+
+// ── Shields ───────────────────────────────────────────────────────
+
+shield WidgetShield {
+    scan:       [prompt_injection, pii_leak, social_engineering]
+    // `on_breach:` is the closed-catalog policy
+    // (deflect|escalate|halt|quarantine|sanitize_and_retry). The
+    // `redact:` field below names FIELDS to redact when
+    // sanitize_and_retry fires — the two are distinct concepts.
+    on_breach:  sanitize_and_retry
+    severity:   medium
+    redact:     [email]
+    compliance: [SOC2]
+}
+
+// ── Tool — streaming backend ──────────────────────────────────────
+
+tool WidgetBackend {
+    // LLM-routed: the tool IS the model. No `provider:` (v2.69.0). `openai` was not a real provider slug.
+    effects:  <network, stream:drop_oldest>
+    timeout:  30s
+}
+
+// ── Streaming reply flow ──────────────────────────────────────────
+
+flow Chat(visitor: Visitor) -> Stream<Token> {
+    step Reply {
+        given: visitor
+        apply: WidgetBackend
+        ask: "Answer the visitor's question grounded in the ProductCorpus; stream tokens; offer to capture lead at the right moment."
+        output: Stream<Token>
+    }
+    return Reply.output
+}
+
+// ── Lead-capture flow ─────────────────────────────────────────────
+
+flow CaptureLead(lead: LeadCapture) -> FlowEnvelope<LeadReceipt> {
+    step Persist {
+        given: lead
+        ask: "Persist the captured lead; assign a qualifier from the rota; emit the receipt."
+        output: FlowEnvelope<LeadReceipt>
+    }
+    return Persist.output
+}
+
+// ── HTTP boundaries — two endpoints, distinct transports ──────────
+
+axonendpoint WidgetChatAPI {
+    method:    post
+    path:      "/v1/widget/chat"
+    body:      ChatRequest
+    execute:   Chat
+    output:    Stream<Token>
+    shield:    WidgetShield
+    backend:   auto
+    transport: sse(axon)
+    retries:   0
+    timeout:   60s
+}
+
+axonendpoint WidgetLeadCaptureAPI {
+    method:      post
+    path:        "/v1/widget/lead"
+    body:        CaptureRequest
+    execute:     CaptureLead
+    output:      FlowEnvelope<LeadReceipt>
+    shield:      WidgetShield
+    backend:     auto
+    compliance:  [SOC2]
+    retries:     1
+    timeout:     10s
+    requires:    ["sales.widget.capture"]
+}
+```

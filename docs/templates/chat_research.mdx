@@ -1,0 +1,98 @@
+---
+title: "Research-Assistant Chat scaffold"
+description: "AXON Research-Assistant Chat scaffold — streaming dialogue grounded in a declared corpus, with mandatory source citation."
+---
+
+A complete program, not a fragment: it compiles as written. Copy it, rename the
+placeholder identifiers to your domain, and run `axon check` — the compiler will
+tell you what your renaming broke. An MCP client can also generate it through the
+`axon.compose` tool by naming the `chat_research` domain.
+
+```axon
+// AXON Research-Assistant Chat scaffold — streaming dialogue grounded
+// in a declared corpus, with mandatory source citation.
+//
+// Differs from `chat.axon` (general streaming chat): this scaffold
+// WIRES IN a `corpus` binding + a hard-fail anchor on
+// `source_citation`. Every reply must cite the corpus passages it
+// draws from. The persona is analytical, evidence-led, low-temperature.
+
+// ── Types ─────────────────────────────────────────────────────────
+
+type Question { text: Text }
+type Token    { piece: Text }
+
+type ChatRequest { q: Question }
+
+// Document references the corpus carries (one declared per document
+// class). Real corpora carry richer schemas — this is the canonical
+// shape that compiles end-to-end through axon-frontend today.
+type PaperA { content: Text }
+type PaperB { content: Text }
+type PaperC { content: Text }
+
+// ── Grounding ─────────────────────────────────────────────────────
+
+corpus ResearchCorpus {
+    documents: [PaperA, PaperB, PaperC]
+}
+
+// ── Identity + grounding ──────────────────────────────────────────
+
+persona ResearchAssistant {
+    domain: ["literature-review", "evidence-based-reasoning", "scientific-writing"]
+    tone: analytical
+    confidence_threshold: 0.85
+    cite_sources: true
+}
+
+context ResearchSession {
+    memory: session
+    language: "en"
+    depth: deep
+    max_tokens: 4096
+    temperature: 0.15
+}
+
+anchor MustCiteCorpus {
+    require: source_citation
+    confidence_floor: 0.8
+    unknown_response: "I cannot find evidence in the corpus to answer that confidently."
+    on_violation: raise UnsupportedClaimError
+}
+
+// ── Tool — declares the stream backpressure policy ────────────────
+
+tool ResearchBackend {
+    // LLM-routed: this tool IS the model (streaming). No `provider:` —
+    // validated by its absence (v2.69.0). `openai` was never a real provider slug.
+    effects:  <network, stream:drop_oldest>
+    timeout:  60s
+}
+
+// ── Streaming flow ────────────────────────────────────────────────
+
+flow Chat(q: Question) -> Stream<Token> {
+    step Reply {
+        given: q
+        apply: ResearchBackend
+        ask: "Answer using only the bound corpus; cite every claim. Stream tokens as you go."
+        output: Stream<Token>
+    }
+    return Reply.output
+}
+
+// ── Streaming HTTP boundary ───────────────────────────────────────
+
+axonendpoint ResearchChatAPI {
+    method:    post
+    path:      "/v1/research/chat"
+    body:      ChatRequest
+    execute:   Chat
+    output:    Stream<Token>
+    backend:   auto
+    transport: sse(axon)
+    retries:   0
+    timeout:   60s public: true
+}
+```

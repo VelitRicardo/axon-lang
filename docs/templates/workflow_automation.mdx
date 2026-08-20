@@ -1,0 +1,120 @@
+---
+title: "Workflow Automation scaffold"
+description: "AXON Workflow Automation scaffold — RPA-style multi-step workflow with typed gates + approvals + audit trail."
+---
+
+A complete program, not a fragment: it compiles as written. Copy it, rename the
+placeholder identifiers to your domain, and run `axon check` — the compiler will
+tell you what your renaming broke. An MCP client can also generate it through the
+`axon.compose` tool by naming the `workflow_automation` domain.
+
+```axon
+// AXON Workflow Automation scaffold — RPA-style multi-step workflow
+// with typed gates + approvals + audit trail.
+//
+// Differs from a single `flow`: this scaffold encodes the canonical
+// "request → review → approve → execute → audit" pattern with explicit
+// mandate gating on the approve step. Designed for back-office work
+// (expense approvals, document routing, claim processing).
+
+// ── Types ─────────────────────────────────────────────────────────
+
+type WorkflowRequest {
+    request_id:     Text
+    initiator:      Text
+    payload:        Text
+    requested_at:   Text
+}
+
+type ReviewVerdict {
+    decision:       Text
+    rationale:      Text
+    reviewer:       Text
+}
+
+type ExecutionReceipt {
+    request_id:     Text
+    completed_at:   Text
+    audit_trail_id: Text
+}
+
+type SubmitRequest { wf: WorkflowRequest }
+
+// ── Identity + grounding ──────────────────────────────────────────
+
+persona WorkflowReviewer {
+    domain: ["back-office-ops", "approval-policy", "exception-handling"]
+    tone: precise
+    confidence_threshold: 0.85
+    cite_sources: true
+}
+
+context WorkflowReview {
+    memory: persistent
+    language: "en"
+    depth: deep
+    max_tokens: 2048
+    temperature: 0.2
+}
+
+anchor PolicyCompliantDecision {
+    require: source_citation
+    confidence_floor: 0.8
+    unknown_response: "Routing to human reviewer — policy citation insufficient for automated approval."
+    on_violation: raise PolicyCitationError
+}
+
+// ── Mandate — gates the approve step on a documented constraint ───
+
+mandate ApprovalThreshold {
+    constraint:   "Approvals over $5k require senior reviewer + documented policy citation"
+    tolerance:    0.05
+    max_steps:    3
+    // mandate.on_violation closed catalog: {coerce, halt, retry}.
+    // `halt` is right here — over-threshold requests stop until the
+    // senior reviewer attests; manual escalation happens outside
+    // the mandate's auto-loop.
+    on_violation: halt
+}
+
+// ── Shield ────────────────────────────────────────────────────────
+
+shield WorkflowShield {
+    scan:       [prompt_injection, pii_leak, social_engineering]
+    on_breach:  quarantine
+    severity:   high
+    compliance: [SOC2]
+}
+
+// ── Flow ──────────────────────────────────────────────────────────
+
+flow ProcessWorkflowRequest(wf: WorkflowRequest) -> FlowEnvelope<ExecutionReceipt> {
+    step Review {
+        given: wf
+        ask: "Review the request against policy; cite the section that governs it; emit decision + rationale."
+        output: FlowEnvelope<ReviewVerdict>
+    }
+    step ExecuteOrEscalate {
+        given: Review.output
+        ask: "If decision == approved, execute the workflow step; else, route to escalation queue."
+        output: FlowEnvelope<ExecutionReceipt>
+    }
+    return ExecuteOrEscalate.output
+}
+
+// ── HTTP boundary ─────────────────────────────────────────────────
+
+axonendpoint WorkflowAPI {
+    method:      post
+    path:        "/v1/workflows/submit"
+    body:        SubmitRequest
+    execute:     ProcessWorkflowRequest
+    output:      FlowEnvelope<ExecutionReceipt>
+    shield:      WorkflowShield
+    backend:     auto
+    compliance:  [SOC2]
+    retries:     1
+    timeout:     30s
+    requires:    ["workflow.submit"]
+}
+```

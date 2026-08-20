@@ -1,0 +1,124 @@
+---
+title: "Banking scaffold"
+description: "AXON Banking scaffold — PCI DSS + SOX + SOC 2."
+---
+
+A complete program, not a fragment: it compiles as written. Copy it, rename the
+placeholder identifiers to your domain, and run `axon check` — the compiler will
+tell you what your renaming broke. An MCP client can also generate it through the
+`axon.compose` tool by naming the `banking` domain.
+
+```axon
+// AXON Banking scaffold — PCI DSS + SOX + SOC 2.
+//
+// Produces a regulated payment-decision flow with a financial-data
+// redaction shield, audited HTTP boundary, and a transaction-posting
+// lane that segregates requester from approver (an earlier release SoD).
+
+// ── Regulated data types ──────────────────────────────────────────
+
+type Transaction compliance [PCI_DSS, SOX] {
+    txn_id:     String
+    amount:     Number
+    currency:   String
+    card_token: String
+    merchant:   String
+}
+
+type LoanRequest compliance [SOX, SOC2] {
+    applicant_id: String
+    amount:       Number
+    term_months:  Number
+    risk_score:   Number
+}
+
+// Note: `reason` is a reserved AXON keyword — use `rationale`,
+// `explanation`, or any other identifier for free-text justifications.
+type PaymentDecision { approved: String, rationale: String }
+type LoanDecision    { decision: String, rate:      Number }
+
+type PaymentRequest { txn: Transaction }
+type LoanScoreRequest { req: LoanRequest }
+
+// ── Identity + grounding ──────────────────────────────────────────
+
+persona BankingAnalyst {
+    domain: ["payments", "credit-risk", "fraud-detection"]
+    tone: precise
+    confidence_threshold: 0.9
+    cite_sources: true
+}
+
+context FinancialReview {
+    memory: session
+    language: "en"
+    depth: exhaustive
+    max_tokens: 2048
+    temperature: 0.2
+}
+
+anchor NoUnverifiedClaims {
+    require: evidence_backed
+    confidence_floor: 0.85
+    unknown_response: "Insufficient data to render a decision."
+    on_violation: raise FinancialDecisionError
+}
+
+// ── Shields ───────────────────────────────────────────────────────
+
+shield FinancialShield {
+    scan:       [prompt_injection, pii_leak, data_exfil, model_theft]
+    on_breach:  quarantine
+    severity:   critical
+    redact:     [card_token]
+    compliance: [PCI_DSS, SOX, SOC2]
+}
+
+// ── Flows ─────────────────────────────────────────────────────────
+
+flow DecidePayment(txn: Transaction) -> FlowEnvelope<PaymentDecision> {
+    step Score {
+        given: txn
+        ask: "Score the transaction against fraud heuristics + cardholder profile."
+        output: FlowEnvelope<PaymentDecision>
+    }
+    return Score.output
+}
+
+flow ScoreLoan(req: LoanRequest) -> FlowEnvelope<LoanDecision> {
+    step Underwrite {
+        given: req
+        ask: "Render an underwriting decision and a recommended APR."
+        output: FlowEnvelope<LoanDecision>
+    }
+    return Underwrite.output
+}
+
+// ── HTTP boundaries ───────────────────────────────────────────────
+
+axonendpoint PaymentAPI {
+    method:      post
+    path:        "/v1/payments/decide"
+    body:        PaymentRequest
+    execute:     DecidePayment
+    output:      FlowEnvelope<PaymentDecision>
+    shield:      FinancialShield
+    backend:     auto
+    compliance:  [PCI_DSS, SOX, SOC2]
+    retries:     1
+    timeout:     5s
+}
+
+axonendpoint LoanAPI {
+    method:      post
+    path:        "/v1/loans/score"
+    body:        LoanScoreRequest
+    execute:     ScoreLoan
+    output:      FlowEnvelope<LoanDecision>
+    shield:      FinancialShield
+    backend:     auto
+    compliance:  [SOX, SOC2]
+    retries:     1
+    timeout:     8s
+}
+```

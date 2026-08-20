@@ -1,0 +1,138 @@
+---
+title: "FinTech scaffold"
+description: "AXON FinTech scaffold — consumer fintech / neobank / embedded finance pattern with KYC + AML + PCI focus."
+---
+
+A complete program, not a fragment: it compiles as written. Copy it, rename the
+placeholder identifiers to your domain, and run `axon check` — the compiler will
+tell you what your renaming broke. An MCP client can also generate it through the
+`axon.compose` tool by naming the `fintech` domain.
+
+```axon
+// AXON FinTech scaffold — consumer fintech / neobank / embedded
+// finance pattern with KYC + AML + PCI focus.
+//
+// Differs from `banking.axon` (enterprise-bank pattern): this targets
+// CONSUMER fintech — mobile-first patterns, embedded-finance flows,
+// KYC/AML emphasis, dispute-handling, near-real-time fraud
+// detection. PCI DSS still applies but the regulatory posture is
+// AML/CFT + state money-transmitter + consumer-protection forward.
+
+// ── Regulated data types ──────────────────────────────────────────
+
+type ConsumerAccount compliance [PCI_DSS, SOC2] {
+    account_id:    Text
+    kyc_status:    Text
+    risk_tier:     Text
+    balance:       Number
+}
+
+type AccountTransaction compliance [PCI_DSS, SOC2] {
+    txn_id:        Text
+    account_id:    Text
+    counterparty:  Text
+    amount:        Number
+    currency:      Text
+    method:        Text
+}
+
+type TransactionDecision {
+    decision:        Text
+    risk_score:      Number
+    rationale:       Text
+    aml_flags:       Text
+}
+
+type ScoreRequest { txn: AccountTransaction }
+type KycVerifyRequest { account: ConsumerAccount }
+
+type KycDecision {
+    verified:        Text
+    confidence:      Number
+    flagged_reasons: Text
+}
+
+// ── Identity + grounding ──────────────────────────────────────────
+
+persona FintechRiskAnalyst {
+    domain: ["consumer-fintech", "aml", "kyc", "fraud-detection", "payments"]
+    tone: precise
+    confidence_threshold: 0.9
+    cite_sources: true
+}
+
+context FintechReview {
+    memory: session
+    language: "en"
+    depth: deep
+    max_tokens: 2048
+    temperature: 0.1
+}
+
+anchor NoUnverifiedDecision {
+    require: evidence_backed
+    confidence_floor: 0.88
+    unknown_response: "Routing to manual review queue — evidence insufficient for automated decision."
+    on_violation: raise FintechDecisionError
+}
+
+// ── Shields ───────────────────────────────────────────────────────
+
+shield FintechShield {
+    scan:       [prompt_injection, pii_leak, data_exfil, model_theft]
+    on_breach:  quarantine
+    severity:   critical
+    redact:     [account_id]
+    compliance: [PCI_DSS, SOC2]
+}
+
+// ── Flows ─────────────────────────────────────────────────────────
+
+flow ScoreTransaction(txn: AccountTransaction) -> FlowEnvelope<TransactionDecision> {
+    step Score {
+        given: txn
+        ask: "Score the transaction against fraud heuristics + AML rules + the account's risk tier."
+        output: FlowEnvelope<TransactionDecision>
+    }
+    return Score.output
+}
+
+flow VerifyKYC(account: ConsumerAccount) -> FlowEnvelope<KycDecision> {
+    step Verify {
+        given: account
+        ask: "Verify KYC status; flag any AML / sanctions-list hits with rationale."
+        output: FlowEnvelope<KycDecision>
+    }
+    return Verify.output
+}
+
+// ── HTTP boundaries ───────────────────────────────────────────────
+
+axonendpoint TransactionScoringAPI {
+    method:      post
+    path:        "/v1/transactions/score"
+    body:        ScoreRequest
+    execute:     ScoreTransaction
+    output:      FlowEnvelope<TransactionDecision>
+    shield:      FintechShield
+    backend:     auto
+    compliance:  [PCI_DSS, SOC2]
+    retries:     1
+    timeout:     2s
+    requires:    ["fintech.transactions.score"]
+}
+
+axonendpoint KYCVerificationAPI {
+    method:      post
+    path:        "/v1/accounts/kyc/verify"
+    body:        KycVerifyRequest
+    execute:     VerifyKYC
+    output:      FlowEnvelope<KycDecision>
+    shield:      FintechShield
+    backend:     auto
+    compliance:  [SOC2]
+    retries:     1
+    timeout:     10s
+    requires:    ["fintech.kyc.verify"]
+}
+```

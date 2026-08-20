@@ -1,0 +1,133 @@
+---
+title: "Knowledge Extraction scaffold"
+description: "AXON Knowledge Extraction scaffold — entity + relationship extraction for knowledge-graph construction."
+---
+
+A complete program, not a fragment: it compiles as written. Copy it, rename the
+placeholder identifiers to your domain, and run `axon check` — the compiler will
+tell you what your renaming broke. An MCP client can also generate it through the
+`axon.compose` tool by naming the `knowledge_extraction` domain.
+
+```axon
+// AXON Knowledge Extraction scaffold — entity + relationship
+// extraction for knowledge-graph construction.
+//
+// Differs from `document_analysis.axon` (general bulk processing):
+// this scaffold targets structured KG construction — typed entity
+// candidates + typed relationship triples + confidence per claim.
+
+// ── Types ─────────────────────────────────────────────────────────
+
+type RawText {
+    source_id:    Text
+    content:      Text
+    captured_at:  Text
+}
+
+type EntityCandidate {
+    surface_form:  Text
+    canonical_uri: Text
+    entity_type:   Text
+    confidence:    Number
+}
+
+type RelationTriple {
+    subject_uri:   Text
+    predicate:     Text
+    object_uri:    Text
+    confidence:    Number
+    evidence_span: Text
+}
+
+type ExtractionResult {
+    source_id:   Text
+    entities:    Text
+    relations:   Text
+    summary:     Text
+}
+
+type ExtractRequest { text: RawText }
+
+// ── Persistent KG store ──────────────────────────────────────────
+
+axonstore KnowledgeGraph {
+    backend:    postgresql
+    connection: "postgres://kg.internal/graph"
+    isolation:  serializable
+    on_breach:  raise
+    schema {
+        triple_id:    Uuid primary_key
+        subject_uri:  Text not_null
+        predicate:    Text not_null
+        object_uri:   Text not_null
+        confidence:   Numeric not_null
+        evidence:     Text
+        recorded_at:  Timestamp not_null
+    }
+}
+
+// ── Identity + grounding ──────────────────────────────────────────
+
+persona KGExtractor {
+    domain: ["knowledge-graphs", "information-extraction", "ontology-design"]
+    tone: precise
+    confidence_threshold: 0.85
+    cite_sources: true
+}
+
+context KGExtractionContext {
+    memory: session
+    language: "en"
+    depth: deep
+    max_tokens: 4096
+    temperature: 0.1
+}
+
+anchor EvidenceSpanRequired {
+    require: source_citation
+    confidence_floor: 0.8
+    unknown_response: "Evidence span insufficient — skipping triple."
+    on_violation: log
+}
+
+// ── Shield ────────────────────────────────────────────────────────
+
+shield KGShield {
+    scan:       [prompt_injection, pii_leak, hallucination]
+    on_breach:  quarantine
+    severity:   high
+    compliance: [SOC2]
+}
+
+// ── Flow ──────────────────────────────────────────────────────────
+
+flow ExtractKnowledge(text: RawText) -> FlowEnvelope<ExtractionResult> {
+    step IdentifyEntities {
+        given: text
+        ask: "Identify entity candidates; emit canonical URIs where confident; cite span ranges."
+        output: FlowEnvelope<ExtractionResult>
+    }
+    step RelateEntities {
+        given: IdentifyEntities.output
+        ask: "Derive relation triples; cite evidence span per triple; emit confidence."
+        output: FlowEnvelope<ExtractionResult>
+    }
+    return RelateEntities.output
+}
+
+// ── HTTP boundary ─────────────────────────────────────────────────
+
+axonendpoint ExtractionAPI {
+    method:      post
+    path:        "/v1/kg/extract"
+    body:        ExtractRequest
+    execute:     ExtractKnowledge
+    output:      FlowEnvelope<ExtractionResult>
+    shield:      KGShield
+    backend:     auto
+    compliance:  [SOC2]
+    retries:     1
+    timeout:     60s
+    requires:    ["kg.extract"]
+}
+```

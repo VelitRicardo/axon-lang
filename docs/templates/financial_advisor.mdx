@@ -1,0 +1,101 @@
+---
+title: "Personal-Finance Advisor scaffold"
+description: "AXON Personal-Finance Advisor scaffold — PFM-style assistant with MANDATORY NoInvestmentAdvice anchor and full audit trail."
+---
+
+A complete program, not a fragment: it compiles as written. Copy it, rename the
+placeholder identifiers to your domain, and run `axon check` — the compiler will
+tell you what your renaming broke. An MCP client can also generate it through the
+`axon.compose` tool by naming the `financial_advisor` domain.
+
+```axon
+// AXON Personal-Finance Advisor scaffold — PFM-style assistant with
+// MANDATORY NoInvestmentAdvice anchor and full audit trail.
+//
+// Critical: this scaffold is NOT a substitute for a registered
+// investment advisor. The anchor stack rejects any specific
+// investment recommendation; the persona is educational +
+// budgeting-focused. Production deployments need a licensed RIA
+// review layer for any advice-tier features.
+
+// ── Types ─────────────────────────────────────────────────────────
+
+type FinancialProfile {
+    user_id:       Text
+    income_band:   Text
+    goals:         Text
+    risk_tier:     Text
+    debt_summary:  Text
+}
+
+type AdvisorResponse {
+    response:           Text
+    education_topic:    Text
+    disclaimer:         Text
+    next_topic_pointer: Text
+}
+
+type AdvisorRequest { profile: FinancialProfile }
+
+// ── Identity + grounding ──────────────────────────────────────────
+
+persona FinancialEducator {
+    domain: ["personal-finance", "budgeting", "debt-management", "financial-literacy"]
+    tone: empathetic
+    confidence_threshold: 0.88
+    cite_sources: true
+}
+
+context PFMSession {
+    memory: persistent
+    language: "en"
+    depth: deep
+    max_tokens: 2048
+    temperature: 0.3
+}
+
+anchor NoInvestmentAdvice {
+    require: source_citation
+    reject:  [financial_advice]
+    confidence_floor: 0.92
+    unknown_response: "I'm not licensed to advise on specific investments — let me share educational resources instead."
+    on_violation: raise UnauthorisedAdviceError
+}
+
+// ── Shield ────────────────────────────────────────────────────────
+
+shield PFMShield {
+    scan:       [prompt_injection, pii_leak, data_exfil, social_engineering]
+    on_breach:  quarantine
+    severity:   high
+    redact:     [user_id]
+    compliance: [SOC2]
+}
+
+// ── Flow ──────────────────────────────────────────────────────────
+
+flow OfferGuidance(profile: FinancialProfile) -> FlowEnvelope<AdvisorResponse> {
+    step Educate {
+        given: profile
+        ask: "Offer educational guidance tied to the user's goals; cite authoritative sources (CFPB / NerdWallet / textbooks); attach the required disclaimer."
+        output: FlowEnvelope<AdvisorResponse>
+    }
+    return Educate.output
+}
+
+// ── HTTP boundary ─────────────────────────────────────────────────
+
+axonendpoint FinancialAdvisorAPI {
+    method:      post
+    path:        "/v1/pfm/guidance"
+    body:        AdvisorRequest
+    execute:     OfferGuidance
+    output:      FlowEnvelope<AdvisorResponse>
+    shield:      PFMShield
+    backend:     auto
+    compliance:  [SOC2]
+    retries:     1
+    timeout:     30s
+    requires:    ["pfm.guidance"]
+}
+```

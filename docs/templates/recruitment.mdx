@@ -1,0 +1,99 @@
+---
+title: "Recruitment scaffold"
+description: "AXON Recruitment scaffold — resume screening + candidate ranking pipeline with anti-bias anchor + EEOC-aligned compliance posture."
+---
+
+A complete program, not a fragment: it compiles as written. Copy it, rename the
+placeholder identifiers to your domain, and run `axon check` — the compiler will
+tell you what your renaming broke. An MCP client can also generate it through the
+`axon.compose` tool by naming the `recruitment` domain.
+
+```axon
+// AXON Recruitment scaffold — resume screening + candidate ranking
+// pipeline with anti-bias anchor + EEOC-aligned compliance posture.
+//
+// Critical anchor surface: bias detection is mandatory; the candidate
+// ranking step is gated by a NoBiasInRanking anchor that the model
+// must clear before emission. Production deployments would also wire
+// a heal routine for human review of borderline rankings.
+
+// ── Types ─────────────────────────────────────────────────────────
+
+type Candidate {
+    candidate_id:    Text
+    resume_text:     Text
+    submitted_role:  Text
+    submitted_at:    Text
+}
+
+type CandidateRanking {
+    candidate_id:    Text
+    score:           Number
+    rationale:       Text
+    bias_check:      Text
+}
+
+type ScreenRequest { c: Candidate }
+
+// ── Shield — bias detection is mandatory ──────────────────────────
+
+shield RecruitmentShield {
+    scan:       [bias, prompt_injection, pii_leak]
+    on_breach:  quarantine
+    severity:   critical
+    redact:     [candidate_id]
+    compliance: [SOC2]
+}
+
+// ── Identity + grounding ──────────────────────────────────────────
+
+persona TalentScreener {
+    domain: ["talent-acquisition", "competency-assessment", "fair-hiring"]
+    tone: precise
+    confidence_threshold: 0.85
+    cite_sources: true
+}
+
+context HiringReview {
+    memory: persistent
+    language: "en"
+    depth: deep
+    max_tokens: 2048
+    temperature: 0.15
+}
+
+anchor NoBiasInRanking {
+    require: evidence_backed
+    reject:  [judgmental_language]
+    confidence_floor: 0.88
+    unknown_response: "Bias indicators detected — routing to human reviewer."
+    on_violation: raise BiasDetectedError
+}
+
+// ── Flow ──────────────────────────────────────────────────────────
+
+flow ScreenCandidate(c: Candidate) -> FlowEnvelope<CandidateRanking> {
+    step Score {
+        given: c
+        ask: "Score the candidate against the role's competency rubric; cite every claim; flag any bias indicators."
+        output: FlowEnvelope<CandidateRanking>
+    }
+    return Score.output
+}
+
+// ── HTTP boundary ─────────────────────────────────────────────────
+
+axonendpoint RecruitmentAPI {
+    method:      post
+    path:        "/v1/recruitment/screen"
+    body:        ScreenRequest
+    execute:     ScreenCandidate
+    output:      FlowEnvelope<CandidateRanking>
+    shield:      RecruitmentShield
+    backend:     auto
+    compliance:  [SOC2]
+    retries:     1
+    timeout:     30s
+    requires:    ["recruitment.screen"]
+}
+```

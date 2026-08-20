@@ -1,0 +1,103 @@
+---
+title: "Document Analysis scaffold"
+description: "AXON Document Analysis scaffold — bulk document ingestion + entity / clause / topic extraction for downstream Q&A."
+---
+
+A complete program, not a fragment: it compiles as written. Copy it, rename the
+placeholder identifiers to your domain, and run `axon check` — the compiler will
+tell you what your renaming broke. An MCP client can also generate it through the
+`axon.compose` tool by naming the `document_analysis` domain.
+
+```axon
+// AXON Document Analysis scaffold — bulk document ingestion +
+// entity / clause / topic extraction for downstream Q&A.
+//
+// Differs from `chat_research.axon` (corpus-grounded chat) and
+// `knowledge_extraction.axon` (entity-graph focus): this scaffold
+// targets the GENERAL bulk-document-processing pattern (invoices,
+// resumes, reports, technical docs).
+
+// ── Types ─────────────────────────────────────────────────────────
+
+type SourceDocument {
+    document_id:    Text
+    mime_type:      Text
+    content:        Text
+    received_at:    Text
+}
+
+type DocumentAnalysis {
+    document_id:    Text
+    summary:        Text
+    extracted_data: Text
+    confidence:     Number
+    classification: Text
+}
+
+type AnalyzeDocumentRequest { doc: SourceDocument }
+
+// ── Identity + grounding ──────────────────────────────────────────
+
+persona DocumentAnalyst {
+    domain: ["document-processing", "information-extraction", "text-analytics"]
+    tone: precise
+    confidence_threshold: 0.8
+    cite_sources: true
+}
+
+context DocumentReview {
+    memory: session
+    language: "en"
+    depth: deep
+    max_tokens: 4096
+    temperature: 0.15
+}
+
+anchor NoUnverifiedExtraction {
+    require: source_citation
+    confidence_floor: 0.75
+    unknown_response: "Extraction confidence below threshold — routing to manual review."
+    on_violation: log
+}
+
+// ── Shield ────────────────────────────────────────────────────────
+
+shield DocumentShield {
+    scan:       [prompt_injection, pii_leak, data_exfil]
+    on_breach:  quarantine
+    severity:   high
+    compliance: [SOC2]
+}
+
+// ── Flow ──────────────────────────────────────────────────────────
+
+flow AnalyzeDocument(doc: SourceDocument) -> FlowEnvelope<DocumentAnalysis> {
+    step Classify {
+        given: doc
+        ask: "Classify the document type (invoice / resume / report / other); emit a confidence score."
+        output: FlowEnvelope<DocumentAnalysis>
+    }
+    step Extract {
+        given: Classify.output
+        ask: "Extract the typed structured data for this document class; cite the source span for each field."
+        output: FlowEnvelope<DocumentAnalysis>
+    }
+    return Extract.output
+}
+
+// ── HTTP boundary ─────────────────────────────────────────────────
+
+axonendpoint DocumentAnalysisAPI {
+    method:      post
+    path:        "/v1/documents/analyze"
+    body:        AnalyzeDocumentRequest
+    execute:     AnalyzeDocument
+    output:      FlowEnvelope<DocumentAnalysis>
+    shield:      DocumentShield
+    backend:     auto
+    compliance:  [SOC2]
+    retries:     1
+    timeout:     45s
+    requires:    ["documents.analyze"]
+}
+```

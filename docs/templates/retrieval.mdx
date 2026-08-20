@@ -1,0 +1,92 @@
+---
+title: "Retrieval scaffold"
+description: "AXON Retrieval scaffold — RAG over a curated corpus."
+---
+
+A complete program, not a fragment: it compiles as written. Copy it, rename the
+placeholder identifiers to your domain, and run `axon check` — the compiler will
+tell you what your renaming broke. An MCP client can also generate it through the
+`axon.compose` tool by naming the `retrieval` domain.
+
+```axon
+// AXON Retrieval scaffold — RAG over a curated corpus.
+//
+// Produces a question-answering flow that grounds every reply in a
+// declared corpus, with a hallucination anchor and an evidence-
+// preserving shield. Adapt the corpus path and persona to the
+// adopter's domain.
+
+// ── Types ─────────────────────────────────────────────────────────
+
+type Question { text: String }
+type Answer   { text: String, citations: String }
+
+type QueryRequest { q: Question }
+
+// ── Identity + grounding ──────────────────────────────────────────
+
+persona ResearchAssistant {
+    domain: ["literature-review", "qa", "research"]
+    tone: analytical
+    confidence_threshold: 0.85
+    cite_sources: true
+}
+
+context ResearchContext {
+    memory: session
+    language: "en"
+    depth: deep
+    max_tokens: 4096
+    temperature: 0.2
+}
+
+anchor NoUngroundedClaim {
+    require: source_citation
+    confidence_floor: 0.8
+    unknown_response: "I cannot find evidence in the corpus to answer that confidently."
+    on_violation: raise UnsupportedClaimError
+}
+
+// ── Shields ───────────────────────────────────────────────────────
+
+shield RetrievalShield {
+    scan:       [prompt_injection, hallucination, data_exfil]
+    on_breach:  sanitize_and_retry
+    severity:   high
+    // v2.69.0 (axon-T952): `sanitize_and_retry` must name what it masks —
+    // a retry that re-scans the same bytes is not sanitization.
+    redact:     [text, citations]
+    compliance: [SOC2]
+}
+
+// ── Flow ──────────────────────────────────────────────────────────
+
+flow AnswerWithEvidence(q: Question) -> FlowEnvelope<Answer> {
+    step Search {
+        given: q
+        ask: "Find the most relevant passages from the knowledge corpus."
+        output: FlowEnvelope<Answer>
+    }
+    step Compose {
+        given: Search.output
+        ask: "Compose the answer; cite every claim against the retrieved evidence."
+        output: FlowEnvelope<Answer>
+    }
+    return Compose.output
+}
+
+// ── HTTP boundary ─────────────────────────────────────────────────
+
+axonendpoint RetrievalAPI {
+    method:      post
+    path:        "/v1/qa/answer"
+    body:        QueryRequest
+    execute:     AnswerWithEvidence
+    output:      FlowEnvelope<Answer>
+    shield:      RetrievalShield
+    backend:     auto
+    compliance:  [SOC2]
+    retries:     1
+    timeout:     15s
+}
+```

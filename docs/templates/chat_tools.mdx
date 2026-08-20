@@ -1,0 +1,97 @@
+---
+title: "Chat-with-Tools scaffold"
+description: "AXON Chat-with-Tools scaffold — streaming dialogue with function- calling tools (web search, calculator, time API)."
+---
+
+A complete program, not a fragment: it compiles as written. Copy it, rename the
+placeholder identifiers to your domain, and run `axon check` — the compiler will
+tell you what your renaming broke. An MCP client can also generate it through the
+`axon.compose` tool by naming the `chat_tools` domain.
+
+```axon
+// AXON Chat-with-Tools scaffold — streaming dialogue with function-
+// calling tools (web search, calculator, time API).
+//
+// Differs from `chat.axon` (no tools) and `chat_research.axon`
+// (corpus-grounded): this scaffold lets the model invoke declared
+// tools mid-conversation. The closed catalogue of tools is the
+// agent's only external-call surface — strict-tool-mode optional.
+
+// ── Types ─────────────────────────────────────────────────────────
+
+type Utterance { text: Text }
+type Token     { piece: Text }
+
+type ChatRequest { req: Utterance }
+
+// ── Identity + grounding ──────────────────────────────────────────
+
+persona ToolUsingAssistant {
+    domain: ["general-assistance", "tool-orchestration"]
+    tone: friendly
+    confidence_threshold: 0.7
+    cite_sources: true
+}
+
+context ChatContext {
+    memory: session
+    language: "en"
+    depth: standard
+    max_tokens: 4096
+    temperature: 0.4
+}
+
+anchor BeHonestAboutToolFailures {
+    require: source_citation
+    confidence_floor: 0.6
+    unknown_response: "A required tool returned an error — I cannot answer that confidently."
+    on_violation: log
+}
+
+// ── Tools — closed catalogue ──────────────────────────────────────
+
+tool WebSearch {
+    provider:    http
+    max_results: 5
+    timeout:     10s
+    effects:     <network, stream:drop_oldest>
+}
+
+tool Calculator {
+    provider: native
+    timeout:  500ms
+    effects:  <pure>
+}
+
+tool TimeAPI {
+    provider: native
+    timeout:  2s
+    effects:  <network>
+}
+
+// ── Streaming flow with tool-use surface ──────────────────────────
+
+flow Chat(req: Utterance) -> Stream<Token> {
+    step Respond {
+        given: req
+        apply: WebSearch
+        ask: "Reply to the user; invoke WebSearch, Calculator, or TimeAPI when their output would ground the reply. Stream tokens as you go."
+        output: Stream<Token>
+    }
+    return Respond.output
+}
+
+// ── Streaming HTTP boundary ───────────────────────────────────────
+
+axonendpoint ChatToolsAPI {
+    method:    post
+    path:      "/v1/chat/tools"
+    body:      ChatRequest
+    execute:   Chat
+    output:    Stream<Token>
+    backend:   auto
+    transport: sse(axon)
+    retries:   0
+    timeout:   90s public: true
+}
+```

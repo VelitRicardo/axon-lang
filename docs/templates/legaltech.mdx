@@ -1,0 +1,130 @@
+---
+title: "LegalTech scaffold"
+description: "AXON LegalTech scaffold — multi-tenant SaaS for legal-technology products (contract automation, e-discovery, IP portfolio mgmt, matter management)."
+---
+
+A complete program, not a fragment: it compiles as written. Copy it, rename the
+placeholder identifiers to your domain, and run `axon check` — the compiler will
+tell you what your renaming broke. An MCP client can also generate it through the
+`axon.compose` tool by naming the `legaltech` domain.
+
+```axon
+// AXON LegalTech scaffold — multi-tenant SaaS for legal-technology
+// products (contract automation, e-discovery, IP portfolio mgmt,
+// matter management).
+//
+// Differs from `legal.axon` (in-house counsel pattern): this scaffold
+// targets PRODUCT deployments — multi-tenant isolation, audit-heavy,
+// capability-gated endpoints, replay-token binding for write paths,
+// product-grade shield with PrivilegeShield + audit categories.
+
+// ── Regulated data types ──────────────────────────────────────────
+
+type ContractDocument {
+    document_id:    Text
+    tenant_id:      Text
+    party_count:    Int
+    jurisdiction:   Text
+    body:           Text
+}
+
+type ClauseFinding {
+    clause_id:        Text
+    category:         Text
+    // `severity` is a reserved AXON keyword (shield.severity:) — use
+    // a non-keyword field name for type bodies.
+    severity_class:   Text
+    rationale:        Text
+}
+
+type ContractAnalysis {
+    findings_summary: Text
+    citations:        Text
+}
+
+type AnalyzeRequest { doc: ContractDocument }
+type AssessLiabilityRequest { doc: ContractDocument }
+
+// ── Identity + grounding ──────────────────────────────────────────
+
+persona ContractAnalyst {
+    domain: ["contract-law", "commercial-litigation", "intellectual-property"]
+    tone: precise
+    confidence_threshold: 0.85
+    cite_sources: true
+}
+
+context LegalProduct {
+    memory: session
+    language: "en"
+    depth: exhaustive
+    max_tokens: 4096
+    temperature: 0.2
+}
+
+anchor NoLegalAdvice {
+    require: source_citation
+    confidence_floor: 0.85
+    unknown_response: "Insufficient citation evidence — escalate to a licensed attorney."
+    on_violation: raise UnauthorisedLegalAdviceError
+}
+
+// ── Shields ───────────────────────────────────────────────────────
+
+shield PrivilegeShield {
+    scan:       [prompt_injection, pii_leak, data_exfil, model_theft]
+    on_breach:  quarantine
+    severity:   high
+    compliance: [SOC2]
+}
+
+// ── Flows ─────────────────────────────────────────────────────────
+
+flow AnalyzeContract(doc: ContractDocument) -> FlowEnvelope<ContractAnalysis> {
+    step Extract {
+        given: doc
+        ask: "Extract every clause + its plain-language summary, with citation anchors."
+        output: FlowEnvelope<ContractAnalysis>
+    }
+    return Extract.output
+}
+
+flow AssessLiability(doc: ContractDocument) -> FlowEnvelope<ContractAnalysis> {
+    step Score {
+        given: doc
+        ask: "Score liability exposure per clause; cite jurisdictional precedents."
+        output: FlowEnvelope<ContractAnalysis>
+    }
+    return Score.output
+}
+
+// ── HTTP boundaries ───────────────────────────────────────────────
+
+axonendpoint ContractAnalysisAPI {
+    method:      post
+    path:        "/v1/contracts/{tenant_id}/analyze"
+    body:        AnalyzeRequest
+    execute:     AnalyzeContract
+    output:      FlowEnvelope<ContractAnalysis>
+    shield:      PrivilegeShield
+    backend:     auto
+    compliance:  [SOC2]
+    retries:     1
+    timeout:     30s
+    requires:    ["legaltech.contracts.read"]
+}
+
+axonendpoint LiabilityAssessmentAPI {
+    method:      post
+    path:        "/v1/contracts/{tenant_id}/liability"
+    body:        AssessLiabilityRequest
+    execute:     AssessLiability
+    output:      FlowEnvelope<ContractAnalysis>
+    shield:      PrivilegeShield
+    backend:     auto
+    compliance:  [SOC2]
+    retries:     1
+    timeout:     60s
+    requires:    ["legaltech.contracts.assess"]
+}
+```

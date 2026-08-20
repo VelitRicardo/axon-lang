@@ -1,0 +1,88 @@
+---
+title: "Chat scaffold"
+description: "AXON Chat scaffold — streaming dialogue over a session-typed socket."
+---
+
+A complete program, not a fragment: it compiles as written. Copy it, rename the
+placeholder identifiers to your domain, and run `axon check` — the compiler will
+tell you what your renaming broke. An MCP client can also generate it through the
+`axon.compose` tool by naming the `chat` domain.
+
+```axon
+// AXON Chat scaffold — streaming dialogue over a session-typed socket.
+//
+// Produces a turn-taking chat protocol with credit-refined
+// backpressure, a token-by-token streaming flow, and a WebSocket
+// transport bound to the session by the v2.3.0 duality rules.
+
+// ── Types ─────────────────────────────────────────────────────────
+
+type Utterance { text: String }
+type Token     { piece: String }
+
+// The endpoint's body type — the chat prompt arrives as a single
+// utterance bound to the flow's `req` parameter.
+type ChatRequest { req: Utterance }
+
+// ── Identity + grounding ──────────────────────────────────────────
+
+persona ConversationalAssistant {
+    domain: ["chat", "general-conversation"]
+    tone: friendly
+    confidence_threshold: 0.6
+    cite_sources: false
+}
+
+context ChatContext {
+    memory: session
+    language: "en"
+    depth: standard
+    max_tokens: 4096
+    temperature: 0.7
+}
+
+anchor StayOnTopic {
+    require: source_citation
+    confidence_floor: 0.5
+    unknown_response: "I'm not sure — could you rephrase or add more detail?"
+    on_violation: log
+}
+
+// ── Tool — declares the stream backpressure policy ────────────────
+//
+// Any flow whose signature uses `Stream<T>` must be reachable from a
+// tool that declares a `stream:<policy>` effect. Valid policies:
+// drop_oldest | degrade_quality | pause_upstream | fail.
+
+tool ChatBackend {
+    // LLM-routed: the tool IS the model. No `provider:` (v2.69.0). `openai` was not a real provider slug.
+    effects:  <network, stream:drop_oldest>
+    timeout:  60s
+}
+
+// ── Streaming flow ────────────────────────────────────────────────
+
+flow Chat(req: Utterance) -> Stream<Token> {
+    step Generate {
+        given: req
+        apply: ChatBackend          // reaches a tool with stream:<policy> effect
+        ask: "Reply to the user, one token at a time."
+        output: Stream<Token>
+    }
+    return Generate.output
+}
+
+// ── Streaming HTTP boundary ───────────────────────────────────────
+
+axonendpoint ChatAPI {
+    method:      post
+    path:        "/v1/chat"
+    body:        ChatRequest
+    execute:     Chat
+    output:      Stream<Token>
+    backend:     auto
+    transport:   sse(axon)
+    retries:     0
+    timeout:     60s public: true
+}
+```

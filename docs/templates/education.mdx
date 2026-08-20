@@ -1,0 +1,107 @@
+---
+title: "Education scaffold"
+description: "AXON Education scaffold — curriculum-driven tutoring persona with student-progress memory + Socratic anchor."
+---
+
+A complete program, not a fragment: it compiles as written. Copy it, rename the
+placeholder identifiers to your domain, and run `axon check` — the compiler will
+tell you what your renaming broke. An MCP client can also generate it through the
+`axon.compose` tool by naming the `education` domain.
+
+```axon
+// AXON Education scaffold — curriculum-driven tutoring persona with
+// student-progress memory + Socratic anchor.
+//
+// Differs from `chat_skills.axon` (multi-skill router): this scaffold
+// targets long-running tutoring sessions — the tutor persona has
+// pedagogical disposition, the memory persists across sessions, and
+// the anchor enforces Socratic discipline (no direct answers when
+// guided discovery would teach more).
+
+// ── Types ─────────────────────────────────────────────────────────
+
+type StudentQuery {
+    student_id:    Text
+    course:        Text
+    topic:         Text
+    question:      Text
+    skill_level:   Text
+}
+
+type TutorReply {
+    response:      Text
+    next_question: Text
+    progress_note: Text
+}
+
+type Token { piece: Text }
+
+type TutorRequest { sq: StudentQuery }
+
+// ── Per-student memory ────────────────────────────────────────────
+
+memory StudentProgress {
+    store:     persistent
+    backend:   postgresql
+    retrieval: exact
+}
+
+// ── Identity + grounding ──────────────────────────────────────────
+
+persona TutorAgent {
+    domain: ["education", "pedagogy", "socratic-method", "personalized-learning"]
+    tone: empathetic
+    confidence_threshold: 0.8
+    cite_sources: true
+}
+
+context TutoringSession {
+    memory: persistent
+    language: "en"
+    depth: deep
+    max_tokens: 2048
+    temperature: 0.5
+}
+
+anchor SocraticDiscipline {
+    require: source_citation
+    confidence_floor: 0.75
+    unknown_response: "Let me ask you a question first — what do you think the next step is?"
+    on_violation: log
+}
+
+// ── Tool — streaming backend ──────────────────────────────────────
+
+tool TutorBackend {
+    // LLM-routed: the tool IS the model. No `provider:` (v2.69.0). `openai` was not a real provider slug.
+    effects:  <network, stream:drop_oldest>
+    timeout:  60s
+}
+
+// ── Streaming flow ────────────────────────────────────────────────
+
+flow Tutor(sq: StudentQuery) -> Stream<Token> {
+    step Respond {
+        given: sq
+        apply: TutorBackend
+        ask: "Respond pedagogically — guide the student via Socratic questions where possible; stream the reply."
+        output: Stream<Token>
+    }
+    return Respond.output
+}
+
+// ── HTTP boundary ─────────────────────────────────────────────────
+
+axonendpoint TutorAPI {
+    method:    post
+    path:      "/v1/education/tutor"
+    body:      TutorRequest
+    execute:   Tutor
+    output:    Stream<Token>
+    backend:   auto
+    transport: sse(axon)
+    retries:   0
+    timeout:   90s
+    requires:  ["education.tutor.chat"]
+}
+```

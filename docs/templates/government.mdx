@@ -1,0 +1,91 @@
+---
+title: "Government scaffold"
+description: "AXON Government scaffold — FISMA + NIST 800-53 + FedRAMP Moderate."
+---
+
+A complete program, not a fragment: it compiles as written. Copy it, rename the
+placeholder identifiers to your domain, and run `axon check` — the compiler will
+tell you what your renaming broke. An MCP client can also generate it through the
+`axon.compose` tool by naming the `government` domain.
+
+```axon
+// AXON Government scaffold — FISMA + NIST 800-53 + FedRAMP Moderate.
+//
+// Produces a regulated benefits-eligibility decision flow with
+// security-event shield, audited HTTP boundary, and a citizen-record
+// lookup lane suitable for an Authority To Operate (ATO) at the
+// Moderate baseline.
+
+// ── Regulated data types ──────────────────────────────────────────
+
+type CitizenRecord compliance [FISMA, NIST_800_53] {
+    citizen_id:  String
+    full_name:   String
+    dob:         String
+    program:     String
+}
+
+type EligibilityRequest { rec: CitizenRecord }
+type EligibilityDecision { eligible: String, rationale: String, valid_until: String }
+type EligibilityDecisionRequest { req: EligibilityRequest }
+
+// ── Identity + grounding ──────────────────────────────────────────
+
+persona BenefitsAdjudicator {
+    domain: ["public-benefits", "social-security", "veterans-affairs"]
+    tone: formal
+    confidence_threshold: 0.9
+    cite_sources: true
+}
+
+context AgencyReview {
+    memory: persistent
+    language: "en"
+    depth: exhaustive
+    max_tokens: 4096
+    temperature: 0.1
+}
+
+anchor NoUngroundedDecision {
+    require: legal_basis_present
+    confidence_floor: 0.9
+    unknown_response: "Determination deferred to human adjudicator — case sent for review."
+    on_violation: raise AdjudicationDeferral
+}
+
+// ── Shields ───────────────────────────────────────────────────────
+
+shield AgencyShield {
+    scan:       [prompt_injection, pii_leak, social_engineering, data_exfil]
+    on_breach:  quarantine
+    severity:   critical
+    redact:     [dob]
+    compliance: [FISMA, NIST_800_53, SOC2]
+}
+
+// ── Flow ──────────────────────────────────────────────────────────
+
+flow DetermineEligibility(req: EligibilityRequest) -> FlowEnvelope<EligibilityDecision> {
+    step Adjudicate {
+        given: req
+        ask: "Apply the published eligibility rule; cite the exact statute clause used."
+        output: FlowEnvelope<EligibilityDecision>
+    }
+    return Adjudicate.output
+}
+
+// ── HTTP boundary ─────────────────────────────────────────────────
+
+axonendpoint EligibilityAPI {
+    method:      post
+    path:        "/v1/eligibility/determine"
+    body:        EligibilityDecisionRequest
+    execute:     DetermineEligibility
+    output:      FlowEnvelope<EligibilityDecision>
+    shield:      AgencyShield
+    backend:     auto
+    compliance:  [FISMA, NIST_800_53, SOC2]
+    retries:     1
+    timeout:     10s
+}
+```

@@ -1,0 +1,113 @@
+---
+title: "Consultative Sales Agent scaffold"
+description: "AXON Consultative Sales Agent scaffold — qualifies leads, anchors every claim to documented product features, never misrepresents."
+---
+
+A complete program, not a fragment: it compiles as written. Copy it, rename the
+placeholder identifiers to your domain, and run `axon check` — the compiler will
+tell you what your renaming broke. An MCP client can also generate it through the
+`axon.compose` tool by naming the `sales_consultive` domain.
+
+```axon
+// AXON Consultative Sales Agent scaffold — qualifies leads, anchors
+// every claim to documented product features, never misrepresents.
+//
+// The persona is friendly + product-expert; the anchor stack rejects
+// any unverified claim. CRM-tool bindings let the agent log every
+// qualified lead. The compliance posture is SOC2 — sales agents
+// touch customer-attributed inputs and lead-database PII.
+
+// ── Types ─────────────────────────────────────────────────────────
+
+type Lead {
+    company:       Text
+    industry:      Text
+    employees:     Int
+    pain_signals:  Text
+}
+
+type Qualification {
+    decision:        Text
+    next_step:       Text
+    notes:           Text
+    estimated_value: Number
+}
+
+type QualifyRequest { lead: Lead }
+
+// ── Identity + grounding ──────────────────────────────────────────
+
+persona ConsultativeSalesAgent {
+    domain: ["sales", "consultative-selling", "discovery-questioning"]
+    tone: friendly
+    confidence_threshold: 0.8
+    cite_sources: true
+}
+
+context SalesConversation {
+    memory: persistent
+    language: "en"
+    depth: deep
+    max_tokens: 2048
+    temperature: 0.4
+}
+
+anchor NoMisrepresentation {
+    require: source_citation
+    confidence_floor: 0.85
+    unknown_response: "I don't have certified information on that. Let me get back to you."
+    on_violation: raise SalesMisrepresentationError
+}
+
+// ── Shields — customer-attributed PII ─────────────────────────────
+
+shield SalesShield {
+    scan:       [prompt_injection, pii_leak, data_exfil]
+    on_breach:  quarantine
+    severity:   high
+    compliance: [SOC2]
+}
+
+// ── Tools — CRM + product-catalogue ───────────────────────────────
+
+tool CRMLogger {
+    provider: http
+    timeout:  10s
+    effects:  <network, storage>
+}
+
+tool ProductCatalogueLookup {
+    provider: http
+    max_results: 5
+    timeout:     3s
+    effects:     <network>
+}
+
+// ── Flow ──────────────────────────────────────────────────────────
+
+flow QualifyLead(lead: Lead) -> FlowEnvelope<Qualification> {
+    step Investigate {
+        given: lead
+        apply: ProductCatalogueLookup
+        ask: "Investigate the lead's pain signals; map to product features; propose next step."
+        output: FlowEnvelope<Qualification>
+    }
+    return Investigate.output
+}
+
+// ── HTTP boundary ─────────────────────────────────────────────────
+
+axonendpoint LeadQualificationAPI {
+    method:      post
+    path:        "/v1/sales/qualify"
+    body:        QualifyRequest
+    execute:     QualifyLead
+    output:      FlowEnvelope<Qualification>
+    shield:      SalesShield
+    backend:     auto
+    compliance:  [SOC2]
+    retries:     1
+    timeout:     30s
+    requires:    ["sales.leads.qualify"]
+}
+```

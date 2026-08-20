@@ -1,0 +1,148 @@
+---
+title: "Medical Research / I+D scaffold"
+description: "AXON Medical Research / I+D scaffold — clinical research + trial management pattern (HIPAA + GxP + IRB)."
+---
+
+A complete program, not a fragment: it compiles as written. Copy it, rename the
+placeholder identifiers to your domain, and run `axon check` — the compiler will
+tell you what your renaming broke. An MCP client can also generate it through the
+`axon.compose` tool by naming the `medic_research` domain.
+
+```axon
+// AXON Medical Research / I+D scaffold — clinical research + trial
+// management pattern (HIPAA + GxP + IRB).
+//
+// Differs from `healthcare.axon` (patient care) and `pharmatech.axon`
+// (drug discovery): this scaffold targets CLINICAL RESEARCH — study
+// participant management, adverse-event recording, IRB-supervised
+// trial workflows, informed-consent tracking, trial-data audit
+// chains. Persona is clinical-researcher; compliance is HIPAA + GxP
+// + 21 CFR Part 11 + IRB approval.
+
+// ── Regulated data types ──────────────────────────────────────────
+
+type StudyParticipant compliance [HIPAA, GxP] {
+    participant_id:   Text
+    study_id:         Text
+    enrolled_at:      Text
+    consent_status:   Text
+    arm:              Text
+}
+
+type AdverseEvent compliance [HIPAA, GxP] {
+    event_id:             Text
+    participant_id:       Text
+    study_id:             Text
+    // `severity` is a reserved AXON keyword (shield.severity:) — use
+    // a non-keyword field name for type bodies.
+    severity_class:       Text
+    onset:                Text
+    description:          Text
+    causality_assessment: Text
+}
+
+type ProtocolDeviation compliance [GxP] {
+    deviation_id:      Text
+    study_id:          Text
+    description:       Text
+    impact:            Text
+}
+
+type EventReceipt {
+    accepted_at:       Text
+    reviewer_assigned: Text
+}
+
+type DeviationReceipt {
+    accepted_at:       Text
+    severity_class:    Text
+    irb_notification:  Text
+}
+
+type RecordAERequest         { event: AdverseEvent }
+type RecordDeviationRequest  { deviation: ProtocolDeviation }
+
+// ── Identity + grounding ──────────────────────────────────────────
+
+persona ClinicalResearcher {
+    domain: ["clinical-research", "trial-management", "good-clinical-practice", "irb-protocol"]
+    tone: precise
+    confidence_threshold: 0.92
+    cite_sources: true
+}
+
+context TrialReview {
+    memory: persistent
+    language: "en"
+    depth: exhaustive
+    max_tokens: 4096
+    temperature: 0.1
+}
+
+anchor InformedConsentVerified {
+    require: evidence_backed
+    confidence_floor: 0.95
+    unknown_response: "Cannot record without verified informed consent — routing to coordinator."
+    on_violation: raise ConsentVerificationError
+}
+
+// ── Shields — HIPAA + GxP gates ───────────────────────────────────
+
+shield TrialShield {
+    scan:       [prompt_injection, pii_leak, data_exfil, hallucination]
+    on_breach:  quarantine
+    severity:   critical
+    redact:     [participant_id]
+    compliance: [HIPAA, GxP, SOC2]
+}
+
+// ── Flows ─────────────────────────────────────────────────────────
+
+flow RecordAdverseEvent(event: AdverseEvent) -> FlowEnvelope<EventReceipt> {
+    step Classify {
+        given: event
+        ask: "Classify severity per ICH-GCP standards; assess causality; cite the relevant protocol section."
+        output: FlowEnvelope<EventReceipt>
+    }
+    return Classify.output
+}
+
+flow RecordProtocolDeviation(deviation: ProtocolDeviation) -> FlowEnvelope<DeviationReceipt> {
+    step Assess {
+        given: deviation
+        ask: "Classify the deviation's impact; recommend IRB notification urgency per the v1.13.1 CFR 56 thresholds."
+        output: FlowEnvelope<DeviationReceipt>
+    }
+    return Assess.output
+}
+
+// ── HTTP boundaries ───────────────────────────────────────────────
+
+axonendpoint AdverseEventAPI {
+    method:      post
+    path:        "/v1/trials/{study_id}/adverse-events"
+    body:        RecordAERequest
+    execute:     RecordAdverseEvent
+    output:      FlowEnvelope<EventReceipt>
+    shield:      TrialShield
+    backend:     auto
+    compliance:  [HIPAA, GxP, SOC2]
+    retries:     1
+    timeout:     15s
+    requires:    ["medic_research.trials.write"]
+}
+
+axonendpoint ProtocolDeviationAPI {
+    method:      post
+    path:        "/v1/trials/{study_id}/deviations"
+    body:        RecordDeviationRequest
+    execute:     RecordProtocolDeviation
+    output:      FlowEnvelope<DeviationReceipt>
+    shield:      TrialShield
+    backend:     auto
+    compliance:  [GxP, SOC2]
+    retries:     1
+    timeout:     15s
+    requires:    ["medic_research.trials.write"]
+}
+```

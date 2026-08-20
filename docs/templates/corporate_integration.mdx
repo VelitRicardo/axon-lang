@@ -1,0 +1,121 @@
+---
+title: "Corporate Integration scaffold"
+description: "AXON Corporate Integration scaffold — ERP / CRM / HR sync hub."
+---
+
+A complete program, not a fragment: it compiles as written. Copy it, rename the
+placeholder identifiers to your domain, and run `axon check` — the compiler will
+tell you what your renaming broke. An MCP client can also generate it through the
+`axon.compose` tool by naming the `corporate_integration` domain.
+
+```axon
+// AXON Corporate Integration scaffold — ERP / CRM / HR sync hub.
+//
+// This scaffold targets the integration-layer pattern: multi-source
+// data sync between corporate systems (SAP / Workday / Salesforce /
+// NetSuite). Each integration is a typed transform with explicit
+// reconciliation + idempotency.
+
+// ── Types ─────────────────────────────────────────────────────────
+
+type SourceRecord {
+    source_system:   Text
+    external_id:     Text
+    payload:         Text
+    received_at:     Text
+}
+
+type CanonicalEntity {
+    canonical_id:    Text
+    entity_type:     Text
+    normalized:      Text
+    source_lineage:  Text
+}
+
+type SyncReceipt {
+    canonical_id:     Text
+    sync_status:      Text
+    target_systems:   Text
+}
+
+type IngestRequest { record: SourceRecord }
+
+// ── Resource bindings ─────────────────────────────────────────────
+
+resource ERPSystem {
+    kind:      https
+    endpoint:  erp.sap.base
+    lifetime:  affine
+}
+
+resource CRMSystem {
+    kind:      https
+    endpoint:  crm.salesforce.base
+    lifetime:  affine
+}
+
+// ── Identity + grounding ──────────────────────────────────────────
+
+persona IntegrationAgent {
+    domain: ["data-integration", "etl", "master-data-management"]
+    tone: precise
+    confidence_threshold: 0.85
+    cite_sources: true
+}
+
+context IntegrationRun {
+    memory: persistent
+    language: "en"
+    depth: standard
+    max_tokens: 2048
+    temperature: 0.1
+}
+
+anchor DataLineagePreserved {
+    require: source_citation
+    confidence_floor: 0.85
+    unknown_response: "Source lineage incomplete — refusing to write canonical record."
+    on_violation: raise LineageBreachError
+}
+
+// ── Shield ────────────────────────────────────────────────────────
+
+shield IntegrationShield {
+    scan:       [prompt_injection, pii_leak, data_exfil]
+    on_breach:  quarantine
+    severity:   high
+    compliance: [SOC2]
+}
+
+// ── Flow ──────────────────────────────────────────────────────────
+
+flow SyncEntity(record: SourceRecord) -> FlowEnvelope<SyncReceipt> {
+    step Normalize {
+        given: record
+        ask: "Normalize the source record to the canonical entity schema; preserve source lineage."
+        output: FlowEnvelope<CanonicalEntity>
+    }
+    step Reconcile {
+        given: Normalize.output
+        ask: "Reconcile against existing canonical records; emit the sync receipt with target systems updated."
+        output: FlowEnvelope<SyncReceipt>
+    }
+    return Reconcile.output
+}
+
+// ── HTTP boundary ─────────────────────────────────────────────────
+
+axonendpoint IntegrationAPI {
+    method:      post
+    path:        "/v1/integration/sync"
+    body:        IngestRequest
+    execute:     SyncEntity
+    output:      FlowEnvelope<SyncReceipt>
+    shield:      IntegrationShield
+    backend:     auto
+    compliance:  [SOC2]
+    retries:     2
+    timeout:     30s
+    requires:    ["integration.sync"]
+}
+```

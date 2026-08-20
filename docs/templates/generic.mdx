@@ -1,0 +1,66 @@
+---
+title: "Generic scaffold"
+description: "Generic AXON scaffold — adapt the names, ranges, and prompts to the adopter's intent. Every primitive is real and compiles end-to-end; the placeholder identifiers (`MyDomain`, `Input`, `Output`, `MyFlow`, …) are renamed by the adopter (or…"
+---
+
+A complete program, not a fragment: it compiles as written. Copy it, rename the
+placeholder identifiers to your domain, and run `axon check` — the compiler will
+tell you what your renaming broke. An MCP client can also generate it through the
+`axon.compose` tool by naming the `generic` domain.
+
+```axon
+// Generic AXON scaffold — adapt the names, ranges, and prompts to the
+// adopter's intent. Every primitive is real and compiles end-to-end;
+// the placeholder identifiers (`MyDomain`, `Input`, `Output`,
+// `MyFlow`, …) are renamed by the adopter (or by the agent driving
+// the compose call) without touching grammar.
+
+// ── Identity + grounding ───────────────────────────────────────────
+
+persona MyPersona {
+    domain: ["my-domain", "general-reasoning"]
+    tone: precise
+    confidence_threshold: 0.8
+    cite_sources: true
+}
+
+context MyContext {
+    memory: session
+    language: "en"
+    depth: standard
+    max_tokens: 2048
+    temperature: 0.3
+}
+
+anchor NoHallucination {
+    require: source_citation
+    confidence_floor: 0.75
+    unknown_response: "I don't have enough information to answer that confidently."
+    on_violation: raise AnchorBreachError
+}
+
+// ── Types ─────────────────────────────────────────────────────────
+
+type Input { question: String }
+type Output { answer: String }
+
+// ── Flow ──────────────────────────────────────────────────────────
+
+flow Answer(req: Input) -> Output {
+    step Think {
+        given: req
+        ask: "Answer the question precisely, citing every factual claim."
+        output: Output
+    }
+    return Think.output
+}
+
+// ── Run binding ───────────────────────────────────────────────────
+
+run Answer(input)
+    as MyPersona
+    within MyContext
+    constrained_by [NoHallucination]
+    on_failure: retry(backoff: exponential)
+    effort: medium
+```

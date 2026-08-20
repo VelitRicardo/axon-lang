@@ -1,0 +1,100 @@
+---
+title: "Ticket Triage scaffold"
+description: "AXON Ticket Triage scaffold — inbound support-ticket classification + auto-response + priority routing."
+---
+
+A complete program, not a fragment: it compiles as written. Copy it, rename the
+placeholder identifiers to your domain, and run `axon check` — the compiler will
+tell you what your renaming broke. An MCP client can also generate it through the
+`axon.compose` tool by naming the `ticket_triage` domain.
+
+```axon
+// AXON Ticket Triage scaffold — inbound support-ticket classification +
+// auto-response + priority routing.
+//
+// Differs from `chat_skills.axon` (synchronous skill router): ticket
+// triage is ASYNC — tickets arrive via webhook, get classified, get
+// auto-answered when possible, get routed to the right queue
+// otherwise. SLA-aware.
+
+// ── Types ─────────────────────────────────────────────────────────
+
+type IncomingTicket {
+    ticket_id:      Text
+    subject:        Text
+    body:           Text
+    customer_tier:  Text
+    received_at:    Text
+}
+
+type TriageVerdict {
+    ticket_id:        Text
+    priority:         Text
+    routed_to_queue:  Text
+    auto_answer:      Text
+    sla_deadline:     Text
+}
+
+type TriageRequest { ticket: IncomingTicket }
+
+// ── Identity + grounding ──────────────────────────────────────────
+
+persona SupportTriager {
+    domain: ["customer-support", "ticket-routing", "sla-management"]
+    tone: empathetic
+    confidence_threshold: 0.75
+    cite_sources: true
+}
+
+context TriageContext {
+    memory: persistent
+    language: "en"
+    depth: standard
+    max_tokens: 2048
+    temperature: 0.3
+}
+
+anchor RespectCustomerTier {
+    require: evidence_backed
+    confidence_floor: 0.7
+    unknown_response: "Classification confidence below threshold — defaulting to highest-tier queue."
+    on_violation: log
+}
+
+// ── Shield ────────────────────────────────────────────────────────
+
+shield TriageShield {
+    scan:       [prompt_injection, pii_leak, social_engineering]
+    on_breach:  sanitize_and_retry
+    severity:   medium
+    redact:     [body]
+    compliance: [SOC2]
+}
+
+// ── Flow ──────────────────────────────────────────────────────────
+
+flow TriageTicket(ticket: IncomingTicket) -> FlowEnvelope<TriageVerdict> {
+    step Classify {
+        given: ticket
+        ask: "Classify the ticket: priority (low|medium|high|critical), routing queue, auto-answer feasibility."
+        output: FlowEnvelope<TriageVerdict>
+    }
+    return Classify.output
+}
+
+// ── HTTP boundary ─────────────────────────────────────────────────
+
+axonendpoint TriageAPI {
+    method:      post
+    path:        "/v1/tickets/triage"
+    body:        TriageRequest
+    execute:     TriageTicket
+    output:      FlowEnvelope<TriageVerdict>
+    shield:      TriageShield
+    backend:     auto
+    compliance:  [SOC2]
+    retries:     1
+    timeout:     10s
+    requires:    ["tickets.triage"]
+}
+```

@@ -1,0 +1,107 @@
+---
+title: "Multi-agent scaffold"
+description: "AXON Multi-agent scaffold — coordination across two declared agents."
+---
+
+A complete program, not a fragment: it compiles as written. Copy it, rename the
+placeholder identifiers to your domain, and run `axon check` — the compiler will
+tell you what your renaming broke. An MCP client can also generate it through the
+`axon.compose` tool by naming the `multi_agent` domain.
+
+```axon
+// AXON Multi-agent scaffold — coordination across two declared agents.
+//
+// Produces a two-agent task-delegation pattern: a planner persona
+// emits a structured plan; a worker persona executes one step at a
+// time. The wire surface is a single endpoint per agent; the
+// coordination is by typed handoff (Planner.output → Worker.input).
+
+// ── Types ─────────────────────────────────────────────────────────
+
+// Note: `goal` is a reserved AXON keyword — use `objective`,
+// `intent_text`, or any other identifier for free-text targets.
+type Task         { objective: String }
+type Plan         { steps: String }
+type StepResult   { description: String, evidence: String }
+type FinalReport  { summary: String }
+
+type PlanRequest    { task: Task }
+type ExecuteRequest { plan: Plan }
+
+// ── Identities + grounding ────────────────────────────────────────
+
+persona Planner {
+    domain: ["planning", "task-decomposition"]
+    tone: analytical
+    confidence_threshold: 0.8
+    cite_sources: false
+}
+
+persona Worker {
+    domain: ["execution", "synthesis"]
+    tone: precise
+    confidence_threshold: 0.85
+    cite_sources: true
+}
+
+context CoordinationContext {
+    memory: persistent
+    language: "en"
+    depth: deep
+    max_tokens: 4096
+    temperature: 0.3
+}
+
+anchor PlanIsReachable {
+    require: evidence_backed
+    confidence_floor: 0.75
+    unknown_response: "The proposed plan is too vague — break it down further."
+    on_violation: raise InfeasiblePlanError
+}
+
+// ── Flows ─────────────────────────────────────────────────────────
+
+flow ProducePlan(task: Task) -> FlowEnvelope<Plan> {
+    step Decompose {
+        given: task
+        ask: "Decompose the goal into ordered, atomic, verifiable steps."
+        output: FlowEnvelope<Plan>
+    }
+    return Decompose.output
+}
+
+flow ExecutePlan(plan: Plan) -> FlowEnvelope<FinalReport> {
+    step Execute {
+        given: plan
+        ask: "Execute each step in order; cite the evidence for each completion."
+        output: FlowEnvelope<FinalReport>
+    }
+    return Execute.output
+}
+
+// ── HTTP boundaries ───────────────────────────────────────────────
+
+axonendpoint PlannerAPI {
+    method:      post
+    path:        "/v1/agents/planner/plan"
+    body:        PlanRequest
+    execute:     ProducePlan
+    output:      FlowEnvelope<Plan>
+    backend:     auto
+    compliance:  [SOC2]
+    retries:     1
+    timeout:     30s
+}
+
+axonendpoint WorkerAPI {
+    method:      post
+    path:        "/v1/agents/worker/execute"
+    body:        ExecuteRequest
+    execute:     ExecutePlan
+    output:      FlowEnvelope<FinalReport>
+    backend:     auto
+    compliance:  [SOC2]
+    retries:     1
+    timeout:     60s
+}
+```

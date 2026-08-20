@@ -1,0 +1,101 @@
+---
+title: "Dev-Assistant scaffold"
+description: "AXON Dev-Assistant scaffold — coding agent with sandboxed code- interpreter + git-aware tools + streaming reply."
+---
+
+A complete program, not a fragment: it compiles as written. Copy it, rename the
+placeholder identifiers to your domain, and run `axon check` — the compiler will
+tell you what your renaming broke. An MCP client can also generate it through the
+`axon.compose` tool by naming the `dev` domain.
+
+```axon
+// AXON Dev-Assistant scaffold — coding agent with sandboxed code-
+// interpreter + git-aware tools + streaming reply.
+//
+// The dev agent's distinguishing feature: tools that touch the
+// filesystem run sandboxed (`sandbox: true`), and the persona is
+// anchored to "no hallucinated APIs" — every API claim must cite the
+// language stdlib or a retrieved code reference.
+
+// ── Types ─────────────────────────────────────────────────────────
+
+type CodingTask { prompt: Text, repo_ref: Text }
+type Token      { piece: Text }
+
+type DevRequest { task: CodingTask }
+
+// ── Identity + grounding ──────────────────────────────────────────
+
+persona DevAssistant {
+    domain: ["software-engineering", "rust", "python", "typescript", "code-review"]
+    tone: precise
+    confidence_threshold: 0.8
+    cite_sources: true
+}
+
+context DevSession {
+    memory: persistent
+    language: "en"
+    depth: deep
+    max_tokens: 8192
+    temperature: 0.2
+}
+
+anchor NoHallucinatedAPIs {
+    require: source_citation
+    confidence_floor: 0.8
+    unknown_response: "I'm not certain that API exists in the current version. Verify before using."
+    on_violation: log
+}
+
+// ── Tools — sandboxed execution ───────────────────────────────────
+
+tool CodeInterpreter {
+    provider: native
+    runtime:  sandboxed
+    sandbox:  true
+    timeout:  30s
+    effects:  <io, network, stream:drop_oldest>
+}
+
+tool GitTool {
+    provider: http
+    runtime:  sandboxed
+    sandbox:  true
+    timeout:  10s
+    effects:  <io>
+}
+
+tool DocsLookup {
+    provider: http
+    max_results: 5
+    timeout:     5s
+    effects:     <network>
+}
+
+// ── Streaming flow ────────────────────────────────────────────────
+
+flow HandleCodingTask(task: CodingTask) -> Stream<Token> {
+    step Solve {
+        given: task
+        apply: CodeInterpreter
+        ask: "Solve the coding task; use the bound tools (CodeInterpreter, GitTool, DocsLookup) as needed. Stream tokens as you reason."
+        output: Stream<Token>
+    }
+    return Solve.output
+}
+
+// ── HTTP boundary ─────────────────────────────────────────────────
+
+axonendpoint DevAPI {
+    method:    post
+    path:      "/v1/dev/solve"
+    body:      DevRequest
+    execute:   HandleCodingTask
+    output:    Stream<Token>
+    backend:   auto
+    transport: sse(axon)
+    retries:   0
+    timeout:   120s public: true
+}
+```

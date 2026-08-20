@@ -1,0 +1,113 @@
+---
+title: "WhatsApp Business Agent scaffold"
+description: "AXON WhatsApp Business Agent scaffold — webhook-driven conversational agent consuming the WA Business API + a persistent per-user memory."
+---
+
+A complete program, not a fragment: it compiles as written. Copy it, rename the
+placeholder identifiers to your domain, and run `axon check` — the compiler will
+tell you what your renaming broke. An MCP client can also generate it through the
+`axon.compose` tool by naming the `whatsapp` domain.
+
+```axon
+// AXON WhatsApp Business Agent scaffold — webhook-driven conversational
+// agent consuming the WA Business API + a persistent per-user memory.
+//
+// The WA Business policy requires structured message types (text,
+// template, interactive) + session windows. This scaffold encodes:
+//   - typed inbound payload (one type per WA message kind),
+//   - typed outbound payload (the agent's reply),
+//   - per-phone-number persistent memory binding,
+//   - a single axonendpoint at /v1/whatsapp/webhook,
+//   - shield over PII (the phone-number is PII).
+
+// ── Types ─────────────────────────────────────────────────────────
+
+type WAInboundText {
+    phone_number: Text
+    message_id:   Text
+    body:         Text
+    received_at:  Text
+}
+
+type WAOutboundReply {
+    reply_to:     Text
+    message_id:   Text
+    body:         Text
+}
+
+type WebhookRequest { msg: WAInboundText }
+
+// ── Identity + grounding ──────────────────────────────────────────
+
+persona WhatsAppBusinessAgent {
+    domain: ["customer-support", "conversational-commerce"]
+    tone: friendly
+    confidence_threshold: 0.7
+    cite_sources: false
+    language: "es"
+}
+
+context WAConversation {
+    memory: persistent
+    language: "es"
+    depth: standard
+    max_tokens: 1024
+    temperature: 0.5
+}
+
+anchor StayInSessionWindow {
+    require: source_citation
+    confidence_floor: 0.6
+    unknown_response: "Disculpa, no entendí. ¿Podrías reformular?"
+    on_violation: log
+}
+
+// ── Shields — phone-number is PII ─────────────────────────────────
+
+shield WhatsAppShield {
+    scan:       [prompt_injection, pii_leak, social_engineering]
+    // `on_breach:` is the closed-catalog policy
+    // (deflect|escalate|halt|quarantine|sanitize_and_retry). The
+    // `redact:` field below names FIELDS to redact when
+    // sanitize_and_retry fires — the two are distinct concepts.
+    on_breach:  sanitize_and_retry
+    severity:   medium
+    redact:     [phone_number]
+    compliance: [SOC2]
+}
+
+// ── Per-user memory ───────────────────────────────────────────────
+
+memory WAUserMemory {
+    store:     persistent
+    backend:   postgresql
+    retrieval: exact
+}
+
+// ── Flow ──────────────────────────────────────────────────────────
+
+flow HandleWAMessage(msg: WAInboundText) -> FlowEnvelope<WAOutboundReply> {
+    step Reply {
+        given: msg
+        ask: "Reply in the same language as the inbound message; stay inside the WA Business session window (no off-topic, no unsolicited templates)."
+        output: FlowEnvelope<WAOutboundReply>
+    }
+    return Reply.output
+}
+
+// ── HTTP boundary ─────────────────────────────────────────────────
+
+axonendpoint WhatsAppWebhookAPI {
+    method:      post
+    path:        "/v1/whatsapp/webhook"
+    body:        WebhookRequest
+    execute:     HandleWAMessage
+    output:      FlowEnvelope<WAOutboundReply>
+    shield:      WhatsAppShield
+    backend:     auto
+    compliance:  [SOC2]
+    retries:     1
+    timeout:     15s
+    requires:    ["whatsapp.webhook.handle"]
+}
+```

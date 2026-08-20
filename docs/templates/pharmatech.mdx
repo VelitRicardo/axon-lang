@@ -1,0 +1,129 @@
+---
+title: "PharmaTech scaffold"
+description: "AXON PharmaTech scaffold — pharmaceutical R&D / drug-discovery / clinical-trial-data-management pattern (GxP + FDA + HIPAA)."
+---
+
+A complete program, not a fragment: it compiles as written. Copy it, rename the
+placeholder identifiers to your domain, and run `axon check` — the compiler will
+tell you what your renaming broke. An MCP client can also generate it through the
+`axon.compose` tool by naming the `pharmatech` domain.
+
+```axon
+// AXON PharmaTech scaffold — pharmaceutical R&D / drug-discovery /
+// clinical-trial-data-management pattern (GxP + FDA + HIPAA).
+//
+// Differs from `healthcare.axon` (patient-care pattern): this
+// targets R&D + regulated discovery — compound screening, activity
+// profiling, clinical-data ingestion, FDA 21 CFR Part 11 audit
+// trails, IRB-supervised workflows. The persona is researcher /
+// scientific, not clinician.
+
+// ── Regulated data types ──────────────────────────────────────────
+
+type Compound compliance [GxP] {
+    compound_id:     Text
+    structure:       Text
+    molecular_weight: Number
+    discovery_phase: Text
+}
+
+type ActivityProfile compliance [GxP, HIPAA] {
+    compound_id:    Text
+    assay_id:       Text
+    ic50:           Number
+    selectivity:    Text
+    safety_signal:  Text
+}
+
+type ResearchReport {
+    summary:       Text
+    citations:     Text
+    confidence:    Number
+}
+
+type ScreenRequest    { compound: Compound }
+type ProfileRequest   { activity: ActivityProfile }
+
+// ── Identity + grounding ──────────────────────────────────────────
+
+persona PharmaResearcher {
+    domain: ["medicinal-chemistry", "pharmacology", "drug-discovery", "toxicology"]
+    tone: analytical
+    confidence_threshold: 0.9
+    cite_sources: true
+}
+
+context PharmaResearch {
+    memory: persistent
+    language: "en"
+    depth: exhaustive
+    max_tokens: 4096
+    temperature: 0.15
+}
+
+anchor ClinicalEvidenceRequired {
+    require: evidence_backed
+    confidence_floor: 0.88
+    unknown_response: "Evidence insufficient — flagging for senior reviewer."
+    on_violation: raise EvidenceInsufficientError
+}
+
+// ── Shields — GxP + audit ─────────────────────────────────────────
+
+shield ComplianceShield {
+    scan:       [prompt_injection, pii_leak, data_exfil, hallucination]
+    on_breach:  quarantine
+    severity:   critical
+    compliance: [GxP, HIPAA, SOC2]
+}
+
+// ── Flows ─────────────────────────────────────────────────────────
+
+flow ScreenCompound(compound: Compound) -> FlowEnvelope<ResearchReport> {
+    step Predict {
+        given: compound
+        ask: "Predict target binding profile + selectivity ranges; cite published assay precedents."
+        output: FlowEnvelope<ResearchReport>
+    }
+    return Predict.output
+}
+
+flow ProfileActivity(activity: ActivityProfile) -> FlowEnvelope<ResearchReport> {
+    step Analyze {
+        given: activity
+        ask: "Analyse the activity profile against safety signals; cite the relevant 21 CFR Part 11 clauses for record retention."
+        output: FlowEnvelope<ResearchReport>
+    }
+    return Analyze.output
+}
+
+// ── HTTP boundaries ───────────────────────────────────────────────
+
+axonendpoint CompoundScreeningAPI {
+    method:      post
+    path:        "/v1/discovery/screen"
+    body:        ScreenRequest
+    execute:     ScreenCompound
+    output:      FlowEnvelope<ResearchReport>
+    shield:      ComplianceShield
+    backend:     auto
+    compliance:  [GxP, SOC2]
+    retries:     1
+    timeout:     30s
+    requires:    ["pharmatech.discovery.screen"]
+}
+
+axonendpoint ActivityAnalysisAPI {
+    method:      post
+    path:        "/v1/discovery/activity"
+    body:        ProfileRequest
+    execute:     ProfileActivity
+    output:      FlowEnvelope<ResearchReport>
+    shield:      ComplianceShield
+    backend:     auto
+    compliance:  [GxP, HIPAA, SOC2]
+    retries:     1
+    timeout:     20s
+    requires:    ["pharmatech.discovery.analyze"]
+}
+```

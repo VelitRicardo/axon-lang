@@ -1,0 +1,126 @@
+---
+title: "Self-Learning scaffold"
+description: "AXON Self-Learning scaffold — continual learning loop with feedback-driven model improvement, mandate-gated deploys."
+---
+
+A complete program, not a fragment: it compiles as written. Copy it, rename the
+placeholder identifiers to your domain, and run `axon check` — the compiler will
+tell you what your renaming broke. An MCP client can also generate it through the
+`axon.compose` tool by naming the `self_learning` domain.
+
+```axon
+// AXON Self-Learning scaffold — continual learning loop with
+// feedback-driven model improvement, mandate-gated deploys.
+//
+// This pattern targets ML-ops adjacent workflows: collect feedback,
+// score, retrain (or fine-tune adapter), evaluate, deploy under a
+// mandate. The mandate gates promotion to production — adopters
+// who want fully-automated promotion can relax this.
+
+// ── Types ─────────────────────────────────────────────────────────
+
+type FeedbackSignal {
+    interaction_id: Text
+    outcome:        Text
+    user_label:     Text
+    confidence:     Number
+    captured_at:    Text
+}
+
+type LearningBatch {
+    batch_id:       Text
+    signal_count:   Int
+    summary:        Text
+}
+
+type DeploymentDecision {
+    model_version:  Text
+    promoted:       Text
+    evaluation_id:  Text
+    rationale:      Text
+}
+
+type SubmitFeedbackRequest { signal: FeedbackSignal }
+
+// ── Memory + store ────────────────────────────────────────────────
+
+memory FeedbackStore {
+    store:     persistent
+    backend:   postgresql
+    retrieval: exact
+}
+
+// ── Mandate — gates production promotion ──────────────────────────
+
+mandate PromotionApproval {
+    constraint:   "Production promotion requires eval-set lift ≥ 2% + manual ML lead review"
+    tolerance:    0.005
+    max_steps:    1
+    on_violation: halt
+}
+
+// ── Identity + grounding ──────────────────────────────────────────
+
+persona MLLearningAgent {
+    domain: ["mlops", "continual-learning", "model-evaluation"]
+    tone: analytical
+    confidence_threshold: 0.85
+    cite_sources: true
+}
+
+context LearningRun {
+    memory: persistent
+    language: "en"
+    depth: deep
+    max_tokens: 4096
+    temperature: 0.15
+}
+
+anchor EvidenceBackedPromotion {
+    require: evidence_backed
+    confidence_floor: 0.9
+    unknown_response: "Insufficient evidence for promotion — keeping current model live."
+    on_violation: raise InsufficientEvidenceError
+}
+
+// ── Shield ────────────────────────────────────────────────────────
+
+shield LearningShield {
+    scan:       [prompt_injection, training_poisoning, model_theft]
+    on_breach:  quarantine
+    severity:   critical
+    compliance: [SOC2]
+}
+
+// ── Flow ──────────────────────────────────────────────────────────
+
+flow IngestFeedback(signal: FeedbackSignal) -> FlowEnvelope<DeploymentDecision> {
+    step Store {
+        given: signal
+        ask: "Persist the signal under the FeedbackStore namespace."
+        output: FlowEnvelope<LearningBatch>
+    }
+    step EvaluateAndDecide {
+        given: Store.output
+        ask: "Aggregate the batch; run eval; emit promotion decision + rationale."
+        output: FlowEnvelope<DeploymentDecision>
+    }
+    return EvaluateAndDecide.output
+}
+
+// ── HTTP boundary ─────────────────────────────────────────────────
+
+axonendpoint FeedbackAPI {
+    method:      post
+    path:        "/v1/learning/feedback"
+    body:        SubmitFeedbackRequest
+    execute:     IngestFeedback
+    output:      FlowEnvelope<DeploymentDecision>
+    shield:      LearningShield
+    backend:     auto
+    compliance:  [SOC2]
+    retries:     1
+    timeout:     20s
+    requires:    ["mlops.feedback.submit"]
+}
+```
