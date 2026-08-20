@@ -34,8 +34,8 @@
   "navbar": {
     "links": [
       {
-        "label": "crates.io",
-        "href": "https://crates.io/crates/axon-lang"
+        "href": "https://github.com/VelitRicardo/axon-lang",
+        "label": ""
       }
     ],
     "primary": {
@@ -55,11 +55,19 @@
   "background": {
     "decoration": "grid",
     "color": {
-      "light": "#ebebeb",
+      "light": "#fbfbfb",
       "dark": "#6b6b6b"
     }
   },
   "icons": {
     "library": "tabler"
+  },
+  "fonts": {
+    "heading": {
+      "family": "Ubuntu"
+    },
+    "body": {
+      "family": "Roboto"
+    }
   }
 }
