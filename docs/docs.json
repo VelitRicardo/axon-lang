@@ -148,10 +148,14 @@
         "group": "Compliance",
         "pages": [
           "compliance/regulatory-classes",
+          "compliance/fedramp",
+          "compliance/fisma",
           "compliance/gdpr",
           "compliance/gxp",
           "compliance/hipaa",
+          "compliance/nist_800_53",
           "compliance/pci_dss",
+          "compliance/soc2",
           "compliance/sox"
         ]
       },

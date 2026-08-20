@@ -1,10 +1,7 @@
 ---
-name: soc2
-title: SOC 2 — Service Organization Control 2 (AICPA TSC 2017)
-summary: AXON annotations covering SOC 2 — the single class `SOC2`, what the compiler checks about it, and where the AICPA Trust Services Criteria live (in the controls you declare, not in the label).
+title: "SOC 2 — Service Organization Control 2 (AICPA TSC 2017)"
+description: "AXON annotations covering SOC 2 — the single class `SOC2`, what the compiler checks about it, and where the AICPA Trust Services Criteria live (in the controls you declare, not in the label)."
 ---
-
-# SOC 2 — Service Organization Control 2
 
 **Scope:** service organizations that hold or process customer
 data. Issued by AICPA; the criteria are the Trust Services Criteria
@@ -29,7 +26,7 @@ opts into A / PI / C / P based on what the service offers.
 
 ## Declaring SOC2
 
-```axon
+```text
 type CustomerProfile compliance [SOC2] {
     email: String,
     company: String,
@@ -113,7 +110,7 @@ different framework — it is one of the five categories an AICPA
 engagement may include — so what you declare is `SOC2`, and the
 evidence for A is the commitment itself:
 
-```axon
+```text
 axonendpoint ServeContent {
     flow: ContentFlow
     method: GET
@@ -137,7 +134,7 @@ category of a SOC 2 engagement, and they are **not** the same
 obligation as GDPR — that one is a separate class, because it is a
 separate law with its own data subjects:
 
-```axon
+```text
 type CustomerProfile compliance [SOC2, GDPR] {
     email: String,
     consent_record: ConsentRef

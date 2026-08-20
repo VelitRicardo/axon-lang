@@ -29,6 +29,8 @@
 //!    fail — showing a diagnostic — write the diagnostic in a plain fence, not
 //!    an `axon` one, the way the quickstart's negative case does.
 
+mod common;
+
 use std::path::{Path, PathBuf};
 
 fn repo_root() -> PathBuf {
@@ -343,51 +345,6 @@ fn indent(s: &str) -> String {
 // the type checker itself consults. There is no second copy of the list here to
 // drift away from it.
 
-/// Every identifier inside a `compliance [...]` / `compliance: [...]` list.
-///
-/// Scoped to the list on purpose. Prose that discusses FedRAMP as an assessment
-/// programme is legitimate — the FISMA guide explains the baselines in exactly
-/// those terms — and banning the word would be a gate that fights its own
-/// documentation. What may not appear is the label in DECLARABLE position.
-fn compliance_labels(text: &str) -> Vec<(usize, String)> {
-    let mut out = Vec::new();
-    for (n, line) in text.lines().enumerate() {
-        let mut rest = line;
-        while let Some(at) = rest.find("compliance") {
-            rest = &rest[at + "compliance".len()..];
-            let after = rest.trim_start();
-            let after = after.strip_prefix(':').unwrap_or(after).trim_start();
-            let Some(body) = after.strip_prefix('[') else { continue };
-            let Some(close) = body.find(']') else { continue };
-            // `<Tag1>` is a GRAMMAR METAVARIABLE, not a label. Every primitive
-            // page opens with a grammar block written in that convention, so
-            // reading the placeholder as a class would make the gate fire on
-            // the one part of the site that is deliberately abstract.
-            let mut ident = String::new();
-            let mut angled = false;
-            let mut prev = '[';
-            for c in body[..close].chars().chain(std::iter::once(',')) {
-                if c.is_ascii_alphanumeric() || c == '_' {
-                    if ident.is_empty() {
-                        angled = prev == '<';
-                    }
-                    ident.push(c);
-                } else {
-                    if !ident.is_empty()
-                        && !angled
-                        && !ident.chars().next().unwrap().is_ascii_digit()
-                    {
-                        out.push((n + 1, std::mem::take(&mut ident)));
-                    }
-                    ident.clear();
-                }
-                prev = c;
-            }
-        }
-    }
-    out
-}
-
 #[test]
 fn every_compliance_label_the_site_teaches_is_a_member_of_kappa() {
     let kappa = axon_frontend::compliance::REGULATORY_CLASSES;
@@ -407,12 +364,8 @@ fn every_compliance_label_the_site_teaches_is_a_member_of_kappa() {
         // separates a counter-example from a guide that simply teaches the wrong
         // vocabulary — the four framework guides held out of `docs/` teach
         // `FedRAMP_Moderate` as valid and never show it refused, so they stay out.
-        let refuted = |label: &str| {
-            text.lines()
-                .any(|l| l.contains("axon-T1214") && l.contains(label))
-        };
-        for (line, label) in compliance_labels(&text) {
-            if !kappa.contains(&label.as_str()) && !refuted(&label) {
+        for (line, label) in common::offending_labels(&text, kappa) {
+            {
                 hits.push(format!(
                     "  {}:{} — `{}` is not a regulatory class",
                     page.strip_prefix(repo_root()).unwrap_or(&page).display(),
@@ -436,35 +389,3 @@ fn every_compliance_label_the_site_teaches_is_a_member_of_kappa() {
     );
 }
 
-#[test]
-fn compliance_labels_are_read_from_declarable_position_only() {
-    // declarable — both spellings the grammar accepts
-    assert_eq!(
-        compliance_labels("    compliance: [FISMA, NIST_800_53]"),
-        vec![(1, "FISMA".into()), (1, "NIST_800_53".into())]
-    );
-    assert_eq!(
-        compliance_labels("type Profile compliance [GDPR] {"),
-        vec![(1, "GDPR".into())]
-    );
-
-    // prose about a framework is not a declaration and must not be read as one
-    assert!(compliance_labels("FISMA travels with a FedRAMP baseline.").is_empty());
-    assert!(compliance_labels("| **Moderate** | Serious effect | FedRAMP Moderate |").is_empty());
-    assert!(compliance_labels("the compliance annotation is checked at compile time").is_empty());
-
-    // grammar metavariables are placeholders, not labels
-    assert!(compliance_labels("    compliance: [<Tag1>, ...]").is_empty());
-    assert!(compliance_labels("[compliance [<Tag1>, <Tag2>, ...]]").is_empty());
-    // ...but a real label beside one is still read
-    assert_eq!(
-        compliance_labels("compliance: [<Tag1>, HIPAA]"),
-        vec![(1, "HIPAA".into())]
-    );
-
-    // the line number is the reader's line, not an offset
-    assert_eq!(
-        compliance_labels("a\nb\n  compliance: [SOX]"),
-        vec![(3, "SOX".into())]
-    );
-}

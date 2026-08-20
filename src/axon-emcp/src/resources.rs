@@ -16,7 +16,7 @@
 //! - `axon://logic/<slug>` — when-to-use-what reasoning (flow
 //!   composition, session duality) (Phase 3).
 //! - `axon://compliance/<framework>` — per-framework annotation maps
-//!   (HIPAA, GDPR, PCI_DSS, SOC2, SOX, GxP, FedRAMP, FISMA,
+//!   (HIPAA, GDPR, PCI_DSS, SOC2, SOX, GxP, FISMA,
 //!   NIST_800_53) (Phase 3).
 
 use std::sync::Arc;

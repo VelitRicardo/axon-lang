@@ -1,10 +1,7 @@
 ---
-name: nist_800_53
-title: NIST SP 800-53 — Security and Privacy Controls for Information Systems
-summary: AXON annotations covering the NIST 800-53 Rev. 5 control catalogue — control families AC, AU, SC, SI, IR, CM, CP, IA mapped to compiler + runtime enforcement.
+title: "NIST SP 800-53 — Security and Privacy Controls for Information Systems"
+description: "AXON annotations covering the NIST 800-53 Rev. 5 control catalogue — control families AC, AU, SC, SI, IR, CM, CP, IA mapped to compiler + runtime enforcement."
 ---
-
-# NIST SP 800-53 — Security and Privacy Controls
 
 **Scope:** the unified catalogue of security and privacy controls
 referenced by FISMA, FedRAMP, DoD ICD 503, and many state RAMPs.
@@ -13,7 +10,7 @@ Currently at Revision 5 (with annual errata).
 The annotation is `compliance: [NIST_800_53]`. It almost always
 travels with FISMA, the statute that requires the controls:
 
-```axon
+```text
 compliance: [FISMA, NIST_800_53]
 ```
 
@@ -131,7 +128,7 @@ SSP and audited externally:
 
 ### Pattern 1 — Moderate-baseline audit-trail evidence
 
-```axon
+```text
 flow GenerateNIST_AU_Evidence(month: Month) -> EvidencePackage {
     step Collect {
         given: month
@@ -149,7 +146,7 @@ flow GenerateNIST_AU_Evidence(month: Month) -> EvidencePackage {
 
 ### Pattern 2 — AC-6 least-privilege binding
 
-```axon
+```text
 mandate StrictLeastPrivilege
     requires: capability("case.read")    # specific, not wildcard
     on_breach: raise
@@ -165,7 +162,7 @@ axonendpoint CaseLookup {
 
 ### Pattern 3 — SC-7 explicit egress boundary
 
-```axon
+```text
 tool ExternalLookup {
     provider: external_search
     effects: <network>

@@ -1,10 +1,7 @@
 ---
-name: fisma
-title: FISMA — Federal Information Security Modernization Act (2014)
-summary: AXON annotations covering FISMA's statutory requirement for federal information systems — what flows through NIST 800-53 (the implementing catalogue) vs. what FISMA itself requires.
+title: "FISMA — Federal Information Security Modernization Act (2014)"
+description: "AXON annotations covering FISMA's statutory requirement for federal information systems — what flows through NIST 800-53 (the implementing catalogue) vs. what FISMA itself requires."
 ---
-
-# FISMA — Federal Information Security Modernization Act (2014)
 
 **Scope:** US federal information and information systems.
 Statute (44 U.S.C. section 3551–3558) that requires every federal
@@ -14,7 +11,7 @@ FISMA itself does not enumerate controls — it delegates to
 **NIST SP 800-53** (and the FIPS publications). The annotation
 `compliance: [FISMA]` therefore travels with `[NIST_800_53]`:
 
-```axon
+```text
 compliance: [FISMA, NIST_800_53]
 ```
 
@@ -33,7 +30,7 @@ control-by-control mapping lives in
 
 ## Declaring FISMA
 
-```axon
+```text
 type AgencyRecord compliance [FISMA, NIST_800_53] {
     record_id: String,
     agency_code: AgencyCode,
@@ -113,7 +110,7 @@ verifies the type's declared category is in the closed enum.
 
 ### Pattern 1 — Moderate-impact agency endpoint
 
-```axon
+```text
 type CaseFile compliance [FISMA, NIST_800_53] {
     case_id: String,
     classification: ClassificationLevel,
@@ -131,7 +128,7 @@ axonendpoint CaseFileAPI {
 
 ### Pattern 2 — Annual independent assessment evidence pack
 
-```axon
+```text
 flow GenerateFISMAAnnualEvidence(year: Int) -> EvidencePackage {
     step CollectAuditRows {
         given: { year, tag: "FISMA" }

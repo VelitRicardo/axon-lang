@@ -50,7 +50,8 @@ pub enum Domain {
     Healthcare,
     /// PCI_DSS + SOX + SOC2 — enterprise-bank payments, loans, ledger.
     Banking,
-    /// FISMA + NIST_800_53 + FedRAMP — agency, citizen, federal.
+    /// FISMA + NIST_800_53 — agency, citizen, federal. FedRAMP is the
+    /// authorization programme, not a class: the baseline lives in the SSP.
     Government,
     /// SOC2 + privilege discipline — in-house contract / case / e-discovery.
     Legal,
@@ -328,7 +329,7 @@ fn domain_metadata(d: Domain) -> &'static DomainMetadata {
             ],
         },
         Domain::Government => &DomainMetadata {
-            label: "Government (FISMA + NIST 800-53 + FedRAMP Moderate)",
+            label: "Government (FISMA + NIST 800-53, FedRAMP-authorized)",
             summary: "Citizen-record + benefits-eligibility flow with AgencyShield and audited HTTP boundary.",
             keywords: &[
                 "agency", "citizen", "benefit", "federal", "government",
@@ -339,9 +340,9 @@ fn domain_metadata(d: Domain) -> &'static DomainMetadata {
                 "type", "persona", "context", "anchor", "shield",
                 "flow", "step", "axonendpoint",
             ],
-            compliance_applied: &["FISMA", "NIST_800_53", "FedRAMP_Moderate", "SOC2"],
+            compliance_applied: &["FISMA", "NIST_800_53", "SOC2"],
             next_steps: &[
-                "Determine FIPS 199 categorisation (Low / Moderate / High) and align the FedRAMP tag.",
+                "Determine FIPS 199 categorisation (Low / Moderate / High) and record the FedRAMP baseline in the SSP — it is not a `compliance:` label.",
                 "File the System Security Plan (SSP) with the cognising AO.",
                 "Bind every endpoint to a documented `requires:` capability (no wildcards).",
                 "Enable monthly POA&M tracking against the audit chain.",

@@ -1,10 +1,7 @@
 ---
-name: fedramp
-title: FedRAMP — Federal Risk and Authorization Management Program
-summary: How a FedRAMP-authorized service is annotated in AXON — why FedRAMP is not a regulatory class, what you declare instead, and what the compiler actually checks about it.
+title: "FedRAMP — Federal Risk and Authorization Management Program"
+description: "How a FedRAMP-authorized service is annotated in AXON — why FedRAMP is not a regulatory class, what you declare instead, and what the compiler actually checks about it."
 ---
-
-# FedRAMP — Federal Risk and Authorization Management Program
 
 **Scope:** cloud services offered to US federal agencies. Operated
 by GSA's PMO; rests on NIST SP 800-53 control catalogues.
@@ -23,7 +20,7 @@ mean anything.
 So what a FedRAMP-authorized service declares is the statute and
 the catalogue:
 
-```axon
+```text
 compliance: [FISMA, NIST_800_53]
 ```
 
@@ -41,7 +38,7 @@ integrity), and IR (incident response).
 
 ## Declaring a FedRAMP-authorized service
 
-```axon
+```text
 type CitizenRecord compliance [FISMA, NIST_800_53] {
     case_id: String,
     citizen_id: String,
@@ -128,7 +125,7 @@ the operator's call documented in the SSP.
 
 ### Pattern 1 — Agency benefits-eligibility endpoint
 
-```axon
+```text
 type BenefitsEligibility compliance [FISMA, NIST_800_53] {
     citizen_id: String,
     program: BenefitProgram,
@@ -152,7 +149,7 @@ This matches the canonical example at
 
 ### Pattern 2 — High-baseline audit-log query
 
-```axon
+```text
 flow QueryAuditForAUDeep(window: TimeWindow) -> List<AuditRow> {
     step Query {
         given: window
@@ -171,7 +168,7 @@ on.
 
 ### Pattern 3 — Cross-agency data sharing
 
-```axon
+```text
 axonendpoint ShareToOtherAgency {
     flow: ShareCaseRoutine
     method: POST
