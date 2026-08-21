@@ -7,7 +7,7 @@
 
 [![crates.io](https://img.shields.io/crates/v/axon-emcp.svg)](https://crates.io/crates/axon-emcp)
 [![docs.rs](https://docs.rs/axon-emcp/badge.svg)](https://docs.rs/axon-emcp)
-[![MCP Registry](https://img.shields.io/badge/MCP%20Registry-io.github.VelitRicardo%2Faxon--emcp-blue)](https://registry.modelcontextprotocol.io/v0/servers?search=axon-emcp)
+[![MCP Registry](https://img.shields.io/badge/MCP%20Registry-com.ricardovelit%2Faxon--emcp-blue)](https://registry.modelcontextprotocol.io/v0/servers?search=axon-emcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 ## What it does
@@ -49,7 +49,7 @@ vars, no post-install steps.
 
 The server is registered at
 [`registry.modelcontextprotocol.io`](https://registry.modelcontextprotocol.io/v0/servers?search=axon-emcp)
-under the canonical namespace `io.github.VelitRicardo/axon-emcp`. Tools
+under the canonical namespace `com.ricardovelit/axon-emcp`. Tools
 that consume the registry (Claude Desktop's connector picker, Cursor's
 MCP browser, the `mcp-publisher` CLI's discovery surface, future
 clients that index `registry.modelcontextprotocol.io/v0/servers`)
@@ -61,7 +61,7 @@ driven install flow can run:
 curl -s 'https://registry.modelcontextprotocol.io/v0/servers?search=axon-emcp' | jq .
 
 # Or use the publisher CLI for inspection:
-mcp-publisher status io.github.VelitRicardo/axon-emcp
+mcp-publisher status com.ricardovelit/axon-emcp
 ```
 
 The crate itself stays on `crates.io` (the registry currently lists

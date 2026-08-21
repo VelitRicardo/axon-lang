@@ -37,9 +37,18 @@ server so clients can discover and (eventually) auto-install them. The
 manifest at [`server.json`](./server.json) is the source of truth and
 is kept in sync with the crate version.
 
-The publish flow needs a one-time GitHub OAuth handshake with the
-`mcp-publisher` CLI — that authenticates the publisher under the
-`io.github.VelitRicardo/*` namespace.
+The publish flow authenticates against the DOMAIN, not a code-hosting
+account: an Ed25519 key published as a TXT record at the apex of
+`ricardovelit.com` grants the `com.ricardovelit/*` namespace.
+
+That choice is the point. An `io.github.*` namespace is authenticated by
+an ACCOUNT NAME — a thing the platform lets you rename and lets someone
+else claim afterwards. This project has already lived that once: the
+account moved Bemarking -> VelitRicardo, leaving `io.github.Bemarking/*`
+unowned. A domain does not rename.
+
+No browser is needed: `mcp-publisher login dns` signs with the private
+key, so the flow runs headless and in CI.
 
 ```bash
 # (a) Install the publisher CLI:
@@ -51,10 +60,10 @@ brew install mcp-publisher    # macOS / Linuxbrew
 # the live registry's validation endpoint — no credentials needed):
 mcp-publisher validate src/axon-emcp/server.json
 
-# (c) One-time interactive GitHub OAuth login (opens a browser to
-# grant the `io.github.VelitRicardo/*` namespace; the token is cached at
-# `~/.config/mcp-publisher/token.json` for subsequent publishes):
-mcp-publisher login github
+# (c) Authenticate the `com.ricardovelit/*` namespace with the domain
+# key (headless — no browser). The token is cached at
+# `~/.config/mcp-publisher/token.json` for subsequent publishes:
+mcp-publisher login dns --domain ricardovelit.com --private-key <hex>
 
 # (d) Publish:
 mcp-publisher publish src/axon-emcp/server.json

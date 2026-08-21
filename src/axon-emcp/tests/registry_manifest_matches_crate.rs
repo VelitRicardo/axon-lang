@@ -69,18 +69,24 @@ fn server_json_version_matches_the_crate() {
 fn server_json_names_the_owned_namespace() {
     let name = json_str("name");
     assert_eq!(
-        name, "io.github.VelitRicardo/axon-emcp",
-        "server.json declares the registry name {name}.\n\
-         \n\
-         An `io.github.*` namespace is a CLAIM ABOUT WHO WE ARE, authenticated by \
-         GitHub account ownership — not a URL that redirects. The account was \
-         renamed Bemarking -> VelitRicardo (2026-08-04), so `io.github.Bemarking/*` \
-         is no longer ours and `github.com/Bemarking` now 404s, i.e. the old \
-         username is unclaimed and re-registrable by anyone.\n\
-         \n\
-         If this ever needs to change again, change it because the ACCOUNT changed, \
-         and remember the old registry entry cannot be renamed — only superseded or \
-         deprecated."
+        name, "com.ricardovelit/axon-emcp",
+        "server.json declares the registry name {name}.
+
+The publishable identity is the DOMAIN, not a code-hosting account. A
+`com.ricardovelit/*` namespace is authenticated by an Ed25519 key published in a
+TXT record at the apex of a domain we own and renew; an `io.github.*` namespace
+is authenticated by an ACCOUNT NAME, and an account name is a thing a platform
+lets you change and someone else lets themselves claim.
+
+That is not hypothetical here. This manifest already moved once for exactly
+that reason — the account was renamed Bemarking -> VelitRicardo, which left
+`io.github.Bemarking/*` unowned and re-registrable by anyone. A second rename
+would do it again. A domain does not rename.
+
+Nothing had been published under either namespace when this changed, so there
+is no superseded entry: the first publication carries the identity we intend to
+keep. If this ever needs to change again, remember a registry entry cannot be
+renamed — only superseded or deprecated.",
     );
 }
 
