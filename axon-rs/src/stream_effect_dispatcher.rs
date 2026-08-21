@@ -380,6 +380,9 @@ mod tests {
         ToolDefinition {
             name: name.to_string(),
             provider: String::new(),
+            // v4.3.0 — this fixture builds a tool with no regulated
+            // parameters, so axon-T1221 has nothing to cover here.
+            shield_ref: String::new(),
             max_results: None,
             filter_expr: String::new(),
             timeout: String::new(),
