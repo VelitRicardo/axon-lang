@@ -35,7 +35,7 @@ fn every_documented_primitive_carries_its_ledger_row() {
     }
 
     // `extension` and `witness` are documented and have no row — a known
-    // finding, tracked as §126's open question, not a silent gap. They are
+    // finding, held open as a decision rather than a silent gap. They are
     // named here so that the LIST is the assertion: a new undocumented-status
     // primitive joins this failure instead of slipping in beside them.
     without_row.sort();

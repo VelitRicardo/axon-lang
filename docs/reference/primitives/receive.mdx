@@ -1,0 +1,63 @@
+---
+title: "receive"
+description: "Session action — the role receives a value of the named type, then continues. Dual of `send` at the same position in the partner role."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v2.3.0 · **Used inside a declaration**
+
+## Grammar
+
+```text
+receive <Type>
+```
+
+One step of a role's protocol inside a [`session`](session): this role takes a
+value of `<Type>` off the wire and the protocol advances.
+
+```text
+session SettlementProtocol {
+  Buyer:  [ send Quote,    receive Settlement, … ]
+  Seller: [ receive Quote, send Settlement,    … ]
+}
+```
+
+## Surface
+
+`receive` appears only inside a role's step list, and names a **declared type**.
+Its position in the list is part of the protocol: a role cannot receive before
+the partner has reached the matching `send`.
+
+## Fields
+
+None. `receive <Type>` is the whole form.
+
+## Runtime behaviour
+
+`check_session_duality` requires that this `receive T` faces a `send T` at the
+same position in the partner role. A protocol where one side receives what the
+other never sends does not compile — which is the deadlock you would otherwise
+find in production, moved to the build.
+
+The value arrives typed. There is no parsing step and no "what if it is not a
+`Settlement`" branch to write, because a partner that could send something else
+would not have type-checked.
+
+## What this primitive is NOT
+
+- **Not a read from a queue.** There is one partner, and the protocol says
+  exactly what it will have sent by this point.
+- **Not `ingest`.** Data crossing in from outside the program is epistemically
+  `Untrusted` and must be shielded; a session `receive` takes a value from a
+  partner whose side of the protocol was checked against this one.
+- **Not optional.** A role's step list has no "if nothing arrives" arm. To model
+  a choice, use [`branch`](branch).
+
+## See also
+
+- [`send`](send) — the dual action
+- [`select`](select) / [`branch`](branch) — the dual choices
+- [`session`](session) — the protocol these steps compose into

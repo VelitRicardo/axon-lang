@@ -300,6 +300,7 @@
       {
         "group": "Reference · Cognitive I/O",
         "pages": [
+          "reference/primitives/compliance",
           "reference/primitives/ensemble",
           "reference/primitives/fabric",
           "reference/primitives/heal",
@@ -315,6 +316,10 @@
       {
         "group": "Reference · Session types",
         "pages": [
+          "reference/primitives/branch",
+          "reference/primitives/receive",
+          "reference/primitives/select",
+          "reference/primitives/send",
           "reference/primitives/session",
           "reference/primitives/socket",
           "reference/primitives/topology",

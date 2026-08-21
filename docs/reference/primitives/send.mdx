@@ -1,0 +1,68 @@
+---
+title: "send"
+description: "Session action — the role sends a value of the named type, then continues. Dual of `receive` at the same position in the partner role."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v2.3.0 · **Used inside a declaration**
+
+## Grammar
+
+```text
+send <Type>
+```
+
+One step of a role's protocol inside a [`session`](session): this role puts a
+value of `<Type>` on the wire and the protocol advances.
+
+```text
+session SettlementProtocol {
+  Buyer:  [ send Quote,    receive Settlement, … ]
+  Seller: [ receive Quote, send Settlement,    … ]
+}
+```
+
+## Surface
+
+`send` appears only inside a role's step list. It names a **declared type**, not
+a value — a session type describes the shape of a conversation, not one run of
+it.
+
+## Fields
+
+None. `send <Type>` is the whole form. What follows it in the list is what the
+role does next.
+
+## Runtime behaviour
+
+The compile-time claim is the interesting one. `check_session_duality` decides
+that the two roles are **exact duals**: every `send T` in one role faces a
+`receive T` at the same position in the other, arm for arm inside choices.
+Flipping a single `send` to `receive` makes the check fail.
+
+That is what makes a session type worth declaring. Two roles that merely *look*
+compatible deadlock at run time, on a machine, in front of a customer; two
+roles the compiler has checked cannot.
+
+At run time the action is carried by the [`socket`](socket) the session is
+attached to.
+
+## What this primitive is NOT
+
+- **Not a function call.** There is no return value here. If this role expects
+  something back, the protocol says so with a `receive` at the next position.
+- **Not `emit` or `publish`.** Those put a value on a [`channel`](channel), a
+  broadcast surface with no partner and no protocol. `send` is one half of a
+  two-party conversation whose shape is checked.
+- **Not asynchronous fire-and-forget.** Position in the list is meaning: what
+  comes after this `send` cannot happen before it.
+
+## See also
+
+- [`receive`](receive) — the dual action
+- [`select`](select) / [`branch`](branch) — the dual choices
+- [`session`](session) — the protocol these steps compose into
+- [`socket`](socket) — the transport that carries a session

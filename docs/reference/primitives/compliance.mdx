@@ -1,0 +1,91 @@
+---
+title: "compliance"
+description: "The regulatory badge — attaches a class from the closed vocabulary Κ to a type or a declaration. A claim, not a control."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v1.2.0 · **Used inside a declaration**
+
+## Grammar
+
+```text
+# On a type declaration — the class travels with the DATA:
+type <Name> compliance [<Class>, ...] { <field>: <Type>, ... }
+
+# On a declaration that names a boundary or a control:
+compliance: [<Class>, ...]
+```
+
+Attaches one or more regulatory classes to a type or a declaration. The classes
+come from **Κ**, a closed vocabulary — anything outside it is `axon-T1214`, a
+compile error rather than a string the compiler cannot reason about.
+
+```axon
+type PatientRecord compliance [HIPAA, PCI_DSS] {
+    ssn:       String,
+    diagnosis: String
+}
+```
+
+## Surface
+
+Two positions, and the difference between them is the whole primitive:
+
+- **On a `type`** — the class is a property of the DATA. It travels wherever a
+  value of that type travels, including inside another type's field.
+- **On a `shield`** — the class is what that control COVERS.
+- **On an `axonendpoint` or a `manifest`** — the class is a claim about that
+  declaration.
+
+## Fields
+
+A bracketed list of identifiers from Κ. **Case-sensitive**: `hipaa` is not
+`HIPAA`, because a label that renders differently from the framework it names
+is a different string to every downstream consumer that groups by it — the
+audit dossier, the SBOM filter, the evidence packager.
+
+See the regulatory-classes reference for the full list of fifteen.
+
+## Runtime behaviour
+
+The badge is a **claim**, and a claim is not coverage. A class is covered when
+something can act on a breach of it, and the thing that can is a `shield:` whose
+own `compliance:` lists that class.
+
+Declaring the classes on an endpoint's own `compliance:` does **not** cover
+them. That is the most common misreading, and the diagnostics say so in as many
+words.
+
+| Where the data crosses | The rule |
+|---|---|
+| `axonendpoint` | `axon-T957` |
+| `channel` | `axon-T1215` |
+| `tool` | `axon-T1221` |
+
+The class of a value includes the classes of its **fields**, transitively.
+Wrapping a regulated type in a request struct does not launder it — that was
+true of five shipped scaffolds until v4.2.0, and it is the reason this page
+insists on the distinction between the badge and the control.
+
+## What this primitive is NOT
+
+- **Not a control.** It does not redact, block, or log anything. `shield` does.
+- **Not a certification.** The compiler checks that a control covering the class
+  stands on every boundary the data crosses. Whether your organisation is
+  actually HIPAA-compliant is an audit, not a build.
+- **Not inferential.** A class covers itself and nothing else: the compiler will
+  not decide that SOC 2 implies ISO 27001. Cross-framework overlap is a
+  judgement a regulator makes.
+- **Not open.** A framework outside Κ is refused with a suggestion, not accepted
+  as free text — because a free-text compliance field lets every codebase invent
+  its own spelling.
+
+## See also
+
+- [`shield`](shield) — the control that covers a class
+- [`type`](type) — where a class is usually attached
+- [`axonendpoint`](axonendpoint) / [`channel`](channel) / [`tool`](tool) — the
+  boundaries where coverage is checked

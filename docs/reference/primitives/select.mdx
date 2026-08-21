@@ -1,0 +1,83 @@
+---
+title: "select"
+description: "Internal choice — this role picks one labelled arm and the partner must follow. Dual of `branch`, arm for arm."
+---
+
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v2.3.0 · **Used inside a declaration**
+
+## Grammar
+
+```text
+select {
+    <label>: [<SessionStep>, ...],
+    <label>: [<SessionStep>, ...],
+    ...
+}
+```
+
+The point in a protocol where **this** role decides how the conversation
+continues. Each labelled arm is a continuation; the role takes one, and the
+partner follows whichever it took.
+
+```axon
+session SettlementProtocol {
+  Buyer: [
+    send Quote,
+    receive Settlement,
+    select {
+      accept:  [ send Settlement, end ],
+      dispute: [ send Quote,      end ]
+    }
+  ]
+  Seller: [
+    receive Quote,
+    send Settlement,
+    branch {
+      accept:  [ receive Settlement, end ],
+      dispute: [ receive Quote,      end ]
+    }
+  ]
+}
+```
+
+## Surface
+
+`select { … }` appears inside a role's step list. Each entry is
+`<label>: [<steps>]` — a name and the protocol that follows if that name is
+chosen. An arm ends with `end`, or continues with more steps.
+
+## Fields
+
+The labels are the interface. They are matched **by name** against the partner's
+[`branch`](branch): `accept` here must be `accept` there.
+
+## Runtime behaviour
+
+`check_session_duality` compares the two roles arm for arm. A `select` faces a
+`branch` with the **same label set**, and inside each arm the steps are duals in
+turn. Renaming one arm on one side makes the check fail.
+
+The asymmetry is the whole content of the primitive: `select` is *internal*
+choice — this role decides — and [`branch`](branch) is *external* choice, where
+the partner decides. Which side holds the decision is a protocol fact, and
+declaring it wrong is the kind of bug that shows up as two systems each waiting
+for the other.
+
+## What this primitive is NOT
+
+- **Not an `if`.** The condition is not in the type. `select` says *this role
+  chooses*; the reason it chose is ordinary program logic.
+- **Not `match`.** There is no value being scrutinised. The label is the message.
+- **Not the same as `branch` with the roles swapped by accident.** They are
+  duals, and the compiler will tell you if you wrote the wrong one — that is why
+  it can.
+
+## See also
+
+- [`branch`](branch) — the dual: external choice
+- [`send`](send) / [`receive`](receive) — the dual actions
+- [`session`](session) — the protocol these steps compose into

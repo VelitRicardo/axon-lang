@@ -1373,7 +1373,12 @@ Body prose.
         // registry for two majors, and this crate could not see them. That is
         // what a stale pin costs: the coverage gate was green the whole time,
         // measuring a registry nobody was shipping.
-        assert_eq!(s.total, 94);
+        // v4.4.0: 94 -> 99 — the four session verbs (`send`, `receive`,
+        // `select`, `branch`) and the regulatory badge (`compliance`). All
+        // five were Attested in the ledger and advertised in the README with
+        // NO registry row, so `axon.primitives` never listed them: five
+        // constructs the compiler delivered and an agent had no way to find.
+        assert_eq!(s.total, 99);
     }
 
     /// Phase 5 — every MCP prompt shipped under

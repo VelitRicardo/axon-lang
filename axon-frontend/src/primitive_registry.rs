@@ -449,6 +449,42 @@ pub const PRIMITIVE_REGISTRY: &[PrimitiveInfo] = &[
     // via T938 instead.
     // ── Session types (v2.3.0) ──────────────────────────────────────
     PrimitiveInfo {
+        name: "send",
+        category: "session_types",
+        top_level: false,
+        since: "v2.3.0",
+        summary: "Session action — the role sends a value of the named type, then continues. Dual of `receive` at the same position in the partner role; `check_session_duality` refuses a protocol where the two roles disagree.",
+        doc_status: DocStatus::Documented,
+        is_advertised: true,
+    },
+    PrimitiveInfo {
+        name: "receive",
+        category: "session_types",
+        top_level: false,
+        since: "v2.3.0",
+        summary: "Session action — the role receives a value of the named type, then continues. Dual of `send` at the same position in the partner role.",
+        doc_status: DocStatus::Documented,
+        is_advertised: true,
+    },
+    PrimitiveInfo {
+        name: "select",
+        category: "session_types",
+        top_level: false,
+        since: "v2.3.0",
+        summary: "Internal choice — this role picks one labelled arm and the partner must follow. Dual of `branch`, arm for arm: the labels and their continuations must match exactly.",
+        doc_status: DocStatus::Documented,
+        is_advertised: true,
+    },
+    PrimitiveInfo {
+        name: "branch",
+        category: "session_types",
+        top_level: false,
+        since: "v2.3.0",
+        summary: "External choice — this role offers labelled arms and the partner picks one. Dual of `select`, arm for arm.",
+        doc_status: DocStatus::Documented,
+        is_advertised: true,
+    },
+    PrimitiveInfo {
         name: "session",
         category: "session_types",
         top_level: true,
@@ -855,6 +891,15 @@ pub const PRIMITIVE_REGISTRY: &[PrimitiveInfo] = &[
         is_advertised: true,
     },
     PrimitiveInfo {
+        name: "compliance",
+        category: "cognitive_io",
+        top_level: false,
+        since: "v1.2.0",
+        summary: "The regulatory badge — attaches a class from the closed vocabulary Κ to a type or a declaration. Not coverage: the class is a claim, and a `shield:` whose own `compliance:` covers it is the control that acts on a breach (axon-T957 / T1215 / T1221).",
+        doc_status: DocStatus::Documented,
+        is_advertised: true,
+    },
+    PrimitiveInfo {
         name: "component",
         category: "wire",
         top_level: true,
@@ -1208,9 +1253,16 @@ mod tests {
         // for the same reason `budget` was not: no badge, no registry row,
         // nothing to classify — so no gate could ask whether a program could
         // reach it. The answer was no, totally: zero lexer tokens.
+        // v4.4.0: 94 -> 99. The four session verbs (`send`, `receive`,
+        // `select`, `branch`) and the regulatory badge (`compliance`) were
+        // Attested in the ledger and advertised in the README, and had no
+        // registry row — so `axon.primitives` never listed them and an agent
+        // could not discover, or ask about, five constructs the compiler
+        // already delivered. What was missing was not the feature: it was the
+        // entry that makes a feature findable.
         assert_eq!(
             PRIMITIVE_REGISTRY.len(),
-            94,
+            99,
             "PRIMITIVE_REGISTRY count drift — add/remove the primitive intentionally + update this assertion"
         );
     }
@@ -1360,6 +1412,11 @@ mod tests {
             "ingest", "focus", "associate", "aggregate", "explore",
             // v2.87.0 — algebraic effects, reachable from source at last.
             "effect", "handle", "perform",
+            // v4.4.0 — the four session verbs and the regulatory badge. All
+            // five were Attested and README-advertised with no registry row,
+            // so `axon.primitives` never listed them: the compiler delivered
+            // five constructs an agent had no way to find.
+            "send", "receive", "select", "branch", "compliance",
         ]
         .into_iter()
         .collect();
@@ -1397,9 +1454,10 @@ mod tests {
         // algebraic-effect constructs. The v1.17.0 runtime existed and the language
         // had no grammar for it at all, so `EffectRuntime` was constructible
         // only from its own tests.
-        assert_eq!(s.total, 94);
+        // v4.4.0: 94 -> 99 — send / receive / select / branch / compliance.
+        assert_eq!(s.total, 99);
         assert_eq!(s.documented + s.pending, s.total);
-        assert_eq!(s.documented, 94);
+        assert_eq!(s.documented, 99);
         assert_eq!(s.pending, 0);
     }
 

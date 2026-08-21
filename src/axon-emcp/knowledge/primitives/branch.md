@@ -1,0 +1,67 @@
+---
+name: branch
+summary: External choice — this role offers labelled arms and the partner picks one. Dual of `select`, arm for arm.
+category: session_types
+top_level: false
+since: v2.3.0
+grammar: |
+  branch {
+      <label>: [<SessionStep>, ...],
+      <label>: [<SessionStep>, ...],
+      ...
+  }
+---
+
+# `branch`
+
+The point in a protocol where **the partner** decides how the conversation
+continues, and this role must be ready for every way it can go.
+
+```axon
+session SettlementProtocol {
+  Seller: [
+    receive Quote,
+    send Settlement,
+    branch {
+      accept:  [ receive Settlement, end ],
+      dispute: [ receive Quote,      end ]
+    }
+  ]
+}
+```
+
+## Surface
+
+`branch { … }` appears inside a role's step list, with one `<label>: [<steps>]`
+entry per way the conversation can go.
+
+## Fields
+
+The label set must match the partner's [`select`](select) exactly — not a
+subset. A role that offers two arms against a partner that can choose three has
+a case it never handles, and that is a compile error rather than a run-time
+surprise.
+
+## Runtime behaviour
+
+`check_session_duality` matches this `branch` against the partner's `select`
+label for label, then checks the steps inside each arm as duals in turn.
+
+**Every arm must be written.** There is no default and no fallthrough: the point
+of an external choice is that the partner may take any of them, so a missing arm
+is a state the program cannot be in and yet could reach.
+
+## What this primitive is NOT
+
+- **Not error handling.** An arm is a legitimate continuation, not a failure
+  path. A protocol-level failure is its own labelled arm, named.
+- **Not `select` seen from the other side by convention.** It is the dual by
+  CONSTRUCTION, and the compiler decides it. Writing `branch` where the protocol
+  wanted `select` inverts who holds the decision, and the check catches it.
+- **Not open.** New labels are a protocol change on both roles, together.
+
+## See also
+
+- [`select`](select) — the dual: internal choice
+- [`send`](send) / [`receive`](receive) — the dual actions
+- [`session`](session) — the protocol these steps compose into
