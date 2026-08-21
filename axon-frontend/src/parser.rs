@@ -9896,6 +9896,11 @@ impl Parser {
                     "target" => node.target = self.consume_any_ident_or_kw()?.value,
                     "template" => node.template = self.parse_dotted_identifier()?,
                     "provenance" => node.provenance = self.consume_any_ident_or_kw()?.value,
+                    // v4.4.0 — the typed input the coverage rule reads. It names a
+                    // DECLARED TYPE, not a value: a sink whose input has no type has
+                    // nowhere to read a regulatory class from.
+                    "payload" => node.payload = self.consume_any_ident_or_kw()?.value,
+                    "shield" => node.shield_ref = self.consume_any_ident_or_kw()?.value,
                     "effects" => node.effects = Some(self.parse_effect_row()?),
                     other => {
                         return Err(self.error(&format!(
@@ -10073,6 +10078,11 @@ impl Parser {
                         }
                     }
                     "provenance" => node.provenance = self.consume_any_ident_or_kw()?.value,
+                    // v4.4.0 — the typed input the coverage rule reads. It names a
+                    // DECLARED TYPE, not a value: a sink whose input has no type has
+                    // nowhere to read a regulatory class from.
+                    "payload" => node.payload = self.consume_any_ident_or_kw()?.value,
+                    "shield" => node.shield_ref = self.consume_any_ident_or_kw()?.value,
                     "effects" => node.effects = Some(self.parse_effect_row()?),
                     other => {
                         return Err(self.error(&format!(
@@ -10128,6 +10138,11 @@ impl Parser {
                 match field_name.as_str() {
                     "target" => node.target = self.consume_any_ident_or_kw()?.value,
                     "provenance" => node.provenance = self.consume_any_ident_or_kw()?.value,
+                    // v4.4.0 — the typed input the coverage rule reads. It names a
+                    // DECLARED TYPE, not a value: a sink whose input has no type has
+                    // nowhere to read a regulatory class from.
+                    "payload" => node.payload = self.consume_any_ident_or_kw()?.value,
+                    "shield" => node.shield_ref = self.consume_any_ident_or_kw()?.value,
                     "secret" => node.secret = self.consume_any_ident_or_kw()?.value,
                     "effects" => node.effects = Some(self.parse_effect_row()?),
                     other => {

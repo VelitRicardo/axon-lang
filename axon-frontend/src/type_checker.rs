@@ -5654,7 +5654,85 @@ impl<'a> TypeChecker<'a> {
     /// (99.d) the assertion-laundering barrier — an assertive-slot flow-value
     /// binding must carry `attribute:` or sit inside `epistemic { believe|know }`;
     /// plus `sensitive:*`⇒`legal:*` propagation on the render's effect row.
+    /// v4.4.0 — the coverage rule for a governed egress declaration.
+    ///
+    /// `document`, `deliver` and `notify` are the exits that used to have no
+    /// static κ at all, for a structural reason: they bind bare value
+    /// references, and "what classes does this carry?" has no answer about a
+    /// bare reference. `payload: <Type>` is what gives them one.
+    ///
+    /// ONE function for all three, deliberately. The endpoint and the channel
+    /// rules are duals written twice, and keeping them in step has cost real
+    /// work; three more copies would drift the same way. The primitive name and
+    /// the diagnostic code are the only things that vary.
+    fn check_egress_kappa(
+        &mut self,
+        primitive: &str,
+        code: &str,
+        name: &str,
+        payload: &str,
+        shield_ref: &str,
+        loc: &crate::ast::Loc,
+    ) {
+        if payload.is_empty() {
+            // No typed payload declared. Legal — the field is optional, and a
+            // declaration that names no type carries no class to cover.
+            return;
+        }
+        let kappa = crate::compliance::transitive_kappa(self.program, payload);
+        if kappa.is_empty() {
+            return;
+        }
+        let listed: Vec<&str> = kappa.iter().map(|s| s.as_str()).collect();
+
+        if shield_ref.is_empty() {
+            self.emit(
+                format!(
+                    "{code} {primitive} '{name}' carries regulated data (kappa = {{{}}}) \
+                     out of the program but declares no `shield:`. An egress is a trust \
+                     boundary — the ESK coverage rule applies here exactly as it does to \
+                     an axonendpoint (axon-T957). Declare `shield: <Name>`, where that \
+                     shield lists at least [{}] in its `compliance:`. The classes on the \
+                     payload TYPE are the claim; the shield is the control that acts on \
+                     a breach.",
+                    listed.join(", "),
+                    listed.join(", "),
+                ),
+                loc,
+            );
+            return;
+        }
+
+        if let Some(shield) = find_shield_by_name(self.program, shield_ref) {
+            // An unknown shield name is reported by reference integrity.
+            let covered: std::collections::BTreeSet<String> =
+                shield.compliance.iter().cloned().collect();
+            let missing: Vec<&str> =
+                kappa.difference(&covered).map(|s| s.as_str()).collect();
+            if !missing.is_empty() {
+                self.emit(
+                    format!(
+                        "{code} {primitive} '{name}' declares `shield: {shield_ref}`, but \
+                         that shield does not cover kappa = {{{}}} carried by its payload \
+                         — the ESK coverage rule. Add [{}] to shield '{shield_ref}'s \
+                         `compliance:` list, or name a shield that already covers them.",
+                        missing.join(", "),
+                        missing.join(", "),
+                    ),
+                    loc,
+                );
+            }
+        }
+    }
     fn check_document(&mut self, node: &crate::ast::DocumentDefinition) {
+        self.check_egress_kappa(
+            "document",
+            "axon-T1222",
+            &node.name,
+            &node.payload,
+            &node.shield_ref,
+            &node.loc,
+        );
         // (T910) target catalog.
         if !is_valid(&node.target, VALID_DOC_TARGETS) {
             self.emit(
@@ -5860,6 +5938,14 @@ impl<'a> TypeChecker<'a> {
     ///   T935 (attention): `window:` is mandatory and well-formed — an
     ///   unbounded interruption channel is refused, not defaulted.
     fn check_notify(&mut self, node: &crate::ast::NotifyDefinition) {
+        self.check_egress_kappa(
+            "notify",
+            "axon-T1224",
+            &node.name,
+            &node.payload,
+            &node.shield_ref,
+            &node.loc,
+        );
         // (T934) channel catalog.
         if !matches!(node.channel.as_str(), "sms" | "whatsapp" | "telegram") {
             self.emit(
@@ -5948,6 +6034,14 @@ impl<'a> TypeChecker<'a> {
     /// delivery of a flow value is laundering unless the author vouches (an
     /// enclosing `epistemic { believe|know }`) that the value cleared the lattice.
     fn check_deliver(&mut self, node: &crate::ast::DeliverDefinition) {
+        self.check_egress_kappa(
+            "deliver",
+            "axon-T1223",
+            &node.name,
+            &node.payload,
+            &node.shield_ref,
+            &node.loc,
+        );
         // (T921) target catalog.
         if !is_valid(&node.target, VALID_DELIVER_TARGETS) {
             self.emit(

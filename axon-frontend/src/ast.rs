@@ -317,6 +317,14 @@ pub fn declaration_surface(decl: &Declaration) -> Option<(String, String, Loc)> 
 #[derive(Debug, Default)]
 pub struct DocumentDefinition {
     pub name: String,
+    /// v4.4.0 — `payload: <Type>`: the DECLARED TYPE this document renders. κ is read from it: a regulated
+    /// type reaching a document needs a `shield:` covering its classes.
+    ///
+    /// Empty when the declaration names no payload, which stays legal: the
+    /// rule bites on a payload that CARRIES a class, not on its absence.
+    pub payload: String,
+    /// v4.4.0 — the shield that covers the payload's κ (`axon-T1222`).
+    pub shield_ref: String,
     /// `docx | pptx | xlsx` — closed catalog (axon-T910).
     pub target: String,
     /// Optional enterprise template reference (`.dotx/.potx/.xltx`, v2.53.0).
@@ -414,6 +422,14 @@ impl DocScalar {
 
 pub struct DeliverDefinition {
     pub name: String,
+    /// v4.4.0 — `payload: <Type>`: the DECLARED TYPE this delivery carries to the system of record. The
+    /// widest commercial exit the language has, and the κ comes from here.
+    ///
+    /// Empty when the declaration names no payload, which stays legal: the
+    /// rule bites on a payload that CARRIES a class, not on its absence.
+    pub payload: String,
+    /// v4.4.0 — the shield that covers the payload's κ (`axon-T1223`).
+    pub shield_ref: String,
     /// `crm` — closed catalog (axon-T921).
     pub target: String,
     /// `attached | cleared` — how field provenance crosses the boundary
@@ -443,6 +459,14 @@ pub struct DeliverDefinition {
 #[derive(Debug, Default)]
 pub struct NotifyDefinition {
     pub name: String,
+    /// v4.4.0 — `payload: <Type>`: the DECLARED TYPE this notification carries. A recipient is already
+    /// PII (axon-T934); the payload is what the coverage rule reads.
+    ///
+    /// Empty when the declaration names no payload, which stays legal: the
+    /// rule bites on a payload that CARRIES a class, not on its absence.
+    pub payload: String,
+    /// v4.4.0 — the shield that covers the payload's κ (`axon-T1224`).
+    pub shield_ref: String,
     /// `sms | whatsapp | telegram` — closed catalog (axon-T934).
     pub channel: String,
     /// The v2.48.0 secret-class ref the recipient resolves from AT DISPATCH

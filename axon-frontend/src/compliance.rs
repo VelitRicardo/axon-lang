@@ -274,23 +274,23 @@ pub const EGRESS_PRIMITIVES: &[Egress] = &[
     },
     Egress {
         primitive: "document",
-        coverage: Coverage::NoStaticKappa {
-            governed_by: Some("axon-T916"),
-            why: "binds bare value references (DocScalar::Ref) with no typed binding site",
+        coverage: Coverage::Shielded {
+            kappa_from: "payload:",
+            code: "axon-T1222",
         },
     },
     Egress {
         primitive: "deliver",
-        coverage: Coverage::NoStaticKappa {
-            governed_by: Some("axon-T920"),
-            why: "binds bare value references (DocScalar::Ref) with no typed binding site",
+        coverage: Coverage::Shielded {
+            kappa_from: "payload:",
+            code: "axon-T1223",
         },
     },
     Egress {
         primitive: "notify",
-        coverage: Coverage::NoStaticKappa {
-            governed_by: Some("axon-T934"),
-            why: "binds bare value references (DocScalar::Ref) with no typed binding site",
+        coverage: Coverage::Shielded {
+            kappa_from: "payload:",
+            code: "axon-T1224",
         },
     },
     Egress {
