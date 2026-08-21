@@ -15,6 +15,7 @@ grammar: |
       runtime: <ident>                # optional — runtime hint / endpoint slug (native | sandboxed | <slug>)
       sandbox: <true|false>           # optional — force-execute inside a sandboxed worker
       effects: <effect-row>           # optional — declared effects (<network>, <io>, ...)
+      shield: <ShieldRef>             # required (v4.3.0) when a parameter's type carries a compliance class (T1221)
       target: <SocketRef> # optional (v2.39.0) — dispatch over this socket (Remote Hands)
       risk: safe | destructive # optional (v2.39.0) — technician-command risk class
       argv: [<token>, ...] # required with target:+bash (v2.39.0) — the argv template
@@ -333,6 +334,31 @@ tool-server without edits:
   enterprise multi-tenant server — the per-tenant `tool.base_url`
   config key (which overrides the env). Resolution is per-request,
   so concurrent tenants never share endpoints.
+
+## Regulated parameters
+
+A `tool` call leaves this program, which makes it the widest exit AXON has.
+If any `parameters:` type — or any type nested inside one — carries a
+`compliance:` class, the tool must name a `shield:` whose own `compliance:`
+covers every one of those classes. `axon-T1221` refuses the call otherwise,
+the same coverage rule an `axonendpoint` lives under (`axon-T957`).
+
+```text
+axon-T1221 tool 'SendOut' carries regulated data (kappa = {HIPAA}) across the
+process boundary but declares no `shield:`. …
+```
+
+Two things that look like coverage and are not:
+
+- **`requires:`** governs WHO may call the tool.
+- **`secret:`** governs WITH WHAT CREDENTIAL it calls.
+
+Neither can act on a breach of a regulatory class, and coverage is defined as
+*something can act on a breach*. The shield is that something.
+
+The rule does **not** depend on `effects:`. That row is optional, and a
+guarantee that switches off when a field is omitted is not a guarantee — a
+`tool` has a `provider:`, so it is an external call by construction.
 
 ## What this primitive is NOT
 
