@@ -169,7 +169,7 @@ pub fn list() -> Vec<Value> {
                         "type": "string",
                         "description": "Filter by primitive name — returns every example \
                             that exercises this primitive idiomatically (free-form so the \
-                            agent can ask about any of the 45 primitives in the registry)."
+                            agent can ask about any primitive in the registry)."
                     }
                 },
                 "additionalProperties": false
@@ -556,7 +556,7 @@ struct ExamplesArgs {
 ///   An unknown slug is `-32602` (the inputSchema's enum already
 ///   listed the 10 valid values).
 /// - `primitive:` — listing filtered by primitive name. Free-form
-///   (the inputSchema does not enumerate the 45 primitives by name);
+///   (the inputSchema does not enumerate the primitives by name);
 ///   an unknown primitive yields a zero-result response — NOT an
 ///   error — so the agent can iterate.
 ///
