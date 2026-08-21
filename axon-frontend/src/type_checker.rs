@@ -7717,14 +7717,40 @@ impl<'a> TypeChecker<'a> {
                 }
                 _ => None,
             });
-            if let Some((provider, region)) = substrate {
+            if let Some((provider, fabric_region)) = substrate {
+                // v4.2.0 — read the EFFECTIVE region, not the first one to hand.
+                //
+                // A manifest's own `region:` is documented as an override of the
+                // fabric's, and it is what the deployment uses. This check read
+                // the fabric's, so it failed in both directions and the
+                // dangerous one was silent: a GDPR bundle on an EU fabric,
+                // overridden to `us-east-1`, compiled clean. A check that reads
+                // the other field is not conservative — it is a guarantee that
+                // fails open while looking green.
+                let overridden = !node.region.is_empty() && node.region != fabric_region;
+                let region = if node.region.is_empty() {
+                    fabric_region.clone()
+                } else {
+                    node.region.clone()
+                };
                 for tag in &node.compliance {
                     if let Some(v) =
                         crate::substrate::compliance_violation(tag, &provider, &region)
                     {
+                        // Name the override when there is one. Without it the
+                        // reader looks at the fabric, sees a compliant region,
+                        // and cannot tell where the offending one came from.
+                        let source = if overridden {
+                            format!(
+                                " (the manifest's own `region:` overrides fabric '{}'s `{}`)",
+                                node.fabric_ref, fabric_region
+                            )
+                        } else {
+                            String::new()
+                        };
                         self.emit(
                             format!(
-                                "axon-E042 compliance/jurisdiction: manifest '{}' {v}",
+                                "axon-E042 compliance/jurisdiction: manifest '{}' {v}{source}",
                                 node.name
                             ),
                             &node.loc,
@@ -9896,21 +9922,23 @@ impl<'a> TypeChecker<'a> {
         // non-empty `execute:` for the same reason T890 is — an endpoint
         // that dispatches nothing crosses no boundary.
         if !node.execute_flow.is_empty() {
-            let mut boundary_kappa: std::collections::HashSet<&str> =
-                std::collections::HashSet::new();
+            // v4.2.0 — the κ of what crosses is the κ of the VALUE, fields
+            // included. Reading `t.compliance` after peeling constructors read
+            // the DECLARATION instead, so wrapping a regulated type in a request
+            // struct laundered its classes and the shield became decorative.
+            // Five of the six regulated-vertical scaffolds this repo ships were
+            // written that way and compiled with every `shield:` deleted.
+            let mut boundary_kappa: std::collections::BTreeSet<String> =
+                std::collections::BTreeSet::new();
             for type_ref in [node.body_type.as_str(), node.output_type.as_str()] {
-                let base = peel_type_constructors(type_ref);
-                if base.is_empty() {
-                    continue;
-                }
-                if let Some(t) = find_type_by_name(self.program, base) {
-                    boundary_kappa.extend(t.compliance.iter().map(|s| s.as_str()));
-                }
+                boundary_kappa.extend(crate::compliance::transitive_kappa(self.program, type_ref));
             }
 
             if !boundary_kappa.is_empty() {
-                let mut kappa_sorted: Vec<&str> = boundary_kappa.iter().copied().collect();
-                kappa_sorted.sort_unstable();
+                // BTreeSet — already in canonical order, and the diagnostic's
+                // class list is read by adopters and diffed by their tooling.
+                let kappa_sorted: Vec<&str> =
+                    boundary_kappa.iter().map(|s| s.as_str()).collect();
 
                 if node.shield_ref.is_empty() {
                     self.emit(
@@ -9933,11 +9961,12 @@ impl<'a> TypeChecker<'a> {
                 } else if let Some(shield) = find_shield_by_name(self.program, &node.shield_ref) {
                     // An unknown `shield:` name is already reported by the
                     // reference-integrity check above — do not double-report.
-                    let shield_kappa: std::collections::HashSet<&str> =
-                        shield.compliance.iter().map(|s| s.as_str()).collect();
-                    let mut missing: Vec<&str> =
-                        boundary_kappa.difference(&shield_kappa).copied().collect();
-                    missing.sort_unstable();
+                    let shield_kappa: std::collections::BTreeSet<String> =
+                        shield.compliance.iter().cloned().collect();
+                    let missing: Vec<&str> = boundary_kappa
+                        .difference(&shield_kappa)
+                        .map(|s| s.as_str())
+                        .collect();
                     if !missing.is_empty() {
                         self.emit(
                             format!(
@@ -13086,15 +13115,17 @@ impl<'a> TypeChecker<'a> {
         // deliberately carry no `compliance:` field: there is no label
         // to mistake for coverage.
         {
+            // v4.2.0 — same correction as T957 next door: the payload's κ
+            // includes the κ of its fields. `peel_channel_payload` still runs
+            // first, because `Channel<…<T>>` relays T and is a channel-specific
+            // peel; the walk then follows T's structure.
             let base = crate::compliance::peel_channel_payload(&node.message);
-            let channel_kappa: std::collections::HashSet<&str> =
-                find_type_by_name(self.program, base)
-                    .map(|t| t.compliance.iter().map(|s| s.as_str()).collect())
-                    .unwrap_or_default();
+            let channel_kappa: std::collections::BTreeSet<String> =
+                crate::compliance::transitive_kappa(self.program, base);
 
             if !channel_kappa.is_empty() {
-                let mut kappa_sorted: Vec<&str> = channel_kappa.iter().copied().collect();
-                kappa_sorted.sort_unstable();
+                let kappa_sorted: Vec<&str> =
+                    channel_kappa.iter().map(|s| s.as_str()).collect();
 
                 if node.shield_ref.is_empty() {
                     self.emit(
@@ -13116,11 +13147,12 @@ impl<'a> TypeChecker<'a> {
                 } else if let Some(shield) = find_shield_by_name(self.program, &node.shield_ref) {
                     // An unknown `shield:` name is already reported by the
                     // reference-integrity check above — do not double-report.
-                    let shield_kappa: std::collections::HashSet<&str> =
-                        shield.compliance.iter().map(|s| s.as_str()).collect();
-                    let mut missing: Vec<&str> =
-                        channel_kappa.difference(&shield_kappa).copied().collect();
-                    missing.sort_unstable();
+                    let shield_kappa: std::collections::BTreeSet<String> =
+                        shield.compliance.iter().cloned().collect();
+                    let missing: Vec<&str> = channel_kappa
+                        .difference(&shield_kappa)
+                        .map(|s| s.as_str())
+                        .collect();
                     if !missing.is_empty() {
                         self.emit(
                             format!(
@@ -13854,7 +13886,6 @@ fn fmt_type_expr(t: &TypeExpr) -> String {
 // v4.0.0 — hoisted to `crate::compliance` when the audit engine became
 // the third consumer; re-imported here so every T957/T1215 call site keeps
 // its exact spelling.
-use crate::compliance::peel_type_constructors;
 
 /// An agent's `max_time:` is a duration literal — digits followed by `ms`,
 /// `s`, `m` or `h` (`500ms`, `30s`, `2m`, `1h`). Returns milliseconds. ONE

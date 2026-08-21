@@ -40,6 +40,8 @@
 //! workspace suite caught it — after the first two attempts had already shipped
 //! the drift.
 
+use std::collections::BTreeSet;
+
 /// The canonical regulatory classes — Κ.
 ///
 /// Reflexive by construction: a class covers itself and nothing else.
@@ -187,6 +189,102 @@ pub fn peel_type_constructors(type_ref: &str) -> &str {
             None => return t,
         }
     }
+}
+
+/// Every κ class a value of this type carries — **including the classes its
+/// fields carry**.
+///
+/// This is the answer to "what regulated data is in here?", and it is the only
+/// definition of that question. [`peel_type_constructors`] answers a smaller
+/// one — which wrappers are transparent — and answering the big question with
+/// the small one is the defect this function exists to close.
+///
+/// # Why a walk and not a field read
+///
+/// The κ of a type used to be `t.compliance`, read after peeling constructors.
+/// That reads the DECLARATION, and what crosses a boundary is the VALUE. The
+/// two differ the moment anyone writes the most ordinary thing in the language:
+///
+/// ```text
+/// type PatientRecord compliance [HIPAA] { … }
+/// type PatientSummaryRequest { rec: PatientRecord }   // ← κ laundered
+///
+/// axonendpoint PatientSummary {
+///     body:   PatientSummaryRequest
+///     shield: ClinicalShield          // decorative — T957 saw no κ to cover
+/// }
+/// ```
+///
+/// Five of the six regulated-vertical scaffolds this repository ships were
+/// written exactly that way, and every one of them compiled with **all** of its
+/// `shield:` lines deleted. `peel_type_constructors`' own doc comment says that
+/// wrapping a type "in an envelope or a list does not launder its regulatory
+/// classes" — and the commonest wrapper of all, a struct field, did.
+///
+/// # What it walks
+///
+/// - the transparent constructors, via [`peel_type_constructors`];
+/// - **any other generic spelling** `Name<Inner>` — `Inner` is walked whether or
+///   not `Name` is a constructor this module recognises. An unknown wrapper must
+///   not be a hiding place, which is the same law one level up;
+/// - every field of every declared type it reaches, transitively.
+///
+/// # Totality
+///
+/// Total by construction. An unresolvable name contributes nothing (the house
+/// soft-type discipline: builtins and imported names are not declared here), and
+/// a cycle — `type Node { next: Node }` — terminates on the visited set rather
+/// than recursing forever.
+pub fn transitive_kappa(program: &crate::ast::Program, type_ref: &str) -> BTreeSet<String> {
+    let mut found = BTreeSet::new();
+    let mut visited: BTreeSet<String> = BTreeSet::new();
+    let mut queue: Vec<String> = vec![type_ref.to_string()];
+
+    while let Some(spelling) = queue.pop() {
+        let base = peel_type_constructors(&spelling);
+        if base.is_empty() {
+            continue;
+        }
+
+        // A generic this module does not recognise still has an argument, and
+        // that argument is data. Walk it before resolving the head.
+        if let Some(open) = base.find('<') {
+            if let Some(inner) = base.strip_suffix('>').map(|s| &s[open + 1..]) {
+                for arg in inner.split(',') {
+                    let arg = arg.trim();
+                    if !arg.is_empty() && !visited.contains(arg) {
+                        queue.push(arg.to_string());
+                    }
+                }
+            }
+        }
+
+        if !visited.insert(base.to_string()) {
+            continue;
+        }
+
+        let Some(decl) = program.declarations.iter().find_map(|d| match d {
+            crate::ast::Declaration::Type(t) if t.name == base => Some(t),
+            _ => None,
+        }) else {
+            continue;
+        };
+
+        found.extend(decl.compliance.iter().cloned());
+
+        for field in &decl.fields {
+            let spelling = if field.type_expr.generic_param.is_empty() {
+                field.type_expr.name.clone()
+            } else {
+                format!("{}<{}>", field.type_expr.name, field.type_expr.generic_param)
+            };
+            if !spelling.is_empty() {
+                queue.push(spelling);
+            }
+        }
+    }
+
+    found
 }
 
 /// Peel a channel `message:` spelling to its payload leaf.
