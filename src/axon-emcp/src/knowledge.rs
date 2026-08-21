@@ -40,6 +40,103 @@ static EMBEDDED_KNOWLEDGE: Dir<'_> =
 /// projects directly (`top_level`, `category`, `grammar`); the body
 /// after the frontmatter is the prose reference the agent reads when
 /// it asks for the full doc.
+/// What the runtime actually does with this primitive, **derived from the
+/// compiler's ledger** rather than written down here.
+///
+/// # Why derived and not a frontmatter field
+///
+/// The obvious design is a `status:` line in each document's frontmatter. It is
+/// also a COPY of `axon-frontend`'s `ADVERTISED` table, and this project has
+/// paid repeatedly for exactly that shape: two places holding one fact, the
+/// second drifting silently because nothing forces it to move. A corpus doc
+/// claiming `attested` over a row the ledger calls `Unwired` would be worse
+/// than no status at all — it would launder the debt through the one surface an
+/// agent trusts.
+///
+/// So there is no second copy. `axon-emcp` already depends on `axon-frontend`;
+/// it reads `advertised::status_of` at load time, and a reclassification in the
+/// compiler reaches the agent on the next build with nothing to update.
+///
+/// `None` means the name has no ledger row at all — for a primitive that is
+/// itself a finding, and `axon.primitive_doc` says so rather than staying quiet.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RuntimeReality {
+    /// A fixture written in AXON is compiled and executed by a gate.
+    Attested,
+    /// Delivered, with a gap the ledger names.
+    Partial,
+    /// **The engine exists, is tested, and no production path reaches it.**
+    Unwired,
+    /// Advertised and not delivered.
+    NotImplemented,
+    /// Refuses — at compile time or at dispatch — rather than approximating.
+    FailsClosed,
+    /// Advertised on trust: no gate has verified it.
+    Unaudited,
+}
+
+impl RuntimeReality {
+    fn of(name: &str) -> Option<Self> {
+        use axon_frontend::advertised::RuntimeStatus as S;
+        Some(match axon_frontend::advertised::status_of(name)? {
+            S::Real { .. } | S::Attested { .. } => Self::Attested,
+            S::Partial { .. } => Self::Partial,
+            S::Unwired { .. } => Self::Unwired,
+            S::NotImplemented { .. } => Self::NotImplemented,
+            S::FailsClosed { .. } => Self::FailsClosed,
+            S::Unaudited => Self::Unaudited,
+        })
+    }
+
+    /// The machine-readable slug returned to the agent.
+    pub fn slug(self) -> &'static str {
+        match self {
+            Self::Attested => "attested",
+            Self::Partial => "partial",
+            Self::Unwired => "unwired",
+            Self::NotImplemented => "not_implemented",
+            Self::FailsClosed => "fails_closed",
+            Self::Unaudited => "unaudited",
+        }
+    }
+
+    /// Does a program that uses this primitive today actually get the behaviour
+    /// the document describes?
+    ///
+    /// `false` for `Unwired` and `NotImplemented` — to an adopter those two are
+    /// indistinguishable: the primitive does not do what the summary says, and
+    /// nothing tells them. That is the whole reason this field exists.
+    pub fn is_deliverable(self) -> bool {
+        !matches!(self, Self::Unwired | Self::NotImplemented)
+    }
+
+    /// The sentence an agent must read BEFORE the document body, for the states
+    /// where writing the code would be a mistake. Empty where there is nothing
+    /// to warn about.
+    pub fn warning(self) -> &'static str {
+        match self {
+            Self::Unwired => {
+                "⚠️ UNWIRED — the engine exists and is tested, and NO production path \
+                 reaches it. A program using this compiles and does not do what the text \
+                 below describes. Do not generate code that relies on it; say so if asked."
+            }
+            Self::NotImplemented => {
+                "⚠️ NOT IMPLEMENTED — advertised and not delivered, recorded as debt in the \
+                 compiler's own ledger. Do not generate code that relies on it; say so if asked."
+            }
+            Self::Partial => {
+                "⚠️ PARTIAL — the runtime delivers this with a documented gap against what \
+                 the reference describes. Check the gap before relying on the edge cases."
+            }
+            Self::Unaudited => {
+                "ℹ️ UNAUDITED — advertised on trust: no gate has verified that the runtime \
+                 does what this page says. Treat it as documentation, not as a guarantee."
+            }
+            Self::FailsClosed | Self::Attested => "",
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Primitive {
     /// Canonical name as it appears in source (`persona`, `flow`,
@@ -62,6 +159,10 @@ pub struct Primitive {
     /// `"v2.3.0"`). Lets the agent answer "since when has this
     /// existed?" honestly.
     pub since: String,
+    /// What the runtime actually does with this primitive, read from the
+    /// compiler ledger at load time. `None` = no ledger row, which is itself
+    /// a finding and is reported as one.
+    pub reality: Option<RuntimeReality>,
     /// The prose body — the full markdown that follows the frontmatter.
     /// Returned verbatim by `axon.primitive_doc(name)`.
     pub body: String,
@@ -899,6 +1000,8 @@ fn parse_primitive(raw: &str, path: &Path) -> Result<Primitive, LoadError> {
         .ok_or_else(|| LoadError::NoFrontmatter(path.to_path_buf()))?
         .deserialize()
         .map_err(|e| LoadError::BadFrontmatter(path.to_path_buf(), e.to_string()))?;
+    // Read the ledger BEFORE `fm.name` moves into the struct.
+    let name_for_ledger = fm.name.clone();
     Ok(Primitive {
         name: fm.name,
         summary: fm.summary,
@@ -906,6 +1009,7 @@ fn parse_primitive(raw: &str, path: &Path) -> Result<Primitive, LoadError> {
         top_level: fm.top_level,
         grammar: fm.grammar,
         since: fm.since,
+        reality: RuntimeReality::of(&name_for_ledger),
         body: parsed.content,
     })
 }

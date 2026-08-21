@@ -305,6 +305,11 @@ fn primitives(args: Value, catalog: &Arc<Catalog>) -> Result<Value, JsonRpcError
                 "category": p.category.as_str(),
                 "top_level": p.top_level,
                 "since": p.since,
+                // The listing carries it too: an agent that filters this
+                // list never opens the doc, and a name in a catalogue reads
+                // as an endorsement unless something says otherwise.
+                "runtime_status": p.reality.map(|r| r.slug()),
+                "deliverable": p.reality.map(|r| r.is_deliverable()),
             })
         })
         .collect();
@@ -350,6 +355,22 @@ fn primitive_doc(args: Value, catalog: &Arc<Catalog>) -> Result<Value, JsonRpcEr
     // We return both a structured `metadata` block (for the agent's
     // programmatic use) and a `text` block (the markdown body — which
     // is what the agent should actually quote / read).
+    // v0.53.0 — the runtime reality travels WITH the reference, and the
+    // warning goes FIRST. An agent reading a complete, confident page about a
+    // primitive nothing calls will write it into an adopter's program; a
+    // caveat at the bottom is a caveat it may never reach. Read from the
+    // compiler ledger, so a reclassification arrives here with nothing to
+    // update.
+    let warning = prim.reality.map(|r| r.warning()).unwrap_or(
+        "⚠️ NO LEDGER ROW — this primitive is documented and the compiler's advertised \
+         table says nothing about what its runtime does. Treat the text below as \
+         unverified.",
+    );
+    let body = if warning.is_empty() {
+        prim.body.clone()
+    } else {
+        format!("> {warning}\n\n{}", prim.body)
+    };
     let payload = json!({
         "name": prim.name,
         "summary": prim.summary,
@@ -357,7 +378,9 @@ fn primitive_doc(args: Value, catalog: &Arc<Catalog>) -> Result<Value, JsonRpcEr
         "top_level": prim.top_level,
         "grammar": prim.grammar,
         "since": prim.since,
-        "body_markdown": prim.body,
+        "runtime_status": prim.reality.map(|r| r.slug()),
+        "deliverable": prim.reality.map(|r| r.is_deliverable()),
+        "body_markdown": body,
     });
     Ok(json!({
         "content": [
