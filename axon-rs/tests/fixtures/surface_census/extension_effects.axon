@@ -1,0 +1,21 @@
+// An `extension` is not decoration: the Proof-Carrying Code prover and the PCC
+// checker BOTH read `ir.extensions` through `extension_effect_members`, and the
+// enterprise deploy path refuses a flow whose extension scan coverage is wrong.
+//
+// This fixture declares an effect member the canonical catalogue does not know
+// (`billing:charge`). Without the extension, PCC treats it as unknown; with it,
+// the member is rescued and the proof is over the program the adopter wrote.
+
+extension DomainEffects {
+    category: effects
+    members: [
+        "billing:charge": { semantics: "debits a customer ledger", default_confidence: 0.9 }
+    ]
+}
+
+tool ChargeCard {
+    provider: http
+    parameters: { amount: String }
+    output_type: Json
+    effects: <network, billing:charge>
+}

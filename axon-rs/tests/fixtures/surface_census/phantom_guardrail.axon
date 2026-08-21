@@ -1,0 +1,16 @@
+// A guardrail that exists on paper. The extension declares a scan category, a
+// shield claims to scan it, and no registered scanner implements it — so the
+// adopter believes content is being checked, which is exactly the belief that
+// stops them checking it themselves.
+//
+// The enterprise deploy path refuses this with `flow.phantom_guardrail`.
+
+extension Guardrails {
+    category: scan
+    members: [ "prompt_leak" ]
+}
+
+shield Sieve {
+    scan: [prompt_leak]
+    on_breach: halt
+}

@@ -494,6 +494,42 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
         fixture: "examples/algebraic_effects.axon",
         gate: "tests/effects_from_the_example.rs",
     }),
+    // ── The surface that was almost hidden (v4.4.0) ──────────────────
+    //
+    // Both of these were in the primitive catalogue with NO row here, and the
+    // proposal was to mark them internal — `pub(crate)`, undocumented, out of
+    // the promise. The measurement refused it. Each has a lexer token, a parser
+    // production, a checker enforcing a CLOSED catalogue with its own
+    // diagnostics, and is lowered into the IR. An adopter can write them today.
+    //
+    // Hiding a writable, enforced construct is the v2.87.0 blind spot with the
+    // polarity flipped. That cycle found a 590-line engine with 49 green tests
+    // that no program could reach, invisible because nothing advertised it —
+    // "an unadvertised subsystem is invisible to every gate in this file". A
+    // construct an adopter CAN write, that the compiler DOES enforce, with no
+    // row saying what its runtime delivers, is the same hole from the other
+    // side. `is_advertised: false` is for what cannot be written.
+    //
+    // `extension` was the one proposed for retraction, on the belief that
+    // nothing used it. Nothing SHIPS it — no example, no template, no fixture —
+    // but that measures adoption, not reach. What reads it: the Proof-Carrying
+    // Code prover AND checker, both through `extension_effect_members` over the
+    // same IR, and `shield_registry::check_extension_scan_coverage`, which the
+    // enterprise deploy path calls to refuse a flow whose scan coverage is a
+    // phantom guardrail. Retracting it would have changed what PCC proves.
+    ("extension", Attested {
+        fixture: "tests/fixtures/surface_census/extension_effects.axon",
+        gate: "tests/the_internal_surface_is_advertised.rs",
+    }),
+    // `witness` makes an advantage claim a compile-time obligation: `against:`
+    // and `metric:` are required and `metric:` comes from a closed catalogue,
+    // so "it is faster" cannot be written at all. The four facts — claim,
+    // baseline, metric, threshold — survive lowering into `IRWitness`, and the
+    // same vocabulary is what `quant_witness` and `retrieval_witness` consume.
+    ("witness", Attested {
+        fixture: "tests/fixtures/surface_census/witness_advantage.axon",
+        gate: "tests/the_internal_surface_is_advertised.rs",
+    }),
     ("@contract_tool", Unaudited),
     ("@csp_tool", Unaudited),
     // ── Knowledge navigation (PIX · MDN)

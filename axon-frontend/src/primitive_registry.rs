@@ -924,7 +924,7 @@ pub const PRIMITIVE_REGISTRY: &[PrimitiveInfo] = &[
         since: "v2.23.0",
         summary: "The advantage-witness declaration — INTERNAL: benchmark and advantage claims wait for the Sandbox, so this is deliberately NOT part of the advertised surface.",
         doc_status: DocStatus::Documented,
-        is_advertised: false,
+        is_advertised: true,
     },
     PrimitiveInfo {
         name: "extension",
@@ -933,7 +933,7 @@ pub const PRIMITIVE_REGISTRY: &[PrimitiveInfo] = &[
         since: "v2.5.0",
         summary: "The closed-catalog extension mechanism — an internal composition mechanism, deliberately not advertised as a primitive.",
         doc_status: DocStatus::Documented,
-        is_advertised: false,
+        is_advertised: true,
     },
     // ── v2.69.0 census — the epistemic lattice scopes ────────────────────
     PrimitiveInfo {
@@ -1280,10 +1280,30 @@ mod tests {
             .map(|i| i.name)
             .collect();
         let expected: HashSet<&str> = [
-            // v2.23.0 — benchmark/advantage claims wait for the Sandbox (v2.54.0).
-            "witness",
-            // #15→v2.5.0 — internal composition mechanism, not a promised primitive.
-            "extension",
+            // v4.4.0 — `witness` and `extension` LEFT this list.
+            //
+            // Both were hidden from the promise, and the measurement did not
+            // support either reason.
+            //
+            // `extension` was filed as an "internal composition mechanism, not a
+            // promised primitive". It is read by the Proof-Carrying Code PROVER
+            // and CHECKER through `extension_effect_members`, and by
+            // `shield_registry::check_extension_scan_coverage`, which the
+            // enterprise deploy path calls to refuse a flow whose scan coverage
+            // is a phantom guardrail. A construct that decides what PCC proves
+            // and whether a deploy is allowed is not internal composition.
+            //
+            // `witness` was filed as "benchmark/advantage claims wait for the
+            // Sandbox". That directive stands, and reads: *ship capabilities and
+            // their witnesses; do not ASSERT advantage.* Advertising the
+            // instrument is the first half of it. What stays parked is the claim
+            // — and `witness` is precisely the declaration that refuses to let
+            // one be made without naming a baseline, a metric from a closed
+            // catalogue, a threshold and the data.
+            //
+            // Both are writable and enforced today. Hiding a construct an
+            // adopter can write, with nothing recording what its runtime does,
+            // is the v2.87.0 blind spot with the polarity flipped.
         ]
         .into_iter()
         .collect();

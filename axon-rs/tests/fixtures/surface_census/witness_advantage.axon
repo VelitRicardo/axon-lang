@@ -1,0 +1,13 @@
+// An advantage claim is only worth something if it names what it beat, by how
+// much, and on what data. `witness` is the declaration that makes those four
+// facts a compile-time obligation instead of a sentence in a pitch deck:
+// `against:` and `metric:` are required, and `metric:` comes from a closed
+// catalogue, so "it is faster" cannot be written at all.
+
+witness RetrievalAdvantage {
+    claim:     "structural retrieval outranks cosine on this corpus"
+    against:   cosine
+    metric:    ranking_lift
+    threshold: 0.15
+    data:      "benchmarks/retrieval.jsonl"
+}

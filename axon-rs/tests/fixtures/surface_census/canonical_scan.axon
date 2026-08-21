@@ -1,0 +1,7 @@
+// The pair: a shield scanning a CANONICAL category, with no extension in sight.
+// Not a phantom guardrail — and a gate that fired on this would be noise.
+
+shield Sieve {
+    scan: [pii_leak]
+    on_breach: halt
+}

@@ -39,6 +39,7 @@
   <code>budget</code> · <code>window</code> · <code>cors</code> · <code>document</code> · <code>deliver</code> · <code>notify</code><br>
   <code>credential</code> · <code>mint</code> · <code>rotate</code><br>
   <code>compute</code> · <code>grad</code> · <code>quant</code> · <code>observable</code><br>
+  <code>extension</code> · <code>witness</code><br>
   <code>daemon</code> · <code>listen</code><br>
   <code>channel</code> · <code>emit</code> · <code>publish</code> · <code>discover</code><br>
   <code>axonendpoint</code> · <code>axpoint</code> · <code>axonstore</code><br>

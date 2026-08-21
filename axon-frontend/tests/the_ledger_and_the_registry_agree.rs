@@ -75,7 +75,18 @@ const NOT_PRIMITIVES: &[(&str, NotAPrimitive)] = &[
 /// the ledger says nothing about what their runtime does. Whether they join the
 /// advertised set or are marked internal is a product decision; until it is
 /// made, they are named HERE so that a THIRD one cannot join them quietly.
-const NO_LEDGER_ROW: &[&str] = &["extension", "witness"];
+/// v4.4.0 — **EMPTY, and that is the point.**
+///
+/// `extension` and `witness` were the two entries, held here while the
+/// decision was open. Both now carry rows: each is writable, enforced by a
+/// checker over a closed catalogue, and lowered into the IR, and `extension`
+/// decides what the Proof-Carrying Code prover accepts and whether an
+/// enterprise deploy is allowed.
+///
+/// The list stays, empty, because the shape is what protects the property: a
+/// catalogued primitive with nothing saying what its runtime does fails the
+/// build unless someone types the name here and says why.
+const NO_LEDGER_ROW: &[&str] = &[];
 
 fn src(file: &str) -> String {
     let p = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src").join(file);

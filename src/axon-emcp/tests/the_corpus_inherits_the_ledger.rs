@@ -34,18 +34,23 @@ fn every_documented_primitive_carries_its_ledger_row() {
         }
     }
 
-    // `extension` and `witness` are documented and have no row — a known
-    // finding, held open as a decision rather than a silent gap. They are
-    // named here so that the LIST is the assertion: a new undocumented-status
-    // primitive joins this failure instead of slipping in beside them.
+    // v4.4.0 — this list is EMPTY, and the assertion is that it stays that way.
+    //
+    // It held `extension` and `witness` while their status was an open decision.
+    // Both now carry rows: each is writable, enforced against a closed catalogue,
+    // and lowered into the IR — and `extension` decides what the Proof-Carrying
+    // Code prover accepts and whether an enterprise deploy is allowed.
+    //
+    // An empty expectation is a stronger assertion than a populated one: every
+    // documented primitive now says what its runtime does, and the next one that
+    // does not fails here by name.
     without_row.sort();
-    assert_eq!(
-        without_row,
-        vec!["extension".to_string(), "witness".to_string()],
-        "the set of primitives with NO ledger row changed. Every documented primitive \
-         should have a row in `advertised.rs` saying what its runtime does; the two \
-         listed here are a known open question. If you added a primitive, add its row. \
-         If the question was resolved, update this assertion."
+    assert!(
+        without_row.is_empty(),
+        "these documented primitives have NO row in the compiler ledger: {without_row:?}. \
+         Every construct an agent can be told about must come with a statement of what \
+         its runtime actually does — an agent does not suspect, it writes what it was \
+         told. Add the row, or take the document out of the corpus."
     );
 }
 
