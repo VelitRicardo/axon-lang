@@ -294,3 +294,97 @@ fn without_an_override_the_fabric_region_still_decides() {
         e042(&good)
     );
 }
+
+// ── 5. the widest exit: a tool call leaves the program ──────────────────────
+//
+// v4.3.0. `tool` is how AXON talks to anything outside itself and was the one
+// boundary with no regulatory rule. The program below compiled clean on 4.1.0.
+
+fn t1221(src: &str) -> Vec<String> {
+    check(src)
+        .into_iter()
+        .filter(|m| m.contains("axon-T1221"))
+        .collect()
+}
+
+const TOOL_SHIELD: &str =
+    "shield ToolGuard { scan: [data_exfil]  on_breach: raise  compliance: [HIPAA] }";
+
+fn tool(types: &str, shield_decl: &str, param_type: &str, shield_ref: &str) -> String {
+    format!(
+        "{types}\n{shield_decl}\n\
+         tool SendOut {{ provider: scrape_enrich  parameters: {{ payload: {param_type} }}  \
+         output_type: Json  effects: <network, web> {shield_ref} }}\n"
+    )
+}
+
+#[test]
+fn a_regulated_parameter_leaving_through_a_tool_needs_a_shield() {
+    let src = tool(
+        "type PatientRecord compliance [HIPAA] { ssn: String }",
+        "",
+        "PatientRecord",
+        "",
+    );
+    let hits = t1221(&src);
+    assert_eq!(
+        hits.len(),
+        1,
+        "a whole regulated record passed to a tool crosses the process boundary: {hits:#?}"
+    );
+    assert!(hits[0].contains("HIPAA"), "name the class: {}", hits[0]);
+}
+
+#[test]
+fn the_tool_rule_sees_through_a_wrapper_like_its_siblings() {
+    // Same walk, same answer — the three shielded exits share one definition of
+    // κ, so a wrapper cannot hide a class at one of them and not the others.
+    let src = tool(
+        "type PatientRecord compliance [HIPAA] { ssn: String }\ntype Req { rec: PatientRecord }",
+        "",
+        "Req",
+        "",
+    );
+    assert_eq!(t1221(&src).len(), 1, "a wrapped parameter still carries κ");
+}
+
+#[test]
+fn a_covering_shield_lets_the_tool_call_through() {
+    let src = tool(
+        "type PatientRecord compliance [HIPAA] { ssn: String }",
+        TOOL_SHIELD,
+        "PatientRecord",
+        " shield: ToolGuard",
+    );
+    assert!(
+        t1221(&src).is_empty(),
+        "a covering shield satisfies the rule: {:#?}",
+        t1221(&src)
+    );
+}
+
+#[test]
+fn a_tool_with_no_regulated_parameter_is_left_alone() {
+    let src = tool("", "", "String", "");
+    assert!(
+        t1221(&src).is_empty(),
+        "an ordinary tool must not be dragged into the compliance surface: {:#?}",
+        t1221(&src)
+    );
+}
+
+#[test]
+fn the_tool_rule_does_not_depend_on_the_effect_row() {
+    // `effects:` is OPTIONAL. Gating the guarantee on it would make it depend on
+    // a field the author can simply leave out — the fail-open shape this cycle
+    // exists to remove. A tool has a `provider:`; it is an external call.
+    let src = "type PatientRecord compliance [HIPAA] { ssn: String }\n\
+               tool SendOut { provider: scrape_enrich  \
+               parameters: { payload: PatientRecord }  output_type: Json }\n";
+    assert_eq!(
+        t1221(src).len(),
+        1,
+        "omitting `effects:` must not switch the rule off: {:#?}",
+        t1221(src)
+    );
+}
