@@ -213,7 +213,18 @@ fn every_asset_the_manifest_declares_exists() {
             checked += 1;
             let rel = value.trim_start_matches('/');
             if !docs_dir().join(rel).is_file() {
-                missing.push(format!("  {key}: \"{value}\" — expected docs/{rel}"));
+                // The `/docs/…` shape is mechanically wrong and always the same
+                // mistake: the Mintlify web editor writes paths it sees in the
+                // REPOSITORY, while the site resolves them from `docs/` as its
+                // root. Naming it beats making the next reader re-derive it —
+                // this gate has now caught that exact form three times.
+                let hint = if value.starts_with("/docs/") {
+                    let fixed = value.replacen("/docs", "", 1);
+                    format!(" — the `/docs/` prefix is the REPOSITORY path, not the site path. Write \"{fixed}\"")
+                } else {
+                    format!(" — expected the file at docs/{rel}")
+                };
+                missing.push(format!("  {key}: \"{value}\"{hint}"));
             }
         }
     }
@@ -227,7 +238,9 @@ fn every_asset_the_manifest_declares_exists() {
         missing.is_empty(),
         "docs.json declares {} asset path(s) that are not on disk:\n{}\n\nPaths resolve \
          against `docs/` (the documentation root under Mintlify's subdirectory setting), so a \
-         leading `/` is the docs root — not the repository root.",
+         leading `/` is the docs root — not the repository root.
+
+If docs.json was last \n         written by the Mintlify web editor, check `git log -1 -- docs/images/` first: \n         that editor's sync has removed asset files while leaving them declared here.",
         missing.len(),
         missing.join("\n")
     );
