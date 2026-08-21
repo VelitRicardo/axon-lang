@@ -6,6 +6,8 @@ top_level: true
 since: v2.66.0
 grammar: |
   notify <Name> {
+      payload: <Type>                       # optional (v4.4.0) — the DECLARED type this carries
+      shield:  <ShieldRef>                  # required (v4.4.0) when that type carries a compliance class
       channel: <provider-slug>
       to: <config key>
       # + the governed-egress clauses (attribute/shield, per v2.66.0)
@@ -28,6 +30,26 @@ can consume.
   not a feature.
 - The legal flag defaults **OFF, fail-closed** (the v2.57.0/v2.58.0 posture).
 
+## Regulated payloads
+
+A `notification` leaves the program, so it is a trust boundary. If the type named by
+`payload:` carries a `compliance:` class — or any type nested inside it does —
+the declaration must name a `shield:` whose own `compliance:` covers every one
+of those classes. `axon-T1224` refuses it otherwise, the same coverage rule an
+`axonendpoint` lives under (`axon-T957`).
+
+```text
+axon-T1224 notification 'X' carries regulated data (kappa = {HIPAA}) out of the
+program but declares no `shield:`. …
+```
+
+**`payload:` is optional, and its absence is not a violation.** A declaration
+that names no type carries no class to cover and compiles exactly as before.
+What the rule refuses is a class leaving *uncovered* — not a missing field.
+
+**A wrapper does not launder a class.** If `payload:` names a type whose field
+holds a regulated type, the class is still carried. The walk is the same one
+the endpoint, the channel and the tool use.
 ## Proof
 
 `axon-rs/src/notification.rs` (axon-T933/T934/T935 unit gates) +

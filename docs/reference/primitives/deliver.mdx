@@ -13,6 +13,8 @@ description: "Governed CRM Delivery — the egress-dual of acquisition. A declar
 
 ```text
 deliver <Name> {
+    payload: <Type>                       # optional (v4.4.0) — the DECLARED type this carries
+    shield:  <ShieldRef>                  # required (v4.4.0) when that type carries a compliance class
     target:     crm                     # required — the system-of-record class (T921)
     provenance: attached | cleared      # optional — how field origin crosses (default attached, T922)
     secret: <credential_key> # required — per-tenant key, v2.48.0 custody (T923)
@@ -142,6 +144,26 @@ timeouts included) never double-creates a record. A miss or a
 vendor failure degrades to a typed error + an audit row, never a
 fabricated receipt.
 
+## Regulated payloads
+
+A `delivery` leaves the program, so it is a trust boundary. If the type named by
+`payload:` carries a `compliance:` class — or any type nested inside it does —
+the declaration must name a `shield:` whose own `compliance:` covers every one
+of those classes. `axon-T1223` refuses it otherwise, the same coverage rule an
+`axonendpoint` lives under (`axon-T957`).
+
+```text
+axon-T1223 delivery 'X' carries regulated data (kappa = {HIPAA}) out of the
+program but declares no `shield:`. …
+```
+
+**`payload:` is optional, and its absence is not a violation.** A declaration
+that names no type carries no class to cover and compiles exactly as before.
+What the rule refuses is a class leaving *uncovered* — not a missing field.
+
+**A wrapper does not launder a class.** If `payload:` names a type whose field
+holds a regulated type, the class is still carried. The walk is the same one
+the endpoint, the channel and the tool use.
 ## What this primitive is NOT
 
 - **Not a general HTTP client.** `deliver` writes canonical, typed CRM

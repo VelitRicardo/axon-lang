@@ -20,7 +20,7 @@
 //!   shared with `advantage_witness`, which `quant_witness` and
 //!   `retrieval_witness` consume.
 //!
-//! Hiding a writable, enforced construct is the §120 blind spot in its worst
+//! Hiding a writable, enforced construct is the v2.87.0 blind spot in its worst
 //! form. The ledger's own words: *"an unadvertised subsystem is invisible to
 //! every gate in this file."* The algebraic-effects engine survived 590 lines
 //! and 49 green tests unnoticed for exactly that reason — nothing was
