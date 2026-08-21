@@ -3263,6 +3263,94 @@ impl<'a> TypeChecker<'a> {
     }
 
     fn check_tool(&mut self, node: &ToolDefinition) {
+        // ── v4.3.0 — axon-T1221: a tool is the widest exit the language has ──
+        //
+        // `tool` is how an AXON program talks to anything outside itself, and
+        // until v4.3.0 it was the one boundary with NO regulatory rule. Measured
+        // on 4.1.0, this compiled clean:
+        //
+        //   type PatientRecord compliance [HIPAA] { ssn: String }
+        //   tool SendOut { parameters: { payload: PatientRecord }
+        //                  effects: <network, web> }
+        //   flow Leak(rec: PatientRecord) -> Json { use SendOut(payload = rec) … }
+        //
+        // The whole regulated record, out over the network, with nothing to say
+        // so. The endpoint and the channel had this law; the primitive that
+        // reaches every third-party API did not.
+        //
+        // BOTH SIDES COUNT, exactly as in T957. `parameters:` is data leaving
+        // and `output_type:` is data arriving, and a regulated boundary is a
+        // boundary in either direction — an external answer typed as a
+        // regulated class is data this program must be able to act on.
+        //
+        // NOT GATED ON THE EFFECT ROW, deliberately. `effects:` is optional, so
+        // gating on it would make the guarantee depend on a field the author can
+        // omit — the fail-open shape this cycle exists to remove. A `tool` has a
+        // `provider:`; it is an external call by construction.
+        {
+            let mut tool_kappa: std::collections::BTreeSet<String> =
+                std::collections::BTreeSet::new();
+            for p in &node.parameters {
+                let spelling = if p.type_expr.generic_param.is_empty() {
+                    p.type_expr.name.clone()
+                } else {
+                    format!("{}<{}>", p.type_expr.name, p.type_expr.generic_param)
+                };
+                tool_kappa.extend(crate::compliance::transitive_kappa(self.program, &spelling));
+            }
+            if let Some(out) = &node.output_type {
+                tool_kappa.extend(crate::compliance::transitive_kappa(self.program, out));
+            }
+
+            if !tool_kappa.is_empty() {
+                let kappa_sorted: Vec<&str> = tool_kappa.iter().map(|s| s.as_str()).collect();
+
+                if node.shield_ref.is_empty() {
+                    self.emit(
+                        format!(
+                            "axon-T1221 tool '{}' carries regulated data (kappa = {{{}}}) \
+                             across the process boundary but declares no `shield:`. A tool \
+                             call leaves this program — the ESK coverage rule applies here \
+                             exactly as it does to an axonendpoint (axon-T957). Declare \
+                             `shield: <Name>` on the tool, where that shield lists at least \
+                             [{}] in its `compliance:`. Neither `requires:` nor `secret:` \
+                             covers a class: they govern WHO may call and WITH WHAT \
+                             credential, not what happens when regulated data breaches.",
+                            node.name,
+                            kappa_sorted.join(", "),
+                            kappa_sorted.join(", "),
+                        ),
+                        &node.loc,
+                    );
+                } else if let Some(shield) = find_shield_by_name(self.program, &node.shield_ref) {
+                    // An unknown `shield:` name is reported by reference
+                    // integrity — do not double-report it here.
+                    let shield_kappa: std::collections::BTreeSet<String> =
+                        shield.compliance.iter().cloned().collect();
+                    let missing: Vec<&str> = tool_kappa
+                        .difference(&shield_kappa)
+                        .map(|s| s.as_str())
+                        .collect();
+                    if !missing.is_empty() {
+                        self.emit(
+                            format!(
+                                "axon-T1221 tool '{}' declares `shield: {}`, but that shield \
+                                 does not cover kappa = {{{}}} carried across the process \
+                                 boundary — the ESK coverage rule. Add [{}] to shield '{}'s \
+                                 `compliance:` list, or name a shield that already covers them.",
+                                node.name,
+                                node.shield_ref,
+                                missing.join(", "),
+                                missing.join(", "),
+                                node.shield_ref,
+                            ),
+                            &node.loc,
+                        );
+                    }
+                }
+            }
+        }
+
         // ── v2.69.0 — `provider:` is a CLOSED catalog ────────────────────
         //
         // Until v2.69.0 `provider:` was a **free string with no membership check**.

@@ -191,6 +191,126 @@ pub fn peel_type_constructors(type_ref: &str) -> &str {
     }
 }
 
+/// How a given exit's κ is covered — or why it cannot be.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Coverage {
+    /// κ is read from DECLARED TYPES at this exit and covered by a named
+    /// `shield:`. `kappa_from` names the fields the rule reads; `code` is the
+    /// diagnostic that refuses an uncovered crossing.
+    Shielded {
+        kappa_from: &'static str,
+        code: &'static str,
+    },
+    /// This exit has NO static κ. Not an oversight — a property of how it binds
+    /// its data, recorded so that "no rule here" can never be confused with
+    /// "nobody looked here". `governed_by` is the diagnostic that governs it on
+    /// the epistemic axis instead, or `None` where nothing does.
+    NoStaticKappa {
+        governed_by: Option<&'static str>,
+        why: &'static str,
+    },
+}
+
+/// One way data leaves an AXON program.
+#[derive(Debug, Clone, Copy)]
+pub struct Egress {
+    pub primitive: &'static str,
+    pub coverage: Coverage,
+}
+
+/// **The closed catalogue of exits.**
+///
+/// A compliance guarantee is worth exactly what its list of exits is worth. A
+/// list somebody maintains by hand develops a hole the first time primitive
+/// number eight arrives, and the hole is invisible: every existing rule still
+/// passes. So this catalogue is closed, it is gated
+/// (`tests/the_egress_catalogue_is_closed.rs`), and every entry says how that
+/// exit is covered **or why it cannot be**.
+///
+/// Recording the uncoverable ones is the point. An exit missing from this list
+/// is indistinguishable from an exit nobody examined; an exit present with
+/// `NoStaticKappa` is a stated limit an auditor can read and price.
+///
+/// # What was measured to build it (v4.3.0)
+///
+/// κ originates in exactly one place: a `type` declaration's `compliance:`
+/// list. So an exit has a static κ precisely when it binds a DECLARED TYPE.
+/// Three do. Four do not, for two different reasons, and both reasons are
+/// structural rather than incidental:
+///
+/// - `document` / `deliver` / `notify` bind **bare value references**
+///   (`DocScalar::Ref`) and have no typed binding site in the grammar —
+///   `render` is a runtime concept, not a declaration. This is also exactly why
+///   their epistemic barriers work: "is this value attributed?" is answerable
+///   about a bare reference, and "what classes does it carry?" is not.
+/// - `axonstore` binds a **closed catalogue of primitive SQL column types**. A
+///   regulated value is decomposed into columns before it lands, and κ does not
+///   survive that decomposition — the same intra-expression limit this cycle
+///   names in its own trade-off list, met at the storage boundary.
+pub const EGRESS_PRIMITIVES: &[Egress] = &[
+    Egress {
+        primitive: "axonendpoint",
+        coverage: Coverage::Shielded {
+            kappa_from: "body: and output:",
+            code: "axon-T957",
+        },
+    },
+    Egress {
+        primitive: "channel",
+        coverage: Coverage::Shielded {
+            kappa_from: "message:",
+            code: "axon-T1215",
+        },
+    },
+    // v4.3.0 — the widest exit, and the last one to get a rule. A whole
+    // regulated record passed to a tool with `effects: <network, web>`
+    // compiled clean until this entry existed.
+    Egress {
+        primitive: "tool",
+        coverage: Coverage::Shielded {
+            kappa_from: "parameters: and output_type:",
+            code: "axon-T1221",
+        },
+    },
+    Egress {
+        primitive: "document",
+        coverage: Coverage::NoStaticKappa {
+            governed_by: Some("axon-T916"),
+            why: "binds bare value references (DocScalar::Ref) with no typed binding site",
+        },
+    },
+    Egress {
+        primitive: "deliver",
+        coverage: Coverage::NoStaticKappa {
+            governed_by: Some("axon-T920"),
+            why: "binds bare value references (DocScalar::Ref) with no typed binding site",
+        },
+    },
+    Egress {
+        primitive: "notify",
+        coverage: Coverage::NoStaticKappa {
+            governed_by: Some("axon-T934"),
+            why: "binds bare value references (DocScalar::Ref) with no typed binding site",
+        },
+    },
+    Egress {
+        primitive: "axonstore",
+        coverage: Coverage::NoStaticKappa {
+            governed_by: None,
+            why: "a store schema is a closed catalogue of primitive SQL column types, so a \
+                  regulated value is decomposed into columns before it lands and carries no \
+                  declared type to read a class from",
+        },
+    },
+];
+
+/// The exits whose κ this compiler can compute and refuse on.
+pub fn shielded_exits() -> impl Iterator<Item = &'static Egress> {
+    EGRESS_PRIMITIVES
+        .iter()
+        .filter(|e| matches!(e.coverage, Coverage::Shielded { .. }))
+}
+
 /// Every κ class a value of this type carries — **including the classes its
 /// fields carry**.
 ///

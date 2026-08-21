@@ -2346,6 +2346,11 @@ pub struct ToolDefinition {
     /// applies (v2.8.0 D5 back-compat). Reuses `Parameter` (same `TypeExpr`
     /// grammar as flow params).
     pub parameters: Vec<Parameter>,
+    /// v4.3.0 — the shield that covers the κ of this tool's `parameters:`.
+    /// A tool is how an AXON program talks to anything outside it, which
+    /// makes it the widest exit the language has; `axon-T1221` requires this
+    /// when a parameter's type carries a regulatory class.
+    pub shield_ref: String,
     /// v2.8.0 — the tool's declared OUTPUT type, so a tool-step's result
     /// is referenceable as `${Step.output}` with a real type (v2.8.0 D8). Flat
     /// string (mirrors step `output:`); `None` when undeclared.

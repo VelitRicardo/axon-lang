@@ -2582,6 +2582,7 @@ impl Parser {
         self.consume(TokenType::LBrace)?;
 
         let mut node = ToolDefinition {
+            shield_ref: String::new(),
             name,
             provider: String::new(),
             max_results: None,
@@ -2673,6 +2674,8 @@ impl Parser {
                 // dispatch (`rotation_without_revelation`). Key shape +
                 // technician exclusion are `axon-T902` (type-checker).
                 "secret" => node.secret = self.parse_dotted_identifier()?,
+                // v4.3.0 — the control that covers this tool's κ (axon-T1221).
+                "shield" => node.shield_ref = self.consume_any_ident_or_kw()?.value.clone(),
                 // v2.49.0 — `secret_partition:` names one of this tool's
                 // own `parameters:` (a bare identifier, NOT dotted — it is a
                 // parameter reference, not a key). Its runtime value becomes
