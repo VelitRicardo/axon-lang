@@ -935,22 +935,6 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     // names above. The same fixture carries all four literally: `send Quote`,
     // `receive Settlement`, and the labelled `select`/`branch` whose arms the
     // duality check pairs one for one.
-    ("send T", Attested {
-        fixture: "tests/fixtures/parity_corpus/cross_vertical/17_session_duality_topology.axon",
-        gate: "tests/parity_corpus.rs",
-    }),
-    ("receive T", Attested {
-        fixture: "tests/fixtures/parity_corpus/cross_vertical/17_session_duality_topology.axon",
-        gate: "tests/parity_corpus.rs",
-    }),
-    ("select {ℓᵢ:…}", Attested {
-        fixture: "tests/fixtures/parity_corpus/cross_vertical/17_session_duality_topology.axon",
-        gate: "tests/parity_corpus.rs",
-    }),
-    ("branch {ℓᵢ:…}", Attested {
-        fixture: "tests/fixtures/parity_corpus/cross_vertical/17_session_duality_topology.axon",
-        gate: "tests/parity_corpus.rs",
-    }),
         // v2.89.0 — the v2.37.0 upstream fixture DECLARES `backpressure: credit(8)` and
     // narrowing it to `credit(3)` kills that gate, so the declared credit window is
     // what the session runtime honours.
@@ -1318,6 +1302,41 @@ mod tests {
         Path::new("..")
     }
 
+    /// v4.4.0 — a badge is PACKAGING; this table measures SEMANTICS.
+    ///
+    /// The README badges the session verbs with their grammar — `send T`,
+    /// `select {ℓᵢ:…}` — because that is what teaches a reader what the
+    /// construct looks like. Law 1 then demanded one ledger row per badge, so
+    /// the grammar spelling grew a row of its own BESIDE the bare name, and the
+    /// table ended up carrying eight rows for four constructs: same fixture,
+    /// same gate, same claim, twice each.
+    ///
+    /// Nothing was wrong with the badges. What was wrong is that the packaging
+    /// leaked into the census, and a census inflated by spelling has stopped
+    /// measuring the compiler. So the reader normalises: the badge keeps its
+    /// grammar, and the ledger keeps one row per construct.
+    ///
+    /// Deliberately narrow — it strips a trailing type variable or choice block
+    /// from a session verb and nothing else. It is not a general "make this
+    /// badge look like an identifier" pass, because that would quietly fold
+    /// together names that are genuinely different.
+    fn normalise_badge(badge: &str) -> String {
+        const SESSION_VERBS: &[&str] = &["send", "receive", "select", "branch"];
+        for verb in SESSION_VERBS {
+            // `send T` — the verb, a space, and a type variable.
+            if let Some(rest) = badge.strip_prefix(*verb) {
+                let rest = rest.trim_start();
+                if rest.is_empty() {
+                    return (*verb).to_string();
+                }
+                // `select {ℓᵢ:…}` — the verb and a choice block.
+                if rest.starts_with('{') || rest.chars().all(|c| c.is_alphanumeric()) {
+                    return (*verb).to_string();
+                }
+            }
+        }
+        badge.to_string()
+    }
     /// Parse the README's header badge block — the public promise, as published.
     fn readme_advertised() -> Vec<String> {
         let readme = std::fs::read_to_string(repo_root().join("README.md"))
@@ -1336,7 +1355,7 @@ mod tests {
         while let Some(i) = rest.find("<code>") {
             rest = &rest[i + 6..];
             let j = rest.find("</code>").expect("unterminated <code> badge");
-            out.push(rest[..j].to_string());
+            out.push(normalise_badge(&rest[..j]));
             rest = &rest[j + 7..];
         }
         out

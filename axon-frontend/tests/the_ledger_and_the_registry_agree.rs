@@ -39,15 +39,6 @@ enum NotAPrimitive {
     Attribute,
     /// A capability or an implementation choice — not language surface at all.
     Capability,
-    /// The README's grammar spelling of a primitive that IS in the registry
-    /// under its bare name. The badge gate requires one ledger row per badge,
-    /// so `send T` exists beside `send`.
-    ///
-    /// **This kind is a known redundancy**, not a design: it means the Attested
-    /// census counts four session verbs as eight rows. Recorded rather than
-    /// quietly deduplicated, because collapsing it means changing what the
-    /// README badge gate reads, and that is a decision rather than a cleanup.
-    BadgeSpelling,
 }
 
 /// Ledger rows that are deliberately not registry primitives.
@@ -63,10 +54,6 @@ const NOT_PRIMITIVES: &[(&str, NotAPrimitive)] = &[
     ("shell", NotAPrimitive::Capability),
     ("path rewrite", NotAPrimitive::Capability),
     ("PASETO", NotAPrimitive::Capability),
-    ("send T", NotAPrimitive::BadgeSpelling),
-    ("receive T", NotAPrimitive::BadgeSpelling),
-    ("select {ℓᵢ:…}", NotAPrimitive::BadgeSpelling),
-    ("branch {ℓᵢ:…}", NotAPrimitive::BadgeSpelling),
 ];
 
 /// Registry primitives with no ledger row — the open decision, named.
@@ -218,7 +205,6 @@ fn every_exception_carries_a_kind_and_no_kind_is_empty() {
         NotAPrimitive::Field,
         NotAPrimitive::Attribute,
         NotAPrimitive::Capability,
-        NotAPrimitive::BadgeSpelling,
     ] {
         assert!(
             NOT_PRIMITIVES.iter().any(|(_, k)| *k == kind),
@@ -231,5 +217,35 @@ fn every_exception_carries_a_kind_and_no_kind_is_empty() {
         names.len(),
         NOT_PRIMITIVES.len(),
         "a row is classified twice in NOT_PRIMITIVES"
+    );
+}
+
+#[test]
+fn no_classification_outlives_the_row_it_classifies() {
+    // v4.4.0 — the law this file was missing, found by removing four rows and
+    // watching it stay green.
+    //
+    // Every other law here reads "a ledger row must be a primitive OR be
+    // classified". None of them read the other way, so an entry in
+    // NOT_PRIMITIVES could go on classifying a row that no longer exists. That
+    // is exactly the decoration this project keeps paying to remove: a list
+    // that describes a state of the world nobody re-checked.
+    //
+    // It bit immediately. `send T`, `receive T`, `select {ℓᵢ:…}` and
+    // `branch {ℓᵢ:…}` were classified as README badge spellings; the moment the
+    // reader learned to normalise them, their rows left the table and the four
+    // classifications became furniture.
+    let rows: BTreeSet<String> = ledger_rows().into_iter().collect();
+    let stale: Vec<&str> = NOT_PRIMITIVES
+        .iter()
+        .map(|(n, _)| *n)
+        .filter(|n| !rows.contains(*n))
+        .collect();
+
+    assert!(
+        stale.is_empty(),
+        "these names are classified as non-primitives and are no longer ledger rows \
+         at all: {stale:?}\n\nA classification that outlives its row explains \
+         nothing and hides the next real exception among the dead ones. Delete it."
     );
 }
