@@ -7523,6 +7523,8 @@ impl Parser {
         let tok = self.consume(TokenType::Shield)?;
         let name = self.consume(TokenType::Identifier)?.value;
         let mut node = ShieldDefinition {
+            suppress: Vec::new(),
+            generalise: Vec::new(),
             declassifies: Vec::new(),
             name,
             scan: Vec::new(),
@@ -7580,6 +7582,8 @@ impl Parser {
                     // v4.5.0 — the classes this control may RETIRE. Empty for
                     // almost every shield: scanning is not declassifying.
                     "declassifies" => node.declassifies = self.parse_bracketed_identifiers()?,
+                    "suppress" => node.suppress = self.parse_bracketed_identifiers()?,
+                    "generalise" => node.generalise = self.parse_bracketed_identifiers()?,
                     "log" => node.log = self.consume_any_ident_or_kw()?.value.clone(),
                     "deflect_message" => {
                         node.deflect_message = self.consume(TokenType::StringLit)?.value.clone()

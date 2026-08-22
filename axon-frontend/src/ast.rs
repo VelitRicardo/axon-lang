@@ -1542,6 +1542,22 @@ pub struct ShieldDefinition {
     /// Empty for almost every shield, and that is the point: scanning is not
     /// declassifying. A control that can end a regulatory obligation says so.
     pub declassifies: Vec<String>,
+    /// v4.5.0 — the identifier KINDS this control removes entirely.
+    ///
+    /// Kinds, not field names, deliberately. A control that named
+    /// `[mrn, ssn]` would be welded to one type's spelling and useless on the
+    /// next; a control that names `[medical_record_number, ssn]` describes
+    /// what it does to DATA and is reusable wherever that data appears. It is
+    /// also the only form the catalogue can check: field names are prose.
+    pub suppress: Vec<String>,
+    /// v4.5.0 — the identifier kinds this control REDUCES rather than removes.
+    ///
+    /// The shield names the kind; the regime says how. Safe Harbor reduces a
+    /// date to its year and a postal code to three digits, and those
+    /// operations come from `HIPAA_SAFE_HARBOR` rather than being restated
+    /// here — an author who could restate them could restate them wrong, and
+    /// the regulation is the source.
+    pub generalise: Vec<String>,
     pub log: String,
     pub deflect_message: String,
     pub taint: String,

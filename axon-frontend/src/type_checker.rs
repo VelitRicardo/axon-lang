@@ -5348,7 +5348,8 @@ impl<'a> TypeChecker<'a> {
                     self.check_identifier_kind(&n.identifier, &format!("type '{}'", n.name), &n.loc);
                 }
                 Declaration::Shield(n) => {
-                    self.check_compliance_classes(&n.compliance, &format!("shield '{}'", n.name), &n.loc)
+                    self.check_compliance_classes(&n.compliance, &format!("shield '{}'", n.name), &n.loc);
+                    self.check_shield_declassification_capability(n);
                 }
                 Declaration::AxonEndpoint(n) => self.check_compliance_classes(
                     &n.compliance,
@@ -5439,6 +5440,94 @@ impl<'a> TypeChecker<'a> {
                     d.class, d.source, d.output_type, d.class
                 ),
                 &d.loc,
+            );
+            return;
+        }
+
+        // ── v4.5.0 — what the destination KEEPS ────────────────────────
+        //
+        // The class is gone from the label. That is necessary and not
+        // sufficient: Safe Harbor is a statement about identifiers, and a
+        // record whose `compliance:` list is empty while it still carries a
+        // medical record number is de-identified in name only.
+        //
+        // So every identifier kind the destination still carries must be one
+        // the regulation allows you to KEEP in reduced form, and one this
+        // shield actually reduces. Anything else must be gone entirely —
+        // there is no reduced form of a social-security number that is still
+        // not a social-security number.
+        let kept = crate::compliance::transitive_identifiers(self.program, &d.output_type);
+        for kind in &kept {
+            match crate::compliance::safe_harbor_rule(kind).map(|r| r.operation) {
+                Some(crate::compliance::Deidentify::Generalise(op)) => {
+                    if !shield_generalises(self.program, &d.shield, kind) {
+                        self.emit(
+                            format!(
+                                "axon-T1229 `declassify {} … -> {}` keeps `{kind}`, which the regulation allows only in reduced form ({op:?}), and shield '{}' does not list it in `generalise:`. Either reduce it — the shield says which kinds it reduces and the regime says how — or leave the field out of the destination type.",
+                                d.class, d.output_type, d.shield
+                            ),
+                            &d.loc,
+                        );
+                    }
+                }
+                Some(crate::compliance::Deidentify::Suppress) => {
+                    self.emit(
+                        format!(
+                            "axon-T1229 `declassify {} … -> {}` keeps `{kind}`, which must be REMOVED and cannot be reduced. There is no shortened form of it that is not still it. Leave the field out of the destination type.",
+                            d.class, d.output_type
+                        ),
+                        &d.loc,
+                    );
+                }
+                None => {
+                    // The kind is in the catalogue but this regime asks
+                    // nothing of it. Not a violation: the catalogue describes
+                    // the data across regimes, and not every regime cares
+                    // about every kind.
+                }
+            }
+        }
+    }
+
+    /// A shield that declares `declassifies:` must be able to DO something.
+    ///
+    /// A control that retires a class while removing and reducing nothing is
+    /// a rubber stamp with a keyword — and it would satisfy every law above,
+    /// because those check the SHAPE of the result and this checks that the
+    /// control has a mechanism at all.
+    fn check_shield_declassification_capability(&mut self, s: &crate::ast::ShieldDefinition) {
+        if s.declassifies.is_empty() {
+            return;
+        }
+        for c in &s.declassifies {
+            if !crate::compliance::is_known(c) {
+                self.emit(
+                    format!(
+                        "axon-T1230 shield '{}' declares `declassifies: [{c}]`, which is not a regulatory class.",
+                        s.name
+                    ),
+                    &s.loc,
+                );
+            }
+        }
+        for k in s.suppress.iter().chain(s.generalise.iter()) {
+            if !crate::compliance::is_known_identifier(k) {
+                self.emit(
+                    format!(
+                        "axon-T1230 shield '{}' names `{k}`, which is not an identifier kind. These fields name KINDS from the closed catalogue, not field names — a control welded to one type's spelling is useless on the next.",
+                        s.name
+                    ),
+                    &s.loc,
+                );
+            }
+        }
+        if s.suppress.is_empty() && s.generalise.is_empty() {
+            self.emit(
+                format!(
+                    "axon-T1230 shield '{}' declares `declassifies: {:?}` but removes and reduces nothing — no `suppress:`, no `generalise:`. A control that retires a regulatory obligation while doing nothing to the data is a rubber stamp with a keyword.",
+                    s.name, s.declassifies
+                ),
+                &s.loc,
             );
         }
     }
@@ -14204,6 +14293,13 @@ fn find_type_by_name<'a>(program: &'a Program, name: &str) -> Option<&'a TypeDef
     None
 }
 
+/// Does this shield reduce that identifier kind?
+fn shield_generalises(program: &Program, shield: &str, kind: &str) -> bool {
+    program.declarations.iter().any(|d| match d {
+        Declaration::Shield(s) => s.name == shield && s.generalise.iter().any(|k| k == kind),
+        _ => false,
+    })
+}
 fn find_shield_by_name<'a>(program: &'a Program, name: &str) -> Option<&'a ShieldDefinition> {
     for decl in &program.declarations {
         if let Declaration::Shield(s) = decl {
