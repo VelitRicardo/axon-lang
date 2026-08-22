@@ -1,0 +1,127 @@
+---
+name: attest
+summary: A signed determination, standing beside what the compiler proved. Mandatory — no declassification compiles without one.
+category: cognitive_io
+top_level: true
+since: v4.5.0
+grammar: |
+  attest <Name> {
+      for:      <Type>
+      basis:    safe_harbor | expert_determination
+      residual: [<judgement>, ...]
+      by:       "<who>"
+      on:       "<YYYY-MM-DD>"
+  }
+---
+
+# `attest`
+
+A determination a **person** signed, carried in the artifact next to — and
+distinct from — what the compiler proved.
+
+```axon
+attest SafeHarborDetermination {
+    for:      DeidentifiedNote
+    basis:    safe_harbor
+    residual: [other_unique_identifier, actual_knowledge]
+    by:       "Compliance Officer, Acme Health"
+    on:       "2026-08-21"
+}
+```
+
+## Why a compiler needs a place for a signature
+
+45 CFR 164.514 offers two routes to *"this is no longer PHI"*.
+
+**Safe Harbor** enumerates eighteen identifier classes, and **seventeen** of them
+this compiler decides from the type graph. The eighteenth — item (R), "any other
+unique identifying number, characteristic, or code" — asks a question about the
+world: whether `patient_ref` is one depends on what generated it. And
+164.514(b)(2)(ii) disqualifies the whole method outright if the covered entity
+has actual knowledge the residual data could identify someone. Knowledge is not a
+property of source text.
+
+**Expert determination** is a person with statistical training concluding the
+risk is very small. There is nothing in it for a type system to check at all.
+
+Those do not become weaker compiler claims. They become a signature, with an
+owner and a date, that a reader can tell apart from the proof.
+
+## Mandatory, and matched by subject
+
+`axon-T1234`: a `declassify` whose destination type has no attestation does not
+compile. An act of governance with no trace is indistinguishable from a shortcut
+— without the law, a program could retire HIPAA from a value with no human
+anywhere in the record, and the artifact would carry a clean type and no author.
+
+The match is by **subject**, not by presence: the attestation must be `for:` the
+type the step produces. Matching loosely would let a single attestation anywhere
+in the program satisfy every declassification in it.
+
+## The two bases are treated differently, on purpose
+
+| | `safe_harbor` | `expert_determination` |
+|---|---|---|
+| citation | 45 CFR 164.514(b)(2) | 45 CFR 164.514(b)(1) |
+| what the compiler proved | seventeen identifier classes | nothing about the content |
+| `residual:` | **both judgements required** | not required |
+
+Under Safe Harbor the compiler knows exactly what it left open, so it demands a
+signature over precisely that remainder. Under expert determination a person took
+on the whole analysis, so demanding they enumerate this compiler's leftovers
+would be theatre.
+
+**A partial signature is worse than none**, because it reads as diligence. Taking
+on `other_unique_identifier` and not `actual_knowledge` leaves a hole in a
+specific, citable place — and it is the clause that disqualifies the method.
+
+## Form is checked precisely because content cannot be
+
+Everything in the block is human assertion, so the tempting design is to check
+nothing. The opposite follows: an artifact carrying a determination with no
+owner, no date, or a legal basis that does not exist is read downstream as though
+a person stood behind it.
+
+| Code | Refused |
+|---|---|
+| `axon-T1231` | a `basis:` the regulation does not define |
+| `axon-T1232` | a residual judgement outside the remainder, or a Safe Harbor claim missing one of the two |
+| `axon-T1233` | no signer, no ISO date, or a subject type that does not exist |
+
+`by:` is free prose — there is no register of people and inventing a closed
+catalogue of them would be fiction. What the compiler requires is that it not be
+empty. `on:` is checked for **shape only**: whether a determination is stale
+depends on the data, the population and the regulator, none of which are in the
+source — but the field must be a date so the question can be asked of it.
+
+## Where it ends up
+
+`attestations.json` in the evidence package, in a file of its own. Every other
+artifact there is derived from something the compiler decided; mixing the signed
+part in would erase the distinction that makes the package worth reading. The
+file disclaims itself, and the package README marks the row *"SIGNED, not
+derived"*.
+
+A program that signs nothing ships **no such file** — absence is informative.
+
+## Why it is top-level and not a `shield` block
+
+A shield is a control that executes, and its scope ends with the run. An
+attestation is a fact that outlives the control that motivated it: it is reused
+for a later legal basis, cited by a second determination, and shipped on its own.
+
+## What this primitive is NOT
+
+- **Not a certification, and not proof of one.** It records that someone took
+  responsibility. Whether they were right is an audit.
+- **Not verified.** The compiler checks the form and nothing else. It cannot
+  evaluate an expert determination, and does not pretend to.
+- **Not a substitute for the proof.** It covers what the compiler left open, and
+  the compiler still refuses everything it can decide.
+
+## See also
+
+- [`declassify`](declassify) — the act this signs for
+- [`identifier`](identifier) — the catalogue whose seventeen decidable kinds this
+  attestation does **not** cover
+- [`census`](census) — the other fact about the world a deployment declares

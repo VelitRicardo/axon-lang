@@ -172,7 +172,7 @@ pub enum TokenType {
     /// it to copying fields into an unlabelled type, which is exactly the
     /// decomposition κ cannot see.
     Declassify,
-    /// v4.6.0 — `attest <Name> { for, basis, residual, by, on }`: the signed
+    /// v4.5.0 — `attest <Name> { for, basis, residual, by, on }`: the signed
     /// half of a de-identification. A top-level declaration rather than a
     /// shield block, because a shield is a control that runs and an
     /// attestation is a fact that outlives the run that needed it.

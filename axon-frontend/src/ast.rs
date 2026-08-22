@@ -88,7 +88,7 @@ pub enum Declaration {
     // ── Tier 2 declarations (full AST) ──
     Agent(AgentDefinition),
     Shield(ShieldDefinition),
-    /// v4.6.0 — a signed determination, standing beside what was proved.
+    /// v4.5.0 — a signed determination, standing beside what was proved.
     Attest(AttestDefinition),
     /// v2.27.0 — a temporal execution-window guard.
     Window(WindowDefinition),
@@ -253,7 +253,7 @@ pub fn declaration_surface(decl: &Declaration) -> Option<(String, String, Loc)> 
         Declaration::LambdaData(n) => Some((n.name.clone(), "lambda_data".into(), n.loc.clone())),
         Declaration::Agent(n) => Some((n.name.clone(), "agent".into(), n.loc.clone())),
         Declaration::Shield(n) => Some((n.name.clone(), "shield".into(), n.loc.clone())),
-        // v4.6.0 — an attestation is an exportable named symbol: a module that
+        // v4.5.0 — an attestation is an exportable named symbol: a module that
         // owns the determination can be imported by the flow that relies on it.
         Declaration::Attest(n) => Some((n.name.clone(), "attest".into(), n.loc.clone())),
         Declaration::Window(n) => Some((n.name.clone(), "window".into(), n.loc.clone())),
@@ -607,7 +607,7 @@ pub struct ManifestDefinition {
     pub region: String,
     pub zones: Option<i64>,
     pub compliance: Vec<String>, // κ — regulatory class (v1.2.0)
-    /// v4.6.0 — the census this deployment relies on to reduce a postal code
+    /// v4.5.0 — the census this deployment relies on to reduce a postal code
     /// to three digits.
     ///
     /// Safe Harbor (B) permits three digits only where the resulting unit
@@ -1539,7 +1539,7 @@ pub struct WindowSpan {
 
 /// `attest <Name> { for:, basis:, residual:, by:, on: }`
 ///
-/// v4.6.0 — the half of a de-identification that a compiler cannot produce.
+/// v4.5.0 — the half of a de-identification that a compiler cannot produce.
 ///
 /// A declassification retires a regulatory class from a value, and by v4.5.0
 /// the compiler decides most of what that requires: the class is real, the

@@ -890,6 +890,46 @@ pub const PRIMITIVE_REGISTRY: &[PrimitiveInfo] = &[
         doc_status: DocStatus::Documented,
         is_advertised: true,
     },
+    // ── v4.5.0 — typed declassification ─────────────────────────────
+    //
+    // `compliance` says a value is regulated; these four are how a regulated
+    // value stops being one, and who signed for the part no compiler decided.
+    PrimitiveInfo {
+        name: "identifier",
+        category: "cognitive_io",
+        top_level: false,
+        since: "v4.5.0",
+        summary: "Declares WHAT a type is — a name, a date, an SSN — from a closed catalogue of eighteen identifier kinds. Orthogonal to `compliance`: the kind describes the data, and each regime says what to do with it. Without it a de-identification is a promise (axon-T1225).",
+        doc_status: DocStatus::Documented,
+        is_advertised: true,
+    },
+    PrimitiveInfo {
+        name: "declassify",
+        category: "cognitive_io",
+        top_level: false,
+        since: "v4.5.0",
+        summary: "Retires a regulatory class from a value, producing a DIFFERENT type. The legitimate door: closing an egress border without one does not remove the traffic, it pushes it into copying fields to an unlabelled type. Refuses a class outside \u{39a}, a shield that only scans, a destination still carrying the class, and a kept identifier the regime allows only reduced (axon-T1226\u{2013}T1229).",
+        doc_status: DocStatus::Documented,
+        is_advertised: true,
+    },
+    PrimitiveInfo {
+        name: "attest",
+        category: "cognitive_io",
+        top_level: true,
+        since: "v4.5.0",
+        summary: "A signed determination, standing beside what the compiler proved. Safe Harbor has eighteen identifier classes; seventeen are decided from the type graph and the rest is a human judgement, as is expert determination entirely. Mandatory: no declassification compiles without one (axon-T1234).",
+        doc_status: DocStatus::Documented,
+        is_advertised: true,
+    },
+    PrimitiveInfo {
+        name: "census",
+        category: "cognitive_io",
+        top_level: false,
+        since: "v4.5.0",
+        summary: "The manifest names the census a three-digit postal code relied on. Safe Harbor permits three digits only where the unit holds 20,000 people or more \u{2014} a fact about the world on a date, not about the program. The compiler checks the source was NAMED, never that it is true (axon-T1235).",
+        doc_status: DocStatus::Documented,
+        is_advertised: true,
+    },
     PrimitiveInfo {
         name: "compliance",
         category: "cognitive_io",
@@ -1260,9 +1300,17 @@ mod tests {
         // could not discover, or ask about, five constructs the compiler
         // already delivered. What was missing was not the feature: it was the
         // entry that makes a feature findable.
+        // v4.5.0: 99 -> 103 — typed declassification. `identifier` (what a
+        // type IS, from the closed catalogue of eighteen kinds), `declassify`
+        // (the verb that retires a regulatory class and produces a different
+        // type), `attest` (the signature over the part no compiler decided) and
+        // `census` (the world-fact a three-digit postal code leans on). Without
+        // these rows an agent asked to write a HIPAA de-identification finds the
+        // badge that says data IS regulated and nothing that says how it stops
+        // being — the same gap v4.4.0 closed for `compliance` itself.
         assert_eq!(
             PRIMITIVE_REGISTRY.len(),
-            99,
+            103,
             "PRIMITIVE_REGISTRY count drift — add/remove the primitive intentionally + update this assertion"
         );
     }
@@ -1437,6 +1485,9 @@ mod tests {
             // so `axon.primitives` never listed them: the compiler delivered
             // five constructs an agent had no way to find.
             "send", "receive", "select", "branch", "compliance",
+            // v4.5.0 — typed declassification: how a regulated value stops
+            // being one, and who signed for the part no compiler decided.
+            "identifier", "declassify", "attest", "census",
         ]
         .into_iter()
         .collect();
@@ -1475,9 +1526,11 @@ mod tests {
         // had no grammar for it at all, so `EffectRuntime` was constructible
         // only from its own tests.
         // v4.4.0: 94 -> 99 — send / receive / select / branch / compliance.
-        assert_eq!(s.total, 99);
+        // v4.5.0: 99 -> 103 — identifier / declassify / attest / census, all
+        // four Documented in the same cycle, so coverage stays at 100%.
+        assert_eq!(s.total, 103);
         assert_eq!(s.documented + s.pending, s.total);
-        assert_eq!(s.documented, 99);
+        assert_eq!(s.documented, 103);
         assert_eq!(s.pending, 0);
     }
 

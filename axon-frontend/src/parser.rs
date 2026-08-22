@@ -7524,7 +7524,7 @@ impl Parser {
         Ok(span)
     }
 
-    /// v4.6.0 — `attest <Name> { for:, basis:, residual:, by:, on: }`.
+    /// v4.5.0 — `attest <Name> { for:, basis:, residual:, by:, on: }`.
     ///
     /// The parser is deliberately permissive here and the checker is not.
     /// Every field is optional to PARSE, so that a half-written attestation
@@ -9312,7 +9312,7 @@ impl Parser {
                 "region" => node.region = self.consume(TokenType::StringLit)?.value,
                 "zones" => node.zones = self.parse_optional_int(),
                 "compliance" => node.compliance = self.parse_bracketed_identifiers()?,
-                // v4.6.0 — the census a zip3 reduction relies on (axon-T1235).
+                // v4.5.0 — the census a zip3 reduction relies on (axon-T1235).
                 "census" => node.census = self.consume_any_ident_or_kw()?.value.clone(),
                 _ => self.skip_value(),
             }

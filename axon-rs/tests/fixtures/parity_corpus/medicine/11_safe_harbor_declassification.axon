@@ -1,0 +1,65 @@
+// META: flow_name=SafeHarborDeidentification, mode=strict
+
+// v4.5.0 — a de-identification that both execution paths must perform
+// IDENTICALLY, and that neither may narrate.
+//
+// This fixture exists because the non-streaming path used to hand the verb to
+// the language model and bind its prose under `DeidentifiedNote`. Under
+// `mode=strict` the corpus compares the two paths' step results byte-for-byte,
+// so that failure is now a red test rather than a de-identification nobody
+// performed.
+//
+// A kind is a property of the TYPE, and a field inherits it by using that type.
+// `dob: Text` would carry no kind, so nothing would be generalised — which is
+// correct, and the reason the destination types below are spelled this way.
+
+type BirthDate identifier date { value: Text }
+type SocialSecurity identifier ssn { value: Text }
+
+type PatientRecord compliance [HIPAA] {
+    ssn: SocialSecurity
+    dob: BirthDate
+    note: Text
+}
+
+// No `compliance:` — that is the whole claim. The projection below cannot put
+// an SSN here, because there is no slot for one.
+type DeidentifiedNote {
+    dob: BirthDate
+    note: Text
+}
+
+shield SafeHarborShield {
+    scan: [pii_leak]
+    compliance: [HIPAA]
+    declassifies: [HIPAA]
+    suppress: [ssn]
+    generalise: [date]
+    on_breach: halt
+    severity: critical
+}
+
+// Safe Harbor decides seventeen identifier classes from the type graph above.
+// These two it cannot decide, so a person signs for them.
+attest SafeHarborDetermination {
+    for: DeidentifiedNote
+    basis: safe_harbor
+    residual: [other_unique_identifier, actual_knowledge]
+    by: "Compliance Officer, Reference Health"
+    on: "2026-08-21"
+}
+
+flow SafeHarborDeidentification() -> Unit {
+    let record = "{\"ssn\": \"078-05-1120\", \"dob\": \"1954-03-02\", \"note\": \"stable\"}"
+
+    declassify HIPAA from record -> DeidentifiedNote via SafeHarborShield
+
+    step PublishCohort { ask: "Publish the de-identified cohort" output: Stream<Token> }
+}
+
+axonendpoint SafeHarborDeidentificationEndpoint {
+    method: POST
+    path: "/medicine/safe-harbor-deidentification"
+    execute: SafeHarborDeidentification
+    transport: sse public: true
+}

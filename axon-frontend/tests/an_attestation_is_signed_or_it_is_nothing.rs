@@ -1,4 +1,4 @@
-//! v4.6.0 — where the compiler stops proving, a person signs.
+//! v4.5.0 — where the compiler stops proving, a person signs.
 //!
 //! The previous cycle made declassification a typed act: the class must be real,
 //! the control must declare the capability, the destination must not still carry

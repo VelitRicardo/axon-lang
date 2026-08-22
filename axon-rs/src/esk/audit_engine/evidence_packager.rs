@@ -228,7 +228,7 @@ pub fn build_evidence_package(
         );
     }
 
-    // v4.6.0 — what NO gate produced, in its own file.
+    // v4.5.0 — what NO gate produced, in its own file.
     //
     // Every other artifact in this package is derived: the SBOM, the dossier,
     // the control statements, the gap analysis all come from something the
@@ -358,7 +358,7 @@ fn build_readme(program_hash: &str, auditor_note: &str) -> String {
         "| `risk_register.json`             | ISO 27005-shaped risk register |".into(),
         "| `gap_analysis/*.json`            | Per-framework gap analysis |".into(),
         "| `control_statements/*.json`      | Pre-populated implementation statements |".into(),
-        // v4.6.0 — the one file in here nothing computed. The wording is the
+        // v4.5.0 — the one file in here nothing computed. The wording is the
         // point: an auditor scanning this table must be able to tell the
         // derived artifacts from the signed one without opening either.
         "| `attestations.json`              | Human determinations — SIGNED, not derived (if any) |".into(),
@@ -597,7 +597,7 @@ mod tests {
         );
     }
 
-    // ── v4.6.0 — the signed half travels, and is not mistaken for the rest ──
+    // ── v4.5.0 — the signed half travels, and is not mistaken for the rest ──
 
     fn attested_program() -> IRProgram {
         compile(
@@ -621,7 +621,7 @@ mod tests {
         // The whole point of `attest` is that the determination OUTLIVES the run
         // that needed it. A field the compiler stores and the package drops is a
         // signature nobody can find.
-        let pkg = build_evidence_package(&attested_program(), "4.6.0", None, None, None, "");
+        let pkg = build_evidence_package(&attested_program(), "4.5.0", None, None, None, "");
         let blob = pkg
             .files
             .get("attestations.json")
@@ -645,7 +645,7 @@ mod tests {
         // EVERY OTHER FILE IN THE BUNDLE IS DERIVED. If an auditor reads this one
         // as compiler output, the separation between what was proved and what was
         // asserted — the entire reason the file exists — is gone.
-        let pkg = build_evidence_package(&attested_program(), "4.6.0", None, None, None, "");
+        let pkg = build_evidence_package(&attested_program(), "4.5.0", None, None, None, "");
         let blob = pkg.files.get("attestations.json").unwrap();
         let v: Value = serde_json::from_slice(blob).unwrap();
         let disclaimer = v["asserted_by_humans"].as_str().unwrap_or_default();
@@ -666,7 +666,7 @@ mod tests {
         // Absence is informative here: no `attestations.json` means nothing was
         // signed, which is a true and useful thing for an auditor to see. An
         // empty file with `count: 0` would read as a form someone left blank.
-        let pkg = build_evidence_package(&full_program(), "4.6.0", None, None, None, "");
+        let pkg = build_evidence_package(&full_program(), "4.5.0", None, None, None, "");
         assert!(!pkg.files.contains_key("attestations.json"));
     }
 }

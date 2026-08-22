@@ -40,7 +40,7 @@ cargo install axon-emcp
 ```
 
 The installed binary is **fully self-contained** — the knowledge
-corpus (99 primitive docs + 34 templates + 30 idiomatic examples +
+corpus (103 primitive docs + 34 templates + 30 idiomatic examples +
 grammar/logic/compliance references) is baked into the executable
 via `include_dir!` at compile time. No `share/` directory, no env
 vars, no post-install steps.

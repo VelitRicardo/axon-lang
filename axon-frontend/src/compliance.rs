@@ -601,7 +601,7 @@ pub fn transitive_identifiers(program: &crate::ast::Program, type_ref: &str) -> 
 }
 
 // ───────────────────────────────────────────────────────────────────────────
-//  v4.6.0 — what the compiler could NOT decide, named so it can be signed
+//  v4.5.0 — what the compiler could NOT decide, named so it can be signed
 // ───────────────────────────────────────────────────────────────────────────
 
 /// The legal routes to de-identification, and the citation for each.

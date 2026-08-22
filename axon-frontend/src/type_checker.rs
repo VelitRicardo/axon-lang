@@ -1838,7 +1838,7 @@ impl<'a> TypeChecker<'a> {
                         n.loc.clone(),
                     ));
                 }
-                // v4.6.0 — an attestation is a named symbol like any other, so
+                // v4.5.0 — an attestation is a named symbol like any other, so
                 // a module can own the determination and a flow can import it.
                 Declaration::Attest(n) => {
                     registrations.push((
@@ -2408,7 +2408,7 @@ impl<'a> TypeChecker<'a> {
                 // v2.69.0 — a top-level budget is checked by the SAME laws as a
                 // daemon's (T830–T834). Reused, not re-implemented: a second copy
                 // of a law is how the islands happened.
-                // v4.6.0 — the signed half of a de-identification (T1231–T1233).
+                // v4.5.0 — the signed half of a de-identification (T1231–T1233).
                 Declaration::Attest(n) => self.check_attestation(n),
                 Declaration::Budget(n) => {
                     let scope = format!("budget '{}'", n.name);
@@ -5370,7 +5370,7 @@ impl<'a> TypeChecker<'a> {
                 ),
                 Declaration::Manifest(n) => {
                     self.check_compliance_classes(&n.compliance, &format!("manifest '{}'", n.name), &n.loc);
-                    // v4.6.0 — a citation nobody can look up is not a citation.
+                    // v4.5.0 — a citation nobody can look up is not a citation.
                     if !n.census.is_empty() && !crate::compliance::is_known_census(&n.census) {
                         self.emit(
                             format!(
@@ -5544,7 +5544,7 @@ impl<'a> TypeChecker<'a> {
     /// a rubber stamp with a keyword — and it would satisfy every law above,
     /// because those check the SHAPE of the result and this checks that the
     /// control has a mechanism at all.
-    /// v4.6.0 — an attestation is complete, or it is not one.
+    /// v4.5.0 — an attestation is complete, or it is not one.
     ///
     /// This is the declaration where the compiler stops proving and starts
     /// recording. That makes it tempting to check nothing — it is all human
@@ -5703,7 +5703,7 @@ impl<'a> TypeChecker<'a> {
             );
         }
 
-        // v4.6.0 — a three-digit postal code is conditional, and the condition
+        // v4.5.0 — a three-digit postal code is conditional, and the condition
         // is a fact about the world.
         //
         // Safe Harbor (B) permits the first three digits only where the unit
@@ -14497,7 +14497,7 @@ fn find_type_by_name<'a>(program: &'a Program, name: &str) -> Option<&'a TypeDef
 }
 
 /// Does this shield reduce that identifier kind?
-/// v4.6.0 — YYYY-MM-DD, and nothing cleverer.
+/// v4.5.0 — YYYY-MM-DD, and nothing cleverer.
 ///
 /// Deliberately shape-only. The compiler has no business deciding whether a
 /// determination is too old — that depends on the data, the population and the

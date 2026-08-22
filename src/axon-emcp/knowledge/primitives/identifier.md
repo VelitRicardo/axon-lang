@@ -1,0 +1,98 @@
+---
+name: identifier
+summary: Declares WHAT a type is — a name, a date, an SSN — from a closed catalogue of eighteen kinds. Orthogonal to compliance.
+category: cognitive_io
+top_level: false
+since: v4.5.0
+grammar: |
+  type <Name> identifier <kind> { <field>: <Type>, ... }
+
+  # Composable with a regulatory class, in either order:
+  type <Name> identifier <kind> compliance [<Class>, ...] { ... }
+---
+
+# `identifier`
+
+Declares what a type **is**, from a closed catalogue of eighteen kinds.
+
+```axon
+type SocialSecurity identifier ssn      { value: Text }
+type BirthDate      identifier date     { value: Text }
+type HomeZip        identifier geography { value: Text }
+```
+
+## Why it is separate from `compliance`
+
+The two answer different questions about the same field:
+
+- `compliance` — **which regimes govern this**. HIPAA, GDPR, LEY_1581.
+- `identifier` — **what this is**. A social-security number, a date, a postal
+  code.
+
+An SSN is an identifier under HIPAA *and* GDPR *and* Ley 1581, so the catalogue
+describes the data and each regime says what to do with it. Keeping them
+orthogonal is what avoids rewriting eighteen classes for every new regulatory
+class — and what lets four Latin-American jurisdictions reuse the same work.
+
+## The catalogue
+
+Eighteen kinds, matching 45 CFR 164.514(b)(2)'s enumerable classes:
+
+`name` · `geography` · `date` · `age` · `phone` · `fax` · `email` · `ssn` ·
+`medical_record_number` · `health_plan_number` · `account_number` ·
+`license_number` · `vehicle_identifier` · `device_identifier` · `url` ·
+`ip_address` · `biometric` · `face_photo`
+
+A kind outside the catalogue is `axon-T1225`, with a suggestion. An unrecognised
+kind is not a weaker claim about the data — it is a claim about **nothing**,
+which a de-identification rule would then compare against and find satisfied.
+
+## The kind belongs to the TYPE, and a field inherits it
+
+This is the part that decides whether any downstream guarantee is real:
+
+```axon
+type PatientRecord compliance [HIPAA] {
+    ssn: SocialSecurity   // ✅ the field carries the `ssn` kind
+    dob: BirthDate        // ✅ carries `date`
+    admitted: Text        // ⚠️ carries nothing
+}
+```
+
+`admitted: Text` tells the compiler nothing, so no rule fires for it and no
+diagnostic appears. That is deliberate — the compiler will not guess what a
+string holds — but a `declassify` written against untyped fields suppresses and
+reduces nothing.
+
+Kinds travel **transitively**: wrapping a type in a request struct does not hide
+what is inside it, the same walk `compliance` uses for the same reason.
+
+## What each regime does with a kind
+
+The type says what it is; the regime says what happens to it. Under HIPAA Safe
+Harbor, fifteen kinds must be **removed** and three may survive **reduced**:
+
+| kind | operation | citation |
+|---|---|---|
+| `date` | reduce to the year | 164.514(b)(2)(i)(C) |
+| `geography` | reduce to three postal digits | 164.514(b)(2)(i)(B) |
+| `age` | cap above 89 into one category | 164.514(b)(2)(i)(C) |
+
+There is no shortened form of a social-security number that is not still one, so
+`ssn` and the rest are suppression-only.
+
+## What this primitive is NOT
+
+- **Not a validator.** Declaring `identifier ssn` does not check that the value
+  looks like an SSN. It states what the field is FOR.
+- **Not a regulatory class.** It says nothing about which law applies; that is
+  `compliance`, and the two compose in either order on the same declaration.
+- **Not inferred.** A field the author does not type is a field the compiler
+  knows nothing about. Most types are not identifiers, and a rule that made every
+  declaration answer this question would be noise.
+
+## See also
+
+- [`compliance`](compliance) — the orthogonal question
+- [`declassify`](declassify) — where the kinds are consumed
+- [`attest`](attest) — the judgements the catalogue leaves open

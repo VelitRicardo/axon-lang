@@ -1744,59 +1744,115 @@ fn structural_dispatch_enabled() -> bool {
 
 /// v2.15.0 — the structural verbs the non-streaming server executor routes
 /// through the flow dispatcher instead of the LLM fallthrough. These are the
-/// PURE-EFFECT verbs whose dispatcher handler runs a real, embeddings-free
-/// computation over the live corpus / PIX state with NO LLM call (so they need
-/// no per-tenant API key plumbing — that arrives with the cognitive verbs in
-/// v2.15.0). Today: the MDN/PIX navigation family. `navigate` (v2.15.0) over the
-/// live store-sourced graph; `drill` into a PIX subtree; `trail` the breadcrumb
-/// of a prior navigate. Cognitive-framing verbs (forge/corroborate) and the
-/// multi-agent verbs (deliberate/consensus) reuse `pure_shape` → they DO call
-/// the LLM, so they stay on the legacy path until v2.15.0 threads the per-tenant
-/// key through `DispatchCtx`.
-fn routes_through_dispatcher(node: &crate::ir_nodes::IRFlowNode) -> bool {
-    use crate::ir_nodes::IRFlowNode as N;
-    // v2.46.0 — `mint` MUST route to its real dispatcher handler: an LLM
-    // fallthrough would HALLUCINATE a bearer token. On a path with no minter
-    // port the handler fails CLOSED (MissingDependency) — the honest outcome.
-    //
-    // v2.48.0 — `rotate` likewise: an LLM fallthrough would HALLUCINATE a
-    // rotation (fabricated summary over untouched custody). No custody port ⇒
-    // the handler fails CLOSED.
-    //
-    // v2.63.0 — the five data-plane verbs likewise: they are relational
-    // operations over a declared `dataspace` (ingest loads, focus selects,
-    // associate joins, aggregate computes, explore profiles). An LLM
-    // fallthrough NARRATES data that was never loaded and numbers that were
-    // never computed — assertion-laundering. Their dispatcher handlers fail
-    // CLOSED (`MissingDependency: dataspace_engine`) until the columnar
-    // engine lands (v2.63.0–d).
-    matches!(
-        node,
-        N::Navigate(_)
-            | N::Drill(_)
-            | N::Trail(_)
-            | N::Mint(_)
-            | N::Rotate(_)
-            | N::Ingest(_)
-            | N::Focus(_)
-            | N::Associate(_)
-            | N::Aggregate(_)
-            | N::Explore(_)
-            // v2.65.0 — `grad` is pure control-plane computation: the
-            // derivative was DERIVED at compile time; the handler only
-            // evaluates it. An LLM fallthrough would narrate a number that
-            // was never computed — same law as everything above.
-            | N::Grad(_)
-            // An `<Agent>(args)` call is a BOUNDED LOOP of deliberations with
-            // its own tool grant, bounds and `on_stuck` policy. Handed to the
-            // LLM as "Run agent: X(args)" it became ONE call narrating a run
-            // that never happened — the worst possible reading of "executed by
-            // nothing". The dispatcher's agent loop is the only executor; this
-            // executor reaches it through the bridge like every verb above.
-            | N::AgentCall(_)
-    )
+/// v4.5.0 — how this executor treats every kind of node, decided ONCE per
+/// variant, with no catch-all.
+///
+/// # Why this is an enum and not a `matches!`
+///
+/// It used to be a `matches!` listing the verbs that bridge into
+/// [`crate::flow_dispatcher::dispatch_node`], which means every OTHER variant —
+/// including every variant added after it was written — took the `false` branch
+/// and fell through to the LLM. That is a default of "let a model narrate it",
+/// and it is the wrong direction to fail in: a fabricated result is
+/// indistinguishable from a real one at the call site, so nothing downstream
+/// notices.
+///
+/// It cost exactly that. `declassify` (v4.5.0) shipped with a dispatcher
+/// handler that projects and reduces the record — and on this path the model
+/// was handed *"Declassify HIPAA from rec via SafeHarborShield"* and its answer
+/// was bound under the de-identified type. The compiler had proved the
+/// destination type no longer carries the class, so every κ boundary
+/// downstream waved it through. The identifiers were never removed by anything.
+///
+/// So the decision is now a MATCH WITH NO WILDCARD ARM: a new `IRFlowNode`
+/// variant fails to compile here until someone says what this executor does
+/// with it. The compiler asks the question that was previously answered by
+/// silence.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NodeRoute {
+    /// Bridged into the dispatcher, which runs the REAL computation.
+    ///
+    /// The test for membership is not "is it structural" but: **would a
+    /// plausible sentence from a model be accepted here as the result?** If
+    /// yes, it belongs, because that is precisely the failure nobody sees.
+    Dispatcher,
+    /// This executor has its own real implementation for the verb, reached
+    /// through the `step_type` branches further down (store operations, `let`,
+    /// `use_tool`, the control-flow verbs).
+    Native,
+    /// A model call IS the semantics. `step`, `reason`, `validate` and the rest
+    /// of the cognitive family are supposed to reach the LLM; that is not a
+    /// fallthrough, it is the verb.
+    Cognitive,
+    /// KNOWN GAP — reaches the LLM on this path, and should not.
+    ///
+    /// These have real dispatcher handlers and are wired on the streaming path
+    /// (v1.26.0), but this non-streaming executor never bridged them. The
+    /// variant exists so the gap is COUNTED rather than implied by absence:
+    /// `the_narrated_verbs_are_declared` prints the census, and moving one to
+    /// `Dispatcher` is a one-line change plus its test.
+    Narrated,
 }
 
+/// The routing decision for one node. Exhaustive by construction.
+pub fn node_route(node: &crate::ir_nodes::IRFlowNode) -> NodeRoute {
+    use crate::ir_nodes::IRFlowNode as N;
+    use NodeRoute::*;
+    match node {
+        // ── the LLM is the point ──────────────────────────────────────
+        N::Step(_) | N::Probe(_) | N::Reason(_) | N::Validate(_) | N::Refine(_)
+        | N::Weave(_) | N::Deliberate(_) | N::Consensus(_) | N::Forge(_)
+        | N::Corroborate(_) => Cognitive,
+
+        // ── this executor implements them itself ──────────────────────
+        // Reached through the `step.step_type` branches below: the store
+        // family, the memory family, `let`, `use_tool`, and control flow.
+        N::UseTool(_) | N::Remember(_) | N::Recall(_) | N::Let(_)
+        | N::Conditional(_) | N::ForIn(_) | N::Break(_) | N::Continue(_)
+        | N::LambdaDataApply(_) | N::Persist(_) | N::Retrieve(_) | N::Mutate(_)
+        | N::Purge(_) => Native,
+
+        // ── bridged: a sentence must not be able to stand in for the result ──
+        //
+        // `mint` would hallucinate a bearer token; `rotate` a rotation over
+        // untouched custody; the five data-plane verbs numbers that were never
+        // computed; `grad` a derivative the compiler had already derived; an
+        // `<Agent>(args)` call one sentence standing for a bounded loop that
+        // never ran. Each handler fails CLOSED when its port is absent, which
+        // is the honest outcome and the one this list exists to prefer.
+        N::Navigate(_) | N::Drill(_) | N::Trail(_) | N::Mint(_) | N::Rotate(_)
+        | N::Ingest(_) | N::Focus(_) | N::Associate(_) | N::Aggregate(_)
+        | N::Explore(_) | N::Grad(_) | N::AgentCall(_) => Dispatcher,
+
+        // v4.5.0 — AND THE ONE THAT PROVED THE DEFAULT WAS WRONG.
+        //
+        // The plan (`keep` + `generalise`) was resolved at lowering and rides
+        // the node; the handler projects the record and reduces what the regime
+        // permits, failing closed on anything it cannot reduce honestly. A
+        // model asked to "declassify" returns prose that looks like a record,
+        // and the type it gets bound under says the class was retired — so the
+        // egress laws this whole cycle built stop protecting anything.
+        N::Declassify(_) => Dispatcher,
+
+        // ── known gaps: narrated here, real on the streaming path ─────
+        //
+        // Every one of these has a dispatcher handler wired for `transport: sse`
+        // (v1.26.0) and never bridged into this non-streaming executor.
+        // Listed rather than defaulted, so the census is a number somebody can
+        // read instead of a silence.
+        N::ShieldApply(_) | N::OtsApply(_) | N::MandateApply(_)
+        | N::ComputeApply(_) | N::Warden(_) | N::Quant(_) | N::Emit(_)
+        | N::Publish(_) | N::Discover(_) | N::Listen(_) | N::Transact(_)
+        | N::Hibernate(_) | N::Par(_) | N::Stream(_) | N::Handle(_)
+        | N::Perform(_) | N::Resume(_) | N::Abort(_) | N::Forward(_)
+        | N::Yield(_) | N::Return(_) | N::Run(_) | N::DaemonStep(_) => Narrated,
+    }
+}
+
+/// Whether this node bridges into the flow dispatcher.
+fn routes_through_dispatcher(node: &crate::ir_nodes::IRFlowNode) -> bool {
+    node_route(node) == NodeRoute::Dispatcher
+}
 /// v2.15.0/B — run a pure-effect structural verb (navigate / drill / trail)
 /// as its REAL computation by bridging into the flow dispatcher's
 /// [`crate::flow_dispatcher::dispatch_node`], sharing the flow's EXACT pinned,
@@ -5589,6 +5645,113 @@ mod tests_3 {
             &ctx,
         );
         assert!(matches!(result, Err(StoreError::PoolInit { .. })));
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// v4.5.0 — a verb whose result a model could fake must not reach a model
+// ─────────────────────────────────────────────────────────────────────────────
+#[cfg(test)]
+mod narration_gate {
+    use super::*;
+
+    fn compile(source: &str) -> crate::ir_nodes::IRProgram {
+        let tokens = crate::lexer::Lexer::new(source, "<test>").tokenize().expect("lex");
+        let program = crate::parser::Parser::new(tokens).parse().expect("parse");
+        crate::ir_generator::IRGenerator::new().generate(&program)
+    }
+
+    const PROGRAM: &str = r#"
+// A kind is a property of the TYPE, and a field inherits it by using that
+// type.  would carry no kind at all, so nothing would be
+// generalised — correct, and the reason a type may declare its kind.
+type BirthDate identifier date { value: String }
+type SSN identifier ssn { value: String }
+type PatientRecord compliance [HIPAA] { ssn: SSN  dob: BirthDate  note: String }
+type DeidentifiedNote { dob: BirthDate  note: String }
+
+shield SafeHarborShield {
+    scan: [pii_leak]
+    compliance: [HIPAA]
+    declassifies: [HIPAA]
+    suppress: [ssn]
+    generalise: [date]
+    on_breach: halt
+}
+
+attest Determination {
+    for: DeidentifiedNote
+    basis: safe_harbor
+    residual: [other_unique_identifier, actual_knowledge]
+    by: "Compliance Officer"
+    on: "2026-08-21"
+}
+
+flow Publish(rec: PatientRecord) -> String {
+    declassify HIPAA from rec -> DeidentifiedNote via SafeHarborShield
+    step Emit { given: DeidentifiedNote  ask: "summarise"  output: String }
+}
+"#;
+
+    fn declassify_node() -> crate::ir_nodes::IRFlowNode {
+        let ir = compile(PROGRAM);
+        ir.flows
+            .iter()
+            .flat_map(|f| f.steps.iter())
+            .find(|n| matches!(n, crate::ir_nodes::IRFlowNode::Declassify(_)))
+            .expect("the flow lowers a declassify node")
+            .clone()
+    }
+
+    /// THE REGRESSION. If this flips back, an adopter's non-streaming
+    /// endpoint de-identifies patient records by asking a language model to
+    /// say that it did — and the type the answer binds under asserts the
+    /// class was retired, so every κ boundary downstream stops looking.
+    #[test]
+    fn a_declassification_is_computed_and_never_narrated() {
+        assert_eq!(
+            node_route(&declassify_node()),
+            NodeRoute::Dispatcher,
+            "the plan was resolved at lowering; a model asked to perform a \
+             declassification returns prose that LOOKS like a record"
+        );
+    }
+
+    /// Routing is only half of it — the handler re-derives nothing, so the
+    /// node has to CARRY the decision. An empty plan would project away every
+    /// field and yield `{}`: silent total data loss, under a type saying the
+    /// record survived.
+    #[test]
+    fn the_plan_the_compiler_resolved_rides_the_node_the_executor_routes() {
+        let crate::ir_nodes::IRFlowNode::Declassify(node) = declassify_node() else {
+            unreachable!()
+        };
+        assert_eq!(node.keep, vec!["dob".to_string(), "note".to_string()]);
+        assert_eq!(
+            node.generalise,
+            vec![("dob".to_string(), "year".to_string())],
+            "`year` comes from HIPAA_SAFE_HARBOR, not from the author"
+        );
+        assert!(
+            !node.keep.contains(&"ssn".to_string()),
+            "the destination type has no slot for it, so the projection removes it"
+        );
+    }
+
+    /// The cognitive family is NOT a gap: a model call is the semantics of
+    /// `step`/`reason`, and routing them to the dispatcher would be the
+    /// opposite error. The table has to distinguish "narrated because nobody
+    /// decided" from "narrated because that is the verb".
+    #[test]
+    fn a_verb_whose_meaning_is_a_model_call_stays_on_the_model_path() {
+        let ir = compile(PROGRAM);
+        let step = ir
+            .flows
+            .iter()
+            .flat_map(|f| f.steps.iter())
+            .find(|n| matches!(n, crate::ir_nodes::IRFlowNode::Step(_)))
+            .expect("the flow has a cognitive step");
+        assert_eq!(node_route(step), NodeRoute::Cognitive);
     }
 }
 

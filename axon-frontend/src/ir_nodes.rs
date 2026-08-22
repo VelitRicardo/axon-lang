@@ -28,7 +28,7 @@ pub struct IRProgram {
     pub imports: Vec<IRImport>,
     pub agents: Vec<IRAgent>,
     pub shields: Vec<IRShield>,
-    /// v4.6.0 — signed determinations, riding beside what was proved.
+    /// v4.5.0 — signed determinations, riding beside what was proved.
     ///
     /// They live at the top of the artifact rather than inside the shield or
     /// the step, because the evidence package reads them as their own class of
@@ -2274,7 +2274,7 @@ pub struct IRBudgetQuota {
     pub effect: String,
 }
 
-/// v4.6.0 — an `attest` declaration, lowered.
+/// v4.5.0 — an `attest` declaration, lowered.
 ///
 /// Deliberately the flattest node in this file: five facts and no structure.
 /// Everything here was asserted by a person, so there is nothing for the

@@ -1378,7 +1378,14 @@ Body prose.
         // five were Attested in the ledger and advertised in the README with
         // NO registry row, so `axon.primitives` never listed them: five
         // constructs the compiler delivered and an agent had no way to find.
-        assert_eq!(s.total, 99);
+        // v4.5.0: 99 -> 103 — typed declassification. `identifier` (what a
+        // type IS), `declassify` (the verb that retires a regulatory class),
+        // `attest` (the signature over what no compiler decided) and `census`
+        // (the world-fact a three-digit postal code leans on). Without these
+        // rows an agent asked to write a HIPAA de-identification finds the
+        // badge that says data is regulated and nothing that says how it
+        // stops being.
+        assert_eq!(s.total, 103);
     }
 
     /// Phase 5 — every MCP prompt shipped under

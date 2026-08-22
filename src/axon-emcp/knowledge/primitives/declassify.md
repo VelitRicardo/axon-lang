@@ -1,0 +1,111 @@
+---
+name: declassify
+summary: Retires a regulatory class from a value, producing a different type. The legitimate door out of a regulated region.
+category: cognitive_io
+top_level: false
+since: v4.5.0
+grammar: |
+  declassify <Class> from <value> -> <DestinationType> via <Shield>
+---
+
+# `declassify`
+
+Retires a regulatory class from a value. The result is a **different type** —
+one the program has declared no longer carries the class.
+
+```axon
+declassify HIPAA from record -> DeidentifiedNote via SafeHarborShield
+```
+
+## Why the verb exists
+
+Every boundary in the language checks coverage: a value carrying a class needs a
+control that covers it wherever it crosses out. That is `axon-T957`,
+`axon-T1215`, `axon-T1221` and the three egress rules.
+
+Closing a border without opening a legitimate door does not remove the traffic.
+It pushes it into a side channel that is trivial to write and invisible to the
+compiler: **copy the fields into an unlabelled type**. The class does not follow
+intra-expression flow, so nothing sees it happen.
+
+An adopter who de-identifies legitimately — HIPAA Safe Harbor is literally *"this
+is no longer PHI"* — had no way to say so, so they would invent one. This verb is
+the version the compiler can check, and it is cheaper to write than the wrong
+one.
+
+## What the compiler decides, and what it does not
+
+It does **not** decide that a value stopped being PHI. It refuses claims that
+cannot be true and lets a possible one through with an author's name on it.
+
+| Code | Refused |
+|---|---|
+| `axon-T1226` | a class outside Κ — retiring something that was never a class is an assertion about nothing, and every coverage law downstream would find it satisfied |
+| `axon-T1227` | a shield that does not declare `declassifies:` — scanning is not declassifying |
+| `axon-T1228` | a destination type that STILL carries the class |
+| `axon-T1229` | a kept identifier the regime allows only in reduced form, that the shield does not reduce |
+| `axon-T1234` | no `attest` for the destination type |
+
+The verb **names the class** rather than leaving it to the shield, so a reader of
+the flow sees what was retired without going to look it up.
+
+## What actually happens to the data
+
+The compiler resolves a plan at lowering — which fields survive, and which of
+those survive only reduced — and the plan rides the node. The runtime executes
+it and re-derives nothing.
+
+**The projection is the suppression.** A field the destination type has no slot
+for cannot survive into it, by construction rather than by someone remembering
+to name it. That is why `suppress:` on the shield is a declaration of capability
+and not the mechanism: the mechanism cannot forget.
+
+Then the fields the regime allows only in reduced form are reduced — a date to
+its year, a postal code to three digits, an age over 89 to one category. Safe
+Harbor does not ask you to delete the date; it asks for the year, and an adopter
+who keeps the year keeps analysable data.
+
+**Every fork fails closed.** A value that cannot be reduced honestly fails the
+whole operation rather than being passed through, because a record with four
+fields reduced and the fifth skipped is emitted as de-identified and is not.
+
+## The kind is a property of the TYPE
+
+This is the detail that decides whether the guarantee is real:
+
+```axon
+type BirthDate identifier date { value: Text }
+
+type PatientRecord compliance [HIPAA] {
+    dob: BirthDate      // ✅ carries the `date` kind
+    admitted: Text      // ⚠️ carries no kind — nothing will generalise it
+}
+```
+
+A field typed `Text` tells the compiler nothing about what it holds, so nothing
+is suppressed or reduced for it and no diagnostic fires. That is correct and
+explicit — the compiler will not guess what your data is — but it means a
+de-identification written against untyped fields protects nothing. Give the
+identifier-bearing fields a type that declares its kind.
+
+## What this primitive is NOT
+
+- **Not a certification.** The compiler proves the enumerable part. The
+  eighteenth Safe Harbor class and the actual-knowledge clause are signed, not
+  proved — see [`attest`](attest).
+- **Not a de-identification toolkit.** `suppress` and `generalise` are simple
+  operations. There is no k-anonymity, no l-diversity, no differential privacy.
+  An adopter who needs an ε needs it **in addition**.
+- **Not a laundering route.** The destination type still faces every coverage
+  law. Retiring HIPAA from a value that also carries GDPR leaves GDPR standing.
+- **Not narrated.** The verb runs its handler on both execution paths; a model
+  is never asked to perform one. A plausible sentence accepted in place of a
+  de-identification would disable the boundary laws rather than merely return a
+  wrong answer.
+
+## See also
+
+- [`attest`](attest) — the signature over what the compiler could not decide
+- [`identifier`](identifier) — how a type says what it is
+- [`shield`](shield) — the control that declares `declassifies:`
+- [`compliance`](compliance) — the badge this verb retires

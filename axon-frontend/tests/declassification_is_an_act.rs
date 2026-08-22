@@ -51,7 +51,7 @@ const CLEAN_TYPE: &str = "type ClinicalNote { note: String }\n";
 const AUTHORISED: &str =
     "shield SafeHarbor { scan: [pii_leak]  compliance: [HIPAA]  declassifies: [HIPAA]  suppress: [ssn]  on_breach: halt }\n";
 
-/// v4.6.0 — the signature over what the compiler could not decide.
+/// v4.5.0 — the signature over what the compiler could not decide.
 ///
 /// Every legitimate declassification now carries one (`axon-T1234`), so the
 /// positive fixtures below include it. Its own laws live in

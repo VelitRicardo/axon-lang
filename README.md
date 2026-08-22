@@ -50,6 +50,7 @@
   <code>topology</code> · <code>session</code> · <code>send</code> · <code>receive</code> · <code>select</code> · <code>branch</code> ·
   <code>immune</code> · <code>reflex</code> · <code>heal</code> ·
   <code>compliance</code><br>
+  <code>identifier</code> · <code>declassify</code> · <code>attest</code> · <code>census</code><br>
   <code>component</code> · <code>view</code><br>
   <!-- Enterprise I/O capabilities (v2.37.0–v2.40.0) -->
   <code>cache</code> · <code>voice</code> · <code>shell</code> · <code>path rewrite</code> · <code>PASETO</code><br>

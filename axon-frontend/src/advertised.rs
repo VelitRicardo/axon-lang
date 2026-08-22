@@ -876,6 +876,38 @@ pub const ADVERTISED: &[(&str, RuntimeStatus)] = &[
     // is the adopter's shield/flow design, not something a compiler can
     // infer — the ESK maps controls to evidence with that qualifier stated.
     ("compliance", Attested { fixture: "tests/fixtures/channel_kappa/phi_relay.axon", gate: "tests/channel_kappa.rs" }),
+    // ── v4.5.0 — typed declassification ────────────────
+    //
+    // All four cite the same fixture and the same gate.
+    //
+    // The v4.5.0 audit found `declassify` reaching production NARRATED: the
+    // non-streaming executor handed the verb to the language model and bound
+    // its prose under the de-identified type, and every κ boundary downstream
+    // read that type and waved it through. So the gate these rows need is one
+    // that walks the ROUTING decision, not merely the handler.
+    //
+    // The parity corpus was the obvious candidate and is the WRONG one: it
+    // drives its sync path with the `stub` backend, which returns before the
+    // routing decision is evaluated. Citing it would have reproduced exactly
+    // the defect this table exists to prevent — a row naming a gate that never
+    // walks the path it attests. The gate below compiles the fixture off disk
+    // and checks where the node is routed and what plan it carries there.
+    ("identifier", Attested {
+        fixture: "tests/fixtures/parity_corpus/medicine/11_safe_harbor_declassification.axon",
+        gate: "tests/a_verb_is_not_narrated_by_a_model.rs",
+    }),
+    ("declassify", Attested {
+        fixture: "tests/fixtures/parity_corpus/medicine/11_safe_harbor_declassification.axon",
+        gate: "tests/a_verb_is_not_narrated_by_a_model.rs",
+    }),
+    ("attest", Attested {
+        fixture: "tests/fixtures/parity_corpus/medicine/11_safe_harbor_declassification.axon",
+        gate: "tests/a_verb_is_not_narrated_by_a_model.rs",
+    }),
+    ("census", Attested {
+        fixture: "tests/fixtures/parity_corpus/medicine/11_safe_harbor_declassification.axon",
+        gate: "tests/a_verb_is_not_narrated_by_a_model.rs",
+    }),
     ("component", Partial { gap: "v2.67.0 — the compile-time shield-coverage law over regulated κ IS genuinely enforced (a real set difference). But the component renders NOTHING; the README itself defers the renderer" }),
     ("view", Partial { gap: "v2.67.0 — only referential integrity is checked. No `route` check, no session-typed-reactivity check, and it renders nothing" }),
     // ── Enterprise I/O (v2.37.0–v2.40.0)
