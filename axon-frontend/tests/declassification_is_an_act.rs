@@ -49,7 +49,7 @@ fn hits(src: &str, code: &str) -> Vec<String> {
 const SOURCE_TYPE: &str = "type PatientRecord compliance [HIPAA] { ssn: String }\n";
 const CLEAN_TYPE: &str = "type ClinicalNote { note: String }\n";
 const AUTHORISED: &str =
-    "shield SafeHarbor { scan: [pii_leak]  compliance: [HIPAA]  declassifies: [HIPAA]  on_breach: halt }\n";
+    "shield SafeHarbor { scan: [pii_leak]  compliance: [HIPAA]  declassifies: [HIPAA]  suppress: [ssn]  on_breach: halt }\n";
 
 fn flow(stmt: &str) -> String {
     format!(
