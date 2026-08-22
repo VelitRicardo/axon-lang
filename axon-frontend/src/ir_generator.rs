@@ -124,6 +124,11 @@ pub struct IRGenerator {
     /// declared scan it has no scanner for; it can only do that if the artifact
     /// carries what was declared.
     shield_scans: HashMap<String, Vec<String>>,
+    /// v4.5.0 — declassification plans, resolved once and keyed by
+    /// `"<destination type>|<shield>"`. Collected in the same up-front pass as
+    /// the shield policies, for the same reason: the step walker sees one node
+    /// at a time and the plan needs the whole program.
+    declassification_plans: HashMap<String, (Vec<String>, Vec<(String, String)>)>,
     /// v2.76.0 — dotted module path → `.axi` interface hash for every
     /// module the EMS resolved in this compilation. Empty (every pre-v2.76.0
     /// caller) ⇒ `visit_import` lowers exactly as in v2.75.0 (the new
@@ -152,6 +157,7 @@ impl IRGenerator {
             resource_channels: HashMap::new(),
             shield_policies: HashMap::new(),
             shield_scans: HashMap::new(),
+            declassification_plans: HashMap::new(),
             import_resolution: std::collections::BTreeMap::new(),
         }
     }
@@ -249,6 +255,84 @@ impl IRGenerator {
     /// it asserts nothing about the content, so the OSS identity passthrough
     /// stays honest for it (v2.83.0's argument, which this cycle keeps rather
     /// than reverses).
+    /// v4.5.0 — resolve a declassification into the plan the runtime executes.
+    ///
+    /// The compiler has the type graph and the regime table; the runtime has
+    /// neither. Re-deriving this at dispatch would mean shipping the type
+    /// graph to the runtime and hoping the two derivations agree — the shape
+    /// that has cost this project real work every time it appeared. So the
+    /// decision is made once, here, and travels.
+    ///
+    /// Returns `(keep, generalise)`:
+    ///
+    /// - `keep` — the destination type's field names. Everything the source
+    ///   had and the destination does not is dropped by projection, and that
+    ///   projection IS the suppression: a field the destination has no slot
+    ///   for cannot survive into it.
+    /// - `generalise` — `(field, operation)` for kept fields whose type
+    ///   carries an identifier kind the regime allows in reduced form. The
+    ///   operation comes from the regime table; the shield only said WHICH.
+    /// v4.5.0 — resolve every declassification in the program, once.
+    fn collect_declassification_plans(&mut self, program: &Program) {
+        let mut found: Vec<(String, String)> = Vec::new();
+        for d in &program.declarations {
+            if let Declaration::Flow(f) = d {
+                for step in &f.body {
+                    if let FlowStep::Declassify(dc) = step {
+                        found.push((dc.output_type.clone(), dc.shield.clone()));
+                    }
+                }
+            }
+        }
+        for (output_type, shield) in found {
+            let plan = self.resolve_declassification(program, &output_type, &shield);
+            self.declassification_plans
+                .insert(format!("{output_type}|{shield}"), plan);
+        }
+    }
+    fn resolve_declassification(
+        &self,
+        program: &Program,
+        output_type: &str,
+        shield: &str,
+    ) -> (Vec<String>, Vec<(String, String)>) {
+        let Some(dest) = program.declarations.iter().find_map(|d| match d {
+            Declaration::Type(t) if t.name == output_type => Some(t),
+            _ => None,
+        }) else {
+            return (Vec::new(), Vec::new());
+        };
+        let generalised: Vec<String> = program
+            .declarations
+            .iter()
+            .find_map(|d| match d {
+                Declaration::Shield(s) if s.name == shield => Some(s.generalise.clone()),
+                _ => None,
+            })
+            .unwrap_or_default();
+
+        let mut keep = Vec::new();
+        let mut ops = Vec::new();
+        for f in &dest.fields {
+            keep.push(f.name.clone());
+            let spelling = if f.type_expr.generic_param.is_empty() {
+                f.type_expr.name.clone()
+            } else {
+                format!("{}<{}>", f.type_expr.name, f.type_expr.generic_param)
+            };
+            for kind in crate::compliance::transitive_identifiers(program, &spelling) {
+                if !generalised.iter().any(|g| g == &kind) {
+                    continue;
+                }
+                if let Some(crate::compliance::Deidentify::Generalise(op)) =
+                    crate::compliance::safe_harbor_rule(&kind).map(|r| r.operation)
+                {
+                    ops.push((f.name.clone(), format!("{op:?}").to_ascii_lowercase()));
+                }
+            }
+        }
+        (keep, ops)
+    }
     fn collect_shield_scans(&mut self, decls: &[Declaration]) {
         for decl in decls {
             match decl {
@@ -333,6 +417,7 @@ impl IRGenerator {
         // that asserts something (and must refuse when nothing can check it)
         // from a shield that only filters (where absence is honest).
         self.collect_shield_scans(&program.declarations);
+        self.collect_declassification_plans(program);
         // v2.87.0 — and the effect catalog, so the design decision's bare-name resolution
         // is order-independent: `flow F { … perform Emit(x) … }` must resolve
         // whether `effect SSE { Emit … }` was written above it or below.
@@ -1419,6 +1504,16 @@ impl IRGenerator {
                 source: d.source.clone(),
                 output_type: d.output_type.clone(),
                 shield: d.shield.clone(),
+                keep: self
+                    .declassification_plans
+                    .get(&format!("{}|{}", d.output_type, d.shield))
+                    .map(|p| p.0.clone())
+                    .unwrap_or_default(),
+                generalise: self
+                    .declassification_plans
+                    .get(&format!("{}|{}", d.output_type, d.shield))
+                    .map(|p| p.1.clone())
+                    .unwrap_or_default(),
             }),
             FlowStep::ShieldApply(s) => IRFlowNode::ShieldApply(IRShieldApplyStep {
                 node_type: "shield_apply",

@@ -407,6 +407,106 @@ pub enum BreachDisposition {
 
 /// Recursively mask every field named in `redact` (case-sensitive, the
 /// declared spelling) anywhere in the JSON tree.
+/// v4.5.0 — reduce one value to the form the regulation permits.
+///
+/// Safe Harbor does not ask you to delete the date; it asks for the year. These
+/// are the three reductions the compiler knows how to require, and each one
+/// FAILS rather than guessing: a value that does not have the shape the
+/// operation expects is not silently passed through, because passing it
+/// through would leave an identifier in a record the program says is
+/// de-identified.
+pub fn generalise_value(op: &str, value: &serde_json::Value) -> Result<serde_json::Value, String> {
+    let text = match value {
+        serde_json::Value::String(s) => s.clone(),
+        serde_json::Value::Number(n) => n.to_string(),
+        other => {
+            return Err(format!(
+                "cannot apply `{op}` to {other}: the operation needs a string or a number"
+            ))
+        }
+    };
+
+    match op {
+        // A date reduced to its year. ISO-8601 leads with the year, which is
+        // the shape this compiler produces and the one the corpus teaches.
+        "year" => {
+            let year: String = text.chars().take_while(|c| c.is_ascii_digit()).collect();
+            if year.len() != 4 {
+                return Err(format!(
+                    "cannot reduce {text:?} to a year: it does not begin with four digits. \
+                     Refusing rather than emitting a date that was never generalised."
+                ));
+            }
+            Ok(serde_json::Value::String(year))
+        }
+        // A postal code reduced to three digits. Whether the resulting unit
+        // exceeds 20,000 people is a fact about the world, declared per
+        // deployment — not decided here.
+        "zip3" => {
+            let digits: String = text.chars().filter(|c| c.is_ascii_digit()).collect();
+            if digits.len() < 3 {
+                return Err(format!(
+                    "cannot reduce {text:?} to three digits: it has fewer than three."
+                ));
+            }
+            Ok(serde_json::Value::String(digits[..3].to_string()))
+        }
+        // Ages above 89 collapse into one category, because a 92-year-old is
+        // rare enough that the age alone narrows the population.
+        "agecap" | "age_cap" => {
+            let n: i64 = text.trim().parse().map_err(|_| {
+                format!("cannot cap {text:?}: it is not a whole number of years")
+            })?;
+            Ok(serde_json::Value::String(if n > 89 {
+                "90+".to_string()
+            } else {
+                n.to_string()
+            }))
+        }
+        other => Err(format!(
+            "unknown generalisation `{other}` — the compiler emitted an operation this \
+             runtime does not implement, which means the two catalogues have drifted"
+        )),
+    }
+}
+
+/// v4.5.0 — perform a declassification: project, then reduce.
+///
+/// The projection IS the suppression. A field the destination type has no slot
+/// for cannot survive into it, so dropping everything outside `keep` removes
+/// the identifiers the destination was designed without — and does it by
+/// construction rather than by remembering to name each one.
+///
+/// Then the kept fields the regulation allows only in reduced form are reduced.
+/// Anything that cannot be reduced fails the whole operation: emitting a record
+/// the program calls de-identified while one field was skipped is the failure
+/// this entire line of work exists to prevent.
+pub fn declassify_value(
+    value: &serde_json::Value,
+    keep: &[String],
+    generalise: &[(String, String)],
+) -> Result<serde_json::Value, String> {
+    let serde_json::Value::Object(src) = value else {
+        return Err(format!(
+            "declassification needs a structured value; got {value}. A scalar has no \
+             fields to project, so there is nothing this operation could honestly do."
+        ));
+    };
+
+    let mut out = serde_json::Map::new();
+    for field in keep {
+        let Some(v) = src.get(field) else { continue };
+        match generalise.iter().find(|(f, _)| f == field) {
+            Some((_, op)) => {
+                out.insert(field.clone(), generalise_value(op, v)?);
+            }
+            None => {
+                out.insert(field.clone(), v.clone());
+            }
+        }
+    }
+    Ok(serde_json::Value::Object(out))
+}
 fn mask_fields(value: &mut serde_json::Value, redact: &[String]) {
     match value {
         serde_json::Value::Object(map) => {

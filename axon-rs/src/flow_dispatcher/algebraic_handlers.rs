@@ -253,6 +253,75 @@ pub async fn run_shield_apply(
 }
 
 // ────────────────────────────────────────────────────────────────────
+//  Declassify
+// ────────────────────────────────────────────────────────────────────
+
+/// v4.5.0 — `declassify <Class> from <v> -> <Type> via <Shield>`, performed.
+///
+/// The compiler already decided everything: which fields survive, and which of
+/// those are kept only in reduced form. That plan rides the node, so this
+/// function re-derives nothing — it executes.
+///
+/// Every fork fails closed, and the reason is narrow: the output of this
+/// operation is a value the program has declared no longer regulated. If the
+/// transformation is skipped, partially applied, or applied to something it
+/// does not understand, the result is a record carrying identifiers that every
+/// downstream boundary will now wave through. There is no safe approximation
+/// available here, so there is no approximation.
+pub async fn run_declassify(
+    node: &axon_frontend::ir_nodes::IRDeclassifyStep,
+    ctx: &mut DispatchCtx,
+) -> Result<NodeOutcome, DispatchError> {
+    if ctx.cancel.is_cancelled() {
+        return Err(DispatchError::UpstreamCancelled);
+    }
+    let step_index = ctx.step_counter;
+    ctx.step_counter += 1;
+
+    let blame = |message: String| DispatchError::BackendError {
+        name: format!("declassify:{}", node.class),
+        message,
+    };
+
+    let resolved = ctx
+        .let_bindings
+        .get(&node.source)
+        .cloned()
+        .unwrap_or_else(|| node.source.clone());
+
+    // A non-structured candidate has no fields to project, so there is nothing
+    // this operation could honestly do to it. Same stance the sanitize path
+    // takes for the same reason: fail-closed beats guessing at a
+    // transformation the adopter never declared.
+    let parsed: serde_json::Value = serde_json::from_str(&resolved).map_err(|e| {
+        blame(format!(
+            "the value bound to `{}` is not structured data ({e}), so its fields cannot be projected or reduced. Refusing rather than emitting it unchanged under a type that says it was de-identified.",
+            node.source
+        ))
+    })?;
+
+    let out = crate::shield_registry::declassify_value(&parsed, &node.keep, &node.generalise)
+        .map_err(|e| {
+            blame(format!(
+                "declassifying {} via {}: {e}",
+                node.class, node.shield
+            ))
+        })?;
+
+    let rendered = out.to_string();
+    if !node.output_type.is_empty() {
+        ctx.let_bindings
+            .insert(node.output_type.clone(), rendered.clone());
+    }
+
+    Ok(NodeOutcome::Completed {
+        output: rendered,
+        tokens_emitted: 0,
+        step_index,
+    })
+}
+
+// ────────────────────────────────────────────────────────────────────
 //  OtsApply
 // ────────────────────────────────────────────────────────────────────
 

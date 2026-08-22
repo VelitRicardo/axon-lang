@@ -1732,6 +1732,18 @@ pub struct IRDeclassifyStep {
     pub output_type: String,
     /// The shield that authorised it.
     pub shield: String,
+    /// v4.5.0 — the RESOLVED PLAN. The compiler has the type graph and the
+    /// regime table; the runtime has neither, so it does not re-derive what to
+    /// do — it executes what was decided. Same shape as the breach policy
+    /// riding a shield-apply: one decision, made where the facts are.
+    ///
+    /// The field names the destination type keeps. Everything else is dropped
+    /// by projection, which IS the suppression: a field the destination does
+    /// not have cannot survive into it.
+    pub keep: Vec<String>,
+    /// `(field, operation)` for the fields kept in REDUCED form. The operation
+    /// slug comes from the regime table, never from the author.
+    pub generalise: Vec<(String, String)>,
 }
 
 #[derive(Debug, Clone, Serialize)]

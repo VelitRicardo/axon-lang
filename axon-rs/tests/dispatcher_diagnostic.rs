@@ -441,6 +441,8 @@ fn ir_flow_node_catalog_pin_45_variants() {
         // count) to be updated in lockstep.
         match node {
             // v2.65.0 — the proof-carrying derivative (49th variant).
+            // v4.5.0 — the declassification (the 50th variant).
+            IRFlowNode::Declassify(_) => "declassify",
             IRFlowNode::Grad(_) => "grad",
             IRFlowNode::Step(_) => "step",
             IRFlowNode::Probe(_) => "probe",

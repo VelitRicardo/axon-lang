@@ -1567,25 +1567,8 @@ pub async fn dispatch_node(
         IRFlowNode::Aggregate(node) => cognitive::run_aggregate(node, ctx).await,
         IRFlowNode::Explore(node) => cognitive::run_explore(node, ctx).await,
         IRFlowNode::Ingest(node) => cognitive::run_ingest(node, ctx).await,
-        // v1.24.0 — algebraic-effect handler nodes graduated.
-        // v4.5.0 — a declassification is DECIDED at compile time (T1226 / T1227
-        // / T1228) and not yet APPLIED at run time: the suppress/generalise
-        // engine is the next step of this cycle.
-        //
-        // It fails closed rather than passing the value through. An arm that
-        // returned the input unchanged would hand downstream a value the program
-        // says is de-identified and that nothing has touched — the worst possible
-        // shape for this particular promise, because the adopter only discovers
-        // it from the outside.
-        IRFlowNode::Declassify(node) => Err(DispatchError::BackendError {
-            name: "declassify".to_string(),
-            message: format!(
-            "declassify {} via {}: the type checker accepted it, and the runtime that \
-             suppresses and generalises the identifier fields is not wired yet. \
-             Refusing rather than emitting a value that claims to be de-identified.",
-                node.class, node.shield
-            ),
-        }),
+        // v4.5.0 — the plan was resolved at lowering; this executes it.
+        IRFlowNode::Declassify(node) => algebraic_handlers::run_declassify(node, ctx).await,
         IRFlowNode::ShieldApply(node) => algebraic_handlers::run_shield_apply(node, ctx).await,
         // v1.24.0 — Stream graduated to real async handler.
         // The payload-free `IRStreamBlock` emits the canonical
