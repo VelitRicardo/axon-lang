@@ -559,6 +559,10 @@ fn collect_store_accesses(steps: &[crate::ir_nodes::IRFlowNode], out: &mut Vec<S
     use crate::ir_nodes::IRFlowNode as N;
     for step in steps {
         match step {
+            // A declassification names no store and calls no tool: it
+            // transforms a value in place, under a control the type
+            // checker already verified.
+            N::Declassify(_) => {}
             // v2.65.0 — a grad touches no store.
             N::Grad(_) => {}
             // ── store ops — the only axonstore-touching nodes ──
@@ -804,6 +808,10 @@ fn collect_named_use_tool_calls<'a>(
     use crate::ir_nodes::IRFlowNode as N;
     for step in steps {
         match step {
+            // A declassification names no store and calls no tool: it
+            // transforms a value in place, under a control the type
+            // checker already verified.
+            N::Declassify(_) => {}
             // v2.65.0 — a grad dispatches no tool.
             N::Grad(_) => {}
             // ── target — a structured (keyword-arg) tool dispatch ──

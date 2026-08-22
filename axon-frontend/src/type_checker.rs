@@ -5369,6 +5369,79 @@ impl<'a> TypeChecker<'a> {
     /// kind the compiler does not recognise is not a weaker claim about the
     /// data — it is a claim about nothing, which a de-identification rule
     /// would then compare against and find satisfied.
+    /// v4.5.0 — the three laws of a declassification.
+    ///
+    /// Retiring a regulatory class is an ACT. The compiler does not decide that
+    /// a value stopped being PHI — it refuses the claim when the claim is
+    /// structurally impossible, and lets a possible one through with the
+    /// author's name on it.
+    ///
+    /// What it refuses:
+    ///
+    /// 1. a class outside Κ — the same closed vocabulary the rest of the
+    ///    compliance surface uses (`axon-T1226`);
+    /// 2. a shield that does not declare the capability. Scanning is not
+    ///    declassifying, and a control that can end a regulatory obligation
+    ///    says so in its own declaration (`axon-T1227`);
+    /// 3. a destination type that STILL CARRIES the class. This is the one
+    ///    that makes the verb worth having: you cannot declare a record
+    ///    de-identified while the type you produce still says it is PHI
+    ///    (`axon-T1228`).
+    fn check_declassify(&mut self, d: &crate::ast::DeclassifyStep) {
+        // 1. the class is a real one
+        if !crate::compliance::is_known(&d.class) {
+            let suggestion = match crate::compliance::nearest_class(&d.class) {
+                Some(near) => format!(" Did you mean `{near}`?"),
+                None => String::new(),
+            };
+            self.emit(
+                format!(
+                    "axon-T1226 `declassify {}` names something that is not a regulatory class.{suggestion} Retiring a class that was never a class is an assertion about nothing — and one every coverage law downstream would then find satisfied.",
+                    d.class
+                ),
+                &d.loc,
+            );
+            return;
+        }
+
+        // 2. the shield is authorised
+        match find_shield_by_name(self.program, &d.shield) {
+            None => {
+                self.emit(
+                    format!(
+                        "axon-T1227 `declassify {} … via {}` names a shield that is not declared.",
+                        d.class, d.shield
+                    ),
+                    &d.loc,
+                );
+                return;
+            }
+            Some(shield) => {
+                if !shield.declassifies.iter().any(|c| c == &d.class) {
+                    self.emit(
+                        format!(
+                            "axon-T1227 shield '{}' does not declare `declassifies: [{}]`, so it cannot authorise retiring that class. Scanning is not declassifying: a control that can END a regulatory obligation declares the capability, and one that merely inspects content must not be able to end one by being named here.",
+                            d.shield, d.class
+                        ),
+                        &d.loc,
+                    );
+                    return;
+                }
+            }
+        }
+
+        // 3. the destination type does not still carry the class
+        let remaining = crate::compliance::transitive_kappa(self.program, &d.output_type);
+        if remaining.contains(&d.class) {
+            self.emit(
+                format!(
+                    "axon-T1228 `declassify {} from {} -> {}` produces a type that STILL carries {}. A declassification whose result is still regulated has retired nothing — and the boundary downstream reads the type, not the intent. Produce a type without the class, or without the field that carries it.",
+                    d.class, d.source, d.output_type, d.class
+                ),
+                &d.loc,
+            );
+        }
+    }
     fn check_identifier_kind(&mut self, kind: &str, owner: &str, loc: &Loc) {
         if kind.is_empty() || crate::compliance::is_known_identifier(kind) {
             return;
@@ -10936,6 +11009,9 @@ impl<'a> TypeChecker<'a> {
             std::collections::HashMap::new();
         for step in steps {
             match step {
+                // v4.5.0 — the three laws of a declassification live in one
+                // place; the walker only has to reach them.
+                FlowStep::Declassify(d) => self.check_declassify(d),
                 FlowStep::ShieldApply(n) => {
                     if !n.shield_name.is_empty() {
                         match self.symbols.lookup(&n.shield_name) {

@@ -3542,6 +3542,7 @@ impl Parser {
             TokenType::Aggregate => self.parse_aggregate_step(),
             TokenType::Explore => self.parse_explore_step(),
             TokenType::Ingest => self.parse_ingest_step(),
+            TokenType::Declassify => self.parse_declassify_step().map(FlowStep::Declassify),
             TokenType::Shield => self.parse_apply_step("shield").map(|l| FlowStep::ShieldApply(ShieldApplyStep { shield_name: l.1, target: l.2, output_type: l.3, loc: l.0 })),
             // v2.67.0 — `stream` parses its BODY. It used to go through
             // `parse_block_step`, whose entire job is `skip_braced_block()` —
@@ -5632,6 +5633,74 @@ impl Parser {
         })
     }
 
+    /// v4.5.0 — `declassify <Class> from <source> -> <Type> via <Shield>`.
+    ///
+    /// Shaped after `shield <S> on <v> -> <out>` on purpose: an adopter who
+    /// learned one reads the other. What differs is that every part is
+    /// REQUIRED. An apply-step tolerates a missing target because it still
+    /// means something; a declassification with no class, no source, no
+    /// destination type or no authorising shield does not — it would be an
+    /// assertion about nothing that the coverage laws would then honour.
+    fn parse_declassify_step(&mut self) -> Result<DeclassifyStep, ParseError> {
+        let tok = self.current().clone();
+        self.advance();
+
+        let class = self.consume_any_ident_or_kw()?.value.clone();
+
+        if self.current().value != "from" {
+            return Err(ParseError {
+                message: format!(
+                    "`declassify {class}` must name the value it retires the class from: \
+                     `declassify {class} from <value> -> <Type> via <Shield>`. Found `{}`.",
+                    self.current().value
+                ),
+                line: self.current().line,
+                column: self.current().column,
+                source_snippet: None,
+            });
+        }
+        self.advance();
+        let source = self.parse_subject()?;
+
+        if !self.check(TokenType::Arrow) {
+            return Err(ParseError {
+                message: format!(
+                    "`declassify {class} from {source}` must name the TYPE the value leaves \
+                     as: `-> <Type>`. A declassification that does not change the type \
+                     changes nothing a trust boundary can read."
+                ),
+                line: self.current().line,
+                column: self.current().column,
+                source_snippet: None,
+            });
+        }
+        self.advance();
+        let output_type = self.consume_any_ident_or_kw()?.value.clone();
+
+        if self.current().value != "via" {
+            return Err(ParseError {
+                message: format!(
+                    "`declassify {class} from {source} -> {output_type}` must name the \
+                     shield that authorises it: `via <Shield>`. Retiring a regulatory \
+                     class is a capability a control declares, not something a step may \
+                     do on its own."
+                ),
+                line: self.current().line,
+                column: self.current().column,
+                source_snippet: None,
+            });
+        }
+        self.advance();
+        let shield = self.consume_any_ident_or_kw()?.value.clone();
+
+        Ok(DeclassifyStep {
+            class,
+            source,
+            output_type,
+            shield,
+            loc: Loc { line: tok.line, column: tok.column },
+        })
+    }
     fn parse_apply_step(&mut self, _kw: &str) -> Result<(Loc, String, String, String), ParseError> {
         let tok = self.current().clone();
         self.advance(); // consume keyword
@@ -7454,6 +7523,7 @@ impl Parser {
         let tok = self.consume(TokenType::Shield)?;
         let name = self.consume(TokenType::Identifier)?.value;
         let mut node = ShieldDefinition {
+            declassifies: Vec::new(),
             name,
             scan: Vec::new(),
             strategy: String::new(),
@@ -7507,6 +7577,9 @@ impl Parser {
                         node.sandbox = Some(self.consume_any_ident_or_kw()?.value == "true")
                     }
                     "redact" => node.redact = self.parse_bracketed_identifiers()?,
+                    // v4.5.0 — the classes this control may RETIRE. Empty for
+                    // almost every shield: scanning is not declassifying.
+                    "declassifies" => node.declassifies = self.parse_bracketed_identifiers()?,
                     "log" => node.log = self.consume_any_ident_or_kw()?.value.clone(),
                     "deflect_message" => {
                         node.deflect_message = self.consume(TokenType::StringLit)?.value.clone()

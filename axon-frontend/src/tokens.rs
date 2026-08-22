@@ -166,6 +166,12 @@ pub enum TokenType {
     Mutate,
     Purge,
     Transact,
+    /// v4.5.0 — `declassify <Class> from <v> -> <Type> via <Shield>`: the
+    /// legitimate way to retire a regulatory class from a value. Closing the
+    /// egress border without this verb does not remove the traffic — it pushes
+    /// it to copying fields into an unlabelled type, which is exactly the
+    /// decomposition κ cannot see.
+    Declassify,
     // AxonEndpoint
     AxonEndpoint,
     // v2.5.0 — Closed-catalog extension mechanism
@@ -553,6 +559,7 @@ pub fn keyword_type(word: &str) -> TokenType {
         "mutate" => TokenType::Mutate,
         "purge" => TokenType::Purge,
         "transact" => TokenType::Transact,
+        "declassify" => TokenType::Declassify,
         "axonendpoint" | "axpoint" => TokenType::AxonEndpoint,
         // v2.5.0 — Closed-catalog extension mechanism
         "extension" => TokenType::Extension,

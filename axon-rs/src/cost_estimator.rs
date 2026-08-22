@@ -166,7 +166,10 @@ fn classify_node(node: &IRFlowNode) -> StepKind {
         | IRFlowNode::Drill(_) | IRFlowNode::Trail(_)
         | IRFlowNode::Corroborate(_) | IRFlowNode::Listen(_)
         | IRFlowNode::DaemonStep(_) | IRFlowNode::Hibernate(_) => StepKind::Cognitive,
-        IRFlowNode::ShieldApply(_) | IRFlowNode::OtsApply(_)
+        // A declassification costs no model call: it is a structural
+        // transformation, like applying a shield.
+        IRFlowNode::Declassify(_)
+        | IRFlowNode::ShieldApply(_) | IRFlowNode::OtsApply(_)
         | IRFlowNode::MandateApply(_) | IRFlowNode::ComputeApply(_)
         | IRFlowNode::LambdaDataApply(_) | IRFlowNode::Transact(_) => StepKind::Control,
         // v1.6.0 — Mobile typed channel reductions are π-calc

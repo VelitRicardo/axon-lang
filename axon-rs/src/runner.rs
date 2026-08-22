@@ -680,6 +680,7 @@ fn strip_matching_quotes(s: &str) -> &str {
 fn extract_step_info(node: &IRFlowNode) -> (String, String, String) {
     match node {
         IRFlowNode::Step(s) => (s.name.clone(), "step".to_string(), s.ask.clone()),
+        IRFlowNode::Declassify(s) => (s.output_type.clone(), "declassify".to_string(), format!("Declassify {} from {} via {}", s.class, s.source, s.shield)),
         IRFlowNode::Grad(s) => (s.output.clone(), "grad".to_string(), format!("Grad: d({})/d{:?}", s.target, s.wrt)),
         IRFlowNode::Probe(s) => (s.target.clone(), "probe".to_string(), format!("Probe: {}", s.target)),
         IRFlowNode::Reason(s) => (s.target.clone(), "reason".to_string(), format!("Reason about: {}", s.target)),

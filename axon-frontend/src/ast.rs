@@ -1537,6 +1537,11 @@ pub struct ShieldDefinition {
     pub deny_tools: Vec<String>,
     pub sandbox: Option<bool>,
     pub redact: Vec<String>,
+    /// v4.5.0 — the regulatory classes this shield is authorised to RETIRE.
+    ///
+    /// Empty for almost every shield, and that is the point: scanning is not
+    /// declassifying. A control that can end a regulatory obligation says so.
+    pub declassifies: Vec<String>,
     pub log: String,
     pub deflect_message: String,
     pub taint: String,
@@ -2662,6 +2667,7 @@ pub enum FlowStep {
     ExploreStep(ExploreStepNode),
     Ingest(IngestStep),
     ShieldApply(ShieldApplyStep),
+    Declassify(DeclassifyStep),
     Stream(StreamBlock),
     /// v2.87.0 — `handle E { … } in { … }`, the delimited handler scope.
     Handle(HandleBlock),
@@ -3528,6 +3534,32 @@ pub struct IngestStep {
     /// defaults apply (bounded by default, never unbounded).
     pub max_bytes: Option<u64>,
     pub max_rows: Option<u64>,
+    pub loc: Loc,
+}
+/// v4.5.0 — `declassify <Class> from <source> -> <Type> via <Shield>`.
+///
+/// Retiring a class is an ACT, not an inference. The compiler does not decide
+/// that a value stopped being PHI; someone declares it, and the compiler
+/// refuses the declaration when it is structurally impossible — when the
+/// destination type still carries the class being retired.
+///
+/// The class is NAMED at the site rather than left to the shield, so a reader
+/// of the flow sees what was retired without going to look it up.
+#[derive(Debug, Default)]
+pub struct DeclassifyStep {
+    /// The regulatory class being retired. One per statement: retiring two
+    /// classes is two acts, and collapsing them would hide which control
+    /// justified which.
+    pub class: String,
+    /// The value entering the operation.
+    pub source: String,
+    /// The DECLARED TYPE the value leaves as. It must be a different type,
+    /// because the type is the only thing a boundary reads.
+    pub output_type: String,
+    /// The shield that authorises this. It must declare the class in its own
+    /// `declassifies:` — retiring a class is a capability, not a side effect
+    /// of scanning.
+    pub shield: String,
     pub loc: Loc,
 }
 #[derive(Debug)]

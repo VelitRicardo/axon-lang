@@ -1411,6 +1411,15 @@ impl IRGenerator {
                 max_bytes: s.max_bytes,
                 max_rows: s.max_rows,
             }),
+            FlowStep::Declassify(d) => IRFlowNode::Declassify(crate::ir_nodes::IRDeclassifyStep {
+                node_type: "declassify",
+                source_line: d.loc.line,
+                source_column: d.loc.column,
+                class: d.class.clone(),
+                source: d.source.clone(),
+                output_type: d.output_type.clone(),
+                shield: d.shield.clone(),
+            }),
             FlowStep::ShieldApply(s) => IRFlowNode::ShieldApply(IRShieldApplyStep {
                 node_type: "shield_apply",
                 source_line: s.loc.line,

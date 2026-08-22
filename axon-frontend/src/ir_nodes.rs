@@ -1208,6 +1208,7 @@ pub enum IRFlowNode {
     Explore(IRExploreStep),
     Ingest(IRIngestStep),
     ShieldApply(IRShieldApplyStep),
+    Declassify(IRDeclassifyStep),
     Stream(IRStreamBlock),
     /// v2.87.0 — `handle E { … } in { … }`. The frame that makes an outer
     /// handler able to intercept an inner computation's effects without the
@@ -1711,6 +1712,26 @@ pub struct IRBreachPolicy {
     pub redact: Vec<String>,
     /// Re-scan budget for `sanitize_and_retry` (parser default: 3).
     pub max_retries: i64,
+}
+
+/// v4.5.0 — a declassification, lowered.
+///
+/// It reaches the IR because an act of governance that leaves no trace is
+/// indistinguishable from a shortcut. The evidence packager reads this: who
+/// retired which class, through which control, at which line.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
+pub struct IRDeclassifyStep {
+    pub node_type: &'static str,
+    pub source_line: u32,
+    pub source_column: u32,
+    /// The class retired.
+    pub class: String,
+    /// The value that entered.
+    pub source: String,
+    /// The type it left as.
+    pub output_type: String,
+    /// The shield that authorised it.
+    pub shield: String,
 }
 
 #[derive(Debug, Clone, Serialize)]

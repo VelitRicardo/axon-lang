@@ -138,6 +138,7 @@ pub fn find_ir_flow_by_name<'a>(
 pub fn ir_flow_node_kind(node: &IRFlowNode) -> &'static str {
     match node {
         IRFlowNode::Step(_) => "step",
+        IRFlowNode::Declassify(_) => "declassify",
         IRFlowNode::Grad(_) => "grad",
         IRFlowNode::Probe(_) => "probe",
         IRFlowNode::Reason(_) => "reason",
