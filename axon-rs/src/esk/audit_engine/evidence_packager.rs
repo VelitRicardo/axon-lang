@@ -228,6 +228,54 @@ pub fn build_evidence_package(
         );
     }
 
+    // v4.6.0 — what NO gate produced, in its own file.
+    //
+    // Every other artifact in this package is derived: the SBOM, the dossier,
+    // the control statements, the gap analysis all come from something the
+    // compiler decided. Attestations are the opposite — they are the part a
+    // person asserted because the compiler could not decide it, and mixing them
+    // into a derived file would erase exactly the distinction that makes the
+    // package worth reading.
+    //
+    // So they get a filename of their own, and it is absent entirely when the
+    // program has none: a package with no `attestations.json` says "nothing was
+    // signed here", which is a true and useful thing for an auditor to see.
+    if !program.attestations.is_empty() {
+        let entries: Vec<Value> = program
+            .attestations
+            .iter()
+            .map(|a| {
+                let mut m = Map::new();
+                m.insert("name".into(), a.name.clone().into());
+                m.insert("for".into(), a.for_type.clone().into());
+                m.insert("basis".into(), a.basis.clone().into());
+                m.insert("citation".into(), a.citation.clone().into());
+                m.insert(
+                    "residual".into(),
+                    Value::Array(a.residual.iter().cloned().map(Value::from).collect()),
+                );
+                m.insert("by".into(), a.by.clone().into());
+                m.insert("on".into(), a.on.clone().into());
+                Value::Object(m)
+            })
+            .collect();
+        let mut blob = Map::new();
+        blob.insert("schema".into(), "axon.esk.attestations.v1".into());
+        // Said in the file itself, not only in the docs: a reader who opens
+        // this one artifact must not mistake it for compiler output.
+        blob.insert(
+            "asserted_by_humans".into(),
+            "Every entry here is a determination a person signed. The compiler \
+             verified only that each is complete and cites a method the regulation \
+             defines — never that it is true."
+                .into(),
+        );
+        blob.insert("count".into(), (entries.len() as i64).into());
+        blob.insert("entries".into(), Value::Array(entries));
+        pkg.files
+            .insert("attestations.json".into(), j(&Value::Object(blob)));
+    }
+
     // Provenance chain + payloads.
     if let Some(entries) = provenance_entries {
         let mut chain_blob = Map::new();
@@ -310,6 +358,10 @@ fn build_readme(program_hash: &str, auditor_note: &str) -> String {
         "| `risk_register.json`             | ISO 27005-shaped risk register |".into(),
         "| `gap_analysis/*.json`            | Per-framework gap analysis |".into(),
         "| `control_statements/*.json`      | Pre-populated implementation statements |".into(),
+        // v4.6.0 — the one file in here nothing computed. The wording is the
+        // point: an auditor scanning this table must be able to tell the
+        // derived artifacts from the signed one without opening either.
+        "| `attestations.json`              | Human determinations — SIGNED, not derived (if any) |".into(),
         "| `provenance_chain.json`          | Runtime Merkle chain (if provided) |".into(),
         "| `source/*.axon`                  | Source snapshot at package time |".into(),
         String::new(),
@@ -543,5 +595,78 @@ mod tests {
             *pkg.files.get("README.md").unwrap(),
             "README content must round-trip"
         );
+    }
+
+    // ── v4.6.0 — the signed half travels, and is not mistaken for the rest ──
+
+    fn attested_program() -> IRProgram {
+        compile(
+            r#"
+            type R compliance [HIPAA] { x: String }
+            type Clean { note: String }
+            attest Determination {
+                for: Clean
+                basis: safe_harbor
+                residual: [other_unique_identifier, actual_knowledge]
+                by: "Compliance Officer, Acme Health"
+                on: "2026-08-21"
+            }
+            flow F(r: R) -> R { step S { ask: "x" output: R } }
+        "#,
+        )
+    }
+
+    #[test]
+    fn an_attestation_reaches_the_evidence_package() {
+        // The whole point of `attest` is that the determination OUTLIVES the run
+        // that needed it. A field the compiler stores and the package drops is a
+        // signature nobody can find.
+        let pkg = build_evidence_package(&attested_program(), "4.6.0", None, None, None, "");
+        let blob = pkg
+            .files
+            .get("attestations.json")
+            .expect("a program that signs a determination must ship it");
+        let v: Value = serde_json::from_slice(blob).expect("canonical JSON");
+
+        assert_eq!(v["count"], 1);
+        let e = &v["entries"][0];
+        assert_eq!(e["for"], "Clean");
+        assert_eq!(e["basis"], "safe_harbor");
+        // The citation is resolved at lowering so the reader does not have to
+        // know the regulation to print it.
+        assert_eq!(e["citation"], "45 CFR 164.514(b)(2)");
+        assert_eq!(e["by"], "Compliance Officer, Acme Health");
+        assert_eq!(e["on"], "2026-08-21");
+        assert_eq!(e["residual"][1], "actual_knowledge");
+    }
+
+    #[test]
+    fn the_package_says_this_file_was_signed_and_not_computed() {
+        // EVERY OTHER FILE IN THE BUNDLE IS DERIVED. If an auditor reads this one
+        // as compiler output, the separation between what was proved and what was
+        // asserted — the entire reason the file exists — is gone.
+        let pkg = build_evidence_package(&attested_program(), "4.6.0", None, None, None, "");
+        let blob = pkg.files.get("attestations.json").unwrap();
+        let v: Value = serde_json::from_slice(blob).unwrap();
+        let disclaimer = v["asserted_by_humans"].as_str().unwrap_or_default();
+        assert!(
+            disclaimer.contains("person signed") && disclaimer.contains("never that it is true"),
+            "the file must disclaim, in itself, what the compiler did NOT check: {disclaimer}"
+        );
+
+        let readme = String::from_utf8(pkg.files.get("README.md").unwrap().clone()).unwrap();
+        assert!(
+            readme.contains("attestations.json") && readme.contains("SIGNED, not derived"),
+            "the index an auditor scans first must make the distinction visible"
+        );
+    }
+
+    #[test]
+    fn a_program_that_signs_nothing_ships_no_attestation_file() {
+        // Absence is informative here: no `attestations.json` means nothing was
+        // signed, which is a true and useful thing for an auditor to see. An
+        // empty file with `count: 0` would read as a form someone left blank.
+        let pkg = build_evidence_package(&full_program(), "4.6.0", None, None, None, "");
+        assert!(!pkg.files.contains_key("attestations.json"));
     }
 }

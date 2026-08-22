@@ -121,6 +121,10 @@ fn attach_trivia_to_decl(decl: &mut Declaration, leading: Vec<Trivia>, trailing:
             n.leading_trivia = leading;
             n.trailing_trivia = trailing;
         }
+        Declaration::Attest(n) => {
+            n.leading_trivia = leading;
+            n.trailing_trivia = trailing;
+        }
         Declaration::Window(n) => {
             n.leading_trivia = leading;
             n.trailing_trivia = trailing;
@@ -2158,6 +2162,7 @@ impl Parser {
             // ── Tier 2 declarations (full AST) ──────────────────
             TokenType::Agent => self.parse_agent().map(Declaration::Agent),
             TokenType::Shield => self.parse_shield().map(Declaration::Shield),
+            TokenType::Attest => self.parse_attest().map(Declaration::Attest),
             // v2.27.0 — temporal execution-window guard.
             TokenType::Window => self.parse_window().map(Declaration::Window),
             TokenType::Pix => self.parse_pix().map(Declaration::Pix),
@@ -7519,6 +7524,56 @@ impl Parser {
         Ok(span)
     }
 
+    /// v4.6.0 — `attest <Name> { for:, basis:, residual:, by:, on: }`.
+    ///
+    /// The parser is deliberately permissive here and the checker is not.
+    /// Every field is optional to PARSE, so that a half-written attestation
+    /// still produces an AST the checker can complain about precisely —
+    /// "this attestation has no signer" beats "expected `by`", which tells
+    /// the author about the grammar instead of about the obligation.
+    fn parse_attest(&mut self) -> Result<crate::ast::AttestDefinition, ParseError> {
+        let tok = self.consume(TokenType::Attest)?;
+        let name = self.consume(TokenType::Identifier)?.value;
+        let mut node = crate::ast::AttestDefinition {
+            name,
+            loc: Loc {
+                line: tok.line,
+                column: tok.column,
+            },
+            ..Default::default()
+        };
+        self.consume(TokenType::LBrace)?;
+        while !self.check(TokenType::RBrace) && !self.check(TokenType::Eof) {
+            let field_name = self.current().value.clone();
+            let field_loc = Loc {
+                line: self.current().line,
+                column: self.current().column,
+            };
+            self.advance();
+            if self.check(TokenType::Colon) {
+                self.advance();
+                match field_name.as_str() {
+                    // `for` is a keyword elsewhere in the grammar, which is why
+                    // the field name is read as text rather than matched as a
+                    // token — the same shape every other block here uses.
+                    "for" => node.for_type = self.consume_any_ident_or_kw()?.value.clone(),
+                    "basis" => node.basis = self.consume_any_ident_or_kw()?.value.clone(),
+                    "residual" => node.residual = self.parse_bracketed_identifiers()?,
+                    "by" => node.by = self.consume(TokenType::StringLit)?.value.clone(),
+                    "on" => node.on = self.consume(TokenType::StringLit)?.value.clone(),
+                    _ => {
+                        node.unknown_fields.push((field_name.clone(), field_loc));
+                        self.skip_value()
+                    }
+                }
+            } else if self.check(TokenType::LBrace) {
+                self.skip_braced_block()?;
+            }
+        }
+        self.consume(TokenType::RBrace)?;
+        Ok(node)
+    }
+
     fn parse_shield(&mut self) -> Result<ShieldDefinition, ParseError> {
         let tok = self.consume(TokenType::Shield)?;
         let name = self.consume(TokenType::Identifier)?.value;
@@ -9231,6 +9286,7 @@ impl Parser {
             fabric_ref: String::new(),
             region: String::new(),
             zones: None,
+            census: String::new(),
             compliance: Vec::new(),
             loc: Loc {
                 line: tok.line,
@@ -9256,6 +9312,8 @@ impl Parser {
                 "region" => node.region = self.consume(TokenType::StringLit)?.value,
                 "zones" => node.zones = self.parse_optional_int(),
                 "compliance" => node.compliance = self.parse_bracketed_identifiers()?,
+                // v4.6.0 — the census a zip3 reduction relies on (axon-T1235).
+                "census" => node.census = self.consume_any_ident_or_kw()?.value.clone(),
                 _ => self.skip_value(),
             }
         }

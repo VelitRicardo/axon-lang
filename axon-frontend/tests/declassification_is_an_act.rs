@@ -51,6 +51,13 @@ const CLEAN_TYPE: &str = "type ClinicalNote { note: String }\n";
 const AUTHORISED: &str =
     "shield SafeHarbor { scan: [pii_leak]  compliance: [HIPAA]  declassifies: [HIPAA]  suppress: [ssn]  on_breach: halt }\n";
 
+/// v4.6.0 — the signature over what the compiler could not decide.
+///
+/// Every legitimate declassification now carries one (`axon-T1234`), so the
+/// positive fixtures below include it. Its own laws live in
+/// `an_attestation_is_signed_or_it_is_nothing.rs`.
+const ATTESTED: &str = "attest SafeHarborDetermination { for: ClinicalNote  basis: safe_harbor  residual: [other_unique_identifier, actual_knowledge]  by: \"Compliance Officer, Acme Health\"  on: \"2026-08-21\" }\n";
+
 fn flow(stmt: &str) -> String {
     format!(
         "flow Publish(rec: PatientRecord) -> String {{\n    {stmt}\n    \
@@ -63,7 +70,7 @@ fn flow(stmt: &str) -> String {
 #[test]
 fn a_well_formed_declassification_compiles() {
     let src = format!(
-        "{SOURCE_TYPE}{CLEAN_TYPE}{AUTHORISED}{}",
+        "{SOURCE_TYPE}{CLEAN_TYPE}{AUTHORISED}{ATTESTED}{}",
         flow("declassify HIPAA from rec -> ClinicalNote via SafeHarbor")
     );
     let errors = diagnostics(&src);

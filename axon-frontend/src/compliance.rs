@@ -600,6 +600,100 @@ pub fn transitive_identifiers(program: &crate::ast::Program, type_ref: &str) -> 
     found
 }
 
+// ───────────────────────────────────────────────────────────────────────────
+//  v4.6.0 — what the compiler could NOT decide, named so it can be signed
+// ───────────────────────────────────────────────────────────────────────────
+
+/// The legal routes to de-identification, and the citation for each.
+///
+/// Two, because the regulation has two. Safe Harbor is the enumerative one —
+/// seventeen of its eighteen classes are decidable, which is the whole reason
+/// a compiler can accompany it at all. Expert determination is a person with
+/// statistical training concluding the risk is very small; there is nothing in
+/// it for a type system to check, and pretending otherwise would be the worst
+/// possible outcome — a compiler that appears to have verified a judgement it
+/// never saw.
+///
+/// So the compiler treats them differently and says so: under `safe_harbor` it
+/// has proved seventeen classes and demands a signature over the rest; under
+/// `expert_determination` it has proved nothing about the content and demands
+/// only that the determination EXIST, with an owner and a date.
+pub const ATTESTATION_BASES: &[(&str, &str)] = &[
+    ("safe_harbor", "45 CFR 164.514(b)(2)"),
+    ("expert_determination", "45 CFR 164.514(b)(1)"),
+];
+
+/// Whether this is a basis the regulation recognises.
+pub fn is_known_basis(basis: &str) -> bool {
+    ATTESTATION_BASES.iter().any(|(b, _)| *b == basis)
+}
+
+/// The citation for a basis, for the diagnostic and the evidence package.
+pub fn basis_citation(basis: &str) -> Option<&'static str> {
+    ATTESTATION_BASES
+        .iter()
+        .find(|(b, _)| *b == basis)
+        .map(|(_, c)| *c)
+}
+
+/// Exactly what Safe Harbor asks of a human and a compiler cannot supply.
+///
+/// This list is not a design choice — it is the remainder of a subtraction.
+/// [`HIPAA_SAFE_HARBOR`] enumerates seventeen classes the compiler decides from
+/// the type graph. What is left of 164.514(b)(2) is these two, and they are
+/// left for the same reason: both quantify over knowledge the program does not
+/// contain.
+///
+/// - **(R)** asks for "any other unique identifying number, characteristic, or
+///   code". A field named `patient_ref` may or may not be one; deciding that
+///   requires knowing what generated it, which is a fact about the world.
+/// - The **actual-knowledge clause**, 164.514(b)(2)(ii), disqualifies the whole
+///   method if the covered entity knows the residual data could identify
+///   someone. Knowledge is not a property of source text.
+///
+/// Naming them is what makes the boundary of the proof visible. A compiler that
+/// silently stopped at seventeen would be read as having done eighteen.
+pub const RESIDUAL_JUDGEMENTS: &[(&str, &str)] = &[
+    ("other_unique_identifier", "164.514(b)(2)(i)(R)"),
+    ("actual_knowledge", "164.514(b)(2)(ii)"),
+];
+
+/// Whether this names one of the two judgements the compiler leaves open.
+pub fn is_known_residual(judgement: &str) -> bool {
+    RESIDUAL_JUDGEMENTS.iter().any(|(r, _)| *r == judgement)
+}
+
+/// The citation for a residual judgement.
+pub fn residual_citation(judgement: &str) -> Option<&'static str> {
+    RESIDUAL_JUDGEMENTS
+        .iter()
+        .find(|(r, _)| *r == judgement)
+        .map(|(_, c)| *c)
+}
+
+/// The census a deployment relies on to reduce a postal code to three digits.
+///
+/// Safe Harbor (B) does not permit three digits unconditionally: it permits
+/// them where the resulting unit holds twenty thousand people or more, and
+/// requires `000` where it does not. That population is a fact about the world
+/// on a given date — it moves between censuses, and it is not derivable from
+/// anything in the program.
+///
+/// So the compiler does not decide it. It requires the deployment to NAME the
+/// census it relied on, which turns an invisible assumption into a citation an
+/// auditor can check and the evidence package can carry. The compiler verifies
+/// the fact was declared, never that it is true.
+pub const CENSUS_SOURCES: &[&str] = &[
+    "us_2020_decennial",
+    "us_2010_decennial",
+    "hhs_published_list",
+];
+
+/// Whether this names a census this compiler recognises.
+pub fn is_known_census(source: &str) -> bool {
+    CENSUS_SOURCES.contains(&source)
+}
+
 /// Peel a channel `message:` spelling to its payload leaf.
 ///
 /// `Channel<…<T>>` peels to `T` — a second-order channel relays the same

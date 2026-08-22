@@ -569,6 +569,21 @@ impl IRGenerator {
             }
             Declaration::Agent(n) => ir.agents.push(self.visit_agent(n)),
             Declaration::Shield(n) => ir.shields.push(self.visit_shield(n)),
+            // v4.6.0 — the signed half of a de-identification travels whole.
+            Declaration::Attest(n) => ir.attestations.push(crate::ir_nodes::IRAttestation {
+                node_type: "attestation",
+                source_line: n.loc.line,
+                source_column: n.loc.column,
+                name: n.name.clone(),
+                for_type: n.for_type.clone(),
+                basis: n.basis.clone(),
+                citation: crate::compliance::basis_citation(&n.basis)
+                    .unwrap_or_default()
+                    .to_string(),
+                residual: n.residual.clone(),
+                by: n.by.clone(),
+                on: n.on.clone(),
+            }),
             // v2.27.0 — temporal execution-window guard.
             Declaration::Window(n) => ir.windows.push(Self::visit_window(n)),
             Declaration::Pix(n) => ir.pix_specs.push(self.visit_pix(n)),

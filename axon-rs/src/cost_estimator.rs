@@ -647,6 +647,7 @@ mod tests {
         let ir = IRProgram {
             node_type: "Program",
             source_line: 0, source_column: 0,
+            attestations: vec![],
             personas: vec![], contexts: vec![], anchors: vec![],
             tools: vec![], memories: vec![], types: vec![],
             flows: vec![], runs: vec![], imports: vec![],
@@ -733,6 +734,7 @@ mod tests {
         let ir = IRProgram {
             node_type: "Program",
             source_line: 0, source_column: 0,
+            attestations: vec![],
             personas: vec![], contexts: vec![], anchors: vec![],
             tools: vec![], memories: vec![], types: vec![],
             flows: vec![flow], runs: vec![], imports: vec![],
@@ -820,6 +822,7 @@ mod tests {
 
         let ir = IRProgram {
             node_type: "Program", source_line: 0, source_column: 0,
+            attestations: vec![],
             personas: vec![], contexts: vec![], anchors: vec![],
             tools: vec![], memories: vec![], types: vec![],
             flows: vec![flow], runs: vec![], imports: vec![],

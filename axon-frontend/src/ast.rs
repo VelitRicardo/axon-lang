@@ -88,6 +88,8 @@ pub enum Declaration {
     // ── Tier 2 declarations (full AST) ──
     Agent(AgentDefinition),
     Shield(ShieldDefinition),
+    /// v4.6.0 — a signed determination, standing beside what was proved.
+    Attest(AttestDefinition),
     /// v2.27.0 — a temporal execution-window guard.
     Window(WindowDefinition),
     /// v2.69.0 — a TOP-LEVEL `budget <Name> { … }`. Governs every flow that
@@ -251,6 +253,9 @@ pub fn declaration_surface(decl: &Declaration) -> Option<(String, String, Loc)> 
         Declaration::LambdaData(n) => Some((n.name.clone(), "lambda_data".into(), n.loc.clone())),
         Declaration::Agent(n) => Some((n.name.clone(), "agent".into(), n.loc.clone())),
         Declaration::Shield(n) => Some((n.name.clone(), "shield".into(), n.loc.clone())),
+        // v4.6.0 — an attestation is an exportable named symbol: a module that
+        // owns the determination can be imported by the flow that relies on it.
+        Declaration::Attest(n) => Some((n.name.clone(), "attest".into(), n.loc.clone())),
         Declaration::Window(n) => Some((n.name.clone(), "window".into(), n.loc.clone())),
         Declaration::Budget(n) => Some((n.name.clone(), "budget".into(), n.loc.clone())),
         Declaration::Pix(n) => Some((n.name.clone(), "pix".into(), n.loc.clone())),
@@ -602,6 +607,15 @@ pub struct ManifestDefinition {
     pub region: String,
     pub zones: Option<i64>,
     pub compliance: Vec<String>, // κ — regulatory class (v1.2.0)
+    /// v4.6.0 — the census this deployment relies on to reduce a postal code
+    /// to three digits.
+    ///
+    /// Safe Harbor (B) permits three digits only where the resulting unit
+    /// holds twenty thousand people or more. That is a fact about the world on
+    /// a date, not about the program, so the deployment names the source and
+    /// the compiler checks only that it was named. Empty unless some control
+    /// actually reduces geography — see `axon-T1235`.
+    pub census: String,
     pub loc: Loc,
     /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the
@@ -1521,6 +1535,55 @@ pub struct WindowSpan {
     pub hour_start: i64,
     pub hour_end: i64,
     pub loc: Loc,
+}
+
+/// `attest <Name> { for:, basis:, residual:, by:, on: }`
+///
+/// v4.6.0 — the half of a de-identification that a compiler cannot produce.
+///
+/// A declassification retires a regulatory class from a value, and by v4.5.0
+/// the compiler decides most of what that requires: the class is real, the
+/// control declares the capability, the destination type no longer carries the
+/// class, every enumerable identifier is removed or reduced. What it cannot
+/// decide is the remainder — the eighteenth Safe Harbor class and the
+/// actual-knowledge clause, both of which quantify over facts the program does
+/// not contain — and, entirely, the other legal route: expert determination.
+///
+/// Those do not become weaker compiler claims. They become a signature, with an
+/// owner and a date, that travels in the evidence package NEXT TO the proof and
+/// distinct from it. The point of the separation is that a reader can see where
+/// the machine stopped talking and a person started.
+///
+/// It is a top-level declaration and not a `shield` block, per the founder’s
+/// ratification: a shield is a control that executes and its scope ends with
+/// the run, while an attestation is a fact that outlives the control that
+/// motivated it — reused for a later legal basis, cited by a second
+/// determination, and shipped on its own.
+#[derive(Debug, Default)]
+pub struct AttestDefinition {
+    pub name: String,
+    /// The type this determination is ABOUT — the output of the
+    /// declassification, not its input. An attestation over the regulated
+    /// value would be a statement about data nobody claimed was clean.
+    pub for_type: String,
+    /// `safe_harbor` | `expert_determination` — see `ATTESTATION_BASES`.
+    pub basis: String,
+    /// The judgements the signer takes on: precisely what the compiler left
+    /// open. See `RESIDUAL_JUDGEMENTS`.
+    pub residual: Vec<String>,
+    /// Who signs. Prose on purpose — the compiler has no register of people
+    /// and inventing a closed catalogue of them would be a fiction. What it
+    /// CAN require is that the field not be empty, because an unattributed
+    /// attestation is indistinguishable from a shortcut.
+    pub by: String,
+    /// When, ISO-8601. A determination is about a state of the world on a
+    /// date; without one it cannot be superseded, and a determination that
+    /// cannot go stale is not a determination.
+    pub on: String,
+    pub unknown_fields: Vec<(String, Loc)>,
+    pub loc: Loc,
+    pub leading_trivia: Vec<crate::tokens::Trivia>,
+    pub trailing_trivia: Vec<crate::tokens::Trivia>,
 }
 
 #[derive(Debug)]

@@ -172,6 +172,11 @@ pub enum TokenType {
     /// it to copying fields into an unlabelled type, which is exactly the
     /// decomposition κ cannot see.
     Declassify,
+    /// v4.6.0 — `attest <Name> { for, basis, residual, by, on }`: the signed
+    /// half of a de-identification. A top-level declaration rather than a
+    /// shield block, because a shield is a control that runs and an
+    /// attestation is a fact that outlives the run that needed it.
+    Attest,
     // AxonEndpoint
     AxonEndpoint,
     // v2.5.0 — Closed-catalog extension mechanism
@@ -501,6 +506,7 @@ pub fn keyword_type(word: &str) -> TokenType {
         "strategy" => TokenType::Strategy,
         "on_stuck" => TokenType::OnStuck,
         "shield" => TokenType::Shield,
+        "attest" => TokenType::Attest,
         // v2.27.0 — temporal execution-window guard.
         "window" => TokenType::Window,
         "scan" => TokenType::Scan,
@@ -682,6 +688,7 @@ pub fn is_declaration_keyword(tt: &TokenType) -> bool {
             | TokenType::Weave
             | TokenType::Agent
             | TokenType::Shield
+            | TokenType::Attest
             | TokenType::Pix
             | TokenType::Ledger
             | TokenType::Psyche

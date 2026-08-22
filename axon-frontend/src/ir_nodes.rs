@@ -28,6 +28,14 @@ pub struct IRProgram {
     pub imports: Vec<IRImport>,
     pub agents: Vec<IRAgent>,
     pub shields: Vec<IRShield>,
+    /// v4.6.0 — signed determinations, riding beside what was proved.
+    ///
+    /// They live at the top of the artifact rather than inside the shield or
+    /// the step, because the evidence package reads them as their own class of
+    /// fact: this is the part no gate produced. `skip_serializing_if` keeps
+    /// every program without an attestation byte-identical.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub attestations: Vec<IRAttestation>,
     /// v2.27.0 — temporal execution-window guards.
     pub windows: Vec<IRWindow>,
     /// v2.69.0 — top-level `budget` declarations. A daemon's anonymous budget
@@ -249,6 +257,7 @@ impl IRProgram {
             runs: Vec::new(),
             imports: Vec::new(),
             agents: Vec::new(),
+            attestations: Vec::new(),
             shields: Vec::new(),
             windows: Vec::new(),
             budgets: Vec::new(),
@@ -2265,6 +2274,32 @@ pub struct IRBudgetQuota {
     pub effect: String,
 }
 
+/// v4.6.0 — an `attest` declaration, lowered.
+///
+/// Deliberately the flattest node in this file: five facts and no structure.
+/// Everything here was asserted by a person, so there is nothing for the
+/// artifact to interpret — only to carry, verbatim, to whoever reads the
+/// evidence and has to tell what was proved from what was signed.
+#[derive(Debug, Clone, Serialize)]
+pub struct IRAttestation {
+    pub node_type: &'static str,
+    pub source_line: u32,
+    pub source_column: u32,
+    pub name: String,
+    /// The type the determination is about.
+    pub for_type: String,
+    /// `safe_harbor` | `expert_determination`.
+    pub basis: String,
+    /// The citation for that basis, resolved at lowering from
+    /// `ATTESTATION_BASES` so the evidence reader does not have to know the
+    /// regulation to print it.
+    pub citation: String,
+    /// The judgements the signer took on.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub residual: Vec<String>,
+    pub by: String,
+    pub on: String,
+}
 #[derive(Debug, Clone, Serialize)]
 pub struct IRShield {
     pub node_type: &'static str,

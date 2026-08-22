@@ -1838,6 +1838,16 @@ impl<'a> TypeChecker<'a> {
                         n.loc.clone(),
                     ));
                 }
+                // v4.6.0 — an attestation is a named symbol like any other, so
+                // a module can own the determination and a flow can import it.
+                Declaration::Attest(n) => {
+                    registrations.push((
+                        n.name.clone(),
+                        "attest".into(),
+                        n.loc.line,
+                        n.loc.clone(),
+                    ));
+                }
                 Declaration::Pix(n) => {
                     registrations.push((n.name.clone(), "pix".into(), n.loc.line, n.loc.clone()));
                 }
@@ -2398,6 +2408,8 @@ impl<'a> TypeChecker<'a> {
                 // v2.69.0 — a top-level budget is checked by the SAME laws as a
                 // daemon's (T830–T834). Reused, not re-implemented: a second copy
                 // of a law is how the islands happened.
+                // v4.6.0 — the signed half of a de-identification (T1231–T1233).
+                Declaration::Attest(n) => self.check_attestation(n),
                 Declaration::Budget(n) => {
                     let scope = format!("budget '{}'", n.name);
                     self.check_budget(n, &scope);
@@ -5357,7 +5369,17 @@ impl<'a> TypeChecker<'a> {
                     &n.loc,
                 ),
                 Declaration::Manifest(n) => {
-                    self.check_compliance_classes(&n.compliance, &format!("manifest '{}'", n.name), &n.loc)
+                    self.check_compliance_classes(&n.compliance, &format!("manifest '{}'", n.name), &n.loc);
+                    // v4.6.0 — a citation nobody can look up is not a citation.
+                    if !n.census.is_empty() && !crate::compliance::is_known_census(&n.census) {
+                        self.emit(
+                            format!(
+                                "axon-T1235 manifest '{}' declares `census: {}`, which is not a source this compiler recognises. Known: {:?}. The point of naming the census is that an auditor can go and check the population figure the `zip3` reduction leaned on.",
+                                n.name, n.census, crate::compliance::CENSUS_SOURCES
+                            ),
+                            &n.loc,
+                        );
+                    }
                 }
                 _ => {}
             }
@@ -5431,6 +5453,33 @@ impl<'a> TypeChecker<'a> {
             }
         }
 
+        // 3. someone signed for what the compiler could not decide
+        //
+        // THE LAW THAT MAKES THE REST HONEST. Everything above is a refusal of
+        // the structurally impossible; none of it amounts to "this data is
+        // de-identified", because the last two Safe Harbor obligations are not
+        // decidable from source and expert determination is not decidable at
+        // all. Without this, a program could retire HIPAA from a value with no
+        // human anywhere in the record, and the artifact would carry a clean
+        // type and no author — an act of governance with no trace, which is
+        // indistinguishable from a shortcut.
+        //
+        // The attestation is matched by SUBJECT, not by name: it must be `for:`
+        // the type this step produces. A determination about some other type is
+        // not evidence about this one, and matching by name would let any
+        // attestation in the program satisfy every declassification in it.
+        if !self.program.declarations.iter().any(|decl| {
+            matches!(decl, Declaration::Attest(a) if a.for_type == d.output_type)
+        }) {
+            self.emit(
+                format!(
+                    "axon-T1234 `declassify {} … -> {}` has no attestation. The compiler decided the enumerable identifiers; it cannot decide the eighteenth Safe Harbor class (164.514(b)(2)(i)(R)) or the actual-knowledge clause (164.514(b)(2)(ii)), and it cannot evaluate an expert determination at all. Declare `attest <Name> {{ for: {}, basis: …, by: …, on: … }}` so the part nobody proved has a name and a date on it.",
+                    d.class, d.output_type, d.output_type
+                ),
+                &d.loc,
+            );
+        }
+
         // 3. the destination type does not still carry the class
         let remaining = crate::compliance::transitive_kappa(self.program, &d.output_type);
         if remaining.contains(&d.class) {
@@ -5495,6 +5544,129 @@ impl<'a> TypeChecker<'a> {
     /// a rubber stamp with a keyword — and it would satisfy every law above,
     /// because those check the SHAPE of the result and this checks that the
     /// control has a mechanism at all.
+    /// v4.6.0 — an attestation is complete, or it is not one.
+    ///
+    /// This is the declaration where the compiler stops proving and starts
+    /// recording. That makes it tempting to check nothing — it is all human
+    /// assertion, after all. The opposite is true: precisely because none of it
+    /// is verifiable, the FORM has to be, or the artifact ends up carrying a
+    /// determination with no owner, no date, or a legal basis that does not
+    /// exist, and every reader downstream treats it as though a person stood
+    /// behind it.
+    ///
+    /// - `axon-T1231` — the basis is one the regulation has.
+    /// - `axon-T1232` — the residual judgements are the ones actually left
+    ///   open, and under Safe Harbor BOTH of them are taken on.
+    /// - `axon-T1233` — there is a signer, a date, and a subject type.
+    fn check_attestation(&mut self, a: &crate::ast::AttestDefinition) {
+        // 1. the basis is a real legal route
+        if a.basis.is_empty() {
+            self.emit(
+                format!(
+                    "axon-T1231 attestation '{}' declares no `basis:`. A determination that does not say WHICH method it followed cannot be evaluated by anyone — the two routes have different evidence and different failure modes.",
+                    a.name
+                ),
+                &a.loc,
+            );
+        } else if !crate::compliance::is_known_basis(&a.basis) {
+            let known: Vec<&str> = crate::compliance::ATTESTATION_BASES
+                .iter()
+                .map(|(b, _)| *b)
+                .collect();
+            self.emit(
+                format!(
+                    "axon-T1231 attestation '{}' declares `basis: {}`, which is not a de-identification method the regulation defines. Known: {:?}. Inventing a basis produces a document that LOOKS like a determination and cites nothing.",
+                    a.name, a.basis, known
+                ),
+                &a.loc,
+            );
+        }
+
+        // 2. the residual judgements are the ones the compiler actually left open
+        for r in &a.residual {
+            if !crate::compliance::is_known_residual(r) {
+                let known: Vec<&str> = crate::compliance::RESIDUAL_JUDGEMENTS
+                    .iter()
+                    .map(|(j, _)| *j)
+                    .collect();
+                self.emit(
+                    format!(
+                        "axon-T1232 attestation '{}' takes on `{r}`, which is not one of the judgements this compiler leaves open. Known: {:?}. The list is the REMAINDER of what the type system decided — signing something outside it claims to close a gap that was never there, while the real gap stays open.",
+                        a.name, known
+                    ),
+                    &a.loc,
+                );
+            }
+        }
+        // Under Safe Harbor the remainder is known exactly, and it is both of
+        // them. An attestation that takes on one and not the other has a hole in
+        // a specific, citable place — and the whole method fails if the
+        // actual-knowledge clause is not addressed, so a partial signature is
+        // worse than none: it reads as diligence.
+        if a.basis == "safe_harbor" {
+            for (judgement, citation) in crate::compliance::RESIDUAL_JUDGEMENTS {
+                if !a.residual.iter().any(|r| r == judgement) {
+                    self.emit(
+                        format!(
+                            "axon-T1232 attestation '{}' claims `basis: safe_harbor` but does not take on `{judgement}` ({citation}). The compiler decided seventeen identifier classes from the type graph; this is part of what is left, and Safe Harbor is not satisfied while it is unsigned. List it, or use `basis: expert_determination`, where a person takes on the whole analysis.",
+                            a.name
+                        ),
+                        &a.loc,
+                    );
+                }
+            }
+        }
+
+        // 3. it names a subject, an owner and a date
+        if a.for_type.is_empty() {
+            self.emit(
+                format!(
+                    "axon-T1233 attestation '{}' declares no `for:`. A determination is ABOUT a type — the de-identified one it certifies. Without it the assertion floats free and no declassification can be matched to it.",
+                    a.name
+                ),
+                &a.loc,
+            );
+        } else if !self.program.declarations.iter().any(
+            |d| matches!(d, Declaration::Type(t) if t.name == a.for_type),
+        ) {
+            self.emit(
+                format!(
+                    "axon-T1233 attestation '{}' is `for: {}`, which is not a declared type. A determination about a type that does not exist certifies nothing, and would satisfy the law that requires one.",
+                    a.name, a.for_type
+                ),
+                &a.loc,
+            );
+        }
+        if a.by.trim().is_empty() {
+            self.emit(
+                format!(
+                    "axon-T1233 attestation '{}' declares no `by:`. An unattributed attestation is indistinguishable from a shortcut — its entire value is that a named person took responsibility exactly where the compiler stopped.",
+                    a.name
+                ),
+                &a.loc,
+            );
+        }
+        if !is_iso_date(&a.on) {
+            self.emit(
+                format!(
+                    "axon-T1233 attestation '{}' declares `on: {:?}`, which is not an ISO-8601 date (YYYY-MM-DD). A determination describes the world on a date; one that cannot go stale cannot be superseded, and re-identification risk is exactly the thing that changes over time.",
+                    a.name, a.on
+                ),
+                &a.loc,
+            );
+        }
+
+        for (field, loc) in &a.unknown_fields {
+            self.warn(
+                format!(
+                    "axon-W010 attestation '{}' declares unknown field `{field}`, which is ignored.",
+                    a.name
+                ),
+                loc,
+            );
+        }
+    }
+
     fn check_shield_declassification_capability(&mut self, s: &crate::ast::ShieldDefinition) {
         if s.declassifies.is_empty() {
             return;
@@ -5529,6 +5701,37 @@ impl<'a> TypeChecker<'a> {
                 ),
                 &s.loc,
             );
+        }
+
+        // v4.6.0 — a three-digit postal code is conditional, and the condition
+        // is a fact about the world.
+        //
+        // Safe Harbor (B) permits the first three digits only where the unit
+        // they name holds twenty thousand people or more, and requires `000`
+        // where it does not. Which units those are changes between censuses and
+        // appears nowhere in the program, so the compiler cannot decide it — but
+        // it can refuse to let the assumption stay invisible. The deployment
+        // names the census it relied on; the compiler checks that it was named,
+        // never that it is true. Its truth belongs to the census, and the
+        // citation travels in the evidence.
+        if s.generalise.iter().any(|k| k == "geography") {
+            let declared = self
+                .program
+                .declarations
+                .iter()
+                .any(|d| matches!(d, Declaration::Manifest(m) if !m.census.is_empty()));
+            if !declared {
+                self.emit(
+                    format!(
+                        "axon-T1235 shield '{}' reduces `geography`, which under Safe Harbor (164.514(b)(2)(i)(B)) is permitted only where the three-digit unit holds 20,000 people or more. That is a fact about the world on a date, not about this program, so no manifest declares `census:` and the assumption is currently invisible. Name the source the deployment relied on — the compiler checks that it was named, not that it is true.",
+                        s.name
+                    ),
+                    &s.loc,
+                );
+            }
+            // Whether a DECLARED source is one this compiler recognises is the
+            // manifest's business, checked once where the manifest is — not once
+            // per shield that happens to reduce geography.
         }
     }
     fn check_identifier_kind(&mut self, kind: &str, owner: &str, loc: &Loc) {
@@ -14294,6 +14497,23 @@ fn find_type_by_name<'a>(program: &'a Program, name: &str) -> Option<&'a TypeDef
 }
 
 /// Does this shield reduce that identifier kind?
+/// v4.6.0 — YYYY-MM-DD, and nothing cleverer.
+///
+/// Deliberately shape-only. The compiler has no business deciding whether a
+/// determination is too old — that depends on the data, the population and the
+/// regulator, none of which are in the source. What it CAN insist on is that
+/// the field be a date at all, so the question "is this still current?" has
+/// something to be asked of.
+fn is_iso_date(text: &str) -> bool {
+    let bytes = text.as_bytes();
+    bytes.len() == 10
+        && bytes[4] == b'-'
+        && bytes[7] == b'-'
+        && bytes[..4].iter().all(u8::is_ascii_digit)
+        && bytes[5..7].iter().all(u8::is_ascii_digit)
+        && bytes[8..].iter().all(u8::is_ascii_digit)
+}
+
 fn shield_generalises(program: &Program, shield: &str, kind: &str) -> bool {
     program.declarations.iter().any(|d| match d {
         Declaration::Shield(s) => s.name == shield && s.generalise.iter().any(|k| k == kind),
