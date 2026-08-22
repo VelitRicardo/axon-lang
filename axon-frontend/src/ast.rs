@@ -2552,6 +2552,15 @@ pub struct TypeDefinition {
     pub where_clause: Option<WhereClause>,
     /// ESK — κ regulatory class attached to a type.
     pub compliance: Vec<String>,
+    /// v4.5.0 — WHAT this type is, from the closed identifier catalogue.
+    ///
+    /// κ says which regime a value falls under; this says whether it is a
+    /// social-security number or a clinical note. De-identification needs the
+    /// second question answered — a rule that can only see the regime can
+    /// check that a class was declared and nothing about what was removed.
+    ///
+    /// Empty for the ordinary case: most types are not identifiers.
+    pub identifier: String,
     pub loc: Loc,
     /// v1.5.2 — leading comment trivia attached to this declaration
     /// (comments preceding the declaration's first token, since the

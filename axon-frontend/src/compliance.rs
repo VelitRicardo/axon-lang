@@ -407,6 +407,199 @@ pub fn transitive_kappa(program: &crate::ast::Program, type_ref: &str) -> BTreeS
     found
 }
 
+/// **What a piece of data IS** — independent of any regulation.
+///
+/// κ says which regime a value falls under. It does not say whether a field is
+/// a social-security number or a clinical note, and without that distinction
+/// every claim of de-identification is a promise: the compiler can check that a
+/// class was declared, and nothing at all about what was actually removed.
+///
+/// This catalogue is **transversal**, deliberately. A social-security number is
+/// an identifier under HIPAA, under GDPR and under Ley 1581; what changes
+/// between regimes is what each one requires you to DO with it. So the kinds
+/// describe the data once, and each regime brings its own rule table over them
+/// ([`HIPAA_SAFE_HARBOR`] is the first). Writing seventeen classes per Κ member
+/// would be the same duplication this project has spent cycles removing — and
+/// the LATAM jurisdictions reuse this list as-is.
+///
+/// Closed, like Κ. An identifier kind outside it is a compile error rather than
+/// a string the compiler cannot reason about: *a free string field breeds an
+/// imaginary catalogue*, recorded four times in this repository.
+pub const IDENTIFIER_KINDS: &[&str] = &[
+    "name",
+    "geography",
+    "date",
+    "age",
+    "phone",
+    "fax",
+    "email",
+    "ssn",
+    "medical_record_number",
+    "health_plan_number",
+    "account_number",
+    "license_number",
+    "vehicle_identifier",
+    "device_identifier",
+    "url",
+    "ip_address",
+    "biometric",
+    "face_photo",
+];
+
+/// Is `kind` a member of the identifier catalogue?
+pub fn is_known_identifier(kind: &str) -> bool {
+    IDENTIFIER_KINDS.contains(&kind)
+}
+
+/// The nearest catalogue member to a misspelling, for the diagnostic.
+pub fn nearest_identifier(kind: &str) -> Option<&'static str> {
+    let lower = kind.to_ascii_lowercase();
+    IDENTIFIER_KINDS
+        .iter()
+        .copied()
+        .find(|k| k.eq_ignore_ascii_case(&lower) || k.starts_with(lower.as_str()))
+}
+
+/// What a regime requires be done with an identifier before the data leaves.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Deidentify {
+    /// The value must be removed. Nothing of it may survive.
+    Suppress,
+    /// The value may be KEPT in a reduced form. This is the half a masking-only
+    /// mechanism cannot express, and its absence is expensive: the regulation
+    /// does not ask you to delete the date, it asks for the year. A system that
+    /// makes an adopter throw away data the law lets them keep is a system that
+    /// gets routed around.
+    Generalise(Generalisation),
+}
+
+/// The reductions this compiler knows how to require and the runtime knows how
+/// to perform. Closed — and short, which is honest: cell suppression,
+/// micro-aggregation and swapping are not here.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Generalisation {
+    /// A date reduced to its year.
+    Year,
+    /// A postal code reduced to its first three digits — admissible only where
+    /// the resulting unit exceeds 20,000 people. That population fact is NOT
+    /// decided here: it is a fact about the world that changes with the census,
+    /// and it is declared per deployment in the `manifest`. The compiler checks
+    /// that it was DECLARED, not that it is true.
+    Zip3,
+    /// Ages above 89 collapsed into a single category.
+    AgeCap,
+}
+
+/// One regime's requirement for one identifier kind.
+pub struct DeidentifyRule {
+    pub kind: &'static str,
+    pub operation: Deidentify,
+    /// The letter this rule carries in the regulation's own enumeration, so the
+    /// mapping can be audited against the source text rather than trusted.
+    pub citation: &'static str,
+}
+
+/// **HIPAA Safe Harbor — 45 CFR 164.514(b)(2).**
+///
+/// The regulation lists eighteen identifier classes. **Seventeen of them are
+/// enumerable, and this table is that enumeration**; the eighteenth —
+/// *"any other unique identifying number, characteristic, or code"* — is a
+/// judgement, not a class, and it is not here. Neither is the final clause,
+/// which requires that the covered entity have no *actual knowledge* that the
+/// information could identify an individual: that is a condition on the ENTITY,
+/// not on the data, and no type system decides it.
+///
+/// Those two are the whole residue, and they are attested rather than proved.
+/// That is a much smaller gap than "a compiler cannot decide Safe Harbor", and
+/// the difference is the point of this table.
+///
+/// This encoding is not the regulation. The regulation is the source; a mapping
+/// error here is a defect in this file, which is why every row cites the item
+/// it encodes.
+pub const HIPAA_SAFE_HARBOR: &[DeidentifyRule] = &[
+    DeidentifyRule { kind: "name", operation: Deidentify::Suppress, citation: "164.514(b)(2)(i)(A)" },
+    // Geography and dates are where the regulation ALLOWS you to keep something.
+    DeidentifyRule { kind: "geography", operation: Deidentify::Generalise(Generalisation::Zip3), citation: "164.514(b)(2)(i)(B)" },
+    DeidentifyRule { kind: "date", operation: Deidentify::Generalise(Generalisation::Year), citation: "164.514(b)(2)(i)(C)" },
+    DeidentifyRule { kind: "age", operation: Deidentify::Generalise(Generalisation::AgeCap), citation: "164.514(b)(2)(i)(C)" },
+    DeidentifyRule { kind: "phone", operation: Deidentify::Suppress, citation: "164.514(b)(2)(i)(D)" },
+    DeidentifyRule { kind: "fax", operation: Deidentify::Suppress, citation: "164.514(b)(2)(i)(E)" },
+    DeidentifyRule { kind: "email", operation: Deidentify::Suppress, citation: "164.514(b)(2)(i)(F)" },
+    DeidentifyRule { kind: "ssn", operation: Deidentify::Suppress, citation: "164.514(b)(2)(i)(G)" },
+    DeidentifyRule { kind: "medical_record_number", operation: Deidentify::Suppress, citation: "164.514(b)(2)(i)(H)" },
+    DeidentifyRule { kind: "health_plan_number", operation: Deidentify::Suppress, citation: "164.514(b)(2)(i)(I)" },
+    DeidentifyRule { kind: "account_number", operation: Deidentify::Suppress, citation: "164.514(b)(2)(i)(J)" },
+    DeidentifyRule { kind: "license_number", operation: Deidentify::Suppress, citation: "164.514(b)(2)(i)(K)" },
+    DeidentifyRule { kind: "vehicle_identifier", operation: Deidentify::Suppress, citation: "164.514(b)(2)(i)(L)" },
+    DeidentifyRule { kind: "device_identifier", operation: Deidentify::Suppress, citation: "164.514(b)(2)(i)(M)" },
+    DeidentifyRule { kind: "url", operation: Deidentify::Suppress, citation: "164.514(b)(2)(i)(N)" },
+    DeidentifyRule { kind: "ip_address", operation: Deidentify::Suppress, citation: "164.514(b)(2)(i)(O)" },
+    DeidentifyRule { kind: "biometric", operation: Deidentify::Suppress, citation: "164.514(b)(2)(i)(P)" },
+    DeidentifyRule { kind: "face_photo", operation: Deidentify::Suppress, citation: "164.514(b)(2)(i)(Q)" },
+];
+
+/// What Safe Harbor requires of this identifier kind, if anything.
+pub fn safe_harbor_rule(kind: &str) -> Option<&'static DeidentifyRule> {
+    HIPAA_SAFE_HARBOR.iter().find(|r| r.kind == kind)
+}
+
+/// Every identifier kind a value of this type carries — **its own and its
+/// fields'**, transitively.
+///
+/// The same walk as [`transitive_kappa`], over the same structure, for the same
+/// reason: wrapping a type in a request struct must not hide what is inside it.
+/// Keeping them as two functions over one traversal shape is a deliberate
+/// trade — they answer different questions and a single function returning both
+/// would be read as "the compliance facts", which is exactly the conflation
+/// this cycle exists to remove.
+pub fn transitive_identifiers(program: &crate::ast::Program, type_ref: &str) -> BTreeSet<String> {
+    let mut found = BTreeSet::new();
+    let mut visited: BTreeSet<String> = BTreeSet::new();
+    let mut queue: Vec<String> = vec![type_ref.to_string()];
+
+    while let Some(spelling) = queue.pop() {
+        let base = peel_type_constructors(&spelling);
+        if base.is_empty() {
+            continue;
+        }
+        if let Some(open) = base.find('<') {
+            if let Some(inner) = base.strip_suffix('>').map(|s| &s[open + 1..]) {
+                for arg in inner.split(',') {
+                    let arg = arg.trim();
+                    if !arg.is_empty() && !visited.contains(arg) {
+                        queue.push(arg.to_string());
+                    }
+                }
+            }
+        }
+        if !visited.insert(base.to_string()) {
+            continue;
+        }
+        let Some(decl) = program.declarations.iter().find_map(|d| match d {
+            crate::ast::Declaration::Type(t) if t.name == base => Some(t),
+            _ => None,
+        }) else {
+            continue;
+        };
+
+        if !decl.identifier.is_empty() {
+            found.insert(decl.identifier.clone());
+        }
+        for field in &decl.fields {
+            let spelling = if field.type_expr.generic_param.is_empty() {
+                field.type_expr.name.clone()
+            } else {
+                format!("{}<{}>", field.type_expr.name, field.type_expr.generic_param)
+            };
+            if !spelling.is_empty() {
+                queue.push(spelling);
+            }
+        }
+    }
+
+    found
+}
+
 /// Peel a channel `message:` spelling to its payload leaf.
 ///
 /// `Channel<…<T>>` peels to `T` — a second-order channel relays the same

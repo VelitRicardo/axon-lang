@@ -2958,6 +2958,7 @@ impl Parser {
         let name = self.consume(TokenType::Identifier)?.value;
 
         let mut node = TypeDefinition {
+            identifier: String::new(),
             name,
             fields: Vec::new(),
             range_constraint: None,
@@ -3003,6 +3004,22 @@ impl Parser {
         if self.check(TokenType::Identifier) && self.current().value == "compliance" {
             self.advance();
             node.compliance = self.parse_bracketed_identifiers()?;
+        }
+
+        // v4.5.0 — `identifier <kind>`: WHAT this type is, from the closed
+        // catalogue. It sits beside `compliance` because the two answer
+        // different questions about the same declaration — which regime, and
+        // which kind of thing — and a de-identification rule needs both.
+        //
+        // Accepted in either order with `compliance`, because insisting on one
+        // would be a rule an adopter has to remember for no reason.
+        if self.check(TokenType::Identifier) && self.current().value == "identifier" {
+            self.advance();
+            node.identifier = self.consume_any_ident_or_kw()?.value.clone();
+            if self.check(TokenType::Identifier) && self.current().value == "compliance" {
+                self.advance();
+                node.compliance = self.parse_bracketed_identifiers()?;
+            }
         }
 
         // Optional body: { field: Type, ... }

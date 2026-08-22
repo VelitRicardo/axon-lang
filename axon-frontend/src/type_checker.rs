@@ -5344,6 +5344,8 @@ impl<'a> TypeChecker<'a> {
             match decl {
                 Declaration::Type(n) => {
                     self.check_compliance_classes(&n.compliance, &format!("type '{}'", n.name), &n.loc)
+                    ;
+                    self.check_identifier_kind(&n.identifier, &format!("type '{}'", n.name), &n.loc);
                 }
                 Declaration::Shield(n) => {
                     self.check_compliance_classes(&n.compliance, &format!("shield '{}'", n.name), &n.loc)
@@ -5359,6 +5361,29 @@ impl<'a> TypeChecker<'a> {
                 _ => {}
             }
         }
+    }
+
+    /// v4.5.0 — `identifier <kind>` names a member of the closed catalogue.
+    ///
+    /// The same discipline as Κ next door, for the same reason. An identifier
+    /// kind the compiler does not recognise is not a weaker claim about the
+    /// data — it is a claim about nothing, which a de-identification rule
+    /// would then compare against and find satisfied.
+    fn check_identifier_kind(&mut self, kind: &str, owner: &str, loc: &Loc) {
+        if kind.is_empty() || crate::compliance::is_known_identifier(kind) {
+            return;
+        }
+        let suggestion = match crate::compliance::nearest_identifier(kind) {
+            Some(near) => format!(" Did you mean `{near}`?"),
+            None => String::new(),
+        };
+        self.emit(
+            format!(
+                "axon-T1225 {owner} declares `identifier {kind}`, which is not an identifier kind.{suggestion} The catalogue is {:?} — closed, and shared across regimes: it says WHAT the data is, and each regulation says what must be done with it. A kind outside it cannot be de-identified, because nothing knows what it is.",
+                crate::compliance::IDENTIFIER_KINDS
+            ),
+            loc,
+        );
     }
 
     fn check_compliance_classes(&mut self, declared: &[String], owner: &str, loc: &Loc) {
