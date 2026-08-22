@@ -1,20 +1,25 @@
 ---
-name: attest
-summary: A signed determination, standing beside what the compiler proved. Mandatory — no declassification compiles without one.
-category: cognitive_io
-top_level: true
-since: v4.5.0
-grammar: |
-  attest <Name> {
-      for:      <Type>
-      basis:    safe_harbor | expert_determination
-      residual: [<judgement>, ...]
-      by:       "<who>"
-      on:       "<YYYY-MM-DD>"
-  }
+title: "attest"
+description: "A signed determination, standing beside what the compiler proved. Mandatory — no declassification compiles without one."
 ---
 
-# `attest`
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v4.5.0 · **Top-level declaration**
+
+## Grammar
+
+```text
+attest <Name> {
+    for:      <Type>
+    basis:    safe_harbor | expert_determination
+    residual: [<judgement>, ...]
+    by:       "<who>"
+    on:       "<YYYY-MM-DD>"
+}
+```
 
 A determination a **person** signed, carried in the artifact next to — and
 distinct from — what the compiler proved.

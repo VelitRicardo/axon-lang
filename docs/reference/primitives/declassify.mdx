@@ -1,14 +1,19 @@
 ---
-name: declassify
-summary: Retires a regulatory class from a value, producing a different type. The legitimate door out of a regulated region.
-category: cognitive_io
-top_level: false
-since: v4.5.0
-grammar: |
-  declassify <Class> from <value> -> <DestinationType> via <Shield>
+title: "declassify"
+description: "Retires a regulatory class from a value, producing a different type. The legitimate door out of a regulated region."
 ---
 
-# `declassify`
+<Info>
+  **Attested.** A fixture written in AXON is compiled and executed by a gate in the test suite, so this page describes behaviour a test exercises.
+</Info>
+
+**Since** v4.5.0 · **Used inside a declaration**
+
+## Grammar
+
+```text
+declassify <Class> from <value> -> <DestinationType> via <Shield>
+```
 
 Retires a regulatory class from a value. The result is a **different type** —
 one the program has declared no longer carries the class.

@@ -300,10 +300,14 @@
       {
         "group": "Reference · Cognitive I/O",
         "pages": [
+          "reference/primitives/attest",
+          "reference/primitives/census",
           "reference/primitives/compliance",
+          "reference/primitives/declassify",
           "reference/primitives/ensemble",
           "reference/primitives/fabric",
           "reference/primitives/heal",
+          "reference/primitives/identifier",
           "reference/primitives/immune",
           "reference/primitives/lease",
           "reference/primitives/manifest",
